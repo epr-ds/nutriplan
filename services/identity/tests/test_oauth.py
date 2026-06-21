@@ -115,6 +115,25 @@ def test_verify_unconfigured_provider_raises(rsa_key, monkeypatch):
         oauth.verify_oauth_token("google", token, key_resolver=lambda cfg, t: rsa_key.public_key())
 
 
+def test_verify_facebook_token_ok(rsa_key, monkeypatch):
+    monkeypatch.setattr(settings, "facebook_client_ids", "fb-app-1")
+    token = _id_token(rsa_key, aud="fb-app-1", iss="https://www.facebook.com")
+    claims = oauth.verify_oauth_token(
+        "facebook", token, key_resolver=lambda cfg, t: rsa_key.public_key()
+    )
+    assert claims.subject == "oauth-sub-1"
+    assert claims.email == "oauth@example.com"
+
+
+def test_verify_facebook_rejects_wrong_audience(rsa_key, monkeypatch):
+    monkeypatch.setattr(settings, "facebook_client_ids", "fb-app-1")
+    token = _id_token(rsa_key, aud="someone-else", iss="https://www.facebook.com")
+    with pytest.raises(oauth.OAuthError):
+        oauth.verify_oauth_token(
+            "facebook", token, key_resolver=lambda cfg, t: rsa_key.public_key()
+        )
+
+
 # --- endpoint / provisioning tests: stub the verifier so no keys/network are needed ---
 
 
@@ -162,8 +181,15 @@ def test_oauth_login_invalid_token_unauthorized(client, monkeypatch):
     assert response.headers["content-type"].startswith("application/problem+json")
 
 
-def test_oauth_login_unsupported_provider(client):
+def test_oauth_login_provisions_via_facebook(client, monkeypatch):
+    _stub(monkeypatch, subject="sub-fb-1", email="newfb@example.com")
     response = client.post("/auth/oauth/facebook", json={"idToken": "x"})
+    assert response.status_code == 200
+    assert response.json()["user"]["email"] == "newfb@example.com"
+
+
+def test_oauth_login_unsupported_provider(client):
+    response = client.post("/auth/oauth/twitter", json={"idToken": "x"})
     assert response.status_code == 400
 
 

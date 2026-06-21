@@ -31,9 +31,10 @@ class Settings(BaseSettings):
     rate_limit_default_per_minute: int = 120
     rate_limit_auth_per_minute: int = 20
 
-    # OAuth providers (IDN-201/202): comma-separated accepted audiences (client IDs)
+    # OAuth providers (IDN-201/202/203): comma-separated accepted audiences (client IDs)
     google_client_ids: str = ""
     apple_client_ids: str = ""
+    facebook_client_ids: str = ""
 
 
 settings = Settings()
