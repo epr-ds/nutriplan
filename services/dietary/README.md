@@ -14,15 +14,34 @@ and orchestration of AI requests.
 
 ## Layout
 
+The service is organised in layers (Domain-Driven / Ports & Adapters). Dependencies point
+**inward**: the API depends on the application service, which depends on the domain and on a
+repository **port** — never on MongoDB directly.
+
 ```
 app/
-  main.py                # FastAPI app + lifespan (ensures the meal_plans collection on boot)
-  core/config.py         # DIETARY_-prefixed settings (Mongo URL/db/timeout)
-  domain/meal_plan.py    # MealPlan aggregate root + embedded PlannedMeal, enums, (de)serialization
+  main.py                # FastAPI app + lifespan + exception-handler registration
+  domain/                # Pure business model — no framework/IO imports
+    meal_plan.py         #   MealPlan aggregate root (+ MealPlan.create factory & invariants)
+    repositories.py      #   MealPlanRepository port (abstract)
+    errors.py            #   DomainError hierarchy (e.g. MealPlanDateRangeError)
+  application/           # Use cases (orchestration)
+    commands.py          #   CreateMealPlanCommand (DTO; user_id comes from the principal)
+    meal_plan_service.py #   MealPlanService.create_meal_plan(command)
+  repositories/
+    mongo_meal_plan_repository.py   # MongoDB adapter implementing the port
   db/mongo.py            # PyMongo client/db accessors, $jsonSchema validator, index installer
-  repositories/meal_plan_repository.py   # owner-scoped insert/get for the aggregate
-  api/health.py          # /health liveness probe
-tests/                   # pytest suite (health + repository + schema-validation + indexes)
+  core/
+    config.py            #   DIETARY_-prefixed settings
+    principal.py         #   Principal (authenticated caller)
+    security.py          #   TokenVerifier port + JwtTokenVerifier (RS256 via Identity JWKS)
+  api/
+    deps.py              #   Composition root: wires verifier / principal / repo / service
+    schemas.py           #   Request/response models (camelCase, match the contract)
+    meal_plans.py        #   POST /meal-plans router
+    errors.py            #   DomainError -> HTTP mapping
+    health.py            #   /health liveness probe
+tests/                   # pytest suite (domain + application + security unit tests; API + Mongo)
 ```
 
 ## DPL-101 — MealPlan aggregate
@@ -55,10 +74,24 @@ range-queryable and we avoid the `datetime.date` → BSON gap (PyMongo stores `d
 
 | Method | Path | Story | Notes |
 | --- | --- | --- | --- |
+| `POST` | `/meal-plans` | DPL-102 | Create a draft meal plan scoped to the caller → `201 MealPlanResponse`. Requires a Bearer token; `endDate < startDate` → `422` |
 | `GET` | `/health` | — | liveness probe |
 
-> Meal-plan REST endpoints (create/list/get + state machine) arrive in DPL-102+ and are defined in
-> [`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml).
+> Remaining meal-plan endpoints (list/get + state machine) arrive in DPL-103/104/106 and are defined
+> in [`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml).
+
+## Authentication (DPL-102)
+
+The Dietary service is a **resource server**: it does not issue tokens, it verifies the RS256 access
+tokens minted by the [Identity service](../identity). On each guarded request the
+`JwtTokenVerifier` resolves the signing key from Identity's published JWKS
+(`/.well-known/jwks.json`) by the token's `kid`, then validates the signature plus the
+`aud` / `iss` / `exp` claims and projects `sub` onto a `Principal`. The endpoint takes the owning
+`userId` from that principal — never from the request body — so plans are always scoped to the
+caller. Missing/invalid/expired tokens yield `401`.
+
+The verifier depends on an abstract signing-key resolver (PyJWT's `PyJWKClient` in production), so
+its logic is unit-tested with a throwaway RSA key and **no network access**.
 
 ## Run (Docker)
 
@@ -102,4 +135,7 @@ The schema-validation tests insert **raw dicts** (bypassing Pydantic) to exercis
 | `DIETARY_MONGO_URL` | `mongodb://nutriplan:nutriplan@mongo:27017/?authSource=admin` | MongoDB connection string (root creds live in the `admin` DB → `authSource=admin`) |
 | `DIETARY_MONGO_DB` | `dietary` | database name (tests/CI use `dietary_test`) |
 | `DIETARY_MONGO_SERVER_SELECTION_TIMEOUT_MS` | `5000` | how long PyMongo waits for a reachable server before erroring |
+| `DIETARY_IDENTITY_JWKS_URL` | `http://identity:8081/.well-known/jwks.json` | Identity service JWKS used to verify access tokens (DPL-102) |
+| `DIETARY_JWT_ISSUER` | `nutriplan-identity` | required `iss` claim on access tokens |
+| `DIETARY_JWT_AUDIENCE` | `nutriplan` | required `aud` claim on access tokens |
 | `DIETARY_ENVIRONMENT` | `development` | environment label |

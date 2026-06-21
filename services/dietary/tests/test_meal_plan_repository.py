@@ -8,7 +8,7 @@ from app.domain.meal_plan import (
     MealType,
     PlannedMeal,
 )
-from app.repositories.meal_plan_repository import MealPlanRepository
+from app.repositories.mongo_meal_plan_repository import MongoMealPlanRepository
 
 
 def _plan(**overrides) -> MealPlan:
@@ -24,14 +24,14 @@ def _plan(**overrides) -> MealPlan:
 
 
 def test_insert_and_get_roundtrip(mongo_db):
-    repo = MealPlanRepository(mongo_db[MEAL_PLANS])
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
     plan = _plan(
         macro_targets=MacroTargets(protein_grams=150, carbs_grams=180, fat_grams=60),
         meals=[
             PlannedMeal(meal_type=MealType.BREAKFAST, recipe_id="r1", servings=1.5, day_index=0)
         ],
     )
-    repo.insert(plan)
+    repo.add(plan)
 
     fetched = repo.get("user-1", plan.id)
     assert fetched is not None
@@ -51,18 +51,18 @@ def test_insert_and_get_roundtrip(mongo_db):
 
 
 def test_get_is_owner_scoped(mongo_db):
-    repo = MealPlanRepository(mongo_db[MEAL_PLANS])
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
     plan = _plan(user_id="owner")
-    repo.insert(plan)
+    repo.add(plan)
 
     assert repo.get("someone-else", plan.id) is None
     assert repo.get("owner", plan.id) is not None
 
 
 def test_persisted_document_uses_id_as_underscore_id(mongo_db):
-    repo = MealPlanRepository(mongo_db[MEAL_PLANS])
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
     plan = _plan()
-    repo.insert(plan)
+    repo.add(plan)
 
     raw = mongo_db[MEAL_PLANS].find_one({"_id": plan.id})
     assert raw is not None

@@ -1,0 +1,36 @@
+"""Application service (use cases) for meal plans."""
+
+from __future__ import annotations
+
+from app.application.commands import CreateMealPlanCommand
+from app.domain.meal_plan import MealPlan
+from app.domain.repositories import MealPlanRepository
+
+
+class MealPlanService:
+    """Orchestrates meal-plan use cases over the domain model and repository port.
+
+    The repository is injected (constructor injection), so the service is agnostic of MongoDB and
+    can be unit-tested against an in-memory double.
+    """
+
+    def __init__(self, repository: MealPlanRepository) -> None:
+        self._repository = repository
+
+    def create_meal_plan(self, command: CreateMealPlanCommand) -> MealPlan:
+        """Create and persist a new draft meal plan for the commanding user (DPL-102).
+
+        Invariants (e.g. ``endDate >= startDate``) are enforced by the aggregate factory; a
+        violation raises a :class:`~app.domain.errors.DomainError` and nothing is persisted.
+        """
+        plan = MealPlan.create(
+            user_id=command.user_id,
+            name=command.name,
+            start_date=command.start_date,
+            end_date=command.end_date,
+            daily_calorie_target=command.daily_calorie_target,
+            macro_targets=command.macro_targets,
+            dietary_type=command.dietary_type,
+        )
+        self._repository.add(plan)
+        return plan
