@@ -36,5 +36,15 @@ class Settings(BaseSettings):
     apple_client_ids: str = ""
     facebook_client_ids: str = ""
 
+    # Avatar object storage (IDN-304). S3-compatible (MinIO in dev). The endpoint is the one
+    # used to *sign* presigned URLs, so it must be reachable by the client (browser/mobile).
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_region: str = "us-east-1"
+    s3_access_key: str = "nutriplan"
+    s3_secret_key: str = "nutriplan-secret"
+    avatar_bucket: str = "avatars"
+    avatar_upload_ttl_seconds: int = 900  # 15 minutes
+    avatar_allowed_content_types: str = "image/jpeg,image/png,image/webp"
+
 
 settings = Settings()
