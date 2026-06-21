@@ -19,6 +19,11 @@ class RefreshRequest(CamelModel):
     refresh_token: str
 
 
+class OAuthRequest(CamelModel):
+    id_token: str
+    nonce: str | None = None
+
+
 class AuthResponse(CamelModel):
     access_token: str
     refresh_token: str

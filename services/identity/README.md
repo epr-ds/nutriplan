@@ -20,6 +20,7 @@ app/
   core/security.py   # Argon2id hashing, RS256 JWT issue/verify, JWKS
   core/errors.py     # RFC 7807 problem+json error handlers (IDN-106)
   core/ratelimit.py  # per-IP/route rate-limit middleware (IDN-106)
+  core/oauth.py      # Google/Apple id-token verification (IDN-201/202)
   db/base.py         # engine + session + Base
   db/models.py       # users, credentials, refresh_tokens, oauth_identities (IDN-101)
   schemas/           # request/response models (camelCase, matches the contract)
@@ -37,6 +38,7 @@ tests/               # pytest suite (unit + API)
 | `POST` | `/auth/register` | IDN-102 | Argon2id hashing → `201 AuthResponse`; dup email → `409`, weak password → `422` |
 | `POST` | `/auth/login` | IDN-103 | credential verify + failed-attempt lockout (`429 + Retry-After`) |
 | `POST` | `/auth/refresh` | IDN-105 | refresh rotation + reuse-detection (family revoke → `401`) |
+| `POST` | `/auth/oauth/{provider}` | IDN-201/202 | verify Google/Apple id-token (`aud`/`iss`/`exp`, Apple `nonce`) → auto-provision/link → `AuthResponse`; bad token → `401` |
 | `GET`  | `/users/me` | IDN-301 | Bearer-guarded profile incl. `dietaryPreferences` |
 | `PUT`  | `/users/me` | IDN-302 | update `name` / `avatarUrl` (partial; validated) |
 | `PUT`  | `/users/me/dietary-preferences` | IDN-303 | dietType / allergies / calories / macros / cuisines (enums + ranges; partial-merge, round-trips through `/users/me`) |
@@ -83,3 +85,5 @@ docker compose --profile test run --rm identity-test
 | `IDENTITY_RATE_LIMIT_ENABLED` | `true` | toggle per-IP rate limiting (IDN-106) |
 | `IDENTITY_RATE_LIMIT_DEFAULT_PER_MINUTE` | `120` | per-IP budget for non-auth routes |
 | `IDENTITY_RATE_LIMIT_AUTH_PER_MINUTE` | `20` | per-IP budget for `/auth/*` routes |
+| `IDENTITY_GOOGLE_CLIENT_IDS` | _(empty)_ | comma-separated Google OAuth client IDs accepted as `aud` (IDN-201) |
+| `IDENTITY_APPLE_CLIENT_IDS` | _(empty)_ | comma-separated Apple service/bundle IDs accepted as `aud` (IDN-202) |
