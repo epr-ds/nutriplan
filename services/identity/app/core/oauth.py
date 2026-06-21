@@ -1,4 +1,4 @@
-"""OAuth identity-token verification (IDN-201 Google, IDN-202 Apple).
+"""OAuth identity-token verification (IDN-201 Google, IDN-202 Apple, IDN-203 Facebook).
 
 Verifies a provider-issued OpenID Connect ``id_token`` (signature via the provider's
 rotating JWKS, plus ``aud``/``iss``/``exp`` and — for Apple — ``nonce``) and returns the
@@ -18,7 +18,7 @@ from jwt import PyJWKClient
 
 from app.core.config import settings
 
-SUPPORTED_PROVIDERS = ("google", "apple")
+SUPPORTED_PROVIDERS = ("google", "apple", "facebook")
 
 
 class OAuthError(Exception):
@@ -62,6 +62,14 @@ def _provider_config(provider: str) -> _ProviderConfig | None:
             jwks_uri="https://appleid.apple.com/auth/keys",
             audiences=_split_ids(settings.apple_client_ids),
             requires_nonce=True,
+        )
+    if provider == "facebook":
+        return _ProviderConfig(
+            name="facebook",
+            issuers=("https://www.facebook.com", "https://facebook.com"),
+            jwks_uri="https://www.facebook.com/.well-known/oauth/openid/jwks/",
+            audiences=_split_ids(settings.facebook_client_ids),
+            requires_nonce=False,
         )
     return None
 
