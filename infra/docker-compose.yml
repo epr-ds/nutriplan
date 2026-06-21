@@ -27,6 +27,11 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -109,6 +114,34 @@ services:
       - ../contracts:/contracts:ro
     depends_on:
       postgres:
+        condition: service_healthy
+    profiles: ["test"]
+    command: ["pytest", "-q"]
+
+  dietary:
+    build:
+      context: ../services/dietary
+      target: runtime
+    environment:
+      DIETARY_ENVIRONMENT: development
+      DIETARY_MONGO_URL: mongodb://${MONGO_USER:-nutriplan}:${MONGO_PASSWORD:-nutriplan}@mongo:27017/?authSource=admin
+      DIETARY_MONGO_DB: ${DIETARY_MONGO_DB:-dietary}
+    ports:
+      - "8082:8082"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # One-shot test runner (MongoDB-backed). Run with: docker compose --profile test run --rm dietary-test
+  dietary-test:
+    build:
+      context: ../services/dietary
+      target: test
+    environment:
+      DIETARY_MONGO_URL: mongodb://${MONGO_USER:-nutriplan}:${MONGO_PASSWORD:-nutriplan}@mongo:27017/?authSource=admin
+      DIETARY_MONGO_DB: dietary_test
+    depends_on:
+      mongo:
         condition: service_healthy
     profiles: ["test"]
     command: ["pytest", "-q"]

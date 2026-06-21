@@ -75,3 +75,36 @@ jobs:
         run: pytest tests/test_contract.py -q
       - name: Test (pytest)
         run: pytest --ignore=tests/test_contract.py
+
+  dietary-service:
+    name: Dietary service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/dietary
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping').ok\""
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DIETARY_MONGO_URL: mongodb://localhost:27017
+      DIETARY_MONGO_DB: dietary_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/dietary/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test (pytest)
+        run: pytest
