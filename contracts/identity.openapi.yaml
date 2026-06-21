@@ -165,6 +165,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/DietaryPreferencesRequest'
 
+  /users/me/avatar-upload-url:
+    post:
+      tags: [Users]
+      operationId: createAvatarUploadUrl
+      summary: Request a presigned URL to upload a new avatar (IDN-304)
+      description: |
+        Returns a short-lived presigned `PUT` URL the client uploads the image bytes to
+        directly (object storage). After a successful upload, confirm via `PUT /users/me/avatar`.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvatarUploadRequest'
+      responses:
+        '200':
+          description: Presigned upload target
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvatarUploadResponse'
+
+  /users/me/avatar:
+    put:
+      tags: [Users]
+      operationId: setUserAvatar
+      summary: Confirm an uploaded avatar and set it on the profile (IDN-304)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvatarConfirmRequest'
+      responses:
+        '200':
+          description: Avatar applied to the profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '403':
+          description: The object key does not belong to the authenticated user
+
 components:
   securitySchemes:
     BearerAuth:
@@ -236,6 +283,42 @@ components:
         avatarUrl:
           type: string
           format: uri
+
+    AvatarUploadRequest:
+      type: object
+      required: [contentType]
+      properties:
+        contentType:
+          type: string
+          description: MIME type of the image to upload
+          enum: [image/jpeg, image/png, image/webp]
+
+    AvatarUploadResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+          description: Presigned PUT URL the client uploads the image bytes to
+        key:
+          type: string
+          description: Object key to pass back to PUT /users/me/avatar after upload
+        expiresIn:
+          type: integer
+          description: Lifetime of the presigned URL in seconds
+        requiredHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers the client must send with the upload PUT (e.g. Content-Type)
+
+    AvatarConfirmRequest:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+          description: The object key returned by createAvatarUploadUrl
 
     UserProfileResponse:
       type: object

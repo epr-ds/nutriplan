@@ -42,10 +42,20 @@ tests/               # pytest suite (unit + API), incl. token-attack/security te
 | `GET`  | `/users/me` | IDN-301 | Bearer-guarded profile incl. `dietaryPreferences` |
 | `PUT`  | `/users/me` | IDN-302 | update `name` / `avatarUrl` (partial; validated) |
 | `PUT`  | `/users/me/dietary-preferences` | IDN-303 | dietType / allergies / calories / macros / cuisines (enums + ranges; partial-merge, round-trips through `/users/me`) |
+| `POST` | `/users/me/avatar-upload-url` | IDN-304 | mint a presigned S3/MinIO `PUT` URL for the avatar image (`image/jpeg\|png\|webp`) + the object key |
+| `PUT`  | `/users/me/avatar` | IDN-304 | confirm the uploaded `key` (must be owned by the caller → else `403`) and persist `avatarUrl` |
 | `GET`  | `/.well-known/jwks.json` | IDN-104/802 | public JWKS for token verification by other services |
 | `GET`  | `/health` | — | liveness probe |
 
 JWT access tokens are RS256 with a `kid` header and `sub`/`email`/`exp` claims (IDN-104).
+
+**Avatar uploads (IDN-304):** a two-step, direct-to-storage flow keeps image bytes off the
+API. (1) `POST /users/me/avatar-upload-url` returns a short-lived presigned `PUT` URL + an
+object key (`<userId>/<uuid>.<ext>`); (2) the client uploads the image straight to MinIO/S3
+echoing the `requiredHeaders`; (3) `PUT /users/me/avatar` with the `key` verifies ownership
+(prefix-scoped to the caller) and stores the public `avatarUrl`. The presigned URL is signed
+locally (no storage round-trip), so the API never proxies the upload. In dev, MinIO + a
+one-shot `minio-setup` (creates the `avatars` bucket, sets public-read) run in compose.
 
 **Errors & abuse protection (IDN-106):** every `4xx`/`5xx` is returned as
 `application/problem+json` (RFC 7807). Requests are rate-limited per client IP — `/auth/*`
@@ -88,3 +98,9 @@ docker compose --profile test run --rm identity-test
 | `IDENTITY_GOOGLE_CLIENT_IDS` | _(empty)_ | comma-separated Google OAuth client IDs accepted as `aud` (IDN-201) |
 | `IDENTITY_APPLE_CLIENT_IDS` | _(empty)_ | comma-separated Apple service/bundle IDs accepted as `aud` (IDN-202) |
 | `IDENTITY_FACEBOOK_CLIENT_IDS` | _(empty)_ | comma-separated Facebook app IDs accepted as `aud` (IDN-203) |
+| `IDENTITY_S3_ENDPOINT_URL` | `http://localhost:9000` | S3/MinIO endpoint baked into presigned avatar URLs — must be reachable by the mobile client (IDN-304) |
+| `IDENTITY_S3_ACCESS_KEY` / `IDENTITY_S3_SECRET_KEY` | `nutriplan` / `nutriplan-secret` | credentials used to sign presigned URLs (keep in sync with MinIO root creds) |
+| `IDENTITY_S3_REGION` | `us-east-1` | SigV4 region |
+| `IDENTITY_AVATAR_BUCKET` | `avatars` | bucket the avatar objects live in |
+| `IDENTITY_AVATAR_UPLOAD_TTL_SECONDS` | `900` | presigned-URL lifetime |
+| `IDENTITY_AVATAR_ALLOWED_CONTENT_TYPES` | `image/jpeg,image/png,image/webp` | accepted upload content types |
