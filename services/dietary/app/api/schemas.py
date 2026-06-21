@@ -8,6 +8,7 @@ independently of the persistence/domain model, and the response is a *projection
 from __future__ import annotations
 
 from datetime import date
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -17,6 +18,18 @@ from app.domain.meal_plan import DietaryType, MealPlan, MealPlanStatus, MealType
 
 class _Camel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class MealPlanStatusFilter(StrEnum):
+    """Statuses a caller may filter the list by (contract: active/completed/saved only).
+
+    Deliberately narrower than :class:`~app.domain.meal_plan.MealPlanStatus`: ``draft`` plans are
+    in-progress and excluded from the browse view, so ``?status=draft`` is rejected with 422.
+    """
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    SAVED = "saved"
 
 
 class MacroTargetsSchema(_Camel):
@@ -85,4 +98,27 @@ class MealPlanResponse(_Camel):
                 )
                 for meal in plan.meals
             ],
+        )
+
+
+class MealPlanSummaryResponse(_Camel):
+    """``MealPlanSummaryResponse`` — the lightweight list projection (DPL-103).
+
+    A deliberately reduced view for the browse list: no calorie target, meals or owner id.
+    """
+
+    id: str
+    name: str
+    start_date: date
+    end_date: date
+    status: MealPlanStatus
+
+    @classmethod
+    def from_aggregate(cls, plan: MealPlan) -> MealPlanSummaryResponse:
+        return cls(
+            id=plan.id,
+            name=plan.name,
+            start_date=plan.start_date,
+            end_date=plan.end_date,
+            status=MealPlanStatus(plan.status),
         )

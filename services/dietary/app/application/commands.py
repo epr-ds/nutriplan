@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from app.domain.meal_plan import DietaryType, MacroTargets
+from app.domain.meal_plan import DietaryType, MacroTargets, MealPlanStatus
 
 
 @dataclass(frozen=True)
@@ -23,3 +23,17 @@ class CreateMealPlanCommand:
     daily_calorie_target: int
     macro_targets: MacroTargets | None = None
     dietary_type: DietaryType | None = None
+
+
+@dataclass(frozen=True)
+class ListMealPlansQuery:
+    """Inputs for the *list meal plans* use case (DPL-103).
+
+    ``user_id`` comes from the authenticated principal, so results are always owner-scoped.
+    ``page`` is 1-based; the service translates it to a repository ``skip`` offset.
+    """
+
+    user_id: str
+    status: MealPlanStatus | None = None
+    page: int = 1
+    limit: int = 20
