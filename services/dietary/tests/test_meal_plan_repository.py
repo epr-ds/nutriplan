@@ -72,3 +72,44 @@ def test_persisted_document_uses_id_as_underscore_id(mongo_db):
     # Optional/unset fields are omitted rather than stored as null.
     assert "dietaryType" not in raw
     assert "macroTargets" not in raw
+
+
+def test_list_for_user_returns_only_owner_plans(mongo_db):
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
+    repo.add(_plan(user_id="owner", name="A"))
+    repo.add(_plan(user_id="owner", name="B"))
+    repo.add(_plan(user_id="other", name="C"))
+
+    plans = repo.list_for_user("owner")
+
+    assert {p.name for p in plans} == {"A", "B"}
+    assert all(p.user_id == "owner" for p in plans)
+
+
+def test_list_for_user_filters_by_status(mongo_db):
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
+    repo.add(_plan(user_id="u", name="draft-one"))  # defaults to DRAFT
+    repo.add(_plan(user_id="u", name="active-one", status=MealPlanStatus.ACTIVE))
+    repo.add(_plan(user_id="u", name="active-two", status=MealPlanStatus.ACTIVE))
+
+    active = repo.list_for_user("u", status=MealPlanStatus.ACTIVE)
+
+    assert {p.name for p in active} == {"active-one", "active-two"}
+    assert all(p.status == MealPlanStatus.ACTIVE.value for p in active)
+
+
+def test_list_for_user_paginates_with_skip_and_limit(mongo_db):
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
+    for i in range(5):
+        repo.add(_plan(user_id="u", name=f"plan-{i}"))
+
+    page1 = repo.list_for_user("u", skip=0, limit=2)
+    page2 = repo.list_for_user("u", skip=2, limit=2)
+    page3 = repo.list_for_user("u", skip=4, limit=2)
+
+    assert len(page1) == 2
+    assert len(page2) == 2
+    assert len(page3) == 1
+    # Pages are disjoint and together cover every plan (correct skip/limit).
+    ids = {p.id for p in page1} | {p.id for p in page2} | {p.id for p in page3}
+    assert len(ids) == 5

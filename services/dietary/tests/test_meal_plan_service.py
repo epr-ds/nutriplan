@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.application.commands import CreateMealPlanCommand
+from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
 from app.application.meal_plan_service import MealPlanService
 from app.domain.errors import MealPlanDateRangeError
 from app.domain.meal_plan import MealPlanStatus
@@ -52,3 +52,51 @@ def test_create_propagates_date_range_invariant_and_persists_nothing():
         service.create_meal_plan(_command(start_date=date(2026, 1, 7), end_date=date(2026, 1, 1)))
 
     assert repo.saved == {}
+
+
+def test_list_meal_plans_returns_only_owner_plans():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    service.create_meal_plan(_command(user_id="owner", name="A"))
+    service.create_meal_plan(_command(user_id="owner", name="B"))
+    service.create_meal_plan(_command(user_id="intruder", name="C"))
+
+    plans = service.list_meal_plans(ListMealPlansQuery(user_id="owner"))
+
+    assert {p.name for p in plans} == {"A", "B"}
+
+
+def test_list_meal_plans_translates_page_to_skip():
+    class _SpyRepo(InMemoryMealPlanRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self.last_call: dict | None = None
+
+        def list_for_user(self, user_id, *, status=None, skip=0, limit=20):
+            self.last_call = {"user_id": user_id, "status": status, "skip": skip, "limit": limit}
+            return super().list_for_user(user_id, status=status, skip=skip, limit=limit)
+
+    repo = _SpyRepo()
+    service = MealPlanService(repo)
+
+    service.list_meal_plans(ListMealPlansQuery(user_id="u", page=3, limit=10))
+
+    assert repo.last_call == {"user_id": "u", "status": None, "skip": 20, "limit": 10}
+
+
+def test_list_meal_plans_passes_status_filter_to_repository():
+    class _SpyRepo(InMemoryMealPlanRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self.last_status: object = "unset"
+
+        def list_for_user(self, user_id, *, status=None, skip=0, limit=20):
+            self.last_status = status
+            return []
+
+    repo = _SpyRepo()
+    service = MealPlanService(repo)
+
+    service.list_meal_plans(ListMealPlansQuery(user_id="u", status=MealPlanStatus.ACTIVE))
+
+    assert repo.last_status == MealPlanStatus.ACTIVE

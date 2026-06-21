@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.application.commands import CreateMealPlanCommand
+from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
 from app.domain.meal_plan import MealPlan
 from app.domain.repositories import MealPlanRepository
 
@@ -34,3 +34,17 @@ class MealPlanService:
         )
         self._repository.add(plan)
         return plan
+
+    def list_meal_plans(self, query: ListMealPlansQuery) -> list[MealPlan]:
+        """Return the caller's meal plans, optionally filtered by status, with pagination (DPL-103).
+
+        The 1-based ``page`` is translated to a repository ``skip`` offset; results are scoped to
+        ``query.user_id`` by the repository, so a caller can only ever browse their own plans.
+        """
+        skip = (query.page - 1) * query.limit
+        return self._repository.list_for_user(
+            query.user_id,
+            status=query.status,
+            skip=skip,
+            limit=query.limit,
+        )
