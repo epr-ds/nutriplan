@@ -57,3 +57,13 @@ def _schema():
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(app)
+
+
+@pytest.fixture
+def db_session():
+    """A session bound to the test engine for asserting on persisted rows."""
+    session = _TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

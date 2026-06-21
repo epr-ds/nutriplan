@@ -82,6 +82,15 @@ def _default_key_resolver(cfg: _ProviderConfig, id_token: str):
     return client.get_signing_key_from_jwt(id_token).key
 
 
+def _as_bool(value: object) -> bool:
+    """Coerce a claim that may be a bool or a string (Apple sends ``"true"``/``"false"``)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return bool(value)
+
+
 def _nonce_matches(claim: str | None, provided: str) -> bool:
     if not claim or not provided:
         return False
@@ -125,6 +134,6 @@ def verify_oauth_token(
     return OAuthClaims(
         subject=subject,
         email=(claims.get("email") or None),
-        email_verified=bool(claims.get("email_verified", False)),
+        email_verified=_as_bool(claims.get("email_verified", False)),
         name=claims.get("name"),
     )
