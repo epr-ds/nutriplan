@@ -28,7 +28,7 @@ app/
   services/profile_service.py  # profile + dietary-preference updates (IDN-301/302/303)
   api/               # health, jwks, auth, users routers + auth dependency
 alembic/             # migrations (IDN-101)
-tests/               # pytest suite (unit + API)
+tests/               # pytest suite (unit + API), incl. token-attack/security tests (IDN-704)
 ```
 
 ## Endpoints
