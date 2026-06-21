@@ -71,5 +71,7 @@ jobs:
           ruff format --check .
       - name: Validate migrations (alembic upgrade)
         run: alembic upgrade head
+      - name: Provider contract tests (vs OpenAPI)
+        run: pytest tests/test_contract.py -q
       - name: Test (pytest)
-        run: pytest
+        run: pytest --ignore=tests/test_contract.py

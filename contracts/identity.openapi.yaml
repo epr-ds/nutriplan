@@ -43,6 +43,10 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '409':
           description: Email already registered
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
   /auth/login:
     post:
@@ -64,6 +68,10 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Invalid credentials
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
   /auth/oauth/{provider}:
     post:
@@ -211,6 +219,10 @@ paths:
                 $ref: '#/components/schemas/UserProfileResponse'
         '403':
           description: The object key does not belong to the authenticated user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
 components:
   securitySchemes:
@@ -263,6 +275,7 @@ components:
 
     AuthResponse:
       type: object
+      required: [accessToken, refreshToken, expiresIn, user]
       properties:
         accessToken:
           type: string
@@ -295,6 +308,7 @@ components:
 
     AvatarUploadResponse:
       type: object
+      required: [uploadUrl, key, expiresIn, requiredHeaders]
       properties:
         uploadUrl:
           type: string
@@ -322,6 +336,7 @@ components:
 
     UserProfileResponse:
       type: object
+      required: [id, email, name, avatarUrl, dietaryPreferences, createdAt]
       properties:
         id:
           type: string
@@ -334,6 +349,7 @@ components:
         avatarUrl:
           type: string
           format: uri
+          nullable: true
         dietaryPreferences:
           $ref: '#/components/schemas/DietaryPreferencesRequest'
         createdAt:
@@ -342,42 +358,73 @@ components:
 
     DietaryPreferencesRequest:
       type: object
+      nullable: true
       properties:
         dietType:
           type: string
+          nullable: true
           enum: [omnivore, vegetarian, vegan, keto, paleo, mediterranean]
         allergies:
           type: array
+          nullable: true
           items:
             type: string
         dailyCalorieTarget:
           type: integer
+          nullable: true
           minimum: 1200
           maximum: 5000
         macroTargets:
           $ref: '#/components/schemas/MacroTargets'
         excludedIngredients:
           type: array
+          nullable: true
           items:
             type: string
         cuisinePreferences:
           type: array
+          nullable: true
           items:
             type: string
             enum: [mexican, italian, asian, mediterranean, american, indian]
         appetiteSatisfactionLevel:
           type: integer
+          nullable: true
           minimum: 1
           maximum: 5
 
     MacroTargets:
       type: object
+      nullable: true
       properties:
         proteinGrams:
           type: integer
+          nullable: true
         carbsGrams:
           type: integer
+          nullable: true
         fatGrams:
           type: integer
+          nullable: true
         sugarGrams:
           type: integer
+          nullable: true
+
+    Problem:
+      type: object
+      description: |
+        RFC 7807 problem detail returned as `application/problem+json` for every 4xx/5xx
+        error (IDN-106). Additional members (e.g. `errors` for validation failures) may be present.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A URI reference identifying the problem type (`about:blank` by default)
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
