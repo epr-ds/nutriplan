@@ -9,10 +9,6 @@ on:
       - '.spectral.yaml'
       - '.github/workflows/contracts.yml'
   pull_request:
-    paths:
-      - 'contracts/**'
-      - '.spectral.yaml'
-      - '.github/workflows/contracts.yml'
 
 concurrency:
   group: contracts-${{ github.ref }}

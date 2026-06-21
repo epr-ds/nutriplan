@@ -8,9 +8,6 @@ on:
       - 'services/**'
       - '.github/workflows/backend.yml'
   pull_request:
-    paths:
-      - 'services/**'
-      - '.github/workflows/backend.yml'
 
 concurrency:
   group: backend-${{ github.ref }}
