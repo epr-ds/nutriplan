@@ -6,7 +6,7 @@ import pytest
 
 from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
 from app.application.meal_plan_service import MealPlanService
-from app.domain.errors import MealPlanDateRangeError
+from app.domain.errors import MealPlanDateRangeError, MealPlanNotFoundError
 from app.domain.meal_plan import MealPlanStatus
 from tests.fakes import InMemoryMealPlanRepository
 
@@ -100,3 +100,31 @@ def test_list_meal_plans_passes_status_filter_to_repository():
     service.list_meal_plans(ListMealPlansQuery(user_id="u", status=MealPlanStatus.ACTIVE))
 
     assert repo.last_status == MealPlanStatus.ACTIVE
+
+
+def test_get_meal_plan_returns_owned_plan():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    created = service.create_meal_plan(_command(user_id="owner"))
+
+    fetched = service.get_meal_plan("owner", created.id)
+
+    assert fetched.id == created.id
+    assert fetched.user_id == "owner"
+
+
+def test_get_meal_plan_raises_not_found_when_missing():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+
+    with pytest.raises(MealPlanNotFoundError):
+        service.get_meal_plan("owner", "does-not-exist")
+
+
+def test_get_meal_plan_raises_not_found_for_other_users_plan():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    created = service.create_meal_plan(_command(user_id="owner"))
+
+    with pytest.raises(MealPlanNotFoundError):
+        service.get_meal_plan("intruder", created.id)

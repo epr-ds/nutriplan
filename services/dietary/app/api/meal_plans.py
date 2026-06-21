@@ -67,3 +67,18 @@ def list_meal_plans(
     )
     plans = service.list_meal_plans(query)
     return [MealPlanSummaryResponse.from_aggregate(p) for p in plans]
+
+
+@router.get(
+    "/{plan_id}",
+    response_model=MealPlanResponse,
+    summary="Get a specific meal plan",
+)
+def get_meal_plan(
+    plan_id: str,
+    principal: CurrentPrincipal,
+    service: MealPlanServiceDep,
+) -> MealPlanResponse:
+    """Return the caller's meal plan by id with full detail, or 404 if missing/!owned (DPL-104)."""
+    plan = service.get_meal_plan(principal.user_id, plan_id)
+    return MealPlanResponse.from_aggregate(plan)
