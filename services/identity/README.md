@@ -77,9 +77,31 @@ curl -s localhost:8081/health
 docker build --target test -t nutriplan-identity-test ../services/identity
 docker run --rm nutriplan-identity-test
 
-# Faithful — against Postgres via compose:
+# Faithful — against Postgres via compose (also runs the provider contract tests):
 docker compose --profile test run --rm identity-test
 ```
+
+### Provider contract tests (IDN-701)
+
+`tests/test_contract.py` validates the service's **actual** responses against
+[`contracts/identity.openapi.yaml`](../../contracts/identity.openapi.yaml) with
+[`openapi-core`](https://pypi.org/project/openapi-core/): every documented operation is driven to
+each response it declares (happy path + documented `application/problem+json` errors) and the real
+response is checked against the contract. A breaking change — a renamed/removed field, a changed
+type, an undocumented status, or a drifted error shape — fails a test and gates the PR.
+
+The contract lives outside this service's Docker build context, so the tests locate it by walking up
+to the repo root (or a `/contracts` mount). When it can't be found the tests **skip** locally but
+**hard-fail** under `CI=true`, so the gate can't be silently bypassed. To run them against a
+mounted contract from a bare image:
+
+```bash
+docker run --rm \
+  -v "$PWD/services/identity:/src" -v "$PWD/contracts:/contracts:ro" \
+  -w /src nutriplan-identity-test pytest tests/test_contract.py -q
+```
+
+In Backend CI they run as a dedicated **"Provider contract tests (vs OpenAPI)"** step.
 
 ## Configuration (`IDENTITY_` env vars)
 

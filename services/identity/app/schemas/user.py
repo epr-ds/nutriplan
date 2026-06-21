@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import EmailStr, Field, HttpUrl
+from pydantic import EmailStr, Field, HttpUrl, field_validator
 
 from app.schemas.base import CamelModel
 
@@ -39,3 +39,9 @@ class UserProfileResponse(CamelModel):
     avatar_url: str | None = None
     dietary_preferences: DietaryPreferences | None = None
     created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _ensure_utc(cls, value: datetime) -> datetime:
+        # SQLite drops tzinfo on read-back; emit an unambiguous RFC 3339 timestamp regardless.
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value

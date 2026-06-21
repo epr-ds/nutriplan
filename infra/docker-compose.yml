@@ -103,6 +103,10 @@ services:
       target: test
     environment:
       IDENTITY_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nutriplan}:${POSTGRES_PASSWORD:-nutriplan}@postgres:5432/identity_test
+    volumes:
+      # The OpenAPI contract lives outside the build context; mount it so the provider
+      # contract tests (tests/test_contract.py) run here instead of skipping.
+      - ../contracts:/contracts:ro
     depends_on:
       postgres:
         condition: service_healthy
