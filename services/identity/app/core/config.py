@@ -26,5 +26,10 @@ class Settings(BaseSettings):
     login_max_failed_attempts: int = 5
     login_lockout_seconds: int = 900  # 15 minutes
 
+    # Per-IP rate limiting (IDN-106), 60-second window
+    rate_limit_enabled: bool = True
+    rate_limit_default_per_minute: int = 120
+    rate_limit_auth_per_minute: int = 20
+
 
 settings = Settings()

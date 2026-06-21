@@ -15,6 +15,9 @@ os.environ.setdefault(
     "IDENTITY_DATABASE_URL",
     f"sqlite+pysqlite:///{tempfile.gettempdir()}/identity_test_{uuid.uuid4().hex}.sqlite3",
 )
+# Rate limiting is exercised by a dedicated test; keep it off elsewhere so the
+# multi-request flows (e.g. lockout) aren't throttled.
+os.environ.setdefault("IDENTITY_RATE_LIMIT_ENABLED", "false")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
