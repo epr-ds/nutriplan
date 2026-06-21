@@ -16,6 +16,8 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.domain.errors import MealPlanDateRangeError
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -102,6 +104,37 @@ class MealPlan(_Model):
     meals: list[PlannedMeal] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        user_id: str,
+        name: str,
+        start_date: date,
+        end_date: date,
+        daily_calorie_target: int,
+        macro_targets: MacroTargets | None = None,
+        dietary_type: DietaryType | None = None,
+    ) -> MealPlan:
+        """Create a new draft meal plan for *user_id*, enforcing the aggregate's invariants.
+
+        A plan always starts in :attr:`MealPlanStatus.DRAFT` (DPL-102). The only creation-time
+        invariant is that the planning window is non-empty — ``end_date`` must be on or after
+        ``start_date`` — otherwise :class:`~app.domain.errors.MealPlanDateRangeError` is raised.
+        """
+        if end_date < start_date:
+            raise MealPlanDateRangeError(start_date, end_date)
+        return cls(
+            user_id=user_id,
+            name=name,
+            start_date=start_date,
+            end_date=end_date,
+            daily_calorie_target=daily_calorie_target,
+            macro_targets=macro_targets,
+            dietary_type=dietary_type,
+            status=MealPlanStatus.DRAFT,
+        )
 
     def to_document(self) -> dict:
         """Serialize to a MongoDB document: camelCase keys, aggregate id stored as ``_id``."""
