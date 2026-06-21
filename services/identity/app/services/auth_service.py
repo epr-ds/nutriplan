@@ -136,7 +136,11 @@ def refresh(db: Session, payload: RefreshRequest) -> AuthResponse:
 
 
 def oauth_login(db: Session, provider: str, payload: OAuthRequest) -> AuthResponse:
-    """Verify a provider id-token, then provision or look up the matching user (IDN-201/202)."""
+    """Verify a provider id-token, then provision, look up, or link the matching user.
+
+    Implements OAuth sign-in (IDN-201 Google, IDN-202 Apple) plus cross-provider account
+    dedupe by verified email (IDN-204).
+    """
     if not provider_supported(provider):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported OAuth provider: {provider}")
 
@@ -154,12 +158,22 @@ def oauth_login(db: Session, provider: str, payload: OAuthRequest) -> AuthRespon
         user = db.get(User, identity.user_id)
         return _auth_response(db, user, uuid.uuid4())
 
-    # First login for this provider identity: link to an existing account by email,
-    # otherwise auto-provision. (Cross-provider dedupe nuances are IDN-204, Sprint 5.)
-    user = None
+    # First login for this (provider, subject). Dedupe/link to an existing account ONLY when the
+    # provider asserts the email is verified; an unverified email must never grant access to an
+    # account it did not create (account-takeover guard, IDN-204). Otherwise auto-provision.
+    existing = None
     if claims.email:
-        user = db.scalar(select(User).where(User.email == claims.email.lower()))
-    if user is None:
+        existing = db.scalar(select(User).where(User.email == claims.email.lower()))
+
+    if existing is not None:
+        if not claims.email_verified:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "An account with this email already exists. Sign in with your existing "
+                f"method to link {provider}.",
+            )
+        user = existing
+    else:
         if not claims.email:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED, "Identity token did not include an email address"
