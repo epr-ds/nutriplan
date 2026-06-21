@@ -38,7 +38,7 @@ app/
   api/
     deps.py              #   Composition root: wires verifier / principal / repo / service
     schemas.py           #   Request/response models (camelCase, match the contract)
-    meal_plans.py        #   POST + GET /meal-plans router
+    meal_plans.py        #   POST + GET (list) + GET /{id} meal-plans router
     errors.py            #   DomainError -> HTTP mapping
     health.py            #   /health liveness probe
 tests/                   # pytest suite (domain + application + security unit tests; API + Mongo)
@@ -76,6 +76,7 @@ range-queryable and we avoid the `datetime.date` → BSON gap (PyMongo stores `d
 | --- | --- | --- | --- |
 | `POST` | `/meal-plans` | DPL-102 | Create a draft meal plan scoped to the caller → `201 MealPlanResponse`. Requires a Bearer token; `endDate < startDate` → `422` |
 | `GET` | `/meal-plans` | DPL-103 | List the caller's plans → `200 MealPlanSummaryResponse[]`. Requires a Bearer token. Query: `status` (active/completed/saved), `page` (≥1), `limit` (1–100); newest first |
+| `GET` | `/meal-plans/{planId}` | DPL-104 | Get one plan with full detail (incl. meals) → `200 MealPlanResponse`. Requires a Bearer token; missing or not owned → `404` (no cross-user leakage) |
 | `GET` | `/health` | — | liveness probe |
 
 > Remaining meal-plan endpoints (list/get + state machine) arrive in DPL-103/104/106 and are defined

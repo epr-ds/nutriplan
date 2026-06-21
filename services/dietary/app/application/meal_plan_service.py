@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
+from app.domain.errors import MealPlanNotFoundError
 from app.domain.meal_plan import MealPlan
 from app.domain.repositories import MealPlanRepository
 
@@ -48,3 +49,14 @@ class MealPlanService:
             skip=skip,
             limit=query.limit,
         )
+
+    def get_meal_plan(self, user_id: str, plan_id: str) -> MealPlan:
+        """Return the caller's plan by id, or raise :class:`MealPlanNotFoundError` (DPL-104).
+
+        The repository read is owner-scoped, so a plan owned by another user surfaces as not found —
+        the caller can never distinguish "does not exist" from "exists but isn't yours".
+        """
+        plan = self._repository.get(user_id, plan_id)
+        if plan is None:
+            raise MealPlanNotFoundError(plan_id)
+        return plan
