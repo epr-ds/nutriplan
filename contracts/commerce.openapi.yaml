@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: NutriPlan Commerce API
+  version: 1.0.0
+  description: |
+    Orders, fulfillment (dark kitchen / grocery), and payments for the NutriPlan Commerce
+    bounded context. Currency defaults to MXN; payment methods include cards, PayPal, OXXO,
+    and SPEI.
+  contact:
+    name: NutriPlan Team
+    url: https://github.com/epr-ds/nutriplan
+  license:
+    name: Proprietary
+    url: https://github.com/epr-ds/nutriplan/blob/main/LICENSE
+servers:
+  - url: https://api.nutriplan.app/commerce/v1
+    description: Production
+  - url: http://localhost:8083
+    description: Local development
+tags:
+  - name: Orders
+  - name: Fulfillment
+
+paths:
+  /orders:
+    post:
+      tags: [Orders]
+      operationId: createOrder
+      summary: Create an order from a meal plan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      summary: List the current user's orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderResponse'
+
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      summary: Get order details
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      operationId: cancelOrder
+      summary: Cancel an order
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '409':
+          description: Order cannot be cancelled in its current state
+
+  /fulfillment/dark-kitchen/availability:
+    get:
+      tags: [Fulfillment]
+      operationId: getDarkKitchenAvailability
+      summary: Check dark-kitchen availability
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: zipCode
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: deliveryDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Availability information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+
+  /fulfillment/grocery/search:
+    post:
+      tags: [Fulfillment]
+      operationId: searchGroceryProducts
+      summary: Search products across grocery providers
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrocerySearchRequest'
+      responses:
+        '200':
+          description: Search results across providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderResponse'
+
+  /fulfillment/grocery/providers:
+    get:
+      tags: [Fulfillment]
+      operationId: listGroceryProviders
+      summary: List available grocery providers
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required: [mealPlanId, fulfillmentType, deliveryAddress, deliveryDate, deliveryTimeSlot]
+      properties:
+        mealPlanId:
+          type: string
+          format: uuid
+        fulfillmentType:
+          type: string
+          enum: [dark_kitchen, grocery_delivery, pickup]
+        providerId:
+          type: string
+          description: Required for grocery_delivery (e.g., freshbasket, walmart, chedraui)
+        deliveryAddress:
+          $ref: '#/components/schemas/AddressRequest'
+        deliveryDate:
+          type: string
+          format: date
+        deliveryTimeSlot:
+          type: string
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethodRequest'
+        notes:
+          type: string
+
+    AddressRequest:
+      type: object
+      required: [street, city, state, zipCode, country]
+      properties:
+        street:
+          type: string
+        apartment:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+        instructions:
+          type: string
+
+    PaymentMethodRequest:
+      type: object
+      required: [type, token]
+      properties:
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, oxxo, spei]
+        token:
+          type: string
+
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+        fulfillmentType:
+          type: string
+          enum: [dark_kitchen, grocery_delivery, pickup]
+        provider:
+          $ref: '#/components/schemas/ProviderResponse'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        subtotal:
+          $ref: '#/components/schemas/MoneyResponse'
+        deliveryFee:
+          $ref: '#/components/schemas/MoneyResponse'
+        total:
+          $ref: '#/components/schemas/MoneyResponse'
+        estimatedDelivery:
+          type: string
+          format: date-time
+        trackingUrl:
+          type: string
+          format: uri
+
+    OrderItemResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        unitPrice:
+          $ref: '#/components/schemas/MoneyResponse'
+        lineTotal:
+          $ref: '#/components/schemas/MoneyResponse'
+
+    GrocerySearchRequest:
+      type: object
+      required: [items, zipCode]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              ingredient:
+                type: string
+              quantity:
+                type: number
+              unit:
+                type: string
+        providers:
+          type: array
+          items:
+            type: string
+        zipCode:
+          type: string
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+        zipCode:
+          type: string
+        timeSlots:
+          type: array
+          items:
+            type: string
+
+    MoneyResponse:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+          default: MXN
+        formatted:
+          type: string
+
+    ProviderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [dark_kitchen, grocery]
+        logoUrl:
+          type: string
+          format: uri
+        estimatedDelivery:
+          type: string

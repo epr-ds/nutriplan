@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: NutriPlan Identity API
+  version: 1.0.0
+  description: |
+    Authentication, OAuth, user profile, and dietary-preference management for the
+    NutriPlan Identity bounded context.
+  contact:
+    name: NutriPlan Team
+    url: https://github.com/epr-ds/nutriplan
+  license:
+    name: Proprietary
+    url: https://github.com/epr-ds/nutriplan/blob/main/LICENSE
+servers:
+  - url: https://api.nutriplan.app/identity/v1
+    description: Production
+  - url: http://localhost:8081
+    description: Local development
+tags:
+  - name: Auth
+    description: Registration, login, and OAuth
+  - name: Users
+    description: Profile and preferences
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerUser
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already registered
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginUser
+      summary: Login with credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+
+  /auth/oauth/{provider}:
+    post:
+      tags: [Auth]
+      operationId: loginWithOAuth
+      summary: Login via an OAuth provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, facebook, apple]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRequest'
+      responses:
+        '200':
+          description: OAuth authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: Exchange a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Get the current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+    put:
+      tags: [Users]
+      operationId: updateCurrentUser
+      summary: Update profile and preferences
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+
+  /users/me/dietary-preferences:
+    put:
+      tags: [Users]
+      operationId: updateDietaryPreferences
+      summary: Update dietary preferences
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DietaryPreferencesRequest'
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DietaryPreferencesRequest'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+          minLength: 2
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    OAuthRequest:
+      type: object
+      required: [idToken]
+      properties:
+        idToken:
+          type: string
+          description: Provider-issued identity token
+        nonce:
+          type: string
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Access-token lifetime in seconds
+        user:
+          $ref: '#/components/schemas/UserProfileResponse'
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        avatarUrl:
+          type: string
+          format: uri
+
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        dietaryPreferences:
+          $ref: '#/components/schemas/DietaryPreferencesRequest'
+        createdAt:
+          type: string
+          format: date-time
+
+    DietaryPreferencesRequest:
+      type: object
+      properties:
+        dietType:
+          type: string
+          enum: [omnivore, vegetarian, vegan, keto, paleo, mediterranean]
+        allergies:
+          type: array
+          items:
+            type: string
+        dailyCalorieTarget:
+          type: integer
+          minimum: 1200
+          maximum: 5000
+        macroTargets:
+          $ref: '#/components/schemas/MacroTargets'
+        excludedIngredients:
+          type: array
+          items:
+            type: string
+        cuisinePreferences:
+          type: array
+          items:
+            type: string
+            enum: [mexican, italian, asian, mediterranean, american, indian]
+        appetiteSatisfactionLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    MacroTargets:
+      type: object
+      properties:
+        proteinGrams:
+          type: integer
+        carbsGrams:
+          type: integer
+        fatGrams:
+          type: integer
+        sugarGrams:
+          type: integer

@@ -1,0 +1,12 @@
+extends: ["spectral:oas"]
+
+# NutriPlan OpenAPI lint rules. CI fails only on `error` severity
+# (see .github/workflows/contracts.yml --fail-severity error), so the
+# tweaks below keep stylistic noise as warnings while real structural
+# problems (unresolved $refs, invalid schemas) still block.
+rules:
+  oas3-unused-component: off
+  info-contact: warn
+  info-description: warn
+  operation-tag-defined: warn
+  operation-description: off

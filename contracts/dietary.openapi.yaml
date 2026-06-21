@@ -1,0 +1,523 @@
+openapi: 3.0.3
+info:
+  title: NutriPlan Dietary Planning API
+  version: 1.0.0
+  description: |
+    Meal plans, recipes, nutrition calculation, and AI-assisted recommendations for the
+    NutriPlan Dietary Planning bounded context.
+  contact:
+    name: NutriPlan Team
+    url: https://github.com/epr-ds/nutriplan
+  license:
+    name: Proprietary
+    url: https://github.com/epr-ds/nutriplan/blob/main/LICENSE
+servers:
+  - url: https://api.nutriplan.app/dietary/v1
+    description: Production
+  - url: http://localhost:8082
+    description: Local development
+tags:
+  - name: MealPlans
+  - name: AI
+  - name: Recipes
+
+paths:
+  /meal-plans:
+    post:
+      tags: [MealPlans]
+      operationId: createMealPlan
+      summary: Create a new meal plan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMealPlanRequest'
+      responses:
+        '201':
+          description: Meal plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+    get:
+      tags: [MealPlans]
+      operationId: listMealPlans
+      summary: List the current user's meal plans
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, completed, saved]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Meal plans list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MealPlanSummaryResponse'
+
+  /meal-plans/{planId}:
+    get:
+      tags: [MealPlans]
+      operationId: getMealPlan
+      summary: Get a specific meal plan
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlanId'
+      responses:
+        '200':
+          description: Meal plan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+        '404':
+          description: Meal plan not found
+
+  /meal-plans/{planId}/meals:
+    post:
+      tags: [MealPlans]
+      operationId: addMealToPlan
+      summary: Add a meal to a plan
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMealRequest'
+      responses:
+        '201':
+          description: Meal added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealResponse'
+
+  /ai/recommendations:
+    post:
+      tags: [AI]
+      operationId: getAIRecommendations
+      summary: Get AI-powered recipe recommendations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRecommendationRequest'
+      responses:
+        '200':
+          description: AI recommendations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecommendationResponse'
+
+  /ai/analyze-meal:
+    post:
+      tags: [AI]
+      operationId: analyzeMeal
+      summary: Analyze the nutritional content of a meal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeMealRequest'
+      responses:
+        '200':
+          description: Nutritional analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionalAnalysisResponse'
+
+  /ai/optimize-plan:
+    post:
+      tags: [AI]
+      operationId: optimizePlan
+      summary: Optimize a meal plan toward its goals
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizePlanRequest'
+      responses:
+        '200':
+          description: Optimized plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+
+  /recipes:
+    get:
+      tags: [Recipes]
+      operationId: searchRecipes
+      summary: Search recipes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ingredients
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: dietType
+          in: query
+          schema:
+            type: string
+        - name: maxCalories
+          in: query
+          schema:
+            type: integer
+        - name: minProtein
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Recipe search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecipeResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    CreateMealPlanRequest:
+      type: object
+      required: [name, startDate, endDate, dailyCalorieTarget]
+      properties:
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        dailyCalorieTarget:
+          type: integer
+        macroTargets:
+          $ref: '#/components/schemas/MacroTargets'
+        dietaryType:
+          type: string
+          enum: [omnivore, vegetarian, vegan, keto, paleo]
+
+    AddMealRequest:
+      type: object
+      required: [mealType, recipeId, servings]
+      properties:
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        recipeId:
+          type: string
+        servings:
+          type: number
+          format: float
+
+    MealPlanSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, active, completed, saved]
+
+    MealPlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        dailyCalorieTarget:
+          type: integer
+        meals:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealResponse'
+        nutritionalSummary:
+          $ref: '#/components/schemas/NutritionalSummary'
+        status:
+          type: string
+          enum: [draft, active, completed, saved]
+
+    MealResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        recipe:
+          $ref: '#/components/schemas/RecipeResponse'
+        servings:
+          type: number
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+
+    RecipeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientResponse'
+        instructions:
+          type: array
+          items:
+            type: string
+        prepTime:
+          type: integer
+        cookTime:
+          type: integer
+        servings:
+          type: integer
+        imageUrl:
+          type: string
+          format: uri
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+
+    IngredientResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        calories:
+          type: integer
+        protein:
+          type: number
+        carbs:
+          type: number
+        fat:
+          type: number
+        sugar:
+          type: number
+
+    NutritionalInfo:
+      type: object
+      properties:
+        calories:
+          type: integer
+        protein:
+          type: number
+        carbs:
+          type: number
+        fat:
+          type: number
+        sugar:
+          type: number
+
+    NutritionalSummary:
+      type: object
+      properties:
+        total:
+          $ref: '#/components/schemas/NutritionalInfo'
+        dailyAverage:
+          $ref: '#/components/schemas/NutritionalInfo'
+        targets:
+          $ref: '#/components/schemas/MacroTargets'
+
+    AIRecommendationRequest:
+      type: object
+      required: [context]
+      properties:
+        context:
+          type: string
+          enum: [meal_plan, single_meal, ingredient_based]
+        dietaryPreferences:
+          $ref: '#/components/schemas/DietaryPreferencesRequest'
+        availableIngredients:
+          type: array
+          items:
+            type: string
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        calorieTarget:
+          type: integer
+        previousMeals:
+          type: array
+          items:
+            type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        language:
+          type: string
+          default: es
+
+    AIRecommendationResponse:
+      type: object
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeResponse'
+        reasoning:
+          type: string
+        nutritionalAlignment:
+          $ref: '#/components/schemas/NutritionalAlignment'
+
+    NutritionalAlignment:
+      type: object
+      properties:
+        score:
+          type: number
+        details:
+          type: string
+
+    AnalyzeMealRequest:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+          description: Free-text or structured description of the meal
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientResponse'
+
+    NutritionalAnalysisResponse:
+      type: object
+      properties:
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+        alignment:
+          $ref: '#/components/schemas/NutritionalAlignment'
+        warnings:
+          type: array
+          items:
+            type: string
+
+    OptimizePlanRequest:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: string
+          format: uuid
+        goal:
+          type: string
+          enum: [balance_macros, increase_protein, reduce_calories, increase_satisfaction]
+
+    DietaryPreferencesRequest:
+      type: object
+      properties:
+        dietType:
+          type: string
+          enum: [omnivore, vegetarian, vegan, keto, paleo, mediterranean]
+        allergies:
+          type: array
+          items:
+            type: string
+        dailyCalorieTarget:
+          type: integer
+          minimum: 1200
+          maximum: 5000
+        macroTargets:
+          $ref: '#/components/schemas/MacroTargets'
+        excludedIngredients:
+          type: array
+          items:
+            type: string
+        cuisinePreferences:
+          type: array
+          items:
+            type: string
+
+    MacroTargets:
+      type: object
+      properties:
+        proteinGrams:
+          type: integer
+        carbsGrams:
+          type: integer
+        fatGrams:
+          type: integer
+        sugarGrams:
+          type: integer

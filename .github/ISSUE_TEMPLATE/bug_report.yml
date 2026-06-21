@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a defect in NutriPlan
+labels: ["bug", "triage"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - mobile (Android)
+        - mobile (iOS)
+        - mobile (shared)
+        - service:identity
+        - service:dietary
+        - service:commerce
+        - service:notification
+        - service:ai
+        - contracts
+        - infra/CI
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Device/OS, app version or commit SHA, service version.
+    validations:
+      required: false

@@ -1,0 +1,23 @@
+# NutriPlan detekt configuration.
+# Built upon detekt's default rules (buildUponDefaultConfig = true). During bootstrap,
+# modules set ignoreFailures = true; flip to false in Phase 0 once the team tunes this set.
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: false
+  ReturnCount:
+    active: false
+
+complexity:
+  LongMethod:
+    active: false
+  TooManyFunctions:
+    active: false

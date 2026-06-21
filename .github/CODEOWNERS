@@ -1,0 +1,23 @@
+# Code owners for NutriPlan.
+# Each line is a file pattern followed by one or more owners.
+# Owners are requested for review automatically when a PR touches matching files.
+
+# Default owner for everything
+*                       @epr-ds
+
+# Mobile (KMP)
+/mobile/                @epr-ds
+
+# Backend services
+/services/identity/     @epr-ds
+/services/dietary/      @epr-ds
+/services/commerce/     @epr-ds
+/services/notification/ @epr-ds
+/services/ai/           @epr-ds
+
+# API contracts — changes here are high-impact (mobile + backend)
+/contracts/             @epr-ds
+
+# Infrastructure & CI
+/infra/                 @epr-ds
+/.github/               @epr-ds

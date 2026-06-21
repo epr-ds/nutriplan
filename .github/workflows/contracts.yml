@@ -1,0 +1,30 @@
+name: Contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.spectral.yaml'
+      - '.github/workflows/contracts.yml'
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - '.spectral.yaml'
+      - '.github/workflows/contracts.yml'
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@6 lint "contracts/*.openapi.yaml" --fail-severity error

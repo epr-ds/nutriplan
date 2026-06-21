@@ -1,0 +1,43 @@
+name: nutriplan
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nutriplan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nutriplan}
+      POSTGRES_DB: ${POSTGRES_DB:-nutriplan}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-nutriplan}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-nutriplan}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  ai:
+    build:
+      context: ../services/ai
+    environment:
+      AI_ENVIRONMENT: development
+      AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+volumes:
+  postgres-data:
+  mongo-data:
