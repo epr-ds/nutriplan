@@ -32,6 +32,18 @@ class MealPlanStatusFilter(StrEnum):
     SAVED = "saved"
 
 
+class MealPlanStatusTransition(StrEnum):
+    """Lifecycle statuses a caller may transition a plan *to* (DPL-106).
+
+    A plan can never be moved back to ``draft``, so that value is not accepted; whether a particular
+    move (e.g. ``completed -> active``) is legal is decided by the domain state machine, not here.
+    """
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    SAVED = "saved"
+
+
 class MacroTargetsSchema(_Camel):
     protein_grams: int | None = None
     carbs_grams: int | None = None
@@ -63,6 +75,12 @@ class MealResponse(_Camel):
     meal_type: MealType
     servings: float
     nutritional_info: NutritionalInfoSchema | None = None
+
+
+class UpdateMealPlanStatusRequest(_Camel):
+    """Body of ``PATCH /meal-plans/{planId}`` (DPL-106) — the target lifecycle status."""
+
+    status: MealPlanStatusTransition
 
 
 class MealPlanResponse(_Camel):

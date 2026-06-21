@@ -19,6 +19,11 @@ class InMemoryMealPlanRepository(MealPlanRepository):
         plan = self.saved.get(plan_id)
         return plan if plan is not None and plan.user_id == user_id else None
 
+    def update(self, plan: MealPlan) -> None:
+        existing = self.saved.get(plan.id)
+        if existing is not None and existing.user_id == plan.user_id:
+            self.saved[plan.id] = plan
+
     def list_for_user(
         self,
         user_id: str,

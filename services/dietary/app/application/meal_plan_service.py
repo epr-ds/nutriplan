@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
+from app.application.commands import (
+    ChangeMealPlanStatusCommand,
+    CreateMealPlanCommand,
+    ListMealPlansQuery,
+)
 from app.domain.errors import MealPlanNotFoundError
 from app.domain.meal_plan import MealPlan
 from app.domain.repositories import MealPlanRepository
@@ -59,4 +63,19 @@ class MealPlanService:
         plan = self._repository.get(user_id, plan_id)
         if plan is None:
             raise MealPlanNotFoundError(plan_id)
+        return plan
+
+    def change_meal_plan_status(self, command: ChangeMealPlanStatusCommand) -> MealPlan:
+        """Transition one of the caller's plans to a new lifecycle status (DPL-106).
+
+        The plan is loaded owner-scoped (a missing/!owned plan raises
+        :class:`~app.domain.errors.MealPlanNotFoundError`), the aggregate enforces the state machine
+        (illegal moves / empty-plan activation raise :class:`~app.domain.errors.DomainError`
+        subclasses), and only on success is the mutated aggregate persisted.
+        """
+        plan = self._repository.get(command.user_id, command.plan_id)
+        if plan is None:
+            raise MealPlanNotFoundError(command.plan_id)
+        plan.transition_to(command.target_status)
+        self._repository.update(plan)
         return plan

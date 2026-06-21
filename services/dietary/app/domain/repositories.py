@@ -25,6 +25,14 @@ class MealPlanRepository(ABC):
         """Return the caller-owned plan, or ``None`` if it does not exist for this user."""
 
     @abstractmethod
+    def update(self, plan: MealPlan) -> None:
+        """Persist mutations to an existing aggregate, scoped to ``plan.user_id``.
+
+        Only the owner's document is ever written, so a plan can never be modified on behalf of a
+        different user even if a stale/forged aggregate is supplied.
+        """
+
+    @abstractmethod
     def list_for_user(
         self,
         user_id: str,

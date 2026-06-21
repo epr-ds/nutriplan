@@ -12,8 +12,13 @@ from app.api.schemas import (
     MealPlanResponse,
     MealPlanStatusFilter,
     MealPlanSummaryResponse,
+    UpdateMealPlanStatusRequest,
 )
-from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
+from app.application.commands import (
+    ChangeMealPlanStatusCommand,
+    CreateMealPlanCommand,
+    ListMealPlansQuery,
+)
 from app.domain.meal_plan import MacroTargets, MealPlanStatus
 
 router = APIRouter(prefix="/meal-plans", tags=["MealPlans"])
@@ -81,4 +86,29 @@ def get_meal_plan(
 ) -> MealPlanResponse:
     """Return the caller's meal plan by id with full detail, or 404 if missing/!owned (DPL-104)."""
     plan = service.get_meal_plan(principal.user_id, plan_id)
+    return MealPlanResponse.from_aggregate(plan)
+
+
+@router.patch(
+    "/{plan_id}",
+    response_model=MealPlanResponse,
+    summary="Change a meal plan's lifecycle status",
+)
+def update_meal_plan_status(
+    plan_id: str,
+    body: UpdateMealPlanStatusRequest,
+    principal: CurrentPrincipal,
+    service: MealPlanServiceDep,
+) -> MealPlanResponse:
+    """Transition the caller's plan through its lifecycle (DPL-106).
+
+    Returns the updated plan; an illegal transition is ``409``, activating a plan with no meals is
+    ``422``, and a missing or not-owned plan is ``404``.
+    """
+    command = ChangeMealPlanStatusCommand(
+        user_id=principal.user_id,
+        plan_id=plan_id,
+        target_status=MealPlanStatus(body.status.value),
+    )
+    plan = service.change_meal_plan_status(command)
     return MealPlanResponse.from_aggregate(plan)

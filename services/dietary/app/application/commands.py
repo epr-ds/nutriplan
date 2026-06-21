@@ -37,3 +37,17 @@ class ListMealPlansQuery:
     status: MealPlanStatus | None = None
     page: int = 1
     limit: int = 20
+
+
+@dataclass(frozen=True)
+class ChangeMealPlanStatusCommand:
+    """Inputs for the *change meal-plan status* use case (DPL-106).
+
+    ``user_id`` is taken from the authenticated principal so a caller can only transition their own
+    plans. ``target_status`` is the lifecycle state to move to; the aggregate enforces which moves
+    are legal.
+    """
+
+    user_id: str
+    plan_id: str
+    target_status: MealPlanStatus

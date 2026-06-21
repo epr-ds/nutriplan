@@ -23,6 +23,11 @@ class MongoMealPlanRepository(MealPlanRepository):
         doc = self._coll.find_one({"_id": plan_id, "userId": user_id})
         return MealPlan.from_document(doc) if doc else None
 
+    def update(self, plan: MealPlan) -> None:
+        # Owner-scoped replace: the filter pins both id and owner, so a document is only ever
+        # overwritten for the user that owns it.
+        self._coll.replace_one({"_id": plan.id, "userId": plan.user_id}, plan.to_document())
+
     def list_for_user(
         self,
         user_id: str,
