@@ -96,6 +96,38 @@ paths:
         '404':
           description: Meal plan not found
 
+    patch:
+      tags: [MealPlans]
+      operationId: updateMealPlanStatus
+      summary: Change a meal plan's lifecycle status
+      description: >-
+        Transition a meal plan through its lifecycle (draft → active → completed/saved).
+        Allowed transitions are enforced server-side: an illegal transition returns 409,
+        and activating a plan requires it to have at least one meal.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMealPlanStatusRequest'
+      responses:
+        '200':
+          description: Updated meal plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+        '404':
+          description: Meal plan not found
+        '409':
+          description: Illegal status transition for the plan's current state
+        '422':
+          description: Transition preconditions not met (e.g. activating a plan with no meals)
+
   /meal-plans/{planId}/meals:
     post:
       tags: [MealPlans]
@@ -267,6 +299,17 @@ components:
         servings:
           type: number
           format: float
+
+    UpdateMealPlanStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, completed, saved]
+          description: >-
+            Target lifecycle status. A plan can never be moved back to draft; whether a
+            specific transition is permitted depends on the plan's current status.
 
     MealPlanSummaryResponse:
       type: object

@@ -16,7 +16,11 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.domain.errors import MealPlanDateRangeError
+from app.domain.errors import (
+    EmptyMealPlanActivationError,
+    IllegalStateTransitionError,
+    MealPlanDateRangeError,
+)
 
 
 def _utcnow() -> datetime:
@@ -32,6 +36,17 @@ class MealPlanStatus(StrEnum):
     ACTIVE = "active"
     COMPLETED = "completed"
     SAVED = "saved"
+
+
+# The meal-plan lifecycle as an explicit, data-driven state machine: a plan is drafted, activated
+# once it has meals, then either completed or saved (both terminal). Encoding the legal moves here
+# (rather than as scattered ``if`` checks) keeps the policy in one auditable place.
+_ALLOWED_TRANSITIONS: dict[MealPlanStatus, frozenset[MealPlanStatus]] = {
+    MealPlanStatus.DRAFT: frozenset({MealPlanStatus.ACTIVE}),
+    MealPlanStatus.ACTIVE: frozenset({MealPlanStatus.COMPLETED, MealPlanStatus.SAVED}),
+    MealPlanStatus.COMPLETED: frozenset(),
+    MealPlanStatus.SAVED: frozenset(),
+}
 
 
 class MealType(StrEnum):
@@ -135,6 +150,34 @@ class MealPlan(_Model):
             dietary_type=dietary_type,
             status=MealPlanStatus.DRAFT,
         )
+
+    def transition_to(self, target: MealPlanStatus) -> None:
+        """Move the plan to *target* status, enforcing the lifecycle state machine.
+
+        Raises :class:`~app.domain.errors.IllegalStateTransitionError` if the move is not allowed
+        from the current status, or :class:`~app.domain.errors.EmptyMealPlanActivationError` if the
+        (otherwise legal) activation is attempted on a plan with no meals. On success the plan's
+        ``updated_at`` is bumped to record the change.
+        """
+        current = MealPlanStatus(self.status)
+        if target not in _ALLOWED_TRANSITIONS[current]:
+            raise IllegalStateTransitionError(current, target)
+        if target is MealPlanStatus.ACTIVE and not self.meals:
+            raise EmptyMealPlanActivationError(self.id)
+        self.status = target.value
+        self.updated_at = _utcnow()
+
+    def activate(self) -> None:
+        """Activate a draft plan (requires at least one meal)."""
+        self.transition_to(MealPlanStatus.ACTIVE)
+
+    def complete(self) -> None:
+        """Mark an active plan as completed."""
+        self.transition_to(MealPlanStatus.COMPLETED)
+
+    def save(self) -> None:
+        """Save an active plan (e.g. as a reusable template)."""
+        self.transition_to(MealPlanStatus.SAVED)
 
     def to_document(self) -> dict:
         """Serialize to a MongoDB document: camelCase keys, aggregate id stored as ``_id``."""

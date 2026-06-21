@@ -113,3 +113,36 @@ def test_list_for_user_paginates_with_skip_and_limit(mongo_db):
     # Pages are disjoint and together cover every plan (correct skip/limit).
     ids = {p.id for p in page1} | {p.id for p in page2} | {p.id for p in page3}
     assert len(ids) == 5
+
+
+def test_update_persists_status_change(mongo_db):
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
+    plan = _plan(
+        meals=[PlannedMeal(meal_type=MealType.BREAKFAST, recipe_id="r1", servings=1.0)],
+    )
+    repo.add(plan)
+
+    plan.transition_to(MealPlanStatus.ACTIVE)
+    repo.update(plan)
+
+    fetched = repo.get(plan.user_id, plan.id)
+    assert fetched is not None
+    assert fetched.status == MealPlanStatus.ACTIVE.value
+
+
+def test_update_is_owner_scoped_and_never_touches_another_users_plan(mongo_db):
+    repo = MongoMealPlanRepository(mongo_db[MEAL_PLANS])
+    original = _plan(
+        user_id="owner",
+        name="Original",
+        meals=[PlannedMeal(meal_type=MealType.BREAKFAST, recipe_id="r1", servings=1.0)],
+    )
+    repo.add(original)
+
+    # Same id but a different claimed owner — a mis-scoped update must be a no-op.
+    impostor = original.model_copy(update={"user_id": "intruder", "name": "Hacked"})
+    repo.update(impostor)
+
+    stored = repo.get("owner", original.id)
+    assert stored is not None
+    assert stored.name == "Original"

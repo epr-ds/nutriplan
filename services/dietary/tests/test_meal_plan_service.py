@@ -4,10 +4,19 @@ from datetime import date
 
 import pytest
 
-from app.application.commands import CreateMealPlanCommand, ListMealPlansQuery
+from app.application.commands import (
+    ChangeMealPlanStatusCommand,
+    CreateMealPlanCommand,
+    ListMealPlansQuery,
+)
 from app.application.meal_plan_service import MealPlanService
-from app.domain.errors import MealPlanDateRangeError, MealPlanNotFoundError
-from app.domain.meal_plan import MealPlanStatus
+from app.domain.errors import (
+    EmptyMealPlanActivationError,
+    IllegalStateTransitionError,
+    MealPlanDateRangeError,
+    MealPlanNotFoundError,
+)
+from app.domain.meal_plan import MealPlan, MealPlanStatus, MealType, PlannedMeal
 from tests.fakes import InMemoryMealPlanRepository
 
 
@@ -128,3 +137,95 @@ def test_get_meal_plan_raises_not_found_for_other_users_plan():
 
     with pytest.raises(MealPlanNotFoundError):
         service.get_meal_plan("intruder", created.id)
+
+
+def _seed_plan(
+    repo: InMemoryMealPlanRepository,
+    *,
+    user_id: str = "owner",
+    status: MealPlanStatus = MealPlanStatus.DRAFT,
+    with_meal: bool = True,
+) -> MealPlan:
+    plan = MealPlan(
+        user_id=user_id,
+        name="Week",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 7),
+        daily_calorie_target=2000,
+        status=status,
+        meals=[PlannedMeal(meal_type=MealType.BREAKFAST, recipe_id="r1", servings=1.0)]
+        if with_meal
+        else [],
+    )
+    repo.add(plan)
+    return plan
+
+
+def test_change_status_activates_and_persists():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    plan = _seed_plan(repo, status=MealPlanStatus.DRAFT, with_meal=True)
+
+    result = service.change_meal_plan_status(
+        ChangeMealPlanStatusCommand(
+            user_id="owner", plan_id=plan.id, target_status=MealPlanStatus.ACTIVE
+        )
+    )
+
+    assert result.status == MealPlanStatus.ACTIVE.value
+    assert repo.get("owner", plan.id).status == MealPlanStatus.ACTIVE.value
+
+
+def test_change_status_rejects_illegal_transition_and_persists_nothing():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    plan = _seed_plan(repo, status=MealPlanStatus.DRAFT, with_meal=True)
+
+    with pytest.raises(IllegalStateTransitionError):
+        service.change_meal_plan_status(
+            ChangeMealPlanStatusCommand(
+                user_id="owner", plan_id=plan.id, target_status=MealPlanStatus.COMPLETED
+            )
+        )
+
+    assert repo.get("owner", plan.id).status == MealPlanStatus.DRAFT.value
+
+
+def test_change_status_activation_requires_a_meal():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    plan = _seed_plan(repo, status=MealPlanStatus.DRAFT, with_meal=False)
+
+    with pytest.raises(EmptyMealPlanActivationError):
+        service.change_meal_plan_status(
+            ChangeMealPlanStatusCommand(
+                user_id="owner", plan_id=plan.id, target_status=MealPlanStatus.ACTIVE
+            )
+        )
+
+    assert repo.get("owner", plan.id).status == MealPlanStatus.DRAFT.value
+
+
+def test_change_status_unknown_plan_raises_not_found():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+
+    with pytest.raises(MealPlanNotFoundError):
+        service.change_meal_plan_status(
+            ChangeMealPlanStatusCommand(
+                user_id="owner", plan_id="missing", target_status=MealPlanStatus.ACTIVE
+            )
+        )
+
+
+def test_change_status_other_users_plan_raises_not_found():
+    repo = InMemoryMealPlanRepository()
+    service = MealPlanService(repo)
+    plan = _seed_plan(repo, user_id="owner", status=MealPlanStatus.ACTIVE, with_meal=True)
+
+    with pytest.raises(MealPlanNotFoundError):
+        service.change_meal_plan_status(
+            ChangeMealPlanStatusCommand(
+                user_id="intruder", plan_id=plan.id, target_status=MealPlanStatus.COMPLETED
+            )
+        )
