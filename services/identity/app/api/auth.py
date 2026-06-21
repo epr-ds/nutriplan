@@ -1,7 +1,13 @@
 from fastapi import APIRouter, status
 
 from app.api.deps import DbSession
-from app.schemas.auth import AuthResponse, LoginRequest, RefreshRequest, RegisterRequest
+from app.schemas.auth import (
+    AuthResponse,
+    LoginRequest,
+    OAuthRequest,
+    RefreshRequest,
+    RegisterRequest,
+)
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -20,3 +26,8 @@ def login(payload: LoginRequest, db: DbSession) -> AuthResponse:
 @router.post("/refresh", response_model=AuthResponse)
 def refresh(payload: RefreshRequest, db: DbSession) -> AuthResponse:
     return auth_service.refresh(db, payload)
+
+
+@router.post("/oauth/{provider}", response_model=AuthResponse)
+def oauth_login(provider: str, payload: OAuthRequest, db: DbSession) -> AuthResponse:
+    return auth_service.oauth_login(db, provider, payload)

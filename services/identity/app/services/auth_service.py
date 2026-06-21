@@ -13,8 +13,15 @@ from sqlalchemy.orm import Session
 
 from app.core import security
 from app.core.config import settings
-from app.db.models import Credential, RefreshToken, User
-from app.schemas.auth import AuthResponse, LoginRequest, RefreshRequest, RegisterRequest
+from app.core.oauth import OAuthError, provider_supported, verify_oauth_token
+from app.db.models import Credential, OAuthIdentity, RefreshToken, User
+from app.schemas.auth import (
+    AuthResponse,
+    LoginRequest,
+    OAuthRequest,
+    RefreshRequest,
+    RegisterRequest,
+)
 from app.schemas.user import UserProfileResponse
 
 
@@ -126,3 +133,41 @@ def refresh(db: Session, payload: RefreshRequest) -> AuthResponse:
     user = db.get(User, token.user_id)
     db.flush()
     return _auth_response(db, user, token.family_id)
+
+
+def oauth_login(db: Session, provider: str, payload: OAuthRequest) -> AuthResponse:
+    """Verify a provider id-token, then provision or look up the matching user (IDN-201/202)."""
+    if not provider_supported(provider):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported OAuth provider: {provider}")
+
+    try:
+        claims = verify_oauth_token(provider, payload.id_token, payload.nonce)
+    except OAuthError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
+
+    identity = db.scalar(
+        select(OAuthIdentity).where(
+            OAuthIdentity.provider == provider, OAuthIdentity.subject == claims.subject
+        )
+    )
+    if identity is not None:
+        user = db.get(User, identity.user_id)
+        return _auth_response(db, user, uuid.uuid4())
+
+    # First login for this provider identity: link to an existing account by email,
+    # otherwise auto-provision. (Cross-provider dedupe nuances are IDN-204, Sprint 5.)
+    user = None
+    if claims.email:
+        user = db.scalar(select(User).where(User.email == claims.email.lower()))
+    if user is None:
+        if not claims.email:
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED, "Identity token did not include an email address"
+            )
+        user = User(email=claims.email.lower(), name=claims.name or claims.email.split("@")[0])
+        db.add(user)
+        db.flush()
+
+    db.add(OAuthIdentity(user_id=user.id, provider=provider, subject=claims.subject))
+    db.flush()
+    return _auth_response(db, user, uuid.uuid4())
