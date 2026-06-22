@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from app.domain.meal_plan import MealPlan, MealPlanStatus
-from app.domain.repositories import MealPlanRepository
+from app.domain.recipe import Recipe
+from app.domain.repositories import MealPlanRepository, RecipeRepository
 
 
 class InMemoryMealPlanRepository(MealPlanRepository):
@@ -39,3 +40,16 @@ class InMemoryMealPlanRepository(MealPlanRepository):
         # Newest first, with a stable id tiebreaker — mirrors the Mongo adapter's ordering.
         plans.sort(key=lambda p: (p.created_at, p.id), reverse=True)
         return plans[skip : skip + limit]
+
+
+class InMemoryRecipeRepository(RecipeRepository):
+    """A dict-backed :class:`RecipeRepository` for fast, Mongo-free unit tests."""
+
+    def __init__(self) -> None:
+        self.saved: dict[str, Recipe] = {}
+
+    def add(self, recipe: Recipe) -> None:
+        self.saved[recipe.id] = recipe
+
+    def get(self, recipe_id: str) -> Recipe | None:
+        return self.saved.get(recipe_id)

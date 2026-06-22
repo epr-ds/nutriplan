@@ -23,14 +23,18 @@ app/
   main.py                # FastAPI app + lifespan + exception-handler registration
   domain/                # Pure business model — no framework/IO imports
     meal_plan.py         #   MealPlan aggregate root (+ MealPlan.create factory & invariants)
-    repositories.py      #   MealPlanRepository port (abstract)
+    recipe.py            #   Recipe aggregate root (+ Ingredient / NutritionalInfo value objects)
+    repositories.py      #   MealPlanRepository + RecipeRepository ports (abstract)
     errors.py            #   DomainError hierarchy (e.g. MealPlanDateRangeError)
   application/           # Use cases (orchestration)
     commands.py          #   CreateMealPlanCommand (DTO; user_id comes from the principal)
     meal_plan_service.py #   MealPlanService.create_meal_plan(command)
   repositories/
-    mongo_meal_plan_repository.py   # MongoDB adapter implementing the port
-  db/mongo.py            # PyMongo client/db accessors, $jsonSchema validator, index installer
+    mongo_meal_plan_repository.py   # MongoDB adapter implementing the MealPlan port
+    mongo_recipe_repository.py      # MongoDB adapter implementing the Recipe port
+  db/
+    mongo.py             #   PyMongo client/db accessors, $jsonSchema validators, index installers
+    seed.py              #   Idempotent reference recipe catalog (DPL-201)
   core/
     config.py            #   DIETARY_-prefixed settings
     principal.py         #   Principal (authenticated caller)
@@ -69,6 +73,32 @@ or `collMod`), so it is safe to boot repeatedly.
 Dates (`startDate`/`endDate`) and timestamps (`createdAt`/`updatedAt`) are persisted as ISO-8601
 **strings** — their lexicographic order is chronological, so the date-range index stays
 range-queryable and we avoid the `datetime.date` → BSON gap (PyMongo stores `datetime`, not `date`).
+
+## DPL-201 — Recipe catalog
+
+The second aggregate root, **`Recipe`**, backs a shared recipe catalog that meal plans reference by
+id (a `PlannedMeal.recipeId`). A recipe **owns** its embedded `Ingredient` lines and carries a
+per-serving `NutritionalInfo`, all stored as a single `recipes` document. Unlike meal plans, recipes
+are **not owner-scoped** — the catalog is global — so the `RecipeRepository` reads by recipe id alone.
+
+**Schema validation on write.** `recipes` has its own `$jsonSchema` validator (`app/db/mongo.py`):
+`_id`/`name`/`servings`/`ingredients`/`createdAt` are required, `servings` must be a positive `int`,
+and every ingredient must carry a `name`. Installed idempotently on startup, like `meal_plans`.
+
+**Indexes** (installed on startup) support the ingredient + macro filters used by recipe search
+(DPL-202):
+
+| Name | Keys | Serves |
+| --- | --- | --- |
+| `ingredientName` | `ingredients.name` (multikey) | find recipes containing an ingredient |
+| `nutrition_calories` | `nutritionalInfo.calories` | filter/sort by per-serving calories |
+| `nutrition_protein` | `nutritionalInfo.protein` | filter/sort by per-serving protein |
+| `nutrition_carbs` | `nutritionalInfo.carbs` | filter/sort by per-serving carbs |
+| `nutrition_fat` | `nutritionalInfo.fat` | filter/sort by per-serving fat |
+
+**Reference seed.** `app/db/seed.py` upserts a small fixed-id catalog on startup so meal plans can
+reference real recipes before any authoring UI exists. The seed uses stable ids and a fixed
+timestamp, so re-running it (every boot) is a pure upsert — it never duplicates or churns rows.
 
 ## Endpoints
 
@@ -129,7 +159,8 @@ docker run --rm --network dpl-net \
 ```
 
 The schema-validation tests insert **raw dicts** (bypassing Pydantic) to exercise the database
-`$jsonSchema` validator directly; the index tests assert the three expected indexes exist.
+`$jsonSchema` validators directly; the index tests assert the expected `meal_plans` and `recipes`
+indexes exist.
 
 ## Configuration (`DIETARY_` env vars)
 

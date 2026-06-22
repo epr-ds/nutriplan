@@ -20,7 +20,7 @@ from pymongo import MongoClient  # noqa: E402
 from pymongo.errors import PyMongoError  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
-from app.db.mongo import ensure_meal_plans_collection  # noqa: E402
+from app.db.mongo import ensure_meal_plans_collection, ensure_recipes_collection  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -55,6 +55,7 @@ def mongo_db():
     client.drop_database(settings.mongo_db)
     db = client[settings.mongo_db]
     ensure_meal_plans_collection(db)
+    ensure_recipes_collection(db)
     try:
         yield db
     finally:
