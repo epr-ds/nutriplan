@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.domain.meal_plan import MealPlan, MealPlanStatus
+from app.domain.recipe import Recipe
 
 
 class MealPlanRepository(ABC):
@@ -45,3 +46,18 @@ class MealPlanRepository(ABC):
 
         ``skip``/``limit`` provide offset pagination; the result is always owner-scoped.
         """
+
+
+class RecipeRepository(ABC):
+    """Persistence boundary for the :class:`~app.domain.recipe.Recipe` aggregate.
+
+    Recipes are a shared catalog (not owner-scoped), so reads are keyed by recipe id alone.
+    """
+
+    @abstractmethod
+    def add(self, recipe: Recipe) -> None:
+        """Persist a newly created recipe."""
+
+    @abstractmethod
+    def get(self, recipe_id: str) -> Recipe | None:
+        """Return the recipe with *recipe_id*, or ``None`` if it does not exist."""
