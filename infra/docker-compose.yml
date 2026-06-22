@@ -72,6 +72,7 @@ services:
   ai:
     build:
       context: ../services/ai
+      target: runtime
     environment:
       AI_ENVIRONMENT: development
       AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
@@ -79,6 +80,16 @@ services:
       - "8000:8000"
     depends_on:
       - redis
+
+  # One-shot test runner. Run with: docker compose --profile test run --rm ai-test
+  ai-test:
+    build:
+      context: ../services/ai
+      target: test
+    environment:
+      AI_ENVIRONMENT: test
+    profiles: ["test"]
+    command: ["pytest", "-q"]
 
   identity:
     build:
