@@ -118,7 +118,29 @@ only depends on the plan repository. `add_meal_to_plan` loads the plan owner-sco
 owned → `MealPlanNotFoundError` → `404`), resolves the recipe (unknown → `RecipeNotFoundError` →
 `422`), mutates the aggregate, and persists it only on success. The `201 MealResponse` embeds the
 resolved `RecipeResponse`; the plan detail/list projections leave `recipe` null (they don't fan out
-to the catalog). Recomputing the plan-level `nutritionalSummary` is out of scope (DPL-302).
+to the catalog).
+
+## DPL-301 — Per-meal nutrition
+
+When a meal is added, its `nutritionalInfo` is computed from the referenced recipe scaled to the
+meal's `servings` and embedded on the `PlannedMeal` (so plan reads expose it too). The pure domain
+service `app/domain/nutrition.py` (`compute_meal_nutrition(recipe, servings)`) is kept out of the
+aggregates because it bridges the `MealPlan` and `Recipe` aggregates — `MealService` calls it and
+hands the resulting value object to `MealPlan.add_meal()`, so the plan aggregate still references the
+recipe by **id only** and never imports the catalog.
+
+- **Per-serving source.** The recipe's authored, per-serving `nutritionalInfo` is used when present;
+  otherwise it is derived from the ingredient breakdown, whose macros are recorded for the recipe *as
+  written* (for `recipe.servings` servings), so per serving is `Σ(ingredients) ÷ recipe.servings`.
+  This matches the seed catalog, where `Σ(ingredients) ÷ servings` equals the stored `nutritionalInfo`.
+- **Rounding.** All arithmetic is exact `Decimal`, rounded once at the end **half-up**: energy to the
+  nearest whole calorie and each macro gram (`protein`/`carbs`/`fat`/`sugar`) to one decimal place
+  (`242.5 → 243`, `9.85 → 9.9`).
+- **Unknown vs zero.** A nutrient with no data wherever it is read stays `null`, not `0` — "not
+  measured" is kept distinct from "measured as zero".
+
+Rolling these per-meal figures up into a plan-level `nutritionalSummary` (total + daily average vs
+targets) is the next slice (DPL-302).
 
 ## DPL-202 — Recipe search
 
