@@ -17,12 +17,13 @@ documented for the AI service and are not implemented here, so they are not test
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from openapi_core import OpenAPI
+from openapi_core import Config, OpenAPI
 from openapi_core.testing import MockRequest, MockResponse
 
 from app.api.deps import (
@@ -118,7 +119,12 @@ def _full_recipe() -> Recipe:
 
 @pytest.fixture(scope="module")
 def openapi() -> OpenAPI:
-    return OpenAPI.from_file_path(str(_SPEC_PATH))
+    # The service emits errors as ``application/problem+json`` (RFC 7807, DPL-108); teach
+    # openapi-core to deserialize that media type so error bodies are validated against Problem.
+    config = Config(
+        extra_media_type_deserializers={"application/problem+json": json.loads},
+    )
+    return OpenAPI.from_file_path(str(_SPEC_PATH), config=config)
 
 
 @pytest.fixture
@@ -280,4 +286,22 @@ def test_search_recipes_conforms(openapi, client):
     resp = client.get("/recipes", headers=_AUTH)
     assert resp.status_code == 200
     assert resp.json()[0]["id"] == RECIPE_ID
+    assert_conforms(openapi, "get", "/recipes", resp)
+
+
+# --- Auth (problem+json, DPL-108) -------------------------------------------
+
+
+def test_unauthenticated_list_conforms(openapi, client):
+    # No bearer at all: the auth dependency short-circuits with 401 before any handler,
+    # and the body must be an RFC 7807 problem document documented on the operation.
+    resp = client.get("/meal-plans")
+    assert resp.status_code == 401
+    assert resp.headers["content-type"].split(";")[0].strip() == "application/problem+json"
+    assert_conforms(openapi, "get", "/meal-plans", resp)
+
+
+def test_unauthenticated_search_recipes_conforms(openapi, client):
+    resp = client.get("/recipes")
+    assert resp.status_code == 401
     assert_conforms(openapi, "get", "/recipes", resp)

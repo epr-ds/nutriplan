@@ -42,6 +42,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealPlanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
     get:
       tags: [MealPlans]
       operationId: listMealPlans
@@ -76,6 +80,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MealPlanSummaryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /meal-plans/{planId}:
     get:
@@ -93,8 +101,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealPlanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Meal plan not found
+          $ref: '#/components/responses/NotFound'
 
     patch:
       tags: [MealPlans]
@@ -121,12 +131,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealPlanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Meal plan not found
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Illegal status transition for the plan's current state
+          $ref: '#/components/responses/Conflict'
         '422':
-          description: Transition preconditions not met (e.g. activating a plan with no meals)
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /meal-plans/{planId}/meals:
     post:
@@ -150,10 +162,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Meal plan not found or not owned by the caller
+          $ref: '#/components/responses/NotFound'
         '422':
-          description: Unknown recipe reference or invalid servings (must be greater than 0)
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /ai/recommendations:
     post:
@@ -271,6 +285,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/RecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
 components:
   securitySchemes:
@@ -278,6 +296,36 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Authentication is required, or the bearer token is missing/invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: >-
+        The meal plan does not exist, or is not visible to the caller. A plan owned by a
+        different user is deliberately reported as not found (no existence/ownership leak).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: The request conflicts with the resource's current state (e.g. an illegal transition)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: >-
+        The request was well-formed but failed validation or a domain precondition. Validation
+        failures additionally carry a machine-readable `errors` array.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
 
   parameters:
     PlanId:
@@ -604,3 +652,26 @@ components:
           type: integer
         sugarGrams:
           type: integer
+
+    Problem:
+      type: object
+      description: |
+        RFC 7807 problem detail returned as `application/problem+json` for every 4xx/5xx
+        error (DPL-108). Additional members (e.g. `errors` for validation failures) may be present.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A URI reference identifying the problem type (`about:blank` by default)
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type
+        status:
+          type: integer
+          description: The HTTP status code
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence
+        instance:
+          type: string
+          description: A URI reference identifying the specific occurrence (the request path)
