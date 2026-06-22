@@ -13,7 +13,8 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.domain.meal_plan import DietaryType, MealPlan, MealPlanStatus, MealType
+from app.domain.meal_plan import DietaryType, MealPlan, MealPlanStatus, MealType, PlannedMeal
+from app.domain.recipe import Recipe
 
 
 class _Camel(BaseModel):
@@ -70,11 +71,85 @@ class CreateMealPlanRequest(_Camel):
     dietary_type: DietaryType | None = None
 
 
+class IngredientResponse(_Camel):
+    """``IngredientResponse`` — one ingredient line within a recipe projection."""
+
+    name: str
+    quantity: float | None = None
+    unit: str | None = None
+    calories: int | None = None
+    protein: float | None = None
+    carbs: float | None = None
+    fat: float | None = None
+    sugar: float | None = None
+
+
+class RecipeResponse(_Camel):
+    """``RecipeResponse`` — the caller-facing projection of a catalog recipe."""
+
+    id: str
+    name: str
+    description: str | None = None
+    ingredients: list[IngredientResponse] = Field(default_factory=list)
+    instructions: list[str] = Field(default_factory=list)
+    prep_time: int | None = None
+    cook_time: int | None = None
+    servings: int | None = None
+    image_url: str | None = None
+    nutritional_info: NutritionalInfoSchema | None = None
+
+    @classmethod
+    def from_recipe(cls, recipe: Recipe) -> RecipeResponse:
+        return cls(
+            id=recipe.id,
+            name=recipe.name,
+            description=recipe.description,
+            ingredients=[IngredientResponse(**ing.model_dump()) for ing in recipe.ingredients],
+            instructions=list(recipe.instructions),
+            prep_time=recipe.prep_time,
+            cook_time=recipe.cook_time,
+            servings=recipe.servings,
+            image_url=recipe.image_url,
+            nutritional_info=(
+                NutritionalInfoSchema(**recipe.nutritional_info.model_dump())
+                if recipe.nutritional_info is not None
+                else None
+            ),
+        )
+
+
 class MealResponse(_Camel):
     id: str
     meal_type: MealType
     servings: float
+    recipe: RecipeResponse | None = None
     nutritional_info: NutritionalInfoSchema | None = None
+
+    @classmethod
+    def from_meal(cls, meal: PlannedMeal, recipe: Recipe | None = None) -> MealResponse:
+        return cls(
+            id=meal.id,
+            meal_type=MealType(meal.meal_type),
+            servings=meal.servings,
+            recipe=RecipeResponse.from_recipe(recipe) if recipe is not None else None,
+            nutritional_info=(
+                NutritionalInfoSchema(**meal.nutritional_info.model_dump())
+                if meal.nutritional_info is not None
+                else None
+            ),
+        )
+
+
+class AddMealRequest(_Camel):
+    """Body of ``POST /meal-plans/{planId}/meals`` (AddMealRequest).
+
+    ``servings`` is intentionally not constrained here — the ``servings > 0`` invariant is enforced
+    by the domain aggregate, so the rule lives in one place and surfaces as a ``422`` domain error.
+    """
+
+    meal_type: MealType
+    recipe_id: str
+    servings: float
 
 
 class UpdateMealPlanStatusRequest(_Camel):
@@ -103,19 +178,7 @@ class MealPlanResponse(_Camel):
             end_date=plan.end_date,
             daily_calorie_target=plan.daily_calorie_target,
             status=MealPlanStatus(plan.status),
-            meals=[
-                MealResponse(
-                    id=meal.id,
-                    meal_type=MealType(meal.meal_type),
-                    servings=meal.servings,
-                    nutritional_info=(
-                        NutritionalInfoSchema(**meal.nutritional_info.model_dump())
-                        if meal.nutritional_info is not None
-                        else None
-                    ),
-                )
-                for meal in plan.meals
-            ],
+            meals=[MealResponse.from_meal(meal) for meal in plan.meals],
         )
 
 

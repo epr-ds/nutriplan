@@ -150,6 +150,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealResponse'
+        '404':
+          description: Meal plan not found or not owned by the caller
+        '422':
+          description: Unknown recipe reference or invalid servings (must be greater than 0)
 
   /ai/recommendations:
     post:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from app.domain.meal_plan import DietaryType, MacroTargets, MealPlanStatus
+from app.domain.meal_plan import DietaryType, MacroTargets, MealPlanStatus, MealType
 
 
 @dataclass(frozen=True)
@@ -51,3 +51,18 @@ class ChangeMealPlanStatusCommand:
     user_id: str
     plan_id: str
     target_status: MealPlanStatus
+
+
+@dataclass(frozen=True)
+class AddMealToPlanCommand:
+    """Inputs for the *add meal to plan* use case (DPL-105).
+
+    ``user_id`` comes from the authenticated principal so a caller can only modify their own plans.
+    ``recipe_id`` is validated against the recipe catalog by the application service.
+    """
+
+    user_id: str
+    plan_id: str
+    meal_type: MealType
+    recipe_id: str
+    servings: float

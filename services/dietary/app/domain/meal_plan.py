@@ -19,6 +19,7 @@ from pydantic.alias_generators import to_camel
 from app.domain.errors import (
     EmptyMealPlanActivationError,
     IllegalStateTransitionError,
+    InvalidServingsError,
     MealPlanDateRangeError,
 )
 
@@ -178,6 +179,35 @@ class MealPlan(_Model):
     def save(self) -> None:
         """Save an active plan (e.g. as a reusable template)."""
         self.transition_to(MealPlanStatus.SAVED)
+
+    def add_meal(
+        self,
+        *,
+        meal_type: MealType,
+        recipe_id: str,
+        servings: float,
+        day_index: int | None = None,
+        nutritional_info: NutritionalInfo | None = None,
+    ) -> PlannedMeal:
+        """Add a planned meal (a recipe reference + servings) to the plan and return it (DPL-105).
+
+        Enforces the only intrinsic invariant of a planned meal -- ``servings`` must be strictly
+        positive -- raising :class:`~app.domain.errors.InvalidServingsError` otherwise and leaving
+        the plan unchanged. The referenced recipe's *existence* is a cross-aggregate concern handled
+        by the application layer, not here. On success ``updated_at`` is bumped.
+        """
+        if servings <= 0:
+            raise InvalidServingsError(servings)
+        meal = PlannedMeal(
+            meal_type=meal_type,
+            recipe_id=recipe_id,
+            servings=servings,
+            day_index=day_index,
+            nutritional_info=nutritional_info,
+        )
+        self.meals.append(meal)
+        self.updated_at = _utcnow()
+        return meal
 
     def to_document(self) -> dict:
         """Serialize to a MongoDB document: camelCase keys, aggregate id stored as ``_id``."""

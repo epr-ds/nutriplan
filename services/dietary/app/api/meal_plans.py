@@ -6,15 +6,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import CurrentPrincipal, MealPlanServiceDep
+from app.api.deps import CurrentPrincipal, MealPlanServiceDep, MealServiceDep
 from app.api.schemas import (
+    AddMealRequest,
     CreateMealPlanRequest,
     MealPlanResponse,
     MealPlanStatusFilter,
     MealPlanSummaryResponse,
+    MealResponse,
     UpdateMealPlanStatusRequest,
 )
 from app.application.commands import (
+    AddMealToPlanCommand,
     ChangeMealPlanStatusCommand,
     CreateMealPlanCommand,
     ListMealPlansQuery,
@@ -112,3 +115,31 @@ def update_meal_plan_status(
     )
     plan = service.change_meal_plan_status(command)
     return MealPlanResponse.from_aggregate(plan)
+
+
+@router.post(
+    "/{plan_id}/meals",
+    response_model=MealResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a meal to a meal plan",
+)
+def add_meal_to_plan(
+    plan_id: str,
+    body: AddMealRequest,
+    principal: CurrentPrincipal,
+    service: MealServiceDep,
+) -> MealResponse:
+    """Add a meal (a recipe reference + servings) to the caller's plan (DPL-105).
+
+    Returns the created meal with its recipe; a missing or not-owned plan is ``404``, while an
+    unknown recipe or non-positive ``servings`` is ``422``.
+    """
+    command = AddMealToPlanCommand(
+        user_id=principal.user_id,
+        plan_id=plan_id,
+        meal_type=body.meal_type,
+        recipe_id=body.recipe_id,
+        servings=body.servings,
+    )
+    meal, recipe = service.add_meal_to_plan(command)
+    return MealResponse.from_meal(meal, recipe)

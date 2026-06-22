@@ -59,3 +59,23 @@ class EmptyMealPlanActivationError(DomainError):
     def __init__(self, plan_id: str) -> None:
         super().__init__("A meal plan must have at least one meal before it can be activated")
         self.plan_id = plan_id
+
+
+class RecipeNotFoundError(DomainError):
+    """Raised when a meal references a recipe id that is not in the catalog (maps to ``422``).
+
+    The request is well-formed but cannot be processed because the referenced recipe does not
+    exist — distinct from a missing *plan* (which is a ``404``).
+    """
+
+    def __init__(self, recipe_id: str) -> None:
+        super().__init__(f"Recipe {recipe_id} was not found")
+        self.recipe_id = recipe_id
+
+
+class InvalidServingsError(DomainError):
+    """Raised when a planned meal's ``servings`` is not strictly positive (maps to ``422``)."""
+
+    def __init__(self, servings: float) -> None:
+        super().__init__(f"servings must be greater than 0 (got {servings})")
+        self.servings = servings
