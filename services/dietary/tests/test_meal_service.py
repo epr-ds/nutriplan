@@ -68,6 +68,21 @@ def test_add_meal_persists_and_returns_meal_with_recipe():
     assert stored.meals[0].recipe_id == RECIPE_ID
 
 
+def test_add_meal_computes_and_persists_nutrition():
+    # Recipe carries per-serving 320 cal / 12 g protein; a 1.5-serving meal scales that (DPL-301).
+    service, plan, plans = _service()
+
+    meal, _recipe = service.add_meal_to_plan(_command(plan.id, servings=1.5))
+
+    assert meal.nutritional_info is not None
+    assert meal.nutritional_info.calories == 480  # 320 * 1.5
+    assert meal.nutritional_info.protein == 18.0  # 12.0 * 1.5
+    # The computed nutrition is embedded on the persisted meal, not just the returned value.
+    stored_meal = plans.get("owner", plan.id).meals[0]
+    assert stored_meal.nutritional_info.calories == 480
+    assert stored_meal.nutritional_info.protein == 18.0
+
+
 def test_add_meal_unknown_plan_raises_not_found():
     service, _plan, _plans = _service()
 

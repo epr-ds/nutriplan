@@ -110,6 +110,20 @@ def test_add_meal_returns_201_with_recipe(client, plans, principal):
     assert len(plans.get(principal.user_id, plan.id).meals) == 1
 
 
+def test_add_meal_response_includes_computed_nutrition(client, plans, principal):
+    plan = _seed_plan(plans, principal.user_id)
+
+    response = client.post(
+        f"/meal-plans/{plan.id}/meals", json=_body(servings=1.5), headers=_auth()
+    )
+
+    assert response.status_code == 201
+    # Per-serving 420 cal / 30 g protein scaled to 1.5 servings (DPL-301).
+    info = response.json()["nutritionalInfo"]
+    assert info["calories"] == 630
+    assert info["protein"] == 45.0
+
+
 def test_add_meal_unknown_recipe_returns_422(client, plans, principal):
     plan = _seed_plan(plans, principal.user_id)
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 from app.application.commands import AddMealToPlanCommand
 from app.domain.errors import MealPlanNotFoundError, RecipeNotFoundError
 from app.domain.meal_plan import PlannedMeal
+from app.domain.nutrition import compute_meal_nutrition
 from app.domain.recipe import Recipe
 from app.domain.repositories import MealPlanRepository, RecipeRepository
 
@@ -34,7 +35,8 @@ class MealService:
         :class:`~app.domain.errors.MealPlanNotFoundError` (``404``). An unknown ``recipe_id`` raises
         :class:`~app.domain.errors.RecipeNotFoundError` (``422``), and a non-positive ``servings``
         raises :class:`~app.domain.errors.InvalidServingsError` (``422``) from the aggregate. The
-        mutated plan is persisted only on success.
+        meal's nutrition is computed from the recipe scaled to ``servings`` (DPL-301) and embedded
+        on the planned meal. The mutated plan is persisted only on success.
         """
         plan = self._plans.get(command.user_id, command.plan_id)
         if plan is None:
@@ -46,6 +48,7 @@ class MealService:
             meal_type=command.meal_type,
             recipe_id=command.recipe_id,
             servings=command.servings,
+            nutritional_info=compute_meal_nutrition(recipe, command.servings),
         )
         self._plans.update(plan)
         return meal, recipe
