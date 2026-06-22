@@ -100,6 +100,21 @@ and every ingredient must carry a `name`. Installed idempotently on startup, lik
 reference real recipes before any authoring UI exists. The seed uses stable ids and a fixed
 timestamp, so re-running it (every boot) is a pure upsert — it never duplicates or churns rows.
 
+## DPL-105 — Add a meal to a plan
+
+`POST /meal-plans/{planId}/meals` adds a `PlannedMeal` (a recipe reference + `servings`) to the
+caller's plan. The aggregate owns the only intrinsic rule — `servings > 0`
+(`MealPlan.add_meal()` raises `InvalidServingsError` → `422`) — while the *existence* of the
+referenced recipe is a cross-aggregate concern validated by the application layer.
+
+Because this use case needs **both** the meal-plan and recipe repositories, it lives in a focused
+**`MealService`** (`app/application/meal_service.py`) rather than widening `MealPlanService`, which
+only depends on the plan repository. `add_meal_to_plan` loads the plan owner-scoped (missing or not
+owned → `MealPlanNotFoundError` → `404`), resolves the recipe (unknown → `RecipeNotFoundError` →
+`422`), mutates the aggregate, and persists it only on success. The `201 MealResponse` embeds the
+resolved `RecipeResponse`; the plan detail/list projections leave `recipe` null (they don't fan out
+to the catalog). Recomputing the plan-level `nutritionalSummary` is out of scope (DPL-302).
+
 ## Endpoints
 
 | Method | Path | Story | Notes |
@@ -108,6 +123,7 @@ timestamp, so re-running it (every boot) is a pure upsert — it never duplicate
 | `GET` | `/meal-plans` | DPL-103 | List the caller's plans → `200 MealPlanSummaryResponse[]`. Requires a Bearer token. Query: `status` (active/completed/saved), `page` (≥1), `limit` (1–100); newest first |
 | `GET` | `/meal-plans/{planId}` | DPL-104 | Get one plan with full detail (incl. meals) → `200 MealPlanResponse`. Requires a Bearer token; missing or not owned → `404` (no cross-user leakage) |
 | `PATCH` | `/meal-plans/{planId}` | DPL-106 | Transition a plan's lifecycle status (`draft → active → completed/saved`) → `200 MealPlanResponse`. Body `{ status }` (active/completed/saved). Illegal transition → `409`; activating with no meals → `422`; missing or not owned → `404` |
+| `POST` | `/meal-plans/{planId}/meals` | DPL-105 | Add a meal (a recipe reference + servings) to the caller's plan → `201 MealResponse` (with the embedded recipe). Body `{ mealType, recipeId, servings }`. Unknown recipe or `servings ≤ 0` → `422`; missing or not owned plan → `404` |
 | `GET` | `/health` | — | liveness probe |
 
 > Remaining meal-plan endpoints (list/get + state machine) arrive in DPL-103/104/106 and are defined

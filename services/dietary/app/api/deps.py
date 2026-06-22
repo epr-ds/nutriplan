@@ -15,11 +15,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.application.meal_plan_service import MealPlanService
+from app.application.meal_service import MealService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
-from app.domain.repositories import MealPlanRepository
+from app.domain.repositories import MealPlanRepository, RecipeRepository
 from app.repositories.mongo_meal_plan_repository import MongoMealPlanRepository
+from app.repositories.mongo_recipe_repository import MongoRecipeRepository
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -66,5 +68,17 @@ def get_meal_plan_service(
     return MealPlanService(repository)
 
 
+def get_recipe_repository() -> RecipeRepository:
+    return MongoRecipeRepository()
+
+
+def get_meal_service(
+    plans: Annotated[MealPlanRepository, Depends(get_meal_plan_repository)],
+    recipes: Annotated[RecipeRepository, Depends(get_recipe_repository)],
+) -> MealService:
+    return MealService(plans, recipes)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 MealPlanServiceDep = Annotated[MealPlanService, Depends(get_meal_plan_service)]
+MealServiceDep = Annotated[MealService, Depends(get_meal_service)]
