@@ -23,7 +23,12 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from app.domain.meal_plan import NutritionalInfo
+from app.domain.meal_plan import (
+    MealPlan,
+    NutritionalInfo,
+    NutritionalSummary,
+    NutritionalTargets,
+)
 from app.domain.recipe import Recipe
 
 _MACRO_FIELDS = ("protein", "carbs", "fat", "sugar")
@@ -79,3 +84,65 @@ def _round_half_up(value: Decimal, quantum: Decimal) -> Decimal:
 
 def _as_float(value: Decimal | None) -> float | None:
     return None if value is None else float(value)
+
+
+def summarize_plan_nutrition(plan: MealPlan) -> NutritionalSummary:
+    """Summarize *plan*'s overall nutrition versus its targets (DPL-302).
+
+    Rolls every planned meal's nutrition (DPL-301) up into a ``total``, divides that by the plan's
+    **inclusive** date span (``start_date``..``end_date``) for the ``daily_average``, and surfaces
+    the plan's ``targets``. A nutrient that no meal reports stays ``None`` (unknown != zero). The
+    same half-up rule as per-meal nutrition applies (energy to a whole calorie, macros to one
+    decimal place). Being derived from the aggregate's current meals, it always reflects the latest
+    meals (DPL-105/107).
+    """
+    totals = _sum_meal_nutrients(plan)
+    days = (plan.end_date - plan.start_date).days + 1
+    daily = {
+        field: (None if value is None else value / Decimal(days)) for field, value in totals.items()
+    }
+    return NutritionalSummary(
+        total=_as_info(totals),
+        daily_average=_as_info(daily),
+        targets=_plan_targets(plan),
+    )
+
+
+def _sum_meal_nutrients(plan: MealPlan) -> dict[str, Decimal | None]:
+    """Exact-decimal sum of each nutrient across the plan's meals (``None`` where unreported)."""
+    infos = [meal.nutritional_info for meal in plan.meals if meal.nutritional_info is not None]
+    totals: dict[str, Decimal | None] = {}
+    for field in _NUTRIENT_FIELDS:
+        knowns = [
+            value for info in infos if (value := _to_decimal(getattr(info, field))) is not None
+        ]
+        totals[field] = sum(knowns, Decimal(0)) if knowns else None
+    return totals
+
+
+def _as_info(values: dict[str, Decimal | None]) -> NutritionalInfo:
+    """Round exact-decimal nutrients into a ``NutritionalInfo`` (calories whole, macros 1dp)."""
+    calories = values["calories"]
+    return NutritionalInfo(
+        calories=None if calories is None else int(_round_half_up(calories, _CALORIE_QUANTUM)),
+        protein=_as_float(_round_macro(values["protein"])),
+        carbs=_as_float(_round_macro(values["carbs"])),
+        fat=_as_float(_round_macro(values["fat"])),
+        sugar=_as_float(_round_macro(values["sugar"])),
+    )
+
+
+def _round_macro(value: Decimal | None) -> Decimal | None:
+    return None if value is None else _round_half_up(value, _MACRO_QUANTUM)
+
+
+def _plan_targets(plan: MealPlan) -> NutritionalTargets:
+    """The plan's nutrition goals: daily calorie target plus optional macro gram targets."""
+    macros = plan.macro_targets
+    return NutritionalTargets(
+        calories=plan.daily_calorie_target,
+        protein=macros.protein_grams if macros is not None else None,
+        carbs=macros.carbs_grams if macros is not None else None,
+        fat=macros.fat_grams if macros is not None else None,
+        sugar=macros.sugar_grams if macros is not None else None,
+    )

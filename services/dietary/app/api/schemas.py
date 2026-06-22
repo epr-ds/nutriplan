@@ -13,7 +13,15 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.domain.meal_plan import DietaryType, MealPlan, MealPlanStatus, MealType, PlannedMeal
+from app.domain.meal_plan import (
+    DietaryType,
+    MealPlan,
+    MealPlanStatus,
+    MealType,
+    NutritionalSummary,
+    PlannedMeal,
+)
+from app.domain.nutrition import summarize_plan_nutrition
 from app.domain.recipe import Recipe
 
 
@@ -58,6 +66,30 @@ class NutritionalInfoSchema(_Camel):
     carbs: float | None = None
     fat: float | None = None
     sugar: float | None = None
+
+
+class NutritionalTargetsSchema(_Camel):
+    calories: int | None = None
+    protein: int | None = None
+    carbs: int | None = None
+    fat: int | None = None
+    sugar: int | None = None
+
+
+class NutritionalSummarySchema(_Camel):
+    """``NutritionalSummary`` — the plan's total + daily-average nutrition versus its targets."""
+
+    total: NutritionalInfoSchema
+    daily_average: NutritionalInfoSchema
+    targets: NutritionalTargetsSchema
+
+    @classmethod
+    def from_domain(cls, summary: NutritionalSummary) -> NutritionalSummarySchema:
+        return cls(
+            total=NutritionalInfoSchema(**summary.total.model_dump()),
+            daily_average=NutritionalInfoSchema(**summary.daily_average.model_dump()),
+            targets=NutritionalTargetsSchema(**summary.targets.model_dump()),
+        )
 
 
 class CreateMealPlanRequest(_Camel):
@@ -170,6 +202,7 @@ class MealPlanResponse(_Camel):
     daily_calorie_target: int
     status: MealPlanStatus
     meals: list[MealResponse] = Field(default_factory=list)
+    nutritional_summary: NutritionalSummarySchema | None = None
 
     @classmethod
     def from_aggregate(cls, plan: MealPlan) -> MealPlanResponse:
@@ -181,6 +214,9 @@ class MealPlanResponse(_Camel):
             daily_calorie_target=plan.daily_calorie_target,
             status=MealPlanStatus(plan.status),
             meals=[MealResponse.from_meal(meal) for meal in plan.meals],
+            nutritional_summary=NutritionalSummarySchema.from_domain(
+                summarize_plan_nutrition(plan)
+            ),
         )
 
 

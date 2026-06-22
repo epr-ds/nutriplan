@@ -140,7 +140,28 @@ recipe by **id only** and never imports the catalog.
   measured" is kept distinct from "measured as zero".
 
 Rolling these per-meal figures up into a plan-level `nutritionalSummary` (total + daily average vs
-targets) is the next slice (DPL-302).
+targets) is done by DPL-302 below.
+
+## DPL-302 — Plan nutritional summary
+
+Every full meal-plan read (`POST`/`GET`/`PATCH /meal-plans`) carries a `nutritionalSummary` — the
+plan's overall nutrition versus its targets. It is a **derived value object**, recomputed from the
+aggregate's current meals on every read (never persisted), so it always reflects the latest meals
+(DPL-105/107). The pure domain service `app/domain/nutrition.py`
+(`summarize_plan_nutrition(plan)`) computes it from the per-meal `nutritionalInfo` populated by
+DPL-301; the wire projection lives in `MealPlanResponse.from_aggregate`.
+
+- **`total`.** The sum of every planned meal's nutrition (a meal with no `nutritionalInfo` is
+  skipped).
+- **`dailyAverage`.** `total ÷ days`, where `days` is the plan's **inclusive** date span
+  (`endDate − startDate + 1`), so a one-day plan averages to its total.
+- **`targets`.** A flattened view of the plan's `dailyCalorieTarget` (as `calories`) plus its
+  optional macro gram targets (`null` per macro when unset). Exposed as the dedicated
+  `NutritionalTargets` schema (distinct from the `MacroTargets` create-request input, which carries
+  no calorie figure).
+- **Rounding & unknown-vs-zero.** Same rules as DPL-301: exact `Decimal`, rounded once **half-up**
+  (energy whole, macros to one decimal place); a nutrient that **no** meal reports stays `null`, so
+  an empty plan has `null` totals/averages while still surfacing its `targets`.
 
 ## DPL-202 — Recipe search
 
@@ -184,6 +205,11 @@ token; the catalog itself is global (not owner-scoped).
 > [DPL-108](#dpl-108--ownership-guard--error-model-problemjson)). Every route requires a Bearer token
 > (missing/invalid → `401`); the full schema lives in
 > [`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml).
+
+> Every full `MealPlanResponse` (the `POST`/`GET`/`PATCH /meal-plans` responses) carries a
+> `nutritionalSummary` (total + daily average vs targets, see
+> [DPL-302](#dpl-302--plan-nutritional-summary)); the lightweight list projection
+> (`MealPlanSummaryResponse`) does not.
 
 ## Authentication (DPL-102)
 

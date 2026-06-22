@@ -215,6 +215,20 @@ def test_get_meal_plan_conforms(openapi, client):
     assert_conforms(openapi, "get", f"/meal-plans/{plan['id']}", resp)
 
 
+def test_get_meal_plan_with_summary_conforms(openapi, client):
+    plan = _create_plan(client)
+    assert _add_meal(client, plan["id"]).status_code == 201
+    resp = client.get(f"/meal-plans/{plan['id']}", headers=_AUTH)
+    assert resp.status_code == 200
+    summary = resp.json()["nutritionalSummary"]
+    # Overnight Oats: 243 kcal/serving x 1.5 servings = 364.5 -> 365 (half-up); plan span is
+    # Jan 1..Jan 7 inclusive = 7 days, so the daily average is 365 / 7 = 52.14 -> 52.
+    assert summary["total"]["calories"] == 365
+    assert summary["dailyAverage"]["calories"] == 52
+    assert summary["targets"]["calories"] == 2000
+    assert_conforms(openapi, "get", f"/meal-plans/{plan['id']}", resp)
+
+
 def test_get_meal_plan_not_found_conforms(openapi, client):
     resp = client.get(f"/meal-plans/{MISSING_ID}", headers=_AUTH)
     assert resp.status_code == 404

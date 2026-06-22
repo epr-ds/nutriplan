@@ -86,6 +86,26 @@ def test_create_accepts_optional_targets(client):
     assert response.status_code == 201
 
 
+def test_create_includes_summary_with_targets_and_empty_totals(client):
+    body = {
+        **VALID_BODY,
+        "macroTargets": {"proteinGrams": 150, "carbsGrams": 180, "fatGrams": 60, "sugarGrams": 40},
+    }
+    response = client.post("/meal-plans", json=body, headers=_auth())
+
+    assert response.status_code == 201
+    summary = response.json()["nutritionalSummary"]
+    # A fresh draft has no meals, so totals/averages are unknown (null), not zero.
+    assert summary["total"]["calories"] is None
+    assert summary["dailyAverage"]["calories"] is None
+    # Targets reflect the requested calorie + macro goals.
+    assert summary["targets"]["calories"] == 2000
+    assert summary["targets"]["protein"] == 150
+    assert summary["targets"]["carbs"] == 180
+    assert summary["targets"]["fat"] == 60
+    assert summary["targets"]["sugar"] == 40
+
+
 def test_create_requires_authentication(client):
     response = client.post("/meal-plans", json=VALID_BODY)
     assert response.status_code == 401

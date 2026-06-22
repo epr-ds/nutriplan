@@ -402,7 +402,7 @@ components:
 
     MealPlanResponse:
       type: object
-      required: [id, name, startDate, endDate, dailyCalorieTarget, status, meals]
+      required: [id, name, startDate, endDate, dailyCalorieTarget, status, meals, nutritionalSummary]
       properties:
         id:
           type: string
@@ -507,29 +507,63 @@ components:
           type: number
 
     NutritionalInfo:
+      description: >-
+        A bundle of nutrient values. Nullable as a whole (a meal may carry no
+        nutrition yet) and per nutrient: a null nutrient means "unknown / not
+        measured", which is kept distinct from a measured zero.
       type: object
       nullable: true
       properties:
         calories:
           type: integer
+          nullable: true
         protein:
           type: number
+          nullable: true
         carbs:
           type: number
+          nullable: true
         fat:
           type: number
+          nullable: true
         sugar:
           type: number
+          nullable: true
 
     NutritionalSummary:
       type: object
+      required: [total, dailyAverage, targets]
       properties:
         total:
           $ref: '#/components/schemas/NutritionalInfo'
         dailyAverage:
           $ref: '#/components/schemas/NutritionalInfo'
         targets:
-          $ref: '#/components/schemas/MacroTargets'
+          $ref: '#/components/schemas/NutritionalTargets'
+
+    NutritionalTargets:
+      description: >-
+        A plan's nutrition goals: its daily calorie target plus optional macro
+        gram targets. Distinct from MacroTargets (the create-request input) in
+        that it also carries the calorie target. A null macro means no target was
+        set for that nutrient.
+      type: object
+      properties:
+        calories:
+          type: integer
+          nullable: true
+        protein:
+          type: integer
+          nullable: true
+        carbs:
+          type: integer
+          nullable: true
+        fat:
+          type: integer
+          nullable: true
+        sugar:
+          type: integer
+          nullable: true
 
     AIRecommendationRequest:
       type: object
