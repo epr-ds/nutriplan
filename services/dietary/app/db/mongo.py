@@ -100,6 +100,10 @@ RECIPE_VALIDATOR: dict = {
             "cookTime": {"bsonType": "int"},
             "servings": {"bsonType": "int", "minimum": 1},
             "imageUrl": {"bsonType": "string"},
+            "dietaryTypes": {
+                "bsonType": "array",
+                "items": {"enum": ["omnivore", "vegetarian", "vegan", "keto", "paleo"]},
+            },
             "nutritionalInfo": {
                 "bsonType": "object",
                 "properties": {
@@ -160,7 +164,8 @@ def ensure_recipes_collection(db: Database) -> Collection:
 
     DPL-201 requires the catalog to be queryable by ingredient and by macro nutrient, so a
     multikey index covers ``ingredients.name`` and one index per per-serving macro covers the
-    nutritional filters. Safe to call on every boot.
+    nutritional filters. DPL-202 adds a multikey index on ``dietaryTypes`` for the diet filter.
+    Safe to call on every boot.
     """
     if RECIPES in db.list_collection_names():
         db.command("collMod", RECIPES, validator=RECIPE_VALIDATOR)
@@ -173,4 +178,5 @@ def ensure_recipes_collection(db: Database) -> Collection:
     coll.create_index([("nutritionalInfo.protein", ASCENDING)], name="nutrition_protein")
     coll.create_index([("nutritionalInfo.carbs", ASCENDING)], name="nutrition_carbs")
     coll.create_index([("nutritionalInfo.fat", ASCENDING)], name="nutrition_fat")
+    coll.create_index([("dietaryTypes", ASCENDING)], name="dietaryTypes")
     return coll

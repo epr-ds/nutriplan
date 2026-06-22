@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.domain.dietary_types import DietaryType
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -75,6 +77,7 @@ class Recipe(_Model):
     servings: int = Field(gt=0)
     image_url: str | None = None
     nutritional_info: NutritionalInfo | None = None
+    dietary_types: list[DietaryType] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -91,12 +94,14 @@ class Recipe(_Model):
         cook_time: int | None = None,
         image_url: str | None = None,
         nutritional_info: NutritionalInfo | None = None,
+        dietary_types: list[DietaryType] | None = None,
     ) -> Recipe:
         """Create a new recipe, enforcing the aggregate's invariants.
 
         ``servings`` must be positive (per-serving nutrition is only meaningful for at least one
         serving) and ``name`` must be non-empty; both are enforced by the model's field
-        constraints, which raise a :class:`ValueError` on violation.
+        constraints, which raise a :class:`ValueError` on violation. ``dietary_types`` declares the
+        diets the recipe is compatible with (used by recipe search, DPL-202).
         """
         return cls(
             name=name,
@@ -108,6 +113,7 @@ class Recipe(_Model):
             cook_time=cook_time,
             image_url=image_url,
             nutritional_info=nutritional_info,
+            dietary_types=dietary_types or [],
         )
 
     def to_document(self) -> dict:

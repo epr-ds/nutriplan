@@ -2,6 +2,7 @@
 
 import pytest
 
+from app.domain.dietary_types import DietaryType
 from app.domain.recipe import Ingredient, NutritionalInfo, Recipe
 
 
@@ -97,3 +98,31 @@ def test_from_document_round_trips():
     assert rehydrated.servings == 2
     assert rehydrated.ingredients[0].unit == "g"
     assert rehydrated.nutritional_info.calories == 320
+
+
+def test_dietary_types_default_to_empty():
+    recipe = Recipe.create(name="Plain Rice", servings=1)
+
+    assert recipe.dietary_types == []
+
+
+def test_create_tags_dietary_types():
+    recipe = Recipe.create(
+        name="Tofu Bowl",
+        servings=2,
+        dietary_types=[DietaryType.VEGAN, DietaryType.VEGETARIAN],
+    )
+
+    # use_enum_values stores the plain string values, which the search filter compares against.
+    assert "vegan" in recipe.dietary_types
+    assert "vegetarian" in recipe.dietary_types
+
+
+def test_dietary_types_round_trip_through_document():
+    recipe = Recipe.create(name="Tofu Bowl", servings=2, dietary_types=[DietaryType.VEGAN])
+
+    doc = recipe.to_document()
+    assert doc["dietaryTypes"] == ["vegan"]
+
+    rehydrated = Recipe.from_document(doc)
+    assert rehydrated.dietary_types == ["vegan"]
