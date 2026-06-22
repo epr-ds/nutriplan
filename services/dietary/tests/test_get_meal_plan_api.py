@@ -115,6 +115,23 @@ def test_get_returns_full_meal_plan_with_meals(client, repo, principal):
     assert "userId" not in data
 
 
+def test_get_includes_nutritional_summary(client, repo, principal):
+    plan = _seed(repo, principal.user_id, with_meal=True)
+
+    response = client.get(f"/meal-plans/{plan.id}", headers=_auth())
+
+    assert response.status_code == 200
+    summary = response.json()["nutritionalSummary"]
+    # One meal of 420 kcal / 30 g protein over a 7-day plan (Jan 1..Jan 7 inclusive).
+    assert summary["total"]["calories"] == 420
+    assert summary["total"]["protein"] == 30.0
+    assert summary["dailyAverage"]["calories"] == 60  # 420 / 7
+    assert summary["dailyAverage"]["protein"] == 4.3  # 30.0 / 7 -> 4.2857 -> 4.3 (half-up)
+    # Targets surface the plan's daily calorie target; no macro targets were set.
+    assert summary["targets"]["calories"] == 2000
+    assert summary["targets"]["protein"] is None
+
+
 def test_get_unknown_plan_returns_404(client):
     response = client.get("/meal-plans/00000000-0000-0000-0000-000000000000", headers=_auth())
     assert response.status_code == 404

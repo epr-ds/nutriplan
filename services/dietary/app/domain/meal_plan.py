@@ -84,6 +84,34 @@ class NutritionalInfo(_Model):
     sugar: float | None = None
 
 
+class NutritionalTargets(_Model):
+    """A plan's nutrition goals: its daily calorie target plus optional macro gram targets.
+
+    A flattened, read-facing view of the plan's ``daily_calorie_target`` and ``macro_targets`` used
+    by the nutritional summary (DPL-302); the macros are ``None`` when the plan sets no targets.
+    """
+
+    calories: int | None = None
+    protein: int | None = None
+    carbs: int | None = None
+    fat: int | None = None
+    sugar: int | None = None
+
+
+class NutritionalSummary(_Model):
+    """A plan's overall nutrition versus its targets (DPL-302).
+
+    A *derived* value object (never persisted): the ``total`` nutrition across all of the plan's
+    meals, the ``daily_average`` over the plan's date span, and the plan's ``targets``. It is
+    recomputed from the aggregate's current meals on every read, so it always reflects the latest
+    meals (DPL-105/107).
+    """
+
+    total: NutritionalInfo
+    daily_average: NutritionalInfo
+    targets: NutritionalTargets
+
+
 class PlannedMeal(_Model):
     """A meal planned within a :class:`MealPlan`.
 
