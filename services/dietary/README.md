@@ -158,8 +158,10 @@ token; the catalog itself is global (not owner-scoped).
 | `GET` | `/recipes` | DPL-202 | Search the global recipe catalog → `200 RecipeResponse[]`. Requires a Bearer token. Query (all optional, AND): `ingredients` (repeatable, all-must-match), `dietType`, `maxCalories`, `minProtein`, `page` (≥1), `limit` (1–100); results sorted by name for stable pagination |
 | `GET` | `/health` | — | liveness probe |
 
-> Remaining meal-plan endpoints (list/get + state machine) arrive in DPL-103/104/106 and are defined
-> in [`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml).
+> All `4xx`/`5xx` responses are RFC 7807 `application/problem+json` documents (see
+> [DPL-108](#dpl-108--ownership-guard--error-model-problemjson)). Every route requires a Bearer token
+> (missing/invalid → `401`); the full schema lives in
+> [`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml).
 
 ## Authentication (DPL-102)
 
@@ -173,6 +175,23 @@ caller. Missing/invalid/expired tokens yield `401`.
 
 The verifier depends on an abstract signing-key resolver (PyJWT's `PyJWKClient` in production), so
 its logic is unit-tested with a throwaway RSA key and **no network access**.
+
+## DPL-108 — Ownership guard & error model (problem+json)
+
+Every meal-plan route requires a valid Bearer token (see above) and is **owner-scoped**: reads and
+writes go through `repository.get(user_id, plan_id)`, so a plan that belongs to another user is
+reported as `404` — deliberately indistinguishable from one that does not exist (no
+existence/ownership enumeration).
+
+All `4xx`/`5xx` responses follow [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) and are served as
+`application/problem+json` (`app/api/errors.py`). The body always carries `type` (`about:blank`),
+`title` (the HTTP status phrase), and `status`; `detail`/`instance` are added when available. Request
+and query validation failures (`422`) additionally include a machine-readable `errors` array
+(`[{ loc, msg, type }]`). The handlers map the `DomainError` hierarchy to status codes
+(`MealPlanNotFoundError → 404`, `IllegalStateTransitionError → 409`, other invariants → `422`), pass
+through `HTTPException`s (preserving headers such as `WWW-Authenticate` on `401`), and turn any
+unhandled exception into a `500` problem document. The `Problem` schema and the per-operation error
+responses are declared in the contract, so the provider contract tests validate them too.
 
 ## Run (Docker)
 
