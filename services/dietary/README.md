@@ -210,6 +210,21 @@ The schema-validation tests insert **raw dicts** (bypassing Pydantic) to exercis
 `$jsonSchema` validators directly; the index tests assert the expected `meal_plans` and `recipes`
 indexes exist.
 
+### Provider contract tests (DPL-702)
+
+`tests/test_contract.py` drives every implemented operation to each response it documents (happy
+path **and** documented `404`/`409`/`422` errors) and validates the *actual* response against
+[`contracts/dietary.openapi.yaml`](../../contracts/dietary.openapi.yaml) with
+[`openapi-core`](https://pypi.org/project/openapi-core/) — so a breaking change (renamed/removed
+required field, changed type, drifted enum, undocumented status) fails the build. The endpoints run
+through the real routers/schemas with the MongoDB repositories and JWT verifier swapped for
+in-memory doubles, so the suite needs no database. The spec is located by walking up to
+`contracts/` (override with `DIETARY_OPENAPI_SPEC`); if it is absent the module **skips** locally
+but **hard-fails under `CI`** so a mis-wired gate can't pass silently. Backend CI runs it as a
+dedicated `pytest tests/test_contract.py` step (the main step uses `--ignore=tests/test_contract.py`);
+the `dietary-test` compose service mounts `../contracts` so it runs there too. The `/ai/*` operations
+are documented for the AI service and are not implemented here, so they are not exercised.
+
 ## Configuration (`DIETARY_` env vars)
 
 | Var | Default | Purpose |

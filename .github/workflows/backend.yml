@@ -106,5 +106,7 @@ jobs:
         run: |
           ruff check .
           ruff format --check .
+      - name: Provider contract tests (vs OpenAPI)
+        run: pytest tests/test_contract.py -q
       - name: Test (pytest)
-        run: pytest
+        run: pytest --ignore=tests/test_contract.py
