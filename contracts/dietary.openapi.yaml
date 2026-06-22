@@ -335,6 +335,7 @@ components:
 
     MealPlanSummaryResponse:
       type: object
+      required: [id, name, startDate, endDate, status]
       properties:
         id:
           type: string
@@ -353,6 +354,7 @@ components:
 
     MealPlanResponse:
       type: object
+      required: [id, name, startDate, endDate, dailyCalorieTarget, status, meals]
       properties:
         id:
           type: string
@@ -379,6 +381,7 @@ components:
 
     MealResponse:
       type: object
+      required: [id, mealType, servings]
       properties:
         id:
           type: string
@@ -386,7 +389,14 @@ components:
           type: string
           enum: [breakfast, lunch, dinner, snack]
         recipe:
-          $ref: '#/components/schemas/RecipeResponse'
+          description: >-
+            The full recipe, embedded only on the add-meal response. Plan reads
+            (list and detail) do not expand the recipe and return null here.
+          anyOf:
+            - $ref: '#/components/schemas/RecipeResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         servings:
           type: number
         nutritionalInfo:
@@ -394,6 +404,7 @@ components:
 
     RecipeResponse:
       type: object
+      required: [id, name, servings, ingredients, instructions, dietaryTypes]
       properties:
         id:
           type: string
@@ -428,6 +439,7 @@ components:
 
     IngredientResponse:
       type: object
+      required: [name]
       properties:
         name:
           type: string
@@ -448,6 +460,7 @@ components:
 
     NutritionalInfo:
       type: object
+      nullable: true
       properties:
         calories:
           type: integer

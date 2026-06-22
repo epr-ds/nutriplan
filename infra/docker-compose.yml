@@ -140,6 +140,10 @@ services:
     environment:
       DIETARY_MONGO_URL: mongodb://${MONGO_USER:-nutriplan}:${MONGO_PASSWORD:-nutriplan}@mongo:27017/?authSource=admin
       DIETARY_MONGO_DB: dietary_test
+    volumes:
+      # The OpenAPI contract lives outside the build context; mount it so the provider
+      # contract tests (tests/test_contract.py) run here instead of skipping.
+      - ../contracts:/contracts:ro
     depends_on:
       mongo:
         condition: service_healthy
