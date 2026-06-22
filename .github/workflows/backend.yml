@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: services/ai
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -57,7 +57,7 @@ jobs:
     env:
       IDENTITY_DATABASE_URL: postgresql+psycopg://nutriplan:nutriplan@localhost:5432/identity
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -94,7 +94,7 @@ jobs:
       DIETARY_MONGO_URL: mongodb://localhost:27017
       DIETARY_MONGO_DB: dietary_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
