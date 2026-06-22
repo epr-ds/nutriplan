@@ -97,6 +97,7 @@ class RecipeResponse(_Camel):
     servings: int | None = None
     image_url: str | None = None
     nutritional_info: NutritionalInfoSchema | None = None
+    dietary_types: list[DietaryType] = Field(default_factory=list)
 
     @classmethod
     def from_recipe(cls, recipe: Recipe) -> RecipeResponse:
@@ -115,6 +116,7 @@ class RecipeResponse(_Camel):
                 if recipe.nutritional_info is not None
                 else None
             ),
+            dietary_types=list(recipe.dietary_types),
         )
 
 

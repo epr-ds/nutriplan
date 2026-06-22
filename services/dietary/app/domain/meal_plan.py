@@ -16,6 +16,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.domain.dietary_types import DietaryType
 from app.domain.errors import (
     EmptyMealPlanActivationError,
     IllegalStateTransitionError,
@@ -55,14 +56,6 @@ class MealType(StrEnum):
     LUNCH = "lunch"
     DINNER = "dinner"
     SNACK = "snack"
-
-
-class DietaryType(StrEnum):
-    OMNIVORE = "omnivore"
-    VEGETARIAN = "vegetarian"
-    VEGAN = "vegan"
-    KETO = "keto"
-    PALEO = "paleo"
 
 
 class _Model(BaseModel):

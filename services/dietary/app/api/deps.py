@@ -16,6 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.application.meal_plan_service import MealPlanService
 from app.application.meal_service import MealService
+from app.application.recipe_service import RecipeService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
@@ -79,6 +80,13 @@ def get_meal_service(
     return MealService(plans, recipes)
 
 
+def get_recipe_service(
+    recipes: Annotated[RecipeRepository, Depends(get_recipe_repository)],
+) -> RecipeService:
+    return RecipeService(recipes)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 MealPlanServiceDep = Annotated[MealPlanService, Depends(get_meal_plan_service)]
 MealServiceDep = Annotated[MealService, Depends(get_meal_service)]
+RecipeServiceDep = Annotated[RecipeService, Depends(get_recipe_service)]

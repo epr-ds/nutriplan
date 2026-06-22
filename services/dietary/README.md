@@ -24,11 +24,14 @@ app/
   domain/                # Pure business model — no framework/IO imports
     meal_plan.py         #   MealPlan aggregate root (+ MealPlan.create factory & invariants)
     recipe.py            #   Recipe aggregate root (+ Ingredient / NutritionalInfo value objects)
+    dietary_types.py     #   DietaryType vocabulary (shared kernel: meal plans + recipes)
     repositories.py      #   MealPlanRepository + RecipeRepository ports (abstract)
     errors.py            #   DomainError hierarchy (e.g. MealPlanDateRangeError)
   application/           # Use cases (orchestration)
     commands.py          #   CreateMealPlanCommand (DTO; user_id comes from the principal)
     meal_plan_service.py #   MealPlanService.create_meal_plan(command)
+    meal_service.py      #   MealService.add_meal_to_plan(command) (plan + recipe repos)
+    recipe_service.py    #   RecipeService.search_recipes(query)
   repositories/
     mongo_meal_plan_repository.py   # MongoDB adapter implementing the MealPlan port
     mongo_recipe_repository.py      # MongoDB adapter implementing the Recipe port
@@ -43,6 +46,7 @@ app/
     deps.py              #   Composition root: wires verifier / principal / repo / service
     schemas.py           #   Request/response models (camelCase, match the contract)
     meal_plans.py        #   POST + GET (list) + GET /{id} + PATCH /{id} meal-plans router
+    recipes.py           #   GET /recipes recipe-search router
     errors.py            #   DomainError -> HTTP mapping
     health.py            #   /health liveness probe
 tests/                   # pytest suite (domain + application + security unit tests; API + Mongo)
@@ -95,6 +99,7 @@ and every ingredient must carry a `name`. Installed idempotently on startup, lik
 | `nutrition_protein` | `nutritionalInfo.protein` | filter/sort by per-serving protein |
 | `nutrition_carbs` | `nutritionalInfo.carbs` | filter/sort by per-serving carbs |
 | `nutrition_fat` | `nutritionalInfo.fat` | filter/sort by per-serving fat |
+| `dietaryTypes` | `dietaryTypes` (multikey) | filter recipes by a compatible diet (DPL-202) |
 
 **Reference seed.** `app/db/seed.py` upserts a small fixed-id catalog on startup so meal plans can
 reference real recipes before any authoring UI exists. The seed uses stable ids and a fixed
@@ -115,6 +120,32 @@ owned → `MealPlanNotFoundError` → `404`), resolves the recipe (unknown → `
 resolved `RecipeResponse`; the plan detail/list projections leave `recipe` null (they don't fan out
 to the catalog). Recomputing the plan-level `nutritionalSummary` is out of scope (DPL-302).
 
+## DPL-202 — Recipe search
+
+`GET /recipes` searches the global recipe catalog. All filters are optional and combine with
+**AND**:
+
+| Query param | Matches |
+| --- | --- |
+| `ingredients` (repeatable) | recipes containing **all** named ingredients (case-insensitive, exact name) |
+| `dietType` | recipes that declare that diet in `dietaryTypes` |
+| `maxCalories` | per-serving `calories ≤ maxCalories` |
+| `minProtein` | per-serving `protein ≥ minProtein` |
+| `page` / `limit` | offset pagination (`page ≥ 1`, `1 ≤ limit ≤ 100`, default `20`) |
+
+To make `dietType` filtering possible, `Recipe` gained a `dietary_types` field: the list of diets a
+recipe is **compatible with** (e.g. a vegan dish is tagged `vegan`, `vegetarian` and `omnivore`).
+`DietaryType` was extracted into a small **shared kernel** (`app/domain/dietary_types.py`) so both
+the `MealPlan` and `Recipe` aggregates reference the same vocabulary without importing each other.
+
+Results are ordered deterministically by `(name, id)`, so offset pagination is **stable and
+reproducible** and an empty / over-broad query is handled gracefully — every recipe is eligible,
+ordered, and capped by `limit`. The use case lives in a focused **`RecipeService`**
+(`app/application/recipe_service.py`) over the existing `RecipeRepository` port; the Mongo adapter
+builds a single query (using the `ingredientName` / `nutrition_*` / `dietaryTypes` indexes) while the
+in-memory double mirrors the same semantics for fast unit tests. The endpoint requires a Bearer
+token; the catalog itself is global (not owner-scoped).
+
 ## Endpoints
 
 | Method | Path | Story | Notes |
@@ -124,6 +155,7 @@ to the catalog). Recomputing the plan-level `nutritionalSummary` is out of scope
 | `GET` | `/meal-plans/{planId}` | DPL-104 | Get one plan with full detail (incl. meals) → `200 MealPlanResponse`. Requires a Bearer token; missing or not owned → `404` (no cross-user leakage) |
 | `PATCH` | `/meal-plans/{planId}` | DPL-106 | Transition a plan's lifecycle status (`draft → active → completed/saved`) → `200 MealPlanResponse`. Body `{ status }` (active/completed/saved). Illegal transition → `409`; activating with no meals → `422`; missing or not owned → `404` |
 | `POST` | `/meal-plans/{planId}/meals` | DPL-105 | Add a meal (a recipe reference + servings) to the caller's plan → `201 MealResponse` (with the embedded recipe). Body `{ mealType, recipeId, servings }`. Unknown recipe or `servings ≤ 0` → `422`; missing or not owned plan → `404` |
+| `GET` | `/recipes` | DPL-202 | Search the global recipe catalog → `200 RecipeResponse[]`. Requires a Bearer token. Query (all optional, AND): `ingredients` (repeatable, all-must-match), `dietType`, `maxCalories`, `minProtein`, `page` (≥1), `limit` (1–100); results sorted by name for stable pagination |
 | `GET` | `/health` | — | liveness probe |
 
 > Remaining meal-plan endpoints (list/get + state machine) arrive in DPL-103/104/106 and are defined

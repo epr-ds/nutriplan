@@ -236,14 +236,32 @@ paths:
           in: query
           schema:
             type: string
+            enum: [omnivore, vegetarian, vegan, keto, paleo]
         - name: maxCalories
           in: query
           schema:
             type: integer
+            minimum: 0
         - name: minProtein
           in: query
           schema:
+            type: number
+            minimum: 0
+        - name: page
+          in: query
+          description: 1-based page number for offset pagination.
+          schema:
             type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Maximum number of recipes to return per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         '200':
           description: Recipe search results
@@ -402,6 +420,11 @@ components:
           format: uri
         nutritionalInfo:
           $ref: '#/components/schemas/NutritionalInfo'
+        dietaryTypes:
+          type: array
+          items:
+            type: string
+            enum: [omnivore, vegetarian, vegan, keto, paleo]
 
     IngredientResponse:
       type: object

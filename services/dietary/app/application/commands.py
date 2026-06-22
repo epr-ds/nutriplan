@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from app.domain.meal_plan import DietaryType, MacroTargets, MealPlanStatus, MealType
+from app.domain.dietary_types import DietaryType
+from app.domain.meal_plan import MacroTargets, MealPlanStatus, MealType
 
 
 @dataclass(frozen=True)
@@ -66,3 +67,21 @@ class AddMealToPlanCommand:
     meal_type: MealType
     recipe_id: str
     servings: float
+
+
+@dataclass(frozen=True)
+class SearchRecipesQuery:
+    """Inputs for the *search recipes* use case (DPL-202).
+
+    All filters are optional and combine with AND; the recipe catalog is global, so there is no
+    owner scoping. ``ingredients`` is a tuple (kept hashable for this frozen DTO) of ingredient
+    names a recipe must *all* contain. ``page`` is 1-based and is translated to a repository
+    ``skip`` offset by the application service.
+    """
+
+    ingredients: tuple[str, ...] = ()
+    diet_type: DietaryType | None = None
+    max_calories: int | None = None
+    min_protein: float | None = None
+    page: int = 1
+    limit: int = 20

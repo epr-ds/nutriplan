@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 
 from pymongo.collection import Collection
 
+from app.domain.dietary_types import DietaryType
 from app.domain.recipe import Ingredient, NutritionalInfo, Recipe
 
 _SEED_TIMESTAMP = datetime(2024, 1, 1, tzinfo=UTC)
@@ -28,6 +29,7 @@ def _recipe(
     servings: int,
     image_url: str,
     nutritional_info: NutritionalInfo,
+    dietary_types: list[DietaryType],
 ) -> Recipe:
     return Recipe(
         id=recipe_id,
@@ -40,6 +42,7 @@ def _recipe(
         servings=servings,
         image_url=image_url,
         nutritional_info=nutritional_info,
+        dietary_types=dietary_types,
         created_at=_SEED_TIMESTAMP,
         updated_at=_SEED_TIMESTAMP,
     )
@@ -98,6 +101,7 @@ SEED_RECIPES: list[Recipe] = [
         2,
         "https://images.nutriplan.app/recipes/overnight-oats.jpg",
         NutritionalInfo(calories=243, protein=9.9, carbs=38.1, fat=6.2, sugar=8.6),
+        [DietaryType.VEGETARIAN, DietaryType.OMNIVORE],
     ),
     _recipe(
         "22222222-2222-2222-2222-222222222222",
@@ -156,6 +160,7 @@ SEED_RECIPES: list[Recipe] = [
         2,
         "https://images.nutriplan.app/recipes/chicken-quinoa-bowl.jpg",
         NutritionalInfo(calories=550, protein=55.0, carbs=42.0, fat=16.6, sugar=2.1),
+        [DietaryType.OMNIVORE],
     ),
     _recipe(
         "33333333-3333-3333-3333-333333333333",
@@ -213,6 +218,7 @@ SEED_RECIPES: list[Recipe] = [
         2,
         "https://images.nutriplan.app/recipes/tofu-stir-fry.jpg",
         NutritionalInfo(calories=228, protein=23.5, carbs=14.0, fat=10.4, sugar=4.4),
+        [DietaryType.VEGAN, DietaryType.VEGETARIAN, DietaryType.OMNIVORE],
     ),
     _recipe(
         "44444444-4444-4444-4444-444444444444",
@@ -270,6 +276,7 @@ SEED_RECIPES: list[Recipe] = [
         2,
         "https://images.nutriplan.app/recipes/baked-salmon.jpg",
         NutritionalInfo(calories=473, protein=32.3, carbs=22.0, fat=28.8, sugar=5.7),
+        [DietaryType.PALEO, DietaryType.OMNIVORE],
     ),
 ]
 

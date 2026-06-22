@@ -25,3 +25,7 @@ def test_carbs_index_present(mongo_db):
 
 def test_fat_index_present(mongo_db):
     assert ["nutritionalInfo.fat"] in _index_key_sets(mongo_db)
+
+
+def test_dietary_types_index_present(mongo_db):
+    assert ["dietaryTypes"] in _index_key_sets(mongo_db)

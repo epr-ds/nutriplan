@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from app.domain.dietary_types import DietaryType
 from app.domain.meal_plan import MealPlan, MealPlanStatus
 from app.domain.recipe import Recipe
 
@@ -61,3 +62,27 @@ class RecipeRepository(ABC):
     @abstractmethod
     def get(self, recipe_id: str) -> Recipe | None:
         """Return the recipe with *recipe_id*, or ``None`` if it does not exist."""
+
+    @abstractmethod
+    def search(
+        self,
+        *,
+        ingredients: list[str] | None = None,
+        diet_type: DietaryType | None = None,
+        max_calories: int | None = None,
+        min_protein: float | None = None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> list[Recipe]:
+        """Return catalog recipes matching every supplied filter (DPL-202).
+
+        All filters are optional and combine with **AND**:
+
+        * ``ingredients`` — the recipe must contain *all* of the given ingredient names
+          (case-insensitive, exact-name match);
+        * ``diet_type`` — the recipe must declare that diet in its ``dietary_types``;
+        * ``max_calories`` / ``min_protein`` — bounds on the recipe's per-serving nutrition.
+
+        Results are ordered deterministically by ``(name, id)`` so ``skip``/``limit`` offset
+        pagination is stable and reproducible.
+        """
