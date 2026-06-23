@@ -146,6 +146,34 @@ The cache is checked **before** the budget so a hit is free, and the guard recor
 `app/`, this is foundation — no HTTP route is added; the `/ai/*` endpoints consume it from
 AIA-201.
 
+## Nutritional-alignment scoring (AIA-106)
+
+`app/scoring/` grades how well a recipe or plan matches a user's calorie/macro targets and
+hard preferences, producing a `NutritionalAlignment` (an overall score plus a per-nutrient
+breakdown and any preference violations). It is **pure and deterministic** — no LLM, no I/O
+— so the same inputs always yield the same result, which is what makes it unit-testable and
+safe to reuse for ranking recommendations (AIA-201/204), grading nutrition estimates
+(AIA-302), and the offline eval harness (AIA-701).
+
+- **Per-nutrient closeness.** For each *targeted* nutrient (calories, protein, carbs, fat,
+  sugar), the relative deviation `|actual - target| / target` becomes a `[0, 1]` closeness
+  that is `1` on the target and falls to `0` once the deviation reaches `tolerance` (default:
+  off by 100%). An unknown actual against a real target scores `0` — it cannot be confirmed
+  aligned. A nutrient with **no** target is left out of the score entirely.
+- **Weighted nutrition score.** Closeness values are averaged with `AlignmentWeights`
+  (calories/protein weigh more than carbs/fat/sugar by default), renormalized over whichever
+  nutrients are actually targeted.
+- **Preference gate.** Required diets and excluded ingredients are hard constraints
+  (case-insensitive). Any violation drops the overall `score` to `0` — the item should not be
+  recommended — while `nutrition_score` is retained for transparency.
+- **Threshold.** `aligned` is `True` when there are no violations and the score clears the
+  configured threshold (default `0.7`).
+
+Weights, `tolerance`, and `threshold` are constructor-injected on `AlignmentScorer`, so the
+policy is explicit and tunable; `score_alignment(...)` applies the defaults. Like the rest of
+`app/`, this is foundation — no HTTP route is added; the `/ai/*` endpoints consume it from
+AIA-201. There are no new dependencies or environment variables.
+
 ## Configuration
 12-factor: every value is environment-driven (prefix `AI_`, see `app/core/config.py`). Secrets
 are injected at runtime, never baked into the image.
