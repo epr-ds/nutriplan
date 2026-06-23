@@ -7,7 +7,7 @@ ktor = "2.3.12"
 detekt = "1.23.6"
 
 androidxCoreKtx = "1.13.1"
-androidxActivityCompose = "1.9.2"
+androidxActivityCompose = "1.13.0"
 androidxLifecycle = "2.8.6"
 composeBom = "2024.09.02"
 
