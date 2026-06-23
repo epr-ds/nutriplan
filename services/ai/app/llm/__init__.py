@@ -22,7 +22,7 @@ from app.llm.errors import (
 )
 from app.llm.factory import build_client, build_provider
 from app.llm.fake import FakeLLMProvider
-from app.llm.provider import LLMProvider
+from app.llm.provider import LLMCompleter, LLMProvider
 from app.llm.retry import RetryPolicy, compute_backoff
 from app.llm.types import LLMMessage, LLMRequest, LLMResponse, LLMUsage, ResponseFormat, Role
 
@@ -31,6 +31,7 @@ __all__ = [
     "LLMAuthError",
     "LLMBadRequestError",
     "LLMClient",
+    "LLMCompleter",
     "LLMConfigurationError",
     "LLMError",
     "LLMMessage",

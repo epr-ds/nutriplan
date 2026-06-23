@@ -23,6 +23,22 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30.0
     llm_max_retries: int = 2
 
+    # Response cache + token budgets (AIA-105). Redis backs both so the cache and the
+    # quota counters are shared across replicas; leave AI_REDIS_URL blank and an
+    # in-process store is used (correct for dev/CI and a single replica, not shared).
+    # A token limit of 0 disables that dimension, keeping quotas opt-in; the global
+    # limit doubles as a kill-switch that latches for the window once it is exceeded.
+    redis_url: str = ""
+    cache_enabled: bool = True
+    cache_ttl_seconds: int = 3600
+    cache_namespace: str = "ai:cache"
+    budget_enabled: bool = True
+    budget_window_seconds: int = 86_400
+    budget_per_user_tokens: int = 0
+    budget_per_route_tokens: int = 0
+    budget_global_tokens: int = 0
+    budget_namespace: str = "ai:budget"
+
     @property
     def is_production(self) -> bool:
         """True in production-like environments, where missing deps are fatal."""

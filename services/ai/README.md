@@ -109,6 +109,43 @@ StructuredCompletion.complete(request)
 Like `app/llm/` and `app/prompts/`, this is foundation — no HTTP route is added here; the `/ai/*`
 endpoints consume it from AIA-201.
 
+## Response caching + token budgets (AIA-105)
+Repeated AI requests should be cheap *and* bounded, so completions are served from a cache
+and gated by token quotas. Both sit behind one `KeyValueStore` port (`app/kv/`) — Redis in
+production (`AI_REDIS_URL`), an in-process store in dev/CI/tests — so neither concern
+imports a driver or assumes a server is running.
+
+```
+CachedCompletionService.complete(request, scope)
+   -> ResponseCache.get(request)        # AC1: hit returns now, costs nothing
+   -> TokenBudgetGuard.check(scope)      # AC2/AC3: refuse if quota spent / kill-switch on
+   -> base.complete(request)             # provider runs once (with LLMClient retries)
+   -> TokenBudgetGuard.charge(scope, usage.total_tokens)
+   -> ResponseCache.put(request, response)
+```
+
+- **Cache keyed on a normalized request; configurable TTL (AC1).** `app/cache/` reduces a
+  request to a canonical JSON string (model, sampling settings, ordered messages, and any
+  response-format schema — recursively key-sorted) and stores the response under
+  `sha256` of it for `AI_CACHE_TTL_SECONDS`. A corrupt or superseded entry is read as a
+  miss, never an error.
+- **Per-user / per-route token quotas (AC2).** `TokenBudgetGuard` (`app/budget/`) keeps a
+  counter per `BudgetScope` (`user_id`, `route`) over a rolling window. `check` refuses a
+  request whose window quota is already spent; `charge` records the call's real
+  `total_tokens` afterward. Because cost is only known after the call, a single request may
+  cross the line — the next one in that window is then refused (a soft quota). A limit of `0`
+  disables that dimension, so quotas are opt-in.
+- **Global budget kill-switch (AC3).** When `charge` pushes overall usage past
+  `AI_BUDGET_GLOBAL_TOKENS`, a flag is **latched** for the rest of the window, so *every*
+  caller — not just the one that tipped it over — is turned away until it rolls off. Counters
+  and the flag expire via the store's TTL, so the window resets itself with no sweeper.
+
+The cache is checked **before** the budget so a hit is free, and the guard records usage
+**after** the call so quotas reflect real cost. Composition order is the point:
+`build_cached_completion_service(base_client)` wires it from config. Like the rest of
+`app/`, this is foundation — no HTTP route is added; the `/ai/*` endpoints consume it from
+AIA-201.
+
 ## Configuration
 12-factor: every value is environment-driven (prefix `AI_`, see `app/core/config.py`). Secrets
 are injected at runtime, never baked into the image.
@@ -121,6 +158,14 @@ are injected at runtime, never baked into the image.
 | `AI_LLM_MODEL` | `gpt-4o-mini` | default model (used by the AIA-102 client) |
 | `AI_LLM_TIMEOUT_SECONDS` | `30.0` | per-call timeout (AIA-102) |
 | `AI_LLM_MAX_RETRIES` | `2` | retry budget (AIA-102) |
+| `AI_REDIS_URL` | _(empty)_ | Redis URL backing the cache + budgets (AIA-105); blank uses an in-process store |
+| `AI_CACHE_ENABLED` | `true` | toggle response caching (AIA-105) |
+| `AI_CACHE_TTL_SECONDS` | `3600` | cached-response lifetime (AIA-105) |
+| `AI_BUDGET_ENABLED` | `true` | toggle token quotas + kill-switch (AIA-105) |
+| `AI_BUDGET_WINDOW_SECONDS` | `86400` | quota window over which counters reset (AIA-105) |
+| `AI_BUDGET_PER_USER_TOKENS` | `0` | per-user token quota per window; `0` = unlimited (AIA-105) |
+| `AI_BUDGET_PER_ROUTE_TOKENS` | `0` | per-route token quota per window; `0` = unlimited (AIA-105) |
+| `AI_BUDGET_GLOBAL_TOKENS` | `0` | global token budget / kill-switch; `0` = unlimited (AIA-105) |
 
 ## Run & test (Docker-first)
 The repo is built container-first — no host Python installs required.

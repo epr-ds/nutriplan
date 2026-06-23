@@ -22,3 +22,14 @@ class LLMProvider(Protocol):
     def complete(self, request: LLMRequest) -> LLMResponse:
         """Run one completion, raising an :class:`~app.llm.errors.LLMError` on failure."""
         ...
+
+
+@runtime_checkable
+class LLMCompleter(Protocol):
+    """Anything that turns a request into a response: a provider, the retrying client,
+    or a cross-cutting wrapper (cache, budget). Decorators target this port so they
+    compose without caring which concrete completer sits underneath."""
+
+    def complete(self, request: LLMRequest) -> LLMResponse:
+        """Run one completion."""
+        ...
