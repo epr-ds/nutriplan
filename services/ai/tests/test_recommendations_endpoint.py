@@ -64,7 +64,8 @@ _DRAFT = {
             "nutrition": {"calories": 420, "protein": 11, "carbs": 38, "fat": 26, "sugar": 4},
             "dietary_types": ["vegetarian", "vegan"],
         },
-    ]
+    ],
+    "reasoning": "Estas recetas se ajustan a tu objetivo de 400 kcal y tus preferencias veganas.",
 }
 
 
@@ -138,12 +139,32 @@ def test_response_uses_camelcase_recipe_shape() -> None:
     assert synthesized["ingredients"][0]["name"] == "pan integral"
 
 
-def test_reasoning_and_alignment_are_still_empty() -> None:
+def _targeted_body() -> dict[str, object]:
+    # A per-meal calorie target gives the AIA-106 scorer something to align against.
+    return {"context": "single_meal", "language": "es", "calorieTarget": 400}
+
+
+def test_reasoning_is_returned() -> None:
     body = client.post("/ai/recommendations", json=_body(), headers=_AUTH).json()
 
-    # Reasoning + alignment land in AIA-204; this slice only fills recommendations.
-    assert body["reasoning"] is None
+    assert body["reasoning"] == _DRAFT["reasoning"]
+
+
+def test_alignment_is_null_without_targets_or_preferences() -> None:
+    body = client.post("/ai/recommendations", json=_body(), headers=_AUTH).json()
+
+    # No targets and no hard preferences -> nothing to align against.
     assert body["nutritionalAlignment"] is None
+
+
+def test_alignment_is_scored_when_targets_are_present() -> None:
+    body = client.post("/ai/recommendations", json=_targeted_body(), headers=_AUTH).json()
+
+    alignment = body["nutritionalAlignment"]
+    assert alignment is not None
+    assert isinstance(alignment["score"], (int, float))
+    assert 0.0 <= alignment["score"] <= 100.0
+    assert "2 of 2" in alignment["details"]
 
 
 def test_still_requires_a_bearer_token() -> None:

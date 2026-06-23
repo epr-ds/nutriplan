@@ -43,7 +43,8 @@ _DRAFT = {
             "nutrition": {"calories": 350, "protein": 12, "carbs": 60, "fat": 7, "sugar": 15},
             "dietary_types": ["vegetarian"],
         }
-    ]
+    ],
+    "reasoning": "Elegi avena porque encaja con tu objetivo de 350 kcal y tus preferencias.",
 }
 
 _COMMAND = RecommendationCommand(
@@ -78,7 +79,7 @@ def _service(
 def test_recommend_synthesizes_recipes_from_the_draft() -> None:
     service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
 
-    [recipe] = service.recommend(_COMMAND)
+    [recipe] = service.recommend(_COMMAND).recipes
 
     assert recipe.name == "Avena con Frutas"
     assert recipe.source is RecipeSource.SYNTHESIZED
@@ -117,7 +118,7 @@ def test_recommend_links_a_catalogue_recipe() -> None:
         catalogue=InMemoryRecipeCatalogue([linked]),
     )
 
-    [recipe] = service.recommend(_COMMAND)
+    [recipe] = service.recommend(_COMMAND).recipes
 
     assert recipe is linked
     assert recipe.source is RecipeSource.CATALOGUE
@@ -140,7 +141,11 @@ def test_falls_back_to_no_recommendations_on_bad_output() -> None:
         fallback=lambda _error: RecommendationDraft(),
     )
 
-    assert service.recommend(_COMMAND) == []
+    result = service.recommend(_COMMAND)
+
+    assert result.recipes == ()
+    assert result.reasoning is None
+    assert result.alignment is None
 
 
 def test_composes_over_a_cached_completer() -> None:
@@ -154,6 +159,37 @@ def test_composes_over_a_cached_completer() -> None:
         RecipeMapper(InMemoryRecipeCatalogue()),
     )
 
-    [recipe] = service.recommend(_COMMAND)
+    [recipe] = service.recommend(_COMMAND).recipes
 
     assert recipe.name == "Avena con Frutas"
+
+
+def test_recommend_surfaces_model_reasoning() -> None:
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.recommend(_COMMAND)
+
+    assert result.reasoning == _DRAFT["reasoning"]
+
+
+def test_recommend_scores_alignment_against_targets() -> None:
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        calorie_target=350,  # matches the draft recipe's 350 kcal exactly
+    )
+
+    result = service.recommend(command)
+
+    assert result.alignment is not None
+    assert result.alignment.total == 1
+    assert result.alignment.recipes[0].recipe_name == "Avena con Frutas"
+    assert result.alignment.percentage == 100.0
+
+
+def test_recommend_skips_alignment_without_targets_or_preferences() -> None:
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
+
+    assert result.alignment is None

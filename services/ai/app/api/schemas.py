@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
+    from app.recommendations.alignment import RecommendationAlignment
     from app.recommendations.recipes import RecommendedRecipe
 
 
@@ -171,11 +172,17 @@ class NutritionalAlignmentResponse(_Camel):
     """The contract's compact alignment projection (``score`` + human-readable ``details``).
 
     Distinct from the rich :class:`app.scoring.types.NutritionalAlignment`; AIA-204 projects the
-    scorer's output onto this wire shape.
+    aggregated :class:`app.recommendations.alignment.RecommendationAlignment` onto this wire shape,
+    exposing ``score`` as a 0-100 percentage.
     """
 
     score: float | None = None
     details: str | None = None
+
+    @classmethod
+    def from_alignment(cls, alignment: RecommendationAlignment) -> NutritionalAlignmentResponse:
+        """Project an aggregated :class:`RecommendationAlignment` onto the wire shape (AIA-204)."""
+        return cls(score=alignment.percentage, details=alignment.details)
 
 
 class AIRecommendationResponse(_Camel):
