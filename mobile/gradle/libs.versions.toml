@@ -6,14 +6,14 @@ serialization = "1.11.0"
 ktor = "2.3.12"
 detekt = "1.23.6"
 
-androidxCoreKtx = "1.19.0"
-androidxActivityCompose = "1.13.0"
-androidxLifecycle = "2.11.0"
-composeBom = "2025.09.01"
+androidxCoreKtx = "1.13.1"
+androidxActivityCompose = "1.9.2"
+androidxLifecycle = "2.8.6"
+composeBom = "2024.09.02"
 
 androidMinSdk = "24"
 androidTargetSdk = "34"
-androidCompileSdk = "35"
+androidCompileSdk = "34"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
