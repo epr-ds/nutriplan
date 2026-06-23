@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
+    from app.analysis.result import MealAnalysis
     from app.recommendations.alignment import RecommendationAlignment
     from app.recommendations.recipes import RecommendedRecipe
 
@@ -189,3 +190,45 @@ class AIRecommendationResponse(_Camel):
     recommendations: list[RecipeResponse] = Field(default_factory=list)
     reasoning: str | None = None
     nutritional_alignment: NutritionalAlignmentResponse | None = None
+
+
+class AnalyzeMealRequest(_Camel):
+    """The validated request envelope for ``POST /ai/analyze-meal`` (AIA-301).
+
+    ``description`` (free text) is required; structured ``ingredients`` are optional and reuse the
+    ingredient wire shape, carrying optional per-ingredient nutrition hints.
+    """
+
+    description: str
+    ingredients: list[IngredientResponse] = Field(default_factory=list)
+
+
+class NutritionalAnalysisResponse(_Camel):
+    """The contract's analysis projection: estimated nutrition, optional alignment, and warnings."""
+
+    nutritional_info: NutritionalInfoSchema | None = None
+    alignment: NutritionalAlignmentResponse | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_analysis(cls, analysis: MealAnalysis) -> NutritionalAnalysisResponse:
+        """Project an application :class:`MealAnalysis` onto the wire shape (AIA-301).
+
+        ``alignment`` stays ``None`` for now: the analyze-meal request carries no user targets to
+        align against. Estimation (and any alignment) is layered in by later meal-analysis stories.
+        """
+        nutrition = analysis.nutrition
+        return cls(
+            nutritional_info=(
+                NutritionalInfoSchema(
+                    calories=nutrition.calories,
+                    protein=nutrition.protein,
+                    carbs=nutrition.carbs,
+                    fat=nutrition.fat,
+                    sugar=nutrition.sugar,
+                )
+                if nutrition is not None
+                else None
+            ),
+            warnings=list(analysis.warnings),
+        )

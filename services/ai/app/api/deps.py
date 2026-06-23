@@ -14,6 +14,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.analysis.service import MealAnalysisService, build_meal_analysis_service
 from app.recommendations.service import RecommendationService, build_recommendation_service
 
 _bearer = HTTPBearer(auto_error=False)
@@ -42,5 +43,16 @@ def get_recommendation_service() -> RecommendationService:
     return build_recommendation_service()
 
 
+@lru_cache(maxsize=1)
+def get_meal_analysis_service() -> MealAnalysisService:
+    """Build the (cached) meal-analysis service from configuration (AIA-301).
+
+    Memoized for parity with the recommendation service so future collaborators (the AIA-302
+    estimator and its cache) persist across requests. Tests swap it via ``dependency_overrides``.
+    """
+    return build_meal_analysis_service()
+
+
 BearerToken = Annotated[str, Depends(require_bearer)]
 RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
+MealAnalysisServiceDep = Annotated[MealAnalysisService, Depends(get_meal_analysis_service)]
