@@ -9,9 +9,13 @@ assembles prompts or scores candidates internally.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+if TYPE_CHECKING:
+    from app.recommendations.recipes import RecommendedRecipe
 
 
 class _Camel(BaseModel):
@@ -56,6 +60,9 @@ class DietaryTypeTag(StrEnum):
     VEGAN = "vegan"
     KETO = "keto"
     PALEO = "paleo"
+
+
+_DIETARY_TAG_VALUES = frozenset(tag.value for tag in DietaryTypeTag)
 
 
 class Language(StrEnum):
@@ -125,6 +132,39 @@ class RecipeResponse(_Camel):
     image_url: str | None = None
     nutritional_info: NutritionalInfoSchema | None = None
     dietary_types: list[DietaryTypeTag] = Field(default_factory=list)
+
+    @classmethod
+    def from_recommended(cls, recipe: RecommendedRecipe) -> RecipeResponse:
+        """Project an application :class:`RecommendedRecipe` onto the wire shape (AIA-203).
+
+        Unknown dietary tags (e.g. a cuisine-style label the wire enum doesn't model) are dropped
+        rather than rejected, so a synthesized recipe never fails to serialize.
+        """
+        return cls(
+            id=recipe.id,
+            name=recipe.name,
+            description=recipe.description,
+            ingredients=[
+                IngredientResponse(name=item.name, quantity=item.quantity, unit=item.unit)
+                for item in recipe.ingredients
+            ],
+            instructions=list(recipe.instructions),
+            prep_time=recipe.prep_time_minutes,
+            cook_time=recipe.cook_time_minutes,
+            servings=recipe.servings,
+            nutritional_info=NutritionalInfoSchema(
+                calories=recipe.nutrition.calories,
+                protein=recipe.nutrition.protein,
+                carbs=recipe.nutrition.carbs,
+                fat=recipe.nutrition.fat,
+                sugar=recipe.nutrition.sugar,
+            ),
+            dietary_types=[
+                DietaryTypeTag(value)
+                for tag in recipe.dietary_types
+                if (value := tag.strip().lower()) in _DIETARY_TAG_VALUES
+            ],
+        )
 
 
 class NutritionalAlignmentResponse(_Camel):
