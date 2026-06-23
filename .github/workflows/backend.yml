@@ -22,7 +22,7 @@ jobs:
         working-directory: services/ai
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -58,7 +58,7 @@ jobs:
       IDENTITY_DATABASE_URL: postgresql+psycopg://nutriplan:nutriplan@localhost:5432/identity
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -95,7 +95,7 @@ jobs:
       DIETARY_MONGO_DB: dietary_test
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
