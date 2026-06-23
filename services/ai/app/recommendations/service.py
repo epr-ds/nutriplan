@@ -1,12 +1,13 @@
-"""The recommendation use case: prompt -> structured draft -> mapped recipes + alignment.
+"""The recommendation use case: prompt -> draft -> mapped, diversified recipes + alignment.
 
 This is the application service behind ``POST /ai/recommendations``. It composes its collaborators
 by constructor injection: the AIA-202 prompt assembler, the AIA-104 structured-completion loop
-(typed to :class:`RecommendationDraft`), the AIA-203 recipe mapper, and the AIA-204 aligner. The
-result bundles the mapped recipes with the model's ``reasoning`` and a deterministic
-``nutritionalAlignment`` (scored via AIA-106). Production wiring layers caching and budgets under
-the completion via :func:`build_recommendation_service`; tests inject a fake-backed completion so
-the whole path runs offline.
+(typed to :class:`RecommendationDraft`), the AIA-203 recipe mapper, the AIA-205 diversifier, and the
+AIA-204 aligner. The result bundles the mapped recipes with the model's ``reasoning`` and a
+deterministic ``nutritionalAlignment`` (scored via AIA-106). The diversifier runs after mapping and
+before scoring so alignment reflects exactly the set the user will see. Production wiring layers
+caching and budgets under the completion via :func:`build_recommendation_service`; tests inject a
+fake-backed completion so the whole path runs offline.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from app.recommendations.commands import RecommendationCommand
 from app.recommendations.draft import RecommendationDraft
 from app.recommendations.mapper import RecipeMapper
 from app.recommendations.recipes import RecommendedRecipe
+from app.recommendations.variety import RecommendationDiversifier, VarietyPolicy
 from app.structured.errors import StructuredOutputError
 from app.structured.parser import StructuredOutputParser
 from app.structured.service import StructuredCompletion
@@ -58,11 +60,13 @@ class RecommendationService:
         completion: StructuredCompletion[RecommendationDraft],
         mapper: RecipeMapper,
         aligner: RecommendationAligner | None = None,
+        diversifier: RecommendationDiversifier | None = None,
     ) -> None:
         self._assembler = assembler
         self._completion = completion
         self._mapper = mapper
         self._aligner = aligner or RecommendationAligner()
+        self._diversifier = diversifier or RecommendationDiversifier()
 
     def recommend(
         self,
@@ -70,10 +74,17 @@ class RecommendationService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> RecommendationResult:
-        """Assemble the prompt, ask the model for a draft, map recipes, and score alignment."""
+        """Assemble the prompt, ask the model for a draft, map recipes, diversify, and score."""
         prompt = self._assembler.assemble(command, locale=locale)
         draft = self._completion.complete(prompt.to_request())
-        recipes = tuple(self._mapper.map(draft))
+        mapped = self._mapper.map(draft)
+        recipes = tuple(
+            self._diversifier.diversify(
+                tuple(mapped),
+                previous_meals=command.previous_meals,
+                limit=command.count,
+            )
+        )
         alignment = self._aligner.align(recipes, command)
         return RecommendationResult(
             recipes=recipes,
@@ -92,6 +103,7 @@ def build_recommendation_service(
     *,
     catalogue: RecipeCatalogue | None = None,
     aligner: RecommendationAligner | None = None,
+    diversifier: RecommendationDiversifier | None = None,
     telemetry: PromptTelemetry | None = None,
 ) -> RecommendationService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
@@ -108,4 +120,6 @@ def build_recommendation_service(
         completion,
         RecipeMapper(catalogue or InMemoryRecipeCatalogue()),
         aligner or RecommendationAligner(),
+        diversifier
+        or RecommendationDiversifier(VarietyPolicy.from_strength(settings.variety_strength)),
     )

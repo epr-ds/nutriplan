@@ -167,6 +167,16 @@ def test_alignment_is_scored_when_targets_are_present() -> None:
     assert "2 of 2" in alignment["details"]
 
 
+def test_drops_recipes_listed_in_previous_meals() -> None:
+    body = {"context": "meal_plan", "language": "es", "previousMeals": ["Avena con Frutas"]}
+
+    response = client.post("/ai/recommendations", json=body, headers=_AUTH)
+
+    # The repeated recipe is filtered out (variety on by default); the other one remains.
+    names = [recipe["name"] for recipe in response.json()["recommendations"]]
+    assert names == ["Tostada de Aguacate"]
+
+
 def test_still_requires_a_bearer_token() -> None:
     response = client.post("/ai/recommendations", json=_body())
 

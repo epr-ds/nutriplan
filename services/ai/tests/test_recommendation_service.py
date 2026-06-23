@@ -27,6 +27,7 @@ from app.recommendations.recipes import (
     RecommendedRecipe,
 )
 from app.recommendations.service import RecommendationService
+from app.recommendations.variety import RecommendationDiversifier, VarietyPolicy
 from app.structured.parser import StructuredOutputParser
 from app.structured.service import StructuredCompletion
 
@@ -64,6 +65,7 @@ def _service(
     catalogue: InMemoryRecipeCatalogue | None = None,
     fallback=None,
     max_attempts: int = 1,
+    diversifier: RecommendationDiversifier | None = None,
 ) -> RecommendationService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -73,7 +75,12 @@ def _service(
         fallback=fallback,
     )
     mapper = RecipeMapper(catalogue or InMemoryRecipeCatalogue())
-    return RecommendationService(build_recommendation_prompt_assembler(), completion, mapper)
+    return RecommendationService(
+        build_recommendation_prompt_assembler(),
+        completion,
+        mapper,
+        diversifier=diversifier,
+    )
 
 
 def test_recommend_synthesizes_recipes_from_the_draft() -> None:
@@ -193,3 +200,33 @@ def test_recommend_skips_alignment_without_targets_or_preferences() -> None:
     result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
 
     assert result.alignment is None
+
+
+def test_recommend_drops_meals_listed_in_previous_meals() -> None:
+    # Variety is on by default (medium): a recommendation repeating a previous meal is removed.
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        previous_meals=("Avena con Frutas",),
+    )
+
+    result = service.recommend(command)
+
+    assert result.recipes == ()
+    assert result.alignment is None
+
+
+def test_variety_off_keeps_previous_meal_repeats() -> None:
+    # The strength is configurable: OFF turns the diversifier into a passthrough.
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_DRAFT))]),
+        diversifier=RecommendationDiversifier(VarietyPolicy.from_strength("off")),
+    )
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        previous_meals=("Avena con Frutas",),
+    )
+
+    result = service.recommend(command)
+
+    assert [recipe.name for recipe in result.recipes] == ["Avena con Frutas"]
