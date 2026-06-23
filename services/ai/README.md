@@ -49,6 +49,35 @@ LLMRequest -> LLMClient (retries + backoff) -> LLMProvider (port) -> OpenAI | An
   exception message, or a provider's `repr` (AIA-102 / AIA-802). Adapters are tested offline with
   `httpx.MockTransport`, including assertions that the key never leaks.
 
+## Prompt templating (AIA-103)
+`app/prompts/` makes prompts first-class instead of string literals buried in the endpoints:
+each is **templated**, **versioned**, and **localized** (`es`/`en`), and every render **records
+which prompt version ran** so completions stay attributable. Like `app/llm/`, it is foundation —
+consumed by the `/ai/*` endpoints from AIA-201 — and it never imports a provider; it only produces
+the `LLMMessage` sequence a request is built from.
+
+```
+PromptRenderer.render(id, locale, variables)
+   -> PromptCatalog.get(id, locale)   # locale-aware, falls back to the default locale
+   -> PromptTemplate.render(variables)# $variable substitution -> system/user messages
+   -> PromptTelemetry.record(ref)     # id + version + locale, on every call
+   -> RenderedPrompt.to_request(...)  # bridge to app/llm (LLMRequest)
+```
+
+- **Templates with variables.** `PromptTemplate` holds a `system`/`user` body using
+  `string.Template` `$variable` placeholders (chosen over `str.format` so literal braces in JSON or
+  code examples are safe). A missing variable raises rather than leaking `$placeholder` text; extra
+  variables are ignored; non-string values are stringified.
+- **Versioning + telemetry.** Each template carries an `id` + `version`; `PromptRenderer` records a
+  `PromptRef` (id, version, locale) through the `PromptTelemetry` port on every render. Only those
+  identifiers are recorded — never the rendered text or variable values, which may contain user data.
+- **Locale-aware (es/en).** Templates are registered per locale in a `PromptCatalog`; lookup matches
+  the requested locale and **falls back to the default locale** (`en`) when one is missing, so an
+  unexpected language degrades to a working prompt. `Locale.parse` normalizes tags like `es-MX`/`en_US`.
+- **Ports + DI.** `PromptCatalog` and `PromptTelemetry` are injected, so tests use in-memory doubles
+  and production wires the shipped catalog (`build_default_renderer()`) plus a logging recorder. The
+  seed catalog ships a versioned `meal_recommendation` prompt in both locales.
+
 ## Configuration
 12-factor: every value is environment-driven (prefix `AI_`, see `app/core/config.py`). Secrets
 are injected at runtime, never baked into the image.
