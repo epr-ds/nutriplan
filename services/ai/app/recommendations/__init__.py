@@ -8,7 +8,9 @@ schema-constrained :class:`RecommendationDraft`, and a :class:`RecipeMapper` tur
 ``RecommendedRecipe`` results -- linking real catalogue recipes where possible and synthesizing the
 rest. AIA-204 completes the result: the service surfaces the model's ``reasoning`` and a
 :class:`RecommendationAligner` scores the recipes against the caller's targets/preferences (AIA-106)
-into a :class:`RecommendationAlignment`.
+into a :class:`RecommendationAlignment`. AIA-205 keeps results fresh: a
+:class:`RecommendationDiversifier` (configurable :class:`VarietyStrength`) drops recipes repeating
+the user's ``previousMeals`` and de-duplicates look-alikes before they are scored.
 """
 
 from app.recommendations.alignment import (
@@ -49,6 +51,12 @@ from app.recommendations.service import (
     RecommendationService,
     build_recommendation_service,
 )
+from app.recommendations.variety import (
+    RecommendationDiversifier,
+    VarietyPolicy,
+    VarietyStrength,
+    build_diversifier,
+)
 
 __all__ = [
     "InMemoryRecipeCatalogue",
@@ -65,6 +73,7 @@ __all__ = [
     "RecommendationAlignment",
     "RecommendationCommand",
     "RecommendationContext",
+    "RecommendationDiversifier",
     "RecommendationDraft",
     "RecommendationPromptAssembler",
     "RecommendationResult",
@@ -72,6 +81,9 @@ __all__ = [
     "RecommendedIngredient",
     "RecommendedNutrition",
     "RecommendedRecipe",
+    "VarietyPolicy",
+    "VarietyStrength",
+    "build_diversifier",
     "build_recommendation_prompt_assembler",
     "build_recommendation_service",
     "normalize_name",

@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     budget_global_tokens: int = 0
     budget_namespace: str = "ai:budget"
 
+    # Recommendation variety (AIA-205): how aggressively the post-mapping diversifier drops
+    # previous-meal repeats and near-duplicate recipes. One of off/low/medium/high; an unknown
+    # value degrades to medium. This is a server-side policy knob -- it never changes the API
+    # contract (the request schema is contract-locked).
+    variety_strength: str = "medium"
+
     @property
     def is_production(self) -> bool:
         """True in production-like environments, where missing deps are fatal."""
