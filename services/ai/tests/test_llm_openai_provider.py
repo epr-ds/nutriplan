@@ -19,7 +19,7 @@ from app.llm.errors import (
     LLMTransientError,
 )
 from app.llm.openai_provider import OpenAIProvider
-from app.llm.types import LLMMessage, LLMRequest, Role
+from app.llm.types import LLMMessage, LLMRequest, ResponseFormat, Role
 
 _API_KEY = "sk-secret-do-not-log"
 
@@ -72,6 +72,32 @@ def test_complete_builds_request_and_parses_response() -> None:
     assert result.usage.prompt_tokens == 11
     assert result.usage.completion_tokens == 7
     assert result.usage.total_tokens == 18
+
+
+def test_response_format_is_emitted_as_json_schema() -> None:
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["json"] = json.loads(request.content)
+        return httpx.Response(200, json=_ok_body('{"x": 1}'))
+
+    schema = {
+        "type": "object",
+        "properties": {"x": {"type": "integer"}},
+        "required": ["x"],
+        "additionalProperties": False,
+    }
+    request = LLMRequest.of(
+        [LLMMessage(Role.USER, "hi")],
+        response_format=ResponseFormat(name="Result", schema=schema),
+    )
+    _provider(handler).complete(request)
+
+    fmt = captured["json"]["response_format"]
+    assert fmt["type"] == "json_schema"
+    assert fmt["json_schema"]["name"] == "Result"
+    assert fmt["json_schema"]["schema"] == schema
+    assert fmt["json_schema"]["strict"] is True
 
 
 def test_request_model_and_max_tokens_override_defaults() -> None:

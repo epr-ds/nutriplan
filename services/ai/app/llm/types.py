@@ -8,9 +8,10 @@ on top of these.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 
 class Role(StrEnum):
@@ -30,6 +31,20 @@ class LLMMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class ResponseFormat:
+    """Asks the provider to constrain its reply to a named JSON schema (AIA-104).
+
+    Each adapter maps this onto the vendor's native mechanism (OpenAI structured-output
+    ``response_format``, Anthropic forced tool use). It is only a *request* to the
+    provider, so the output is still parsed and validated on our side after the call.
+    """
+
+    name: str
+    schema: Mapping[str, Any]
+    strict: bool = True
+
+
+@dataclass(frozen=True, slots=True)
 class LLMRequest:
     """A completion request, independent of any provider.
 
@@ -41,6 +56,7 @@ class LLMRequest:
     model: str | None = None
     temperature: float = 0.2
     max_tokens: int | None = None
+    response_format: ResponseFormat | None = None
 
     @classmethod
     def of(
@@ -50,6 +66,7 @@ class LLMRequest:
         model: str | None = None,
         temperature: float = 0.2,
         max_tokens: int | None = None,
+        response_format: ResponseFormat | None = None,
     ) -> LLMRequest:
         """Build a request from any message sequence (stored as an immutable tuple)."""
         return cls(
@@ -57,6 +74,7 @@ class LLMRequest:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            response_format=response_format,
         )
 
 

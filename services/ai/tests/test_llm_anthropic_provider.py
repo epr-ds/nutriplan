@@ -12,7 +12,7 @@ import pytest
 
 from app.llm.anthropic_provider import AnthropicProvider
 from app.llm.errors import LLMAuthError, LLMResponseError, LLMTransientError
-from app.llm.types import LLMMessage, LLMRequest, Role
+from app.llm.types import LLMMessage, LLMRequest, ResponseFormat, Role
 
 _API_KEY = "sk-ant-secret-do-not-log"
 
@@ -89,6 +89,50 @@ def test_concatenates_text_blocks() -> None:
     result = _provider(handler).complete(LLMRequest.of([LLMMessage(Role.USER, "hi")]))
 
     assert result.content == "part one part two"
+
+
+def test_response_format_forces_a_tool_and_parses_tool_use() -> None:
+    captured: dict = {}
+    schema = {
+        "type": "object",
+        "properties": {"x": {"type": "integer"}},
+        "required": ["x"],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["json"] = json.loads(request.content)
+        body = {
+            "model": "claude-3-5-sonnet",
+            "content": [{"type": "tool_use", "name": "Result", "input": {"x": 7}}],
+            "usage": {"input_tokens": 2, "output_tokens": 3},
+        }
+        return httpx.Response(200, json=body)
+
+    request = LLMRequest.of(
+        [LLMMessage(Role.USER, "hi")],
+        response_format=ResponseFormat(name="Result", schema=schema),
+    )
+    result = _provider(handler).complete(request)
+
+    assert captured["json"]["tools"] == [{"name": "Result", "input_schema": schema}]
+    assert captured["json"]["tool_choice"] == {"type": "tool", "name": "Result"}
+    # The tool_use input is normalized back into JSON text for uniform parsing.
+    assert json.loads(result.content) == {"x": 7}
+
+
+def test_missing_tool_use_when_forced_maps_to_response_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"model": "x", "content": [{"type": "text", "text": "oops"}]},
+        )
+
+    request = LLMRequest.of(
+        [LLMMessage(Role.USER, "hi")],
+        response_format=ResponseFormat(name="Result", schema={"type": "object"}),
+    )
+    with pytest.raises(LLMResponseError):
+        _provider(handler).complete(request)
 
 
 def test_429_maps_to_transient() -> None:
