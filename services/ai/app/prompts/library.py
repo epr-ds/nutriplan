@@ -60,6 +60,132 @@ DEFAULT_TEMPLATES: tuple[PromptTemplate, ...] = (
 )
 
 
+# --- Context-aware recommendation prompts (AIA-202) ---------------------------------------------
+# Three contexts share one dietitian persona and one dietary-profile block, differing only in how
+# the task is framed. The assembler always supplies every variable below (filling absent profile
+# fields with neutral, localized text), so each template renders cleanly.
+
+RECOMMEND_MEAL_PLAN_ID = "recommend_meal_plan"
+RECOMMEND_SINGLE_MEAL_ID = "recommend_single_meal"
+RECOMMEND_INGREDIENT_BASED_ID = "recommend_ingredient_based"
+_RECOMMENDATION_VERSION = "2026-06-23"
+
+_EN_PERSONA = (
+    "You are NutriPlan's registered-dietitian assistant. Recommend meals that fit the user's "
+    "dietary pattern, preferences, and energy needs. Never suggest an ingredient the user is "
+    "allergic to or has excluded. Reply in English."
+)
+_ES_PERSONA = (
+    "Eres el asistente dietista-nutricionista de NutriPlan. Recomienda comidas que se ajusten al "
+    "patrón alimentario, las preferencias y las necesidades energéticas del usuario. Nunca "
+    "sugieras un ingrediente al que el usuario sea alérgico o que haya excluido. Responde en "
+    "español."
+)
+
+_EN_PROFILE = (
+    "Dietary pattern: $diet\n"
+    "Allergies (never include): $allergies\n"
+    "Excluded ingredients: $excluded\n"
+    "Preferred cuisines: $cuisines\n"
+    "Energy target: $calories\n"
+    "Macro targets: $macros\n"
+    "Avoid repeating: $previous\n"
+    "Additional constraints: $constraints"
+)
+_ES_PROFILE = (
+    "Patrón alimentario: $diet\n"
+    "Alergias (nunca incluir): $allergies\n"
+    "Ingredientes excluidos: $excluded\n"
+    "Cocinas preferidas: $cuisines\n"
+    "Objetivo de energía: $calories\n"
+    "Objetivos de macros: $macros\n"
+    "Evita repetir: $previous\n"
+    "Restricciones adicionales: $constraints"
+)
+
+
+def _recommendation_template(
+    prompt_id: str, locale: Locale, *, persona: str, task: str
+) -> PromptTemplate:
+    profile = _EN_PROFILE if locale is Locale.EN else _ES_PROFILE
+    return PromptTemplate(
+        id=prompt_id,
+        version=_RECOMMENDATION_VERSION,
+        locale=locale,
+        system=persona,
+        user=f"{task}\n{profile}",
+    )
+
+
+_RECOMMEND_MEAL_PLAN_EN = _recommendation_template(
+    RECOMMEND_MEAL_PLAN_ID,
+    Locale.EN,
+    persona=_EN_PERSONA,
+    task=(
+        "Recommend meals for a daily meal plan. Suggest $count meal ideas that together fit the "
+        "day and respect every constraint below."
+    ),
+)
+_RECOMMEND_MEAL_PLAN_ES = _recommendation_template(
+    RECOMMEND_MEAL_PLAN_ID,
+    Locale.ES,
+    persona=_ES_PERSONA,
+    task=(
+        "Recomienda comidas para un plan diario. Sugiere $count ideas de comidas que en conjunto "
+        "encajen en el día y respeten cada restricción siguiente."
+    ),
+)
+
+_RECOMMEND_SINGLE_MEAL_EN = _recommendation_template(
+    RECOMMEND_SINGLE_MEAL_ID,
+    Locale.EN,
+    persona=_EN_PERSONA,
+    task=(
+        "Recommend a single $meal_type. Suggest $count options that respect every constraint below."
+    ),
+)
+_RECOMMEND_SINGLE_MEAL_ES = _recommendation_template(
+    RECOMMEND_SINGLE_MEAL_ID,
+    Locale.ES,
+    persona=_ES_PERSONA,
+    task=(
+        "Recomienda una sola comida de tipo $meal_type. Sugiere $count opciones que respeten cada "
+        "restricción siguiente."
+    ),
+)
+
+_RECOMMEND_INGREDIENT_BASED_EN = _recommendation_template(
+    RECOMMEND_INGREDIENT_BASED_ID,
+    Locale.EN,
+    persona=_EN_PERSONA,
+    task=(
+        "Recommend meals built mainly from these available ingredients: $ingredients.\n"
+        "Meal: $meal_type. Prefer the available ingredients, keep extra additions minimal, and "
+        "suggest $count options that respect every constraint below."
+    ),
+)
+_RECOMMEND_INGREDIENT_BASED_ES = _recommendation_template(
+    RECOMMEND_INGREDIENT_BASED_ID,
+    Locale.ES,
+    persona=_ES_PERSONA,
+    task=(
+        "Recomienda comidas elaboradas principalmente con estos ingredientes disponibles: "
+        "$ingredients.\nComida: $meal_type. Prioriza los ingredientes disponibles, añade lo mínimo "
+        "extra y sugiere $count opciones que respeten cada restricción siguiente."
+    ),
+)
+
+DEFAULT_TEMPLATES = (
+    *DEFAULT_TEMPLATES,
+    _RECOMMEND_MEAL_PLAN_EN,
+    _RECOMMEND_MEAL_PLAN_ES,
+    _RECOMMEND_SINGLE_MEAL_EN,
+    _RECOMMEND_SINGLE_MEAL_ES,
+    _RECOMMEND_INGREDIENT_BASED_EN,
+    _RECOMMEND_INGREDIENT_BASED_ES,
+)
+
+
 def build_default_catalog() -> InMemoryPromptCatalog:
     """Build a catalog pre-loaded with every shipped template."""
     return InMemoryPromptCatalog(DEFAULT_TEMPLATES)
