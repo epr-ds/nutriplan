@@ -78,6 +78,37 @@ PromptRenderer.render(id, locale, variables)
   and production wires the shipped catalog (`build_default_renderer()`) plus a logging recorder. The
   seed catalog ships a versioned `meal_recommendation` prompt in both locales.
 
+## Structured outputs (AIA-104)
+`app/structured/` makes a `/ai/*` response *conform to its schema* a property of the call rather
+than a hope. A Pydantic model — the same kind FastAPI turns into the OpenAPI schema — is the single
+source of truth: it both **constrains** the provider and **validates** the reply, and a completion
+that fails validation is **retried or falls back** instead of returning malformed data.
+
+```
+StructuredCompletion.complete(request)
+   -> attach ResponseFormat (model JSON schema)   # AC1: constrain the provider
+   -> LLMClient.complete(...)                      # transport retries live here
+   -> StructuredOutputParser.parse(content)        # AC2: extract JSON + model_validate
+   -> on StructuredOutputError: re-prompt & retry, # AC3: typed error -> retry...
+      then fallback(error) or raise                #      ...or fallback
+```
+
+- **Constrained outputs (AC1).** `LLMRequest` carries an optional `ResponseFormat`; the OpenAI
+  adapter emits it as a native `response_format: json_schema` and the Anthropic adapter as a **forced
+  tool**, normalizing the returned `tool_use` block back into JSON text so callers parse content the
+  same way regardless of provider. `to_strict_json_schema` tightens a model's schema (recursively sets
+  `additionalProperties: false` and marks every property required) for strict structured-output modes.
+- **Parsed + validated (AC2).** `StructuredOutputParser` isolates the JSON value (tolerating a stray
+  code fence or sentence of prose), then validates it with `model_validate`. The result is a typed
+  model instance or a typed error.
+- **Invalid → typed error → retry or fallback (AC3).** `StructuredCompletion` raises
+  `OutputParsingError`/`OutputValidationError`, re-prompts with the error up to `max_attempts`, and
+  then calls an injected `fallback` (e.g. a curated recommendation) or re-raises. This is separate
+  from `LLMClient`'s transport retries: one handles a bad *answer*, the other a bad *connection*.
+
+Like `app/llm/` and `app/prompts/`, this is foundation — no HTTP route is added here; the `/ai/*`
+endpoints consume it from AIA-201.
+
 ## Configuration
 12-factor: every value is environment-driven (prefix `AI_`, see `app/core/config.py`). Secrets
 are injected at runtime, never baked into the image.

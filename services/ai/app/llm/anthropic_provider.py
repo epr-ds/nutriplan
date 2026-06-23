@@ -11,6 +11,8 @@ never appears in a log, exception, or ``repr``.
 
 from __future__ import annotations
 
+import json
+
 import httpx
 
 from app.llm.errors import (
@@ -21,7 +23,7 @@ from app.llm.errors import (
     LLMTimeoutError,
     LLMTransientError,
 )
-from app.llm.types import LLMRequest, LLMResponse, LLMUsage, Role
+from app.llm.types import LLMRequest, LLMResponse, LLMUsage, ResponseFormat, Role
 
 _DEFAULT_BASE_URL = "https://api.anthropic.com/v1"
 _ANTHROPIC_VERSION = "2023-06-01"
@@ -68,6 +70,10 @@ class AnthropicProvider:
         }
         if system:
             payload["system"] = system
+        if request.response_format is not None:
+            rf = request.response_format
+            payload["tools"] = [{"name": rf.name, "input_schema": dict(rf.schema)}]
+            payload["tool_choice"] = {"type": "tool", "name": rf.name}
 
         try:
             response = self._client.post(
@@ -84,7 +90,7 @@ class AnthropicProvider:
             raise LLMTransientError("Anthropic request failed in transport") from exc
 
         self._raise_for_status(response)
-        return self._parse(response)
+        return self._parse(response, request.response_format)
 
     @staticmethod
     def _raise_for_status(response: httpx.Response) -> None:
@@ -99,19 +105,41 @@ class AnthropicProvider:
             raise LLMTransientError(f"Anthropic server error ({status})")
         raise LLMBadRequestError(f"Anthropic rejected the request ({status})")
 
-    def _parse(self, response: httpx.Response) -> LLMResponse:
+    def _parse(
+        self, response: httpx.Response, response_format: ResponseFormat | None
+    ) -> LLMResponse:
         try:
             body = response.json()
             blocks = body["content"]
-            text = "".join(block["text"] for block in blocks if block.get("type") == "text")
             model = body.get("model", self._model)
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
+        except (ValueError, KeyError, TypeError) as exc:
             raise LLMResponseError("Anthropic response was missing the completion") from exc
+
+        if not isinstance(blocks, list):
+            raise LLMResponseError("Anthropic response content was not a list")
+
+        usage = _parse_usage(body.get("usage"))
+
+        # When a tool was forced (structured output, AIA-104) the answer comes back as a
+        # tool_use block whose ``input`` is the JSON object, not as free text. Normalize
+        # it to a JSON string so callers parse content uniformly across providers.
+        if response_format is not None:
+            for block in blocks:
+                if block.get("type") == "tool_use" and block.get("name") == response_format.name:
+                    return LLMResponse(
+                        content=json.dumps(block.get("input", {})), model=model, usage=usage
+                    )
+            raise LLMResponseError("Anthropic response did not include the requested tool output")
+
+        try:
+            text = "".join(block["text"] for block in blocks if block.get("type") == "text")
+        except (KeyError, TypeError) as exc:
+            raise LLMResponseError("Anthropic response had a malformed text block") from exc
 
         if not text:
             raise LLMResponseError("Anthropic response contained no text content")
 
-        return LLMResponse(content=text, model=model, usage=_parse_usage(body.get("usage")))
+        return LLMResponse(content=text, model=model, usage=usage)
 
 
 def _parse_usage(usage: object) -> LLMUsage | None:
