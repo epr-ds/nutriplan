@@ -1,11 +1,11 @@
 """``POST /ai/recommendations`` — AI recipe recommendations.
 
 The transport edge (Bearer auth, request validation, the ``AIRecommendationResponse`` envelope)
-arrived in AIA-201; AIA-203 wires the recommendation service behind it, so the response now carries
-real, usable recipes. The route maps its validated request onto a
+arrived in AIA-201; AIA-203 wired the recommendation service behind it so the response carries real,
+usable recipes; AIA-204 adds the model's ``reasoning`` and a deterministic ``nutritionalAlignment``
+(scored via AIA-106). The route maps its validated request onto a
 :class:`~app.recommendations.commands.RecommendationCommand`, delegates to the injected service, and
-projects the resulting recipes onto the wire shape. ``reasoning`` and ``nutritionalAlignment`` stay
-empty until AIA-204.
+projects the result onto the wire shape.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from app.api.schemas import (
     AIRecommendationRequest,
     AIRecommendationResponse,
     DietaryPreferencesSchema,
+    NutritionalAlignmentResponse,
     RecipeResponse,
 )
 from app.prompts.types import Locale
@@ -39,9 +40,16 @@ def get_recommendations(
     """Recommend recipes for the validated request, localized to the requested language."""
     command = _to_command(request)
     locale = Locale.parse(request.language.value, default=Locale.default())
-    recipes = service.recommend(command, locale=locale)
+    result = service.recommend(command, locale=locale)
+    alignment = result.alignment
     return AIRecommendationResponse(
-        recommendations=[RecipeResponse.from_recommended(recipe) for recipe in recipes]
+        recommendations=[RecipeResponse.from_recommended(recipe) for recipe in result.recipes],
+        reasoning=result.reasoning,
+        nutritional_alignment=(
+            NutritionalAlignmentResponse.from_alignment(alignment)
+            if alignment is not None
+            else None
+        ),
     )
 
 

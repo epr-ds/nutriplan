@@ -1,4 +1,4 @@
-"""Recommendation use case: request -> preference-aware prompt -> real recipes (AIA-202, AIA-203).
+"""Recommendation use case: request -> preference-aware prompt -> real recipes + alignment.
 
 This is the application layer for ``POST /ai/recommendations``. AIA-202 ships the prompt half: a
 :class:`RecommendationCommand` plus a :class:`RecommendationPromptAssembler` that renders a
@@ -6,9 +6,16 @@ distinct, localized template per context, with the caller's dietary profile inje
 the LLM call and recipe mapping: a :class:`RecommendationService` asks the model for a
 schema-constrained :class:`RecommendationDraft`, and a :class:`RecipeMapper` turns it into
 ``RecommendedRecipe`` results -- linking real catalogue recipes where possible and synthesizing the
-rest. Nutritional alignment and reasoning (AIA-204) layer on top later.
+rest. AIA-204 completes the result: the service surfaces the model's ``reasoning`` and a
+:class:`RecommendationAligner` scores the recipes against the caller's targets/preferences (AIA-106)
+into a :class:`RecommendationAlignment`.
 """
 
+from app.recommendations.alignment import (
+    RecipeAlignment,
+    RecommendationAligner,
+    RecommendationAlignment,
+)
 from app.recommendations.assembler import (
     RecommendationPromptAssembler,
     build_recommendation_prompt_assembler,
@@ -38,6 +45,7 @@ from app.recommendations.recipes import (
     RecommendedRecipe,
 )
 from app.recommendations.service import (
+    RecommendationResult,
     RecommendationService,
     build_recommendation_service,
 )
@@ -48,14 +56,18 @@ __all__ = [
     "MacroTargets",
     "MealType",
     "NutritionDraft",
+    "RecipeAlignment",
     "RecipeCatalogue",
     "RecipeDraft",
     "RecipeMapper",
     "RecipeSource",
+    "RecommendationAligner",
+    "RecommendationAlignment",
     "RecommendationCommand",
     "RecommendationContext",
     "RecommendationDraft",
     "RecommendationPromptAssembler",
+    "RecommendationResult",
     "RecommendationService",
     "RecommendedIngredient",
     "RecommendedNutrition",

@@ -45,6 +45,13 @@ class RecipeDraft(BaseModel):
 
 
 class RecommendationDraft(BaseModel):
-    """The model's full reply: the recipes it recommends for the request."""
+    """The model's full reply: the recipes it recommends, plus why they fit."""
 
     recipes: list[RecipeDraft] = Field(default_factory=list)
+    reasoning: str | None = Field(
+        default=None,
+        description=(
+            "A short explanation, in the request's language, of why these recipes fit -- "
+            "referencing the user's calorie/macro targets and dietary preferences."
+        ),
+    )
