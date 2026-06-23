@@ -1,20 +1,55 @@
-"""API tests for ``POST /ai/recommendations`` (AIA-201).
+"""API tests for ``POST /ai/recommendations`` — the transport edge (AIA-201).
 
-This slice owns the transport edge only: bearer auth, request validation, and the
-``AIRecommendationResponse`` envelope. Prompt assembly, the LLM call, recipe mapping,
-and nutritional alignment land in AIA-202..204, so the body is a validated stub here.
+This slice owns bearer auth, request validation, and the ``AIRecommendationResponse`` envelope.
+The recommendation service (wired in AIA-203) is overridden with a network-free instance that
+returns no recipes, so these tests stay focused on transport and run offline; the real
+recipe-mapping behaviour is covered by ``test_recommendations_endpoint.py``.
 """
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_recommendation_service
+from app.llm.client import LLMClient
+from app.llm.fake import FakeLLMProvider
+from app.llm.retry import RetryPolicy
+from app.llm.types import LLMResponse
 from app.main import app
+from app.recommendations.assembler import build_recommendation_prompt_assembler
+from app.recommendations.catalogue import InMemoryRecipeCatalogue
+from app.recommendations.draft import RecommendationDraft
+from app.recommendations.mapper import RecipeMapper
+from app.recommendations.service import RecommendationService
+from app.structured.parser import StructuredOutputParser
+from app.structured.service import StructuredCompletion
 
 client = TestClient(app)
 
 _AUTH = {"Authorization": "Bearer test-token"}
 _PROBLEM_JSON = "application/problem+json"
+
+
+def _empty_service() -> RecommendationService:
+    provider = FakeLLMProvider([LLMResponse(content='{"recipes": []}', model="fake")])
+    completion = StructuredCompletion(
+        LLMClient(provider, RetryPolicy(max_retries=0)),
+        StructuredOutputParser(RecommendationDraft),
+        max_attempts=1,
+    )
+    return RecommendationService(
+        build_recommendation_prompt_assembler(),
+        completion,
+        RecipeMapper(InMemoryRecipeCatalogue()),
+    )
+
+
+@pytest.fixture(autouse=True)
+def _override_service():
+    app.dependency_overrides[get_recommendation_service] = _empty_service
+    yield
+    app.dependency_overrides.pop(get_recommendation_service, None)
 
 
 def _minimal_body() -> dict[str, object]:

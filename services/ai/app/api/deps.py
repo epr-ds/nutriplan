@@ -8,10 +8,13 @@ token's signature/claims here is intentionally out of scope and tracked by AIA-8
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.recommendations.service import RecommendationService, build_recommendation_service
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -29,4 +32,15 @@ def require_bearer(
     return credentials.credentials
 
 
+@lru_cache(maxsize=1)
+def get_recommendation_service() -> RecommendationService:
+    """Build the (cached) recommendation service from configuration.
+
+    Memoized so the completion cache and token-budget counters persist across requests rather than
+    being rebuilt per call. Tests swap the whole service via ``app.dependency_overrides``.
+    """
+    return build_recommendation_service()
+
+
 BearerToken = Annotated[str, Depends(require_bearer)]
+RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
