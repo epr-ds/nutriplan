@@ -77,6 +77,11 @@ def baseline_for(plan: OptimizationPlan, goal: OptimizationGoal) -> BaselineMetr
     return BaselineMetric(goal=goal, value=measure_metric(plan, goal), direction=_DIRECTIONS[goal])
 
 
+def metric_direction(goal: OptimizationGoal) -> BaselineDirection:
+    """Which direction improves ``goal``'s metric — so the AIA-403 optimizer can climb it."""
+    return _DIRECTIONS[goal]
+
+
 def _protein_density(average: PlanNutrition) -> float:
     """Grams of protein per 1000 kcal — a deterministic satiety proxy (``0.0`` when undefined)."""
     calories = average.calories or 0

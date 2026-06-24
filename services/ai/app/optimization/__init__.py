@@ -7,11 +7,14 @@ from app.optimization.baseline import (
     BaselineMetric,
     baseline_for,
     measure_metric,
+    metric_direction,
 )
 from app.optimization.commands import OptimizationGoal, OptimizePlanCommand
 from app.optimization.gateway import InMemoryPlanGateway, PlanGateway
+from app.optimization.optimizer import PlanOptimizer, ServingPolicy
 from app.optimization.plan import (
     NutritionTargets,
+    OptimizationConstraints,
     OptimizationMeal,
     OptimizationPlan,
     PlanNutrition,
@@ -25,6 +28,7 @@ __all__ = [
     "BaselineMetric",
     "InMemoryPlanGateway",
     "NutritionTargets",
+    "OptimizationConstraints",
     "OptimizationGoal",
     "OptimizationMeal",
     "OptimizationOutcome",
@@ -34,7 +38,10 @@ __all__ = [
     "PlanNutrition",
     "PlanNutritionSummary",
     "PlanOptimizationService",
+    "PlanOptimizer",
+    "ServingPolicy",
     "baseline_for",
     "build_plan_optimization_service",
     "measure_metric",
+    "metric_direction",
 ]
