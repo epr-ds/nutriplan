@@ -191,7 +191,7 @@ DEFAULT_TEMPLATES = (
 # $ingredients list (filling an absent list with a neutral filler), so the template renders cleanly.
 
 ANALYZE_MEAL_ID = "analyze_meal"
-_ANALYZE_MEAL_VERSION = "2026-06-23"
+_ANALYZE_MEAL_VERSION = "2026-06-24"
 
 _ANALYZE_MEAL_EN = PromptTemplate(
     id=ANALYZE_MEAL_ID,
@@ -202,14 +202,16 @@ _ANALYZE_MEAL_EN = PromptTemplate(
         "nutrition of the meal the user describes, using any structured "
         "ingredients to sharpen the estimate. Report whole-meal totals: "
         "calories in kcal and protein, carbohydrates, fat, and sugar in grams, "
-        "plus a confidence between 0 and 1. Do not give medical advice or "
-        "health claims. Reply in English."
+        "plus a confidence between 0 and 1. Also list any common allergens you "
+        "detect (milk, eggs, peanuts, tree_nuts, soy, wheat, gluten, fish, "
+        "shellfish, sesame), or an empty list if none. Do not give medical "
+        "advice or health claims. Reply in English."
     ),
     user=(
         "Meal description: $description\n"
         "Ingredients: $ingredients\n"
-        "Estimate the whole meal's calories and macronutrients, and rate your "
-        "confidence from 0 to 1."
+        "Estimate the whole meal's calories and macronutrients, rate your "
+        "confidence from 0 to 1, and list any common allergens it contains."
     ),
 )
 
@@ -223,14 +225,17 @@ _ANALYZE_MEAL_ES = PromptTemplate(
         "ingredientes estructurados para afinar la estimación. Indica los "
         "totales de la comida completa: calorías en kcal y proteínas, "
         "carbohidratos, grasas y azúcar en gramos, además de una confianza "
-        "entre 0 y 1. No des consejo médico ni afirmaciones de salud. "
-        "Responde en español."
+        "entre 0 y 1. Indica también los alérgenos comunes que detectes (milk, "
+        "eggs, peanuts, tree_nuts, soy, wheat, gluten, fish, shellfish, "
+        "sesame), o una lista vacía si no hay. No des consejo médico ni "
+        "afirmaciones de salud. Responde en español."
     ),
     user=(
         "Descripción de la comida: $description\n"
         "Ingredientes: $ingredients\n"
-        "Estima las calorías y los macronutrientes de la comida completa, y "
-        "valora tu confianza de 0 a 1."
+        "Estima las calorías y los macronutrientes de la comida completa, "
+        "valora tu confianza de 0 a 1 e indica los alérgenos comunes que "
+        "contenga."
     ),
 )
 
