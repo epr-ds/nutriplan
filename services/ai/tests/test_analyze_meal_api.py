@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from app.analysis.alignment import MealAligner, MealReference
 from app.analysis.commands import MealAnalysisCommand
 from app.analysis.result import AnalyzedNutrition, MealAnalysis
 from app.api.analysis import _to_command
@@ -129,3 +130,18 @@ def test_to_command_maps_description_and_ingredients() -> None:
     assert ingredient.quantity == 80
     assert ingredient.unit == "g"
     assert ingredient.protein == 12
+
+
+def test_projects_alignment_score_and_details() -> None:
+    nutrition = AnalyzedNutrition(calories=500, protein=20, carbs=60, fat=18, sugar=12)
+    alignment = MealAligner(
+        reference=MealReference(calories=500, protein=20, carbs=60, fat=18, sugar=12)
+    ).align(nutrition)
+    app.dependency_overrides[get_meal_analysis_service] = lambda: _FakeAnalysisService(
+        MealAnalysis(nutrition=nutrition, alignment=alignment)
+    )
+
+    body = client.post("/ai/analyze-meal", json=_body(), headers=_AUTH).json()
+
+    assert body["alignment"]["score"] == 100.0
+    assert "100" in body["alignment"]["details"]
