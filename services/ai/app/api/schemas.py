@@ -212,12 +212,14 @@ class NutritionalAnalysisResponse(_Camel):
 
     @classmethod
     def from_analysis(cls, analysis: MealAnalysis) -> NutritionalAnalysisResponse:
-        """Project an application :class:`MealAnalysis` onto the wire shape (AIA-301).
+        """Project an application :class:`MealAnalysis` onto the wire shape (AIA-301, AIA-302).
 
-        ``alignment`` stays ``None`` for now: the analyze-meal request carries no user targets to
-        align against. Estimation (and any alignment) is layered in by later meal-analysis stories.
+        ``nutritionalInfo`` and ``alignment`` are ``None`` when the model could not estimate the
+        meal (and so there was nothing to score); ``alignment`` exposes its score as a 0-100
+        percentage.
         """
         nutrition = analysis.nutrition
+        alignment = analysis.alignment
         return cls(
             nutritional_info=(
                 NutritionalInfoSchema(
@@ -228,6 +230,14 @@ class NutritionalAnalysisResponse(_Camel):
                     sugar=nutrition.sugar,
                 )
                 if nutrition is not None
+                else None
+            ),
+            alignment=(
+                NutritionalAlignmentResponse(
+                    score=alignment.percentage,
+                    details=alignment.details,
+                )
+                if alignment is not None
                 else None
             ),
             warnings=list(analysis.warnings),

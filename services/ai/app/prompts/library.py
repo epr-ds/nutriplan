@@ -186,6 +186,61 @@ DEFAULT_TEMPLATES = (
 )
 
 
+# --- Meal-analysis prompt (AIA-302) -------------------------------------------------------------
+# Estimate a described meal's nutrition. The assembler always supplies $description and a rendered
+# $ingredients list (filling an absent list with a neutral filler), so the template renders cleanly.
+
+ANALYZE_MEAL_ID = "analyze_meal"
+_ANALYZE_MEAL_VERSION = "2026-06-23"
+
+_ANALYZE_MEAL_EN = PromptTemplate(
+    id=ANALYZE_MEAL_ID,
+    version=_ANALYZE_MEAL_VERSION,
+    locale=Locale.EN,
+    system=(
+        "You are NutriPlan's registered-dietitian assistant. Estimate the "
+        "nutrition of the meal the user describes, using any structured "
+        "ingredients to sharpen the estimate. Report whole-meal totals: "
+        "calories in kcal and protein, carbohydrates, fat, and sugar in grams, "
+        "plus a confidence between 0 and 1. Do not give medical advice or "
+        "health claims. Reply in English."
+    ),
+    user=(
+        "Meal description: $description\n"
+        "Ingredients: $ingredients\n"
+        "Estimate the whole meal's calories and macronutrients, and rate your "
+        "confidence from 0 to 1."
+    ),
+)
+
+_ANALYZE_MEAL_ES = PromptTemplate(
+    id=ANALYZE_MEAL_ID,
+    version=_ANALYZE_MEAL_VERSION,
+    locale=Locale.ES,
+    system=(
+        "Eres el asistente dietista-nutricionista de NutriPlan. Estima la "
+        "nutrición de la comida que describe el usuario, usando los "
+        "ingredientes estructurados para afinar la estimación. Indica los "
+        "totales de la comida completa: calorías en kcal y proteínas, "
+        "carbohidratos, grasas y azúcar en gramos, además de una confianza "
+        "entre 0 y 1. No des consejo médico ni afirmaciones de salud. "
+        "Responde en español."
+    ),
+    user=(
+        "Descripción de la comida: $description\n"
+        "Ingredientes: $ingredients\n"
+        "Estima las calorías y los macronutrientes de la comida completa, y "
+        "valora tu confianza de 0 a 1."
+    ),
+)
+
+DEFAULT_TEMPLATES = (
+    *DEFAULT_TEMPLATES,
+    _ANALYZE_MEAL_EN,
+    _ANALYZE_MEAL_ES,
+)
+
+
 def build_default_catalog() -> InMemoryPromptCatalog:
     """Build a catalog pre-loaded with every shipped template."""
     return InMemoryPromptCatalog(DEFAULT_TEMPLATES)
