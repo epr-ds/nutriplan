@@ -8,14 +8,22 @@ assembles prompts or scores candidates internally.
 
 from __future__ import annotations
 
+from datetime import date
 from enum import StrEnum
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
     from app.analysis.result import MealAnalysis
+    from app.optimization.plan import (
+        OptimizationMeal,
+        OptimizationPlan,
+        PlanNutrition,
+        PlanNutritionSummary,
+    )
     from app.recommendations.alignment import RecommendationAlignment
     from app.recommendations.recipes import RecommendedRecipe
 
@@ -116,10 +124,10 @@ class IngredientResponse(_Camel):
 
 class NutritionalInfoSchema(_Camel):
     calories: int | None = None
-    protein: int | None = None
-    carbs: int | None = None
-    fat: int | None = None
-    sugar: int | None = None
+    protein: float | None = None
+    carbs: float | None = None
+    fat: float | None = None
+    sugar: float | None = None
 
 
 class RecipeResponse(_Camel):
@@ -242,3 +250,131 @@ class NutritionalAnalysisResponse(_Camel):
             ),
             warnings=list(analysis.warnings),
         )
+
+
+class MealPlanStatus(StrEnum):
+    """Lifecycle status of a meal plan (contract ``MealPlanResponse.status``)."""
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    SAVED = "saved"
+
+
+class OptimizationGoal(StrEnum):
+    """What ``POST /ai/optimize-plan`` should prioritize (contract ``OptimizePlanRequest.goal``)."""
+
+    BALANCE_MACROS = "balance_macros"
+    INCREASE_PROTEIN = "increase_protein"
+    REDUCE_CALORIES = "reduce_calories"
+    INCREASE_SATISFACTION = "increase_satisfaction"
+
+
+class OptimizePlanRequest(_Camel):
+    """The validated request envelope for ``POST /ai/optimize-plan`` (AIA-401).
+
+    ``planId`` is a required UUID (a malformed id is rejected with ``422`` before any work is done).
+    ``goal`` is optional — the contract only requires ``planId`` — and steers optimization in
+    AIA-403+.
+    """
+
+    plan_id: UUID
+    goal: OptimizationGoal | None = None
+
+
+class NutritionalTargetsSchema(_Camel):
+    """A plan's nutrition goals (``NutritionalTargets``): daily calories + optional macro grams."""
+
+    calories: int | None = None
+    protein: int | None = None
+    carbs: int | None = None
+    fat: int | None = None
+    sugar: int | None = None
+
+
+class NutritionalSummarySchema(_Camel):
+    """``NutritionalSummary`` — the plan's total + daily-average nutrition versus its targets."""
+
+    total: NutritionalInfoSchema
+    daily_average: NutritionalInfoSchema
+    targets: NutritionalTargetsSchema
+
+    @classmethod
+    def from_summary(cls, summary: PlanNutritionSummary) -> NutritionalSummarySchema:
+        return cls(
+            total=_nutrition_schema(summary.total),
+            daily_average=_nutrition_schema(summary.daily_average),
+            targets=NutritionalTargetsSchema(
+                calories=summary.targets.calories,
+                protein=summary.targets.protein,
+                carbs=summary.targets.carbs,
+                fat=summary.targets.fat,
+                sugar=summary.targets.sugar,
+            ),
+        )
+
+
+class MealResponse(_Camel):
+    """``MealResponse`` — one planned meal. The recipe stays ``null`` on plan reads."""
+
+    id: str
+    meal_type: MealType
+    servings: float
+    recipe: RecipeResponse | None = None
+    nutritional_info: NutritionalInfoSchema | None = None
+
+    @classmethod
+    def from_meal(cls, meal: OptimizationMeal) -> MealResponse:
+        return cls(
+            id=meal.id,
+            meal_type=MealType(meal.meal_type),
+            servings=meal.servings,
+            nutritional_info=(
+                _nutrition_schema(meal.nutrition) if meal.nutrition is not None else None
+            ),
+        )
+
+
+class MealPlanResponse(_Camel):
+    """``MealPlanResponse`` — the caller-facing projection of a meal plan (AIA-401).
+
+    Returned by ``POST /ai/optimize-plan``; the same wire shape the dietary service serves, so the
+    optimized plan reads identically to a plan fetched directly.
+    """
+
+    id: str
+    name: str
+    start_date: date
+    end_date: date
+    daily_calorie_target: int
+    status: MealPlanStatus
+    meals: list[MealResponse] = Field(default_factory=list)
+    nutritional_summary: NutritionalSummarySchema | None = None
+
+    @classmethod
+    def from_plan(cls, plan: OptimizationPlan) -> MealPlanResponse:
+        return cls(
+            id=plan.id,
+            name=plan.name,
+            start_date=plan.start_date,
+            end_date=plan.end_date,
+            daily_calorie_target=plan.daily_calorie_target,
+            status=MealPlanStatus(plan.status),
+            meals=[MealResponse.from_meal(meal) for meal in plan.meals],
+            nutritional_summary=(
+                NutritionalSummarySchema.from_summary(plan.nutritional_summary)
+                if plan.nutritional_summary is not None
+                else None
+            ),
+        )
+
+
+def _nutrition_schema(nutrition: PlanNutrition) -> NutritionalInfoSchema:
+    """Project a plan-nutrition value object onto the wire shape."""
+    return NutritionalInfoSchema(
+        calories=nutrition.calories,
+        protein=nutrition.protein,
+        carbs=nutrition.carbs,
+        fat=nutrition.fat,
+        sugar=nutrition.sugar,
+    )

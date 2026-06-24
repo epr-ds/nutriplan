@@ -15,6 +15,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.analysis.service import MealAnalysisService, build_meal_analysis_service
+from app.optimization.service import PlanOptimizationService, build_plan_optimization_service
 from app.recommendations.service import RecommendationService, build_recommendation_service
 
 _bearer = HTTPBearer(auto_error=False)
@@ -53,6 +54,19 @@ def get_meal_analysis_service() -> MealAnalysisService:
     return build_meal_analysis_service()
 
 
+@lru_cache(maxsize=1)
+def get_plan_optimization_service() -> PlanOptimizationService:
+    """Build the (cached) plan-optimization service from configuration (AIA-401).
+
+    Memoized for parity with the other AI services. Defaults to an empty plan gateway until the real
+    dietary-service adapter lands (AIA-402); tests swap it via ``dependency_overrides``.
+    """
+    return build_plan_optimization_service()
+
+
 BearerToken = Annotated[str, Depends(require_bearer)]
 RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
 MealAnalysisServiceDep = Annotated[MealAnalysisService, Depends(get_meal_analysis_service)]
+PlanOptimizationServiceDep = Annotated[
+    PlanOptimizationService, Depends(get_plan_optimization_service)
+]
