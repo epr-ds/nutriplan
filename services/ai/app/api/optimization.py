@@ -1,0 +1,40 @@
+"""``POST /ai/optimize-plan`` — optimize a meal plan toward its goals.
+
+The transport edge (Bearer auth, ``planId``/``goal`` validation, the caller-owned plan lookup, and
+the ``MealPlanResponse`` envelope) arrives in AIA-401. The route maps its validated request onto an
+:class:`~app.optimization.commands.OptimizePlanCommand`, loads the caller-owned plan via the
+injected service (forwarding the Bearer token so ownership is enforced downstream), returns ``404``
+when the plan is absent or not the caller's, and projects the result onto the wire shape. Real
+optimization lands in AIA-402-405 behind the service without changing this edge.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.deps import BearerToken, PlanOptimizationServiceDep
+from app.api.schemas import MealPlanResponse, OptimizePlanRequest
+from app.optimization.commands import OptimizationGoal, OptimizePlanCommand
+
+router = APIRouter(prefix="/ai", tags=["AI"])
+
+
+@router.post("/optimize-plan", response_model=MealPlanResponse)
+def optimize_plan(
+    request: OptimizePlanRequest,
+    token: BearerToken,
+    service: PlanOptimizationServiceDep,
+) -> MealPlanResponse:
+    """Optimize the caller's plan, or ``404`` when it is absent or not theirs."""
+    plan = service.optimize(_to_command(request), token=token)
+    if plan is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Meal plan not found")
+    return MealPlanResponse.from_plan(plan)
+
+
+def _to_command(request: OptimizePlanRequest) -> OptimizePlanCommand:
+    """Translate the HTTP request into the application command the service consumes."""
+    return OptimizePlanCommand(
+        plan_id=str(request.plan_id),
+        goal=OptimizationGoal(request.goal.value) if request.goal is not None else None,
+    )
