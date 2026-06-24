@@ -49,6 +49,11 @@ class MealAligner:
         self._reference = reference or MealReference()
         self._scorer = scorer or AlignmentScorer()
 
+    @property
+    def reference(self) -> MealReference:
+        """The balanced-meal reference this aligner scores against (reused for bounds warnings)."""
+        return self._reference
+
     def align(self, nutrition: AnalyzedNutrition | None) -> MealAlignment | None:
         """Return the meal's alignment, or ``None`` when there is nothing to score."""
         if nutrition is None:

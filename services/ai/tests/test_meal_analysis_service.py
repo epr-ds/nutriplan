@@ -119,6 +119,43 @@ def test_low_confidence_warning_is_localized() -> None:
     assert any("confianza" in warning.lower() for warning in result.warnings)
 
 
+def test_detected_allergen_is_surfaced_as_warning() -> None:
+    draft = {**_DRAFT, "allergens": ["peanuts"]}
+    service = _service(FakeLLMProvider([_response(json.dumps(draft))]))
+
+    result = service.analyze(_COMMAND)
+
+    assert any("peanuts" in warning.lower() for warning in result.warnings)
+
+
+def test_allergen_warning_is_localized() -> None:
+    draft = {**_DRAFT, "allergens": ["milk"]}
+    service = _service(FakeLLMProvider([_response(json.dumps(draft))]))
+
+    result = service.analyze(_COMMAND, locale=Locale.ES)
+
+    assert any("contiene" in warning.lower() for warning in result.warnings)
+
+
+def test_over_target_meal_is_flagged() -> None:
+    # Twice the reference calories -> a localized over-target warning, no medical claim.
+    draft = {**_DRAFT, "calories": 1400}
+    service = _service(FakeLLMProvider([_response(json.dumps(draft))]))
+
+    result = service.analyze(_COMMAND)
+
+    assert any("high" in w.lower() and "calorie" in w.lower() for w in result.warnings)
+
+
+def test_under_target_meal_is_flagged() -> None:
+    draft = {**_DRAFT, "protein": 5}
+    service = _service(FakeLLMProvider([_response(json.dumps(draft))]))
+
+    result = service.analyze(_COMMAND)
+
+    assert any("low" in w.lower() and "protein" in w.lower() for w in result.warnings)
+
+
 def test_unestimable_meal_yields_no_nutrition_but_flags_confidence() -> None:
     # The model returned nothing usable: degrade to an empty estimate via the fallback.
     service = _service(
