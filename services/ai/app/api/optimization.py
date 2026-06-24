@@ -26,10 +26,10 @@ def optimize_plan(
     service: PlanOptimizationServiceDep,
 ) -> MealPlanResponse:
     """Optimize the caller's plan, or ``404`` when it is absent or not theirs."""
-    plan = service.optimize(_to_command(request), token=token)
-    if plan is None:
+    outcome = service.optimize(_to_command(request), token=token)
+    if outcome is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Meal plan not found")
-    return MealPlanResponse.from_plan(plan)
+    return MealPlanResponse.from_plan(outcome.plan)
 
 
 def _to_command(request: OptimizePlanRequest) -> OptimizePlanCommand:

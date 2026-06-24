@@ -20,6 +20,7 @@ from app.optimization.plan import (
     PlanNutrition,
     PlanNutritionSummary,
 )
+from app.optimization.result import OptimizationOutcome
 from app.optimization.service import PlanOptimizationService, build_plan_optimization_service
 
 _OWNER = "owner-token"
@@ -97,12 +98,37 @@ class _RecordingGateway:
 
 
 class TestPlanOptimizationService:
-    def test_returns_the_loaded_plan_unchanged(self) -> None:
-        # AIA-401 is the seam: the "optimized" plan is the loaded plan (optimization = AIA-402+).
+    def test_returns_an_outcome_carrying_the_loaded_plan(self) -> None:
+        # AIA-401/402 seam: the "optimized" plan is the loaded plan (real edits = AIA-403+).
         gateway = _RecordingGateway(_plan())
         service = PlanOptimizationService(gateway=gateway)
 
-        assert service.optimize(_command(), token=_OWNER) == _plan()
+        outcome = service.optimize(_command(), token=_OWNER)
+
+        assert isinstance(outcome, OptimizationOutcome)
+        assert outcome.plan == _plan()
+
+    def test_measures_a_baseline_for_the_requested_goal(self) -> None:
+        gateway = _RecordingGateway(_plan())
+        service = PlanOptimizationService(gateway=gateway)
+
+        outcome = service.optimize(
+            OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
+            token=_OWNER,
+        )
+
+        assert outcome is not None
+        assert outcome.baseline.goal is OptimizationGoal.INCREASE_PROTEIN
+        assert outcome.baseline.value == 20.0
+
+    def test_defaults_the_goal_to_balance_macros_when_omitted(self) -> None:
+        gateway = _RecordingGateway(_plan())
+        service = PlanOptimizationService(gateway=gateway)
+
+        outcome = service.optimize(OptimizePlanCommand(plan_id=_PLAN_ID), token=_OWNER)
+
+        assert outcome is not None
+        assert outcome.baseline.goal is OptimizationGoal.BALANCE_MACROS
 
     def test_forwards_the_plan_id_and_token_to_the_gateway(self) -> None:
         gateway = _RecordingGateway(_plan())
