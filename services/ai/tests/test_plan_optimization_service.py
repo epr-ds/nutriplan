@@ -1,17 +1,20 @@
-"""Unit tests for the plan-optimization application layer (AIA-401-403).
+"""Unit tests for the plan-optimization application layer (AIA-401-404).
 
 These pin the seam established by the ``POST /ai/optimize-plan`` slice: a :class:`PlanGateway`
 port that loads a caller-owned plan (forwarding the Bearer token so ownership is enforced
 downstream, mirroring how the gateway does JWT verification — AIA-804), an in-memory adapter for
-offline tests, and a :class:`PlanOptimizationService` that measures a baseline and runs the
-injected :class:`PlanOptimizer` over the loaded plan. The optimizer is stubbed here (its own edits
-are pinned in ``test_plan_optimizer.py``) so these tests isolate the service's wiring.
+offline tests, and a :class:`PlanOptimizationService` that measures a baseline, runs the injected
+:class:`PlanOptimizer` over the loaded plan, and re-measures the result for the AIA-404
+improve-or-no-op check. The optimizer is stubbed here (its own edits are pinned in
+``test_plan_optimizer.py``; the improvement-check policy in ``test_optimization_outcome.py``) so
+these tests isolate the service's wiring.
 """
 
 from __future__ import annotations
 
 from datetime import date
 
+from app.optimization.baseline import measure_metric
 from app.optimization.commands import OptimizationGoal, OptimizePlanCommand
 from app.optimization.gateway import InMemoryPlanGateway
 from app.optimization.plan import (
@@ -51,6 +54,29 @@ def _plan(plan_id: str = _PLAN_ID) -> OptimizationPlan:
             daily_average=PlanNutrition(
                 calories=400, protein=20.0, carbs=45.0, fat=12.0, sugar=8.0
             ),
+            targets=NutritionTargets(calories=2000, protein=150, carbs=200, fat=60, sugar=50),
+        ),
+    )
+
+
+def _plan_with_protein(
+    protein: float, plan_id: str = "33333333-3333-3333-3333-333333333333"
+) -> OptimizationPlan:
+    """A plan whose daily-average protein is ``protein`` — used to stage an optimizer result."""
+    nutrition = PlanNutrition(calories=400, protein=protein, carbs=45.0, fat=12.0, sugar=8.0)
+    return OptimizationPlan(
+        id=plan_id,
+        name="Optimized",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 7),
+        daily_calorie_target=2000,
+        status="active",
+        meals=(
+            OptimizationMeal(id="m1", meal_type="breakfast", servings=1.0, nutrition=nutrition),
+        ),
+        nutritional_summary=PlanNutritionSummary(
+            total=nutrition,
+            daily_average=nutrition,
             targets=NutritionTargets(calories=2000, protein=150, carbs=200, fat=60, sugar=50),
         ),
     )
@@ -127,10 +153,9 @@ class TestPlanOptimizationService:
         assert isinstance(outcome, OptimizationOutcome)
         assert outcome.original == _plan()
         assert outcome.optimized == _plan()
-        assert outcome.plan == outcome.optimized
 
     def test_optimizes_the_loaded_plan_toward_the_effective_goal(self) -> None:
-        optimized = _plan("33333333-3333-3333-3333-333333333333")
+        optimized = _plan_with_protein(60.0)
         spy = _SpyOptimizer(optimized)
         service = PlanOptimizationService(gateway=_RecordingGateway(_plan()), optimizer=spy)
 
@@ -141,8 +166,8 @@ class TestPlanOptimizationService:
 
         assert spy.calls == [(_plan(), OptimizationGoal.INCREASE_PROTEIN)]
         assert outcome is not None
+        # The raw optimizer result is always stored; whether it is *returned* is the AIA-404 check.
         assert outcome.optimized is optimized
-        assert outcome.plan is optimized
 
     def test_optimizer_receives_the_defaulted_goal(self) -> None:
         spy = _SpyOptimizer(_plan())
@@ -151,6 +176,55 @@ class TestPlanOptimizationService:
         service.optimize(OptimizePlanCommand(plan_id=_PLAN_ID), token=_OWNER)
 
         assert spy.calls == [(_plan(), OptimizationGoal.BALANCE_MACROS)]
+
+    def test_re_measures_the_optimized_plan_for_the_goal(self) -> None:
+        optimized = _plan_with_protein(45.0)
+        service = PlanOptimizationService(
+            gateway=_RecordingGateway(_plan()), optimizer=_SpyOptimizer(optimized)
+        )
+
+        outcome = service.optimize(
+            OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
+            token=_OWNER,
+        )
+
+        assert outcome is not None
+        assert outcome.optimized_value == measure_metric(
+            optimized, OptimizationGoal.INCREASE_PROTEIN
+        )
+        assert outcome.optimized_value == 45.0
+
+    def test_returns_the_optimized_plan_when_the_metric_improves(self) -> None:
+        optimized = _plan_with_protein(50.0)  # baseline protein is 20.0
+        service = PlanOptimizationService(
+            gateway=_RecordingGateway(_plan()), optimizer=_SpyOptimizer(optimized)
+        )
+
+        outcome = service.optimize(
+            OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
+            token=_OWNER,
+        )
+
+        assert outcome is not None
+        assert outcome.improved is True
+        assert outcome.plan is optimized
+
+    def test_returns_the_original_plan_when_optimization_does_not_improve(self) -> None:
+        # A regression must never reach the user: keep the loaded plan (safe no-op).
+        loaded = _plan()
+        worse = _plan_with_protein(10.0)  # baseline protein is 20.0
+        service = PlanOptimizationService(
+            gateway=_RecordingGateway(loaded), optimizer=_SpyOptimizer(worse)
+        )
+
+        outcome = service.optimize(
+            OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
+            token=_OWNER,
+        )
+
+        assert outcome is not None
+        assert outcome.improved is False
+        assert outcome.plan is loaded
 
     def test_measures_a_baseline_for_the_requested_goal(self) -> None:
         gateway = _RecordingGateway(_plan())
