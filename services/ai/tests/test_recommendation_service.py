@@ -23,6 +23,11 @@ from app.recommendations.bounds import (
 from app.recommendations.catalogue import InMemoryRecipeCatalogue
 from app.recommendations.commands import RecommendationCommand, RecommendationContext
 from app.recommendations.draft import RecommendationDraft
+from app.recommendations.fallback import (
+    CuratedRecipeFallback,
+    InMemoryCuratedRecipeSource,
+    InMemoryFallbackTelemetry,
+)
 from app.recommendations.mapper import RecipeMapper
 from app.recommendations.recipes import (
     RecipeSource,
@@ -77,6 +82,7 @@ def _service(
     diversifier: RecommendationDiversifier | None = None,
     safety_filter: AllergenFilter | None = None,
     bounds_guard: NutritionBoundsGuard | None = None,
+    curated_fallback: CuratedRecipeFallback | None = None,
 ) -> RecommendationService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -93,6 +99,7 @@ def _service(
         diversifier=diversifier,
         safety_filter=safety_filter,
         bounds_guard=bounds_guard,
+        fallback=curated_fallback,
     )
 
 
@@ -350,3 +357,74 @@ def test_recommend_clamps_calorie_target_before_prompting() -> None:
     assert telemetry.clamps[0].clamped == 1200
     rendered = " ".join(message.content for message in provider.calls[0].messages)
     assert "1200 kcal" in rendered
+
+
+def _curated(name: str, *, ingredients: tuple[str, ...] = ("oats",)) -> RecommendedRecipe:
+    return RecommendedRecipe(
+        id=name.lower().replace(" ", "-"),
+        name=name,
+        servings=1,
+        ingredients=tuple(RecommendedIngredient(name=item) for item in ingredients),
+        instructions=("Prepare.",),
+        nutrition=RecommendedNutrition(calories=400),
+        source=RecipeSource.CATALOGUE,
+    )
+
+
+def test_recommend_falls_back_to_curated_when_model_returns_nothing() -> None:
+    # AIA-503 AC1/AC2/AC3: the model returned an empty draft, so the service serves curated
+    # catalogue recipes instead and records the fallback so the rate can be tracked.
+    telemetry = InMemoryFallbackTelemetry()
+    service = _service(
+        FakeLLMProvider([_response('{"recipes": []}')]),
+        curated_fallback=CuratedRecipeFallback(
+            source=InMemoryCuratedRecipeSource((_curated("Curated Oatmeal"),)),
+            telemetry=telemetry,
+        ),
+    )
+
+    result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
+
+    assert [recipe.name for recipe in result.recipes] == ["Curated Oatmeal"]
+    assert telemetry.fallback_count == 1
+    assert telemetry.rate == 1.0
+
+
+def test_recommend_does_not_fall_back_when_the_model_succeeds() -> None:
+    telemetry = InMemoryFallbackTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_DRAFT))]),
+        curated_fallback=CuratedRecipeFallback(
+            source=InMemoryCuratedRecipeSource((_curated("Curated Oatmeal"),)),
+            telemetry=telemetry,
+        ),
+    )
+
+    result = service.recommend(_COMMAND)
+
+    assert [recipe.name for recipe in result.recipes] == ["Avena con Frutas"]
+    assert telemetry.fallback_count == 0
+
+
+def test_recommend_screens_curated_fallback_for_allergies() -> None:
+    # A curated recipe is not automatically safe for THIS user: the allergy filter still applies on
+    # the fallback path, so a substitution can never reintroduce an allergen.
+    service = _service(
+        FakeLLMProvider([_response('{"recipes": []}')]),
+        curated_fallback=CuratedRecipeFallback(
+            source=InMemoryCuratedRecipeSource(
+                (
+                    _curated("Peanut Bar", ingredients=("peanut butter",)),
+                    _curated("Oat Bar"),
+                )
+            ),
+        ),
+    )
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        allergies=("peanuts",),
+    )
+
+    result = service.recommend(command)
+
+    assert [recipe.name for recipe in result.recipes] == ["Oat Bar"]

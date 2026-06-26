@@ -15,7 +15,10 @@ safety net: an :class:`AllergenFilter` removes any recipe that violates the call
 excluded ingredients and records the removal through a :class:`GuardrailTelemetry` port. AIA-502
 adds the nutritional-bounds net: a :class:`NutritionBoundsGuard` clamps the request's calorie
 targets into sane bounds and rejects any recommended recipe whose nutrition is physically
-impossible, recording both through a :class:`BoundsTelemetry` port.
+impossible, recording both through a :class:`BoundsTelemetry` port. AIA-503 adds a last-resort
+net: a :class:`CuratedRecipeFallback` detects when the model produced nothing usable and
+substitutes screened curated catalogue recipes, recording the fallback rate through a
+:class:`FallbackTelemetry` port.
 """
 
 from app.recommendations.alignment import (
@@ -55,6 +58,16 @@ from app.recommendations.draft import (
     RecipeDraft,
     RecommendationDraft,
 )
+from app.recommendations.fallback import (
+    CuratedRecipeFallback,
+    CuratedRecipeSource,
+    FallbackEvent,
+    FallbackReason,
+    FallbackTelemetry,
+    InMemoryCuratedRecipeSource,
+    InMemoryFallbackTelemetry,
+    LoggingFallbackTelemetry,
+)
 from app.recommendations.mapper import RecipeMapper
 from app.recommendations.recipes import (
     RecipeSource,
@@ -90,13 +103,21 @@ __all__ = [
     "BoundsTelemetry",
     "BoundsViolation",
     "CalorieClamp",
+    "CuratedRecipeFallback",
+    "CuratedRecipeSource",
+    "FallbackEvent",
+    "FallbackReason",
+    "FallbackTelemetry",
     "GuardrailTelemetry",
     "GuardrailViolation",
     "InMemoryBoundsTelemetry",
+    "InMemoryCuratedRecipeSource",
+    "InMemoryFallbackTelemetry",
     "InMemoryGuardrailTelemetry",
     "InMemoryRecipeCatalogue",
     "IngredientDraft",
     "LoggingBoundsTelemetry",
+    "LoggingFallbackTelemetry",
     "LoggingGuardrailTelemetry",
     "MacroTargets",
     "MealType",
