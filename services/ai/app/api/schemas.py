@@ -198,6 +198,7 @@ class AIRecommendationResponse(_Camel):
     recommendations: list[RecipeResponse] = Field(default_factory=list)
     reasoning: str | None = None
     nutritional_alignment: NutritionalAlignmentResponse | None = None
+    disclaimer: str | None = None
 
 
 class AnalyzeMealRequest(_Camel):
@@ -217,6 +218,7 @@ class NutritionalAnalysisResponse(_Camel):
     nutritional_info: NutritionalInfoSchema | None = None
     alignment: NutritionalAlignmentResponse | None = None
     warnings: list[str] = Field(default_factory=list)
+    disclaimer: str | None = None
 
     @classmethod
     def from_analysis(cls, analysis: MealAnalysis) -> NutritionalAnalysisResponse:
@@ -224,7 +226,7 @@ class NutritionalAnalysisResponse(_Camel):
 
         ``nutritionalInfo`` and ``alignment`` are ``None`` when the model could not estimate the
         meal (and so there was nothing to score); ``alignment`` exposes its score as a 0-100
-        percentage.
+        percentage; ``disclaimer`` carries the AIA-505 medical disclaimer.
         """
         nutrition = analysis.nutrition
         alignment = analysis.alignment
@@ -249,6 +251,7 @@ class NutritionalAnalysisResponse(_Camel):
                 else None
             ),
             warnings=list(analysis.warnings),
+            disclaimer=analysis.disclaimer,
         )
 
 

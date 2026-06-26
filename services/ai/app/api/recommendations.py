@@ -3,9 +3,9 @@
 The transport edge (Bearer auth, request validation, the ``AIRecommendationResponse`` envelope)
 arrived in AIA-201; AIA-203 wired the recommendation service behind it so the response carries real,
 usable recipes; AIA-204 adds the model's ``reasoning`` and a deterministic ``nutritionalAlignment``
-(scored via AIA-106). The route maps its validated request onto a
-:class:`~app.recommendations.commands.RecommendationCommand`, delegates to the injected service, and
-projects the result onto the wire shape.
+(scored via AIA-106); AIA-505 attaches the medical ``disclaimer``. The route maps its validated
+request onto a :class:`~app.recommendations.commands.RecommendationCommand`, delegates to the
+injected service, and projects the result onto the wire shape.
 """
 
 from __future__ import annotations
@@ -50,6 +50,7 @@ def get_recommendations(
             if alignment is not None
             else None
         ),
+        disclaimer=result.disclaimer,
     )
 
 

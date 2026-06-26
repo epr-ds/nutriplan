@@ -112,6 +112,15 @@ def test_returns_recommendation_response_shape() -> None:
     assert body["recommendations"] == []
     assert "reasoning" in body
     assert "nutritionalAlignment" in body
+    assert body["disclaimer"]
+
+
+def test_disclaimer_is_localized_to_the_request_language() -> None:
+    # AIA-505 AC1: a Spanish request gets the Spanish medical disclaimer in the envelope.
+    response = client.post("/ai/recommendations", json=_minimal_body(), headers=_AUTH)
+
+    assert response.status_code == 200
+    assert "consejo médico" in response.json()["disclaimer"]
 
 
 def test_accepts_full_camelcase_payload() -> None:

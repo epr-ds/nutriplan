@@ -100,6 +100,19 @@ def test_returns_nutritional_analysis_shape() -> None:
     assert body["nutritionalInfo"]["protein"] == 20
     assert body["warnings"] == ["Contains a common allergen: peanuts."]
     assert "alignment" in body
+    assert "disclaimer" in body
+
+
+def test_projects_disclaimer_onto_the_response() -> None:
+    # AIA-505 AC1: the medical disclaimer attached by the service is projected onto the wire.
+    disclaimer = "This information is AI-generated and is not medical advice."
+    app.dependency_overrides[get_meal_analysis_service] = lambda: _FakeAnalysisService(
+        MealAnalysis(disclaimer=disclaimer)
+    )
+
+    body = client.post("/ai/analyze-meal", json=_body(), headers=_AUTH).json()
+
+    assert body["disclaimer"] == disclaimer
 
 
 def test_projects_an_empty_analysis_as_nulls() -> None:
