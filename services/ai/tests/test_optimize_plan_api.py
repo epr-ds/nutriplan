@@ -1,10 +1,12 @@
-"""HTTP tests for ``POST /ai/optimize-plan`` — the transport edge (AIA-401).
+"""HTTP tests for ``POST /ai/optimize-plan`` — the transport edge (AIA-401, AIA-405).
 
 This slice owns Bearer auth, request validation (``planId`` UUID + ``goal`` enum), the caller-owned
 plan lookup (a missing or not-owned plan -> ``404``), and the ``MealPlanResponse`` envelope. The
 optimization service is overridden with one backed by an in-memory gateway and a pass-through
 optimizer, so these tests run offline and pin the request -> command mapping and the response
 projection without depending on AIA-403's edit behavior (pinned in ``test_plan_optimizer.py``).
+AIA-405 adds the draft projection: an improving optimization is returned with ``status: draft`` and
+the stored original is left untouched.
 """
 
 from __future__ import annotations
@@ -43,6 +45,29 @@ class _PassThroughOptimizer:
 
     def optimize(self, plan: OptimizationPlan, goal: OptimizationGoal) -> OptimizationPlan:
         return plan
+
+
+class _ImprovingOptimizer:
+    """Returns a strictly-better plan (more protein) so the outcome is a real, improving draft."""
+
+    def optimize(self, plan: OptimizationPlan, goal: OptimizationGoal) -> OptimizationPlan:
+        better = PlanNutrition(calories=400, protein=80.0, carbs=45.0, fat=12.0, sugar=8.0)
+        return OptimizationPlan(
+            id=plan.id,
+            name=plan.name,
+            start_date=plan.start_date,
+            end_date=plan.end_date,
+            daily_calorie_target=plan.daily_calorie_target,
+            status=plan.status,
+            meals=(
+                OptimizationMeal(id="m1", meal_type="breakfast", servings=3.0, nutrition=better),
+            ),
+            nutritional_summary=PlanNutritionSummary(
+                total=better,
+                daily_average=better,
+                targets=NutritionTargets(calories=2000, protein=150, carbs=200, fat=60, sugar=50),
+            ),
+        )
 
 
 def _plan() -> OptimizationPlan:
@@ -170,6 +195,25 @@ def test_returns_meal_plan_shape() -> None:
     assert meal["nutritionalInfo"]["protein"] == 20.5
     # Plan reads do not expand the recipe (matches the dietary MealPlanResponse projection).
     assert meal["recipe"] is None
+
+
+def test_optimized_plan_is_returned_as_a_draft() -> None:
+    gateway = InMemoryPlanGateway()
+    gateway.add(_plan(), owner=_TOKEN)
+    app.dependency_overrides[get_plan_optimization_service] = lambda: PlanOptimizationService(
+        gateway=gateway, optimizer=_ImprovingOptimizer()
+    )
+
+    body = client.post(
+        "/ai/optimize-plan", json=_body(goal="increase_protein"), headers=_AUTH
+    ).json()
+
+    assert body["status"] == "draft"
+    assert body["meals"][0]["servings"] == 3.0
+    # An optimize call never overwrites the stored plan — the original is left untouched.
+    stored = gateway.get_plan(_PLAN_ID, token=_TOKEN)
+    assert stored.status == "active"
+    assert stored.meals[0].servings == 1.5
 
 
 def test_projects_a_plan_without_a_summary_as_null() -> None:
