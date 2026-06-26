@@ -1,0 +1,44 @@
+name: Safety Regression
+
+# AIA-704: the no-allergen regression set is a release gate. It runs on every change to the allergen
+# safety filter (or the golden corpus that exercises it), so a regression -- an allergen slipping
+# through, a lost allergen-family expansion, an over-eager filter dropping a safe recipe -- fails the
+# PR. The same suite also runs inside the normal "AI service" job; this dedicated, path-filtered gate
+# makes the guarantee explicit and named.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: &regression_paths
+      - 'services/ai/app/recommendations/safety.py'
+      - 'services/ai/app/recommendations/recipes.py'
+      - 'services/ai/app/regression/**'
+      - 'services/ai/tests/test_safety_regression.py'
+      - 'services/ai/pyproject.toml'
+      - '.github/workflows/regression.yml'
+  pull_request:
+    paths: *regression_paths
+
+concurrency:
+  group: regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-allergen:
+    name: No-allergen regression set
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/ai/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: No-allergen regression set (gating)
+        run: pytest -m regression
