@@ -1,0 +1,48 @@
+name: Guardrails
+
+# AIA-506: the adversarial guardrail suite is a gating check. It runs on every change to the prompts
+# or the safety guardrails (and the pipeline that runs them), so a guardrail regression -- an allergen
+# slipping through, an out-of-bounds recipe, a successful injection, a missing disclaimer -- fails the
+# PR. The same suite also runs inside the normal "AI service" job; this dedicated, path-filtered gate
+# makes the guarantee explicit and named.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: &guardrail_paths
+      - 'services/ai/app/prompts/**'
+      - 'services/ai/app/guardrails/**'
+      - 'services/ai/app/recommendations/safety.py'
+      - 'services/ai/app/recommendations/bounds.py'
+      - 'services/ai/app/recommendations/fallback.py'
+      - 'services/ai/app/recommendations/service.py'
+      - 'services/ai/app/analysis/service.py'
+      - 'services/ai/tests/test_guardrails_adversarial.py'
+      - 'services/ai/pyproject.toml'
+      - '.github/workflows/guardrails.yml'
+  pull_request:
+    paths: *guardrail_paths
+
+concurrency:
+  group: guardrails-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  adversarial:
+    name: Adversarial guardrail suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/ai/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Adversarial guardrail suite (gating)
+        run: pytest -m guardrail
