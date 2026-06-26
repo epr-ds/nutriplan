@@ -22,16 +22,34 @@ when the model produces nothing usable -- an empty draft, or recipes the safety/
 checks strip away -- it substitutes curated catalogue recipes (screened for the same caller, so a
 fallback can never reintroduce an allergen) and records the fallback so its rate can be tracked. It
 runs on the screened model output before diversifying, so an unusable answer degrades to a safe one.
+
+Wrapping all of it, the AIA-504 guardrails make the service resist abuse: a
+:class:`~app.guardrails.sanitizer.PromptSanitizer` scrubs injected instructions out of the command's
+free-text fields before the prompt is assembled, and a
+:class:`~app.guardrails.policy.OutputContentPolicy` screens the model's own output -- dropping any
+recipe whose text is hijacked or unsafe (which lets the curated fallback take over) and blanking
+reasoning that trips the policy -- so neither a crafted input nor a steered model reaches the user.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.completions import build_cached_completion_service
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.guardrails.policy import (
+    LoggingOutputPolicyTelemetry,
+    OutputContentPolicy,
+    OutputPolicyTelemetry,
+)
+from app.guardrails.sanitizer import (
+    LoggingSanitizationTelemetry,
+    PromptSanitizer,
+    SanitizationTelemetry,
+)
 from app.llm.factory import build_client
 from app.prompts.telemetry import PromptTelemetry
 from app.prompts.types import Locale
@@ -91,6 +109,8 @@ class RecommendationService:
         safety_filter: AllergenFilter | None = None,
         bounds_guard: NutritionBoundsGuard | None = None,
         fallback: CuratedRecipeFallback | None = None,
+        sanitizer: PromptSanitizer | None = None,
+        output_policy: OutputContentPolicy | None = None,
     ) -> None:
         self._assembler = assembler
         self._completion = completion
@@ -100,6 +120,8 @@ class RecommendationService:
         self._safety_filter = safety_filter or AllergenFilter()
         self._bounds_guard = bounds_guard or NutritionBoundsGuard()
         self._fallback = fallback or CuratedRecipeFallback()
+        self._sanitizer = sanitizer or PromptSanitizer()
+        self._output_policy = output_policy or OutputContentPolicy()
 
     def recommend(
         self,
@@ -107,8 +129,9 @@ class RecommendationService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> RecommendationResult:
-        """Clamp targets, prompt, screen for safety + bounds, fall back if unusable, diversify."""
+        """Clamp targets, sanitize input, prompt, screen, fall back if unusable, diversify."""
         command = self._bounds_guard.clamp(command)
+        command = self._sanitize_command(command)
         prompt = self._assembler.assemble(command, locale=locale)
         draft = self._completion.complete(prompt.to_request())
         mapped = self._mapper.map(draft)
@@ -129,20 +152,58 @@ class RecommendationService:
         alignment = self._aligner.align(recipes, command)
         return RecommendationResult(
             recipes=recipes,
-            reasoning=draft.reasoning,
+            reasoning=self._safe_reasoning(draft.reasoning),
             alignment=alignment,
+        )
+
+    def _sanitize_command(self, command: RecommendationCommand) -> RecommendationCommand:
+        """Scrub injection attempts out of the command's free-text fields before prompting."""
+        sanitizer = self._sanitizer
+        return dataclasses.replace(
+            command,
+            allergies=sanitizer.sanitize_all(command.allergies, source="allergies"),
+            excluded_ingredients=sanitizer.sanitize_all(
+                command.excluded_ingredients, source="excluded_ingredients"
+            ),
+            cuisine_preferences=sanitizer.sanitize_all(
+                command.cuisine_preferences, source="cuisine_preferences"
+            ),
+            available_ingredients=sanitizer.sanitize_all(
+                command.available_ingredients, source="available_ingredients"
+            ),
+            previous_meals=sanitizer.sanitize_all(command.previous_meals, source="previous_meals"),
+            constraints=sanitizer.sanitize_all(command.constraints, source="constraints"),
         )
 
     def _screen(
         self, recipes: Sequence[RecommendedRecipe], command: RecommendationCommand
     ) -> tuple[RecommendedRecipe, ...]:
-        """Apply the allergy (AIA-501) and bounds (AIA-502) guards to a set of recipes."""
+        """Apply the allergy (AIA-501), bounds (AIA-502), and content-policy (AIA-504) guards."""
         safe = self._safety_filter.filter(
             tuple(recipes),
             allergies=command.allergies,
             excluded=command.excluded_ingredients,
         )
-        return self._bounds_guard.enforce(safe)
+        bounded = self._bounds_guard.enforce(safe)
+        return tuple(
+            recipe
+            for recipe in bounded
+            if self._output_policy.allow(_recipe_text(recipe), source=recipe.id)
+        )
+
+    def _safe_reasoning(self, reasoning: str | None) -> str | None:
+        """Drop the model's reasoning when it trips the output policy; keep it otherwise."""
+        if reasoning is None:
+            return None
+        return reasoning if self._output_policy.allow(reasoning, source="reasoning") else None
+
+
+def _recipe_text(recipe: RecommendedRecipe) -> str:
+    """All user-visible free-text of a recipe, concatenated for the output-policy scan."""
+    parts = [recipe.name, recipe.description or ""]
+    parts.extend(ingredient.name for ingredient in recipe.ingredients)
+    parts.extend(recipe.instructions)
+    return "\n".join(part for part in parts if part)
 
 
 def _no_recommendations(_error: StructuredOutputError) -> RecommendationDraft:
@@ -161,6 +222,8 @@ def build_recommendation_service(
     bounds_telemetry: BoundsTelemetry | None = None,
     curated_source: CuratedRecipeSource | None = None,
     fallback_telemetry: FallbackTelemetry | None = None,
+    sanitization_telemetry: SanitizationTelemetry | None = None,
+    output_policy_telemetry: OutputPolicyTelemetry | None = None,
 ) -> RecommendationService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -181,4 +244,8 @@ def build_recommendation_service(
         AllergenFilter(guardrail_telemetry or LoggingGuardrailTelemetry()),
         NutritionBoundsGuard(bounds_telemetry or LoggingBoundsTelemetry()),
         CuratedRecipeFallback(curated_source, fallback_telemetry or LoggingFallbackTelemetry()),
+        sanitizer=PromptSanitizer(sanitization_telemetry or LoggingSanitizationTelemetry()),
+        output_policy=OutputContentPolicy(
+            output_policy_telemetry or LoggingOutputPolicyTelemetry()
+        ),
     )

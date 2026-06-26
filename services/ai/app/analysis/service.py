@@ -6,12 +6,17 @@ structured-completion loop (typed to :class:`NutritionEstimateDraft`), and a mea
 assembles a localized prompt, asks the model for a schema-constrained estimate, normalizes it onto
 :class:`AnalyzedNutrition`, and scores it against a balanced-meal reference (reusing AIA-106).
 AIA-303 then builds the localized advisory warnings -- low confidence, nutrients well over/under the
-reference, and detected allergens. Production wiring layers caching and budgets under the completion
+reference, and detected allergens. AIA-504 adds an input scrub at the front of the use case: a
+:class:`~app.guardrails.sanitizer.PromptSanitizer` neutralizes prompt-injection attempts in the
+free-text description and ingredient names before the prompt is assembled, so a crafted meal
+write-up cannot hijack the model. Production wiring layers caching and budgets under the completion
 via :func:`build_meal_analysis_service`; tests inject a fake-backed completion so the path runs
 offline.
 """
 
 from __future__ import annotations
+
+import dataclasses
 
 from app.analysis.alignment import MealAligner
 from app.analysis.assembler import MealAnalysisPromptAssembler, build_meal_analysis_prompt_assembler
@@ -23,6 +28,11 @@ from app.analysis.warnings import build_warnings, localize_all
 from app.completions import build_cached_completion_service
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.guardrails.sanitizer import (
+    LoggingSanitizationTelemetry,
+    PromptSanitizer,
+    SanitizationTelemetry,
+)
 from app.llm.factory import build_client
 from app.prompts.telemetry import PromptTelemetry
 from app.prompts.types import Locale
@@ -44,11 +54,13 @@ class MealAnalysisService:
         assembler: MealAnalysisPromptAssembler | None = None,
         aligner: MealAligner | None = None,
         low_confidence_threshold: float = _DEFAULT_LOW_CONFIDENCE_THRESHOLD,
+        sanitizer: PromptSanitizer | None = None,
     ) -> None:
         self._completion = completion
         self._assembler = assembler or build_meal_analysis_prompt_assembler()
         self._aligner = aligner or MealAligner()
         self._low_confidence_threshold = low_confidence_threshold
+        self._sanitizer = sanitizer or PromptSanitizer()
 
     def analyze(
         self,
@@ -56,14 +68,28 @@ class MealAnalysisService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> MealAnalysis:
-        """Assemble the prompt, ask the model for an estimate, normalize, score, and flag."""
+        """Sanitize input, assemble the prompt, estimate, normalize, score, and flag."""
         resolved = Locale.parse(locale, default=Locale.default())
+        command = self._sanitize_command(command)
         prompt = self._assembler.assemble(command, locale=resolved)
         draft = self._completion.complete(prompt.to_request())
         nutrition = normalize_estimate(draft)
         alignment = self._aligner.align(nutrition)
         warnings = self._warnings(draft, nutrition, resolved)
         return MealAnalysis(nutrition=nutrition, alignment=alignment, warnings=warnings)
+
+    def _sanitize_command(self, command: MealAnalysisCommand) -> MealAnalysisCommand:
+        """Scrub injection attempts out of the free-text description and ingredient names."""
+        sanitizer = self._sanitizer
+        ingredients = tuple(
+            dataclasses.replace(item, name=sanitizer.sanitize(item.name, source="ingredient"))
+            for item in command.ingredients
+        )
+        return dataclasses.replace(
+            command,
+            description=sanitizer.sanitize(command.description, source="description"),
+            ingredients=ingredients,
+        )
 
     def _warnings(
         self,
@@ -95,6 +121,7 @@ def build_meal_analysis_service(
     *,
     aligner: MealAligner | None = None,
     telemetry: PromptTelemetry | None = None,
+    sanitization_telemetry: SanitizationTelemetry | None = None,
 ) -> MealAnalysisService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -109,4 +136,5 @@ def build_meal_analysis_service(
         completion,
         assembler=build_meal_analysis_prompt_assembler(telemetry=telemetry),
         aligner=aligner or MealAligner(),
+        sanitizer=PromptSanitizer(sanitization_telemetry or LoggingSanitizationTelemetry()),
     )
