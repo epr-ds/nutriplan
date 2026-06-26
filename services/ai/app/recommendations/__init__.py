@@ -12,7 +12,10 @@ into a :class:`RecommendationAlignment`. AIA-205 keeps results fresh: a
 :class:`RecommendationDiversifier` (configurable :class:`VarietyStrength`) drops recipes repeating
 the user's ``previousMeals`` and de-duplicates look-alikes before they are scored. AIA-501 adds the
 safety net: an :class:`AllergenFilter` removes any recipe that violates the caller's allergies or
-excluded ingredients and records the removal through a :class:`GuardrailTelemetry` port.
+excluded ingredients and records the removal through a :class:`GuardrailTelemetry` port. AIA-502
+adds the nutritional-bounds net: a :class:`NutritionBoundsGuard` clamps the request's calorie
+targets into sane bounds and rejects any recommended recipe whose nutrition is physically
+impossible, recording both through a :class:`BoundsTelemetry` port.
 """
 
 from app.recommendations.alignment import (
@@ -23,6 +26,17 @@ from app.recommendations.alignment import (
 from app.recommendations.assembler import (
     RecommendationPromptAssembler,
     build_recommendation_prompt_assembler,
+)
+from app.recommendations.bounds import (
+    MAX_DAILY_CALORIES,
+    MIN_DAILY_CALORIES,
+    BoundsReason,
+    BoundsTelemetry,
+    BoundsViolation,
+    CalorieClamp,
+    InMemoryBoundsTelemetry,
+    LoggingBoundsTelemetry,
+    NutritionBoundsGuard,
 )
 from app.recommendations.catalogue import (
     InMemoryRecipeCatalogue,
@@ -69,15 +83,24 @@ from app.recommendations.variety import (
 )
 
 __all__ = [
+    "MAX_DAILY_CALORIES",
+    "MIN_DAILY_CALORIES",
     "AllergenFilter",
+    "BoundsReason",
+    "BoundsTelemetry",
+    "BoundsViolation",
+    "CalorieClamp",
     "GuardrailTelemetry",
     "GuardrailViolation",
+    "InMemoryBoundsTelemetry",
     "InMemoryGuardrailTelemetry",
     "InMemoryRecipeCatalogue",
     "IngredientDraft",
+    "LoggingBoundsTelemetry",
     "LoggingGuardrailTelemetry",
     "MacroTargets",
     "MealType",
+    "NutritionBoundsGuard",
     "NutritionDraft",
     "RecipeAlignment",
     "RecipeCatalogue",

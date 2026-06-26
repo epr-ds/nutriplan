@@ -11,6 +11,11 @@ or scoring -- to drop any recipe that violates the caller's allergies or exclude
 unsafe recipe never reaches the user even if the model ignored the prompt. Production wiring layers
 caching and budgets under the completion via :func:`build_recommendation_service`; tests inject a
 fake-backed completion so the whole path runs offline.
+
+Before any of that, the AIA-502 :class:`~app.recommendations.bounds.NutritionBoundsGuard` clamps the
+command's calorie targets into sane bounds (so the prompt and alignment work from real numbers), and
+after the safety filter it rejects any mapped recipe whose nutrition is physically impossible -- a
+last deterministic check on the model's own output before the user sees it.
 """
 
 from __future__ import annotations
@@ -27,6 +32,11 @@ from app.recommendations.alignment import RecommendationAligner, RecommendationA
 from app.recommendations.assembler import (
     RecommendationPromptAssembler,
     build_recommendation_prompt_assembler,
+)
+from app.recommendations.bounds import (
+    BoundsTelemetry,
+    LoggingBoundsTelemetry,
+    NutritionBoundsGuard,
 )
 from app.recommendations.catalogue import InMemoryRecipeCatalogue, RecipeCatalogue
 from app.recommendations.commands import RecommendationCommand
@@ -66,6 +76,7 @@ class RecommendationService:
         aligner: RecommendationAligner | None = None,
         diversifier: RecommendationDiversifier | None = None,
         safety_filter: AllergenFilter | None = None,
+        bounds_guard: NutritionBoundsGuard | None = None,
     ) -> None:
         self._assembler = assembler
         self._completion = completion
@@ -73,6 +84,7 @@ class RecommendationService:
         self._aligner = aligner or RecommendationAligner()
         self._diversifier = diversifier or RecommendationDiversifier()
         self._safety_filter = safety_filter or AllergenFilter()
+        self._bounds_guard = bounds_guard or NutritionBoundsGuard()
 
     def recommend(
         self,
@@ -80,7 +92,8 @@ class RecommendationService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> RecommendationResult:
-        """Assemble the prompt, get a draft, map recipes, enforce allergies, diversify, score."""
+        """Clamp targets, assemble the prompt, map recipes, enforce safety + bounds, diversify."""
+        command = self._bounds_guard.clamp(command)
         prompt = self._assembler.assemble(command, locale=locale)
         draft = self._completion.complete(prompt.to_request())
         mapped = self._mapper.map(draft)
@@ -89,9 +102,10 @@ class RecommendationService:
             allergies=command.allergies,
             excluded=command.excluded_ingredients,
         )
+        sane = self._bounds_guard.enforce(safe)
         recipes = tuple(
             self._diversifier.diversify(
-                safe,
+                sane,
                 previous_meals=command.previous_meals,
                 limit=command.count,
             )
@@ -117,6 +131,7 @@ def build_recommendation_service(
     diversifier: RecommendationDiversifier | None = None,
     telemetry: PromptTelemetry | None = None,
     guardrail_telemetry: GuardrailTelemetry | None = None,
+    bounds_telemetry: BoundsTelemetry | None = None,
 ) -> RecommendationService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -135,4 +150,5 @@ def build_recommendation_service(
         diversifier
         or RecommendationDiversifier(VarietyPolicy.from_strength(settings.variety_strength)),
         AllergenFilter(guardrail_telemetry or LoggingGuardrailTelemetry()),
+        NutritionBoundsGuard(bounds_telemetry or LoggingBoundsTelemetry()),
     )
