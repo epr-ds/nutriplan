@@ -26,6 +26,11 @@ from app.recommendations.recipes import (
     RecommendedNutrition,
     RecommendedRecipe,
 )
+from app.recommendations.safety import (
+    AllergenFilter,
+    InMemoryGuardrailTelemetry,
+    ViolationKind,
+)
 from app.recommendations.service import RecommendationService
 from app.recommendations.variety import RecommendationDiversifier, VarietyPolicy
 from app.structured.parser import StructuredOutputParser
@@ -66,6 +71,7 @@ def _service(
     fallback=None,
     max_attempts: int = 1,
     diversifier: RecommendationDiversifier | None = None,
+    safety_filter: AllergenFilter | None = None,
 ) -> RecommendationService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -80,6 +86,7 @@ def _service(
         completion,
         mapper,
         diversifier=diversifier,
+        safety_filter=safety_filter,
     )
 
 
@@ -230,3 +237,57 @@ def test_variety_off_keeps_previous_meal_repeats() -> None:
     result = service.recommend(command)
 
     assert [recipe.name for recipe in result.recipes] == ["Avena con Frutas"]
+
+
+_ALLERGEN_DRAFT = {
+    "recipes": [
+        {
+            "name": "Safe Oatmeal",
+            "ingredients": [{"name": "oats"}, {"name": "banana"}],
+            "instructions": ["Mix."],
+            "servings": 1,
+            "nutrition": {"calories": 300},
+        },
+        {
+            "name": "Peanut Toast",
+            "ingredients": [{"name": "bread"}, {"name": "peanut butter"}],
+            "instructions": ["Spread."],
+            "servings": 1,
+            "nutrition": {"calories": 320},
+        },
+    ],
+}
+
+
+def test_recommend_post_filters_allergen_violations_and_counts_them() -> None:
+    # AIA-501 AC2/AC3: even if the model returns a recipe with an allergen, the post-filter drops
+    # it before the user sees it, and the violation is recorded through the telemetry port.
+    telemetry = InMemoryGuardrailTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_ALLERGEN_DRAFT))]),
+        safety_filter=AllergenFilter(telemetry),
+    )
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        allergies=("peanuts",),
+    )
+
+    result = service.recommend(command)
+
+    assert [recipe.name for recipe in result.recipes] == ["Safe Oatmeal"]
+    assert telemetry.count == 1
+    assert telemetry.violations[0].kind is ViolationKind.ALLERGY
+    assert telemetry.violations[0].term == "peanuts"
+
+
+def test_recommend_keeps_violating_recipe_when_no_allergies_declared() -> None:
+    telemetry = InMemoryGuardrailTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_ALLERGEN_DRAFT))]),
+        safety_filter=AllergenFilter(telemetry),
+    )
+
+    result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
+
+    assert {recipe.name for recipe in result.recipes} == {"Safe Oatmeal", "Peanut Toast"}
+    assert telemetry.count == 0
