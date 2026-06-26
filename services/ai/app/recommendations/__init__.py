@@ -10,7 +10,9 @@ rest. AIA-204 completes the result: the service surfaces the model's ``reasoning
 :class:`RecommendationAligner` scores the recipes against the caller's targets/preferences (AIA-106)
 into a :class:`RecommendationAlignment`. AIA-205 keeps results fresh: a
 :class:`RecommendationDiversifier` (configurable :class:`VarietyStrength`) drops recipes repeating
-the user's ``previousMeals`` and de-duplicates look-alikes before they are scored.
+the user's ``previousMeals`` and de-duplicates look-alikes before they are scored. AIA-501 adds the
+safety net: an :class:`AllergenFilter` removes any recipe that violates the caller's allergies or
+excluded ingredients and records the removal through a :class:`GuardrailTelemetry` port.
 """
 
 from app.recommendations.alignment import (
@@ -46,6 +48,14 @@ from app.recommendations.recipes import (
     RecommendedNutrition,
     RecommendedRecipe,
 )
+from app.recommendations.safety import (
+    AllergenFilter,
+    GuardrailTelemetry,
+    GuardrailViolation,
+    InMemoryGuardrailTelemetry,
+    LoggingGuardrailTelemetry,
+    ViolationKind,
+)
 from app.recommendations.service import (
     RecommendationResult,
     RecommendationService,
@@ -59,8 +69,13 @@ from app.recommendations.variety import (
 )
 
 __all__ = [
+    "AllergenFilter",
+    "GuardrailTelemetry",
+    "GuardrailViolation",
+    "InMemoryGuardrailTelemetry",
     "InMemoryRecipeCatalogue",
     "IngredientDraft",
+    "LoggingGuardrailTelemetry",
     "MacroTargets",
     "MealType",
     "NutritionDraft",
@@ -81,6 +96,7 @@ __all__ = [
     "RecommendedIngredient",
     "RecommendedNutrition",
     "RecommendedRecipe",
+    "ViolationKind",
     "VarietyPolicy",
     "VarietyStrength",
     "build_diversifier",

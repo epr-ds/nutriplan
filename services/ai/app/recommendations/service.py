@@ -5,7 +5,10 @@ by constructor injection: the AIA-202 prompt assembler, the AIA-104 structured-c
 (typed to :class:`RecommendationDraft`), the AIA-203 recipe mapper, the AIA-205 diversifier, and the
 AIA-204 aligner. The result bundles the mapped recipes with the model's ``reasoning`` and a
 deterministic ``nutritionalAlignment`` (scored via AIA-106). The diversifier runs after mapping and
-before scoring so alignment reflects exactly the set the user will see. Production wiring layers
+before scoring so alignment reflects exactly the set the user will see. An AIA-501
+:class:`~app.recommendations.safety.AllergenFilter` runs right after mapping -- before diversifying
+or scoring -- to drop any recipe that violates the caller's allergies or excluded ingredients, so an
+unsafe recipe never reaches the user even if the model ignored the prompt. Production wiring layers
 caching and budgets under the completion via :func:`build_recommendation_service`; tests inject a
 fake-backed completion so the whole path runs offline.
 """
@@ -30,6 +33,7 @@ from app.recommendations.commands import RecommendationCommand
 from app.recommendations.draft import RecommendationDraft
 from app.recommendations.mapper import RecipeMapper
 from app.recommendations.recipes import RecommendedRecipe
+from app.recommendations.safety import AllergenFilter, GuardrailTelemetry, LoggingGuardrailTelemetry
 from app.recommendations.variety import RecommendationDiversifier, VarietyPolicy
 from app.structured.errors import StructuredOutputError
 from app.structured.parser import StructuredOutputParser
@@ -61,12 +65,14 @@ class RecommendationService:
         mapper: RecipeMapper,
         aligner: RecommendationAligner | None = None,
         diversifier: RecommendationDiversifier | None = None,
+        safety_filter: AllergenFilter | None = None,
     ) -> None:
         self._assembler = assembler
         self._completion = completion
         self._mapper = mapper
         self._aligner = aligner or RecommendationAligner()
         self._diversifier = diversifier or RecommendationDiversifier()
+        self._safety_filter = safety_filter or AllergenFilter()
 
     def recommend(
         self,
@@ -74,13 +80,18 @@ class RecommendationService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> RecommendationResult:
-        """Assemble the prompt, ask the model for a draft, map recipes, diversify, and score."""
+        """Assemble the prompt, get a draft, map recipes, enforce allergies, diversify, score."""
         prompt = self._assembler.assemble(command, locale=locale)
         draft = self._completion.complete(prompt.to_request())
         mapped = self._mapper.map(draft)
+        safe = self._safety_filter.filter(
+            tuple(mapped),
+            allergies=command.allergies,
+            excluded=command.excluded_ingredients,
+        )
         recipes = tuple(
             self._diversifier.diversify(
-                tuple(mapped),
+                safe,
                 previous_meals=command.previous_meals,
                 limit=command.count,
             )
@@ -105,6 +116,7 @@ def build_recommendation_service(
     aligner: RecommendationAligner | None = None,
     diversifier: RecommendationDiversifier | None = None,
     telemetry: PromptTelemetry | None = None,
+    guardrail_telemetry: GuardrailTelemetry | None = None,
 ) -> RecommendationService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -122,4 +134,5 @@ def build_recommendation_service(
         aligner or RecommendationAligner(),
         diversifier
         or RecommendationDiversifier(VarietyPolicy.from_strength(settings.variety_strength)),
+        AllergenFilter(guardrail_telemetry or LoggingGuardrailTelemetry()),
     )

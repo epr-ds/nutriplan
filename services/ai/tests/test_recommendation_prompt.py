@@ -81,6 +81,28 @@ def test_meal_plan_injects_full_dietary_profile() -> None:
     assert "$" not in text  # every placeholder substituted
 
 
+def test_allergies_are_framed_as_hard_constraints() -> None:
+    # AIA-501 AC1: the prompt must frame allergies/exclusions as hard "never include" constraints,
+    # not as soft preferences -- the post-filter is the safety net behind this wording.
+    rendered = _assembler().assemble(_full_command(RecommendationContext.MEAL_PLAN))
+
+    system = rendered.messages[0].content.lower()
+    user = _user_text(rendered)
+    assert "never" in system
+    assert "Allergies (never include):" in user
+    assert "Excluded ingredients:" in user
+
+
+def test_spanish_allergies_are_framed_as_hard_constraints() -> None:
+    rendered = _assembler().assemble(_full_command(RecommendationContext.MEAL_PLAN), locale="es")
+
+    system = rendered.messages[0].content.lower()
+    user = _user_text(rendered)
+    assert "nunca" in system
+    assert "Alergias (nunca incluir):" in user
+    assert "Ingredientes excluidos:" in user
+
+
 def test_single_meal_honours_meal_type() -> None:
     rendered = _assembler().assemble(_full_command(RecommendationContext.SINGLE_MEAL))
 
