@@ -52,10 +52,12 @@ class MealAnalysis:
     """The analysis of a described meal: its nutrition, its alignment, and any warnings.
 
     ``nutrition`` is ``None`` when nothing could be estimated; ``alignment`` is ``None`` when
-    there is no nutrition to score; ``warnings`` carries human-readable advisories (low confidence
-    today; allergens and bounds in AIA-303) and is empty when there are none.
+    there is no nutrition to score; ``warnings`` carries human-readable advisories (low confidence,
+    allergens, and over/under-target bounds) and is empty when there are none; ``disclaimer`` is the
+    AIA-505 medical disclaimer attached to every response.
     """
 
     nutrition: AnalyzedNutrition | None = None
     alignment: MealAlignment | None = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
+    disclaimer: str | None = None

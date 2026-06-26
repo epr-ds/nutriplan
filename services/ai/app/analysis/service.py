@@ -9,9 +9,11 @@ AIA-303 then builds the localized advisory warnings -- low confidence, nutrients
 reference, and detected allergens. AIA-504 adds an input scrub at the front of the use case: a
 :class:`~app.guardrails.sanitizer.PromptSanitizer` neutralizes prompt-injection attempts in the
 free-text description and ingredient names before the prompt is assembled, so a crafted meal
-write-up cannot hijack the model. Production wiring layers caching and budgets under the completion
-via :func:`build_meal_analysis_service`; tests inject a fake-backed completion so the path runs
-offline.
+write-up cannot hijack the model. AIA-505 adds a response post-processor at the end of the use case:
+a :class:`~app.guardrails.compliance.ResponsePostProcessor` strips any diagnostic/medical claim from
+the advisory warnings and attaches a localized medical disclaimer to the result. Production wiring
+layers caching and budgets under the completion via :func:`build_meal_analysis_service`; tests
+inject a fake-backed completion so the path runs offline.
 """
 
 from __future__ import annotations
@@ -28,6 +30,11 @@ from app.analysis.warnings import build_warnings, localize_all
 from app.completions import build_cached_completion_service
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.guardrails.compliance import (
+    LoggingMedicalClaimTelemetry,
+    MedicalClaimTelemetry,
+    ResponsePostProcessor,
+)
 from app.guardrails.sanitizer import (
     LoggingSanitizationTelemetry,
     PromptSanitizer,
@@ -55,12 +62,14 @@ class MealAnalysisService:
         aligner: MealAligner | None = None,
         low_confidence_threshold: float = _DEFAULT_LOW_CONFIDENCE_THRESHOLD,
         sanitizer: PromptSanitizer | None = None,
+        post_processor: ResponsePostProcessor | None = None,
     ) -> None:
         self._completion = completion
         self._assembler = assembler or build_meal_analysis_prompt_assembler()
         self._aligner = aligner or MealAligner()
         self._low_confidence_threshold = low_confidence_threshold
         self._sanitizer = sanitizer or PromptSanitizer()
+        self._post_processor = post_processor or ResponsePostProcessor()
 
     def analyze(
         self,
@@ -68,15 +77,22 @@ class MealAnalysisService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> MealAnalysis:
-        """Sanitize input, assemble the prompt, estimate, normalize, score, and flag."""
+        """Sanitize input, assemble the prompt, estimate, normalize, score, flag, and disclaim."""
         resolved = Locale.parse(locale, default=Locale.default())
         command = self._sanitize_command(command)
         prompt = self._assembler.assemble(command, locale=resolved)
         draft = self._completion.complete(prompt.to_request())
         nutrition = normalize_estimate(draft)
         alignment = self._aligner.align(nutrition)
-        warnings = self._warnings(draft, nutrition, resolved)
-        return MealAnalysis(nutrition=nutrition, alignment=alignment, warnings=warnings)
+        warnings = self._post_processor.scrub_each(
+            self._warnings(draft, nutrition, resolved), source="warning"
+        )
+        return MealAnalysis(
+            nutrition=nutrition,
+            alignment=alignment,
+            warnings=warnings,
+            disclaimer=self._post_processor.disclaimer(resolved),
+        )
 
     def _sanitize_command(self, command: MealAnalysisCommand) -> MealAnalysisCommand:
         """Scrub injection attempts out of the free-text description and ingredient names."""
@@ -122,6 +138,7 @@ def build_meal_analysis_service(
     aligner: MealAligner | None = None,
     telemetry: PromptTelemetry | None = None,
     sanitization_telemetry: SanitizationTelemetry | None = None,
+    medical_claim_telemetry: MedicalClaimTelemetry | None = None,
 ) -> MealAnalysisService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -137,4 +154,7 @@ def build_meal_analysis_service(
         assembler=build_meal_analysis_prompt_assembler(telemetry=telemetry),
         aligner=aligner or MealAligner(),
         sanitizer=PromptSanitizer(sanitization_telemetry or LoggingSanitizationTelemetry()),
+        post_processor=ResponsePostProcessor(
+            medical_claim_telemetry or LoggingMedicalClaimTelemetry()
+        ),
     )

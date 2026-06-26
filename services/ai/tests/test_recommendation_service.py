@@ -11,6 +11,11 @@ from __future__ import annotations
 import json
 
 from app.completions import CachedCompletionService
+from app.guardrails.compliance import (
+    InMemoryMedicalClaimTelemetry,
+    MedicalClaimCategory,
+    ResponsePostProcessor,
+)
 from app.guardrails.policy import InMemoryOutputPolicyTelemetry, OutputContentPolicy, PolicyCategory
 from app.guardrails.sanitizer import (
     InjectionCategory,
@@ -91,6 +96,7 @@ def _service(
     curated_fallback: CuratedRecipeFallback | None = None,
     sanitizer: PromptSanitizer | None = None,
     output_policy: OutputContentPolicy | None = None,
+    post_processor: ResponsePostProcessor | None = None,
 ) -> RecommendationService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -110,6 +116,7 @@ def _service(
         fallback=curated_fallback,
         sanitizer=sanitizer,
         output_policy=output_policy,
+        post_processor=post_processor,
     )
 
 
@@ -508,3 +515,73 @@ def test_recommend_blanks_reasoning_that_trips_the_output_policy() -> None:
     assert result.reasoning is None
     assert [recipe.name for recipe in result.recipes] == ["Avena con Frutas"]
     assert telemetry.count_for(PolicyCategory.SYSTEM_LEAK) == 1
+
+
+_CLAIM_RECIPE_DRAFT = {
+    "recipes": [
+        {
+            "name": "Healing Broth",
+            "description": "A cozy soup. This broth cures diabetes.",
+            "ingredients": [{"name": "broth", "quantity": 200, "unit": "ml"}],
+            "instructions": ["Simmer the broth.", "It lowers your blood pressure."],
+            "servings": 1,
+            "nutrition": {"calories": 300, "protein": 20, "carbs": 40, "fat": 7, "sugar": 10},
+        }
+    ],
+    "reasoning": "A warming option. This meal prevents cancer.",
+}
+
+
+def test_recommend_attaches_localized_disclaimer() -> None:
+    # AIA-505 AC1: every response carries the medical disclaimer, localized to the request language.
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.recommend(_COMMAND, locale="en")
+
+    assert result.disclaimer is not None
+    assert "not medical advice" in result.disclaimer
+
+
+def test_recommend_disclaimer_is_localized_to_spanish() -> None:
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.recommend(_COMMAND, locale="es")
+
+    assert result.disclaimer is not None
+    assert "consejo médico" in result.disclaimer
+
+
+def test_recommend_strips_medical_claims_from_recipe_and_reasoning() -> None:
+    # AIA-505 AC2/AC3: a recipe/reasoning that drifts into health claims is scrubbed sentence by
+    # sentence -- the benign text survives, the claims are removed and recorded.
+    telemetry = InMemoryMedicalClaimTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_CLAIM_RECIPE_DRAFT))]),
+        post_processor=ResponsePostProcessor(telemetry),
+    )
+
+    result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
+
+    [recipe] = result.recipes
+    assert recipe.description == "A cozy soup."
+    assert recipe.instructions == ("Simmer the broth.",)
+    assert result.reasoning == "A warming option."
+    assert MedicalClaimCategory.TREATMENT in telemetry.categories
+    assert MedicalClaimCategory.EFFECT in telemetry.categories
+    assert MedicalClaimCategory.PREVENTION in telemetry.categories
+
+
+def test_recommend_leaves_benign_recipe_text_untouched() -> None:
+    # AIA-505: ordinary recipe/reasoning language is never reshaped -- no claim, no telemetry.
+    telemetry = InMemoryMedicalClaimTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_DRAFT))]),
+        post_processor=ResponsePostProcessor(telemetry),
+    )
+
+    result = service.recommend(_COMMAND)
+
+    [recipe] = result.recipes
+    assert recipe.description == "Un desayuno rapido."
+    assert recipe.instructions == ("Mezcla los ingredientes.", "Sirve frio.")
+    assert telemetry.count == 0

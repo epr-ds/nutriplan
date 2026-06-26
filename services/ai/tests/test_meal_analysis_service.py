@@ -16,6 +16,11 @@ from app.analysis.draft import NutritionEstimateDraft
 from app.analysis.result import AnalyzedNutrition
 from app.analysis.service import MealAnalysisService, build_meal_analysis_service
 from app.core.config import Settings
+from app.guardrails.compliance import (
+    InMemoryMedicalClaimTelemetry,
+    MedicalClaimCategory,
+    ResponsePostProcessor,
+)
 from app.guardrails.sanitizer import (
     InjectionCategory,
     InMemorySanitizationTelemetry,
@@ -49,6 +54,7 @@ def _service(
     max_attempts: int = 1,
     low_confidence_threshold: float = 0.5,
     sanitizer: PromptSanitizer | None = None,
+    post_processor: ResponsePostProcessor | None = None,
 ) -> MealAnalysisService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -62,6 +68,7 @@ def _service(
         aligner=aligner,
         low_confidence_threshold=low_confidence_threshold,
         sanitizer=sanitizer,
+        post_processor=post_processor,
     )
 
 
@@ -201,3 +208,39 @@ def test_injected_description_is_sanitized_before_prompting() -> None:
     assert "you are now" not in rendered
     assert "[removed]" in rendered
     assert InjectionCategory.INSTRUCTION_OVERRIDE in telemetry.categories
+
+
+def test_analyze_attaches_localized_disclaimer() -> None:
+    # AIA-505 AC1: the analysis response carries the medical disclaimer, localized to the request.
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.analyze(_COMMAND, locale=Locale.EN)
+
+    assert result.disclaimer is not None
+    assert "not medical advice" in result.disclaimer
+
+
+def test_analyze_disclaimer_is_localized_to_spanish() -> None:
+    service = _service(FakeLLMProvider([_response(json.dumps(_DRAFT))]))
+
+    result = service.analyze(_COMMAND, locale=Locale.ES)
+
+    assert result.disclaimer is not None
+    assert "consejo médico" in result.disclaimer
+
+
+def test_analyze_scrubs_warnings_through_the_post_processor() -> None:
+    # AIA-505 AC2/AC3: warnings pass through the post-processor (defense-in-depth). Our templated
+    # advisories carry no medical claims, so they survive verbatim and nothing is recorded.
+    telemetry = InMemoryMedicalClaimTelemetry()
+    draft = {**_DRAFT, "confidence": 0.2}
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(draft))]),
+        post_processor=ResponsePostProcessor(telemetry),
+    )
+
+    result = service.analyze(_COMMAND)
+
+    assert any("confidence" in warning.lower() for warning in result.warnings)
+    assert telemetry.count == 0
+    assert MedicalClaimCategory.DIAGNOSIS not in telemetry.categories

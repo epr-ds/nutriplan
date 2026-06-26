@@ -29,6 +29,10 @@ free-text fields before the prompt is assembled, and a
 :class:`~app.guardrails.policy.OutputContentPolicy` screens the model's own output -- dropping any
 recipe whose text is hijacked or unsafe (which lets the curated fallback take over) and blanking
 reasoning that trips the policy -- so neither a crafted input nor a steered model reaches the user.
+
+Last of all, the AIA-505 :class:`~app.guardrails.compliance.ResponsePostProcessor` keeps the
+response compliant: it strips any diagnostic/medical claim from the recipes' free-text and the
+reasoning, and attaches a localized medical disclaimer to the result.
 """
 
 from __future__ import annotations
@@ -40,6 +44,11 @@ from dataclasses import dataclass
 from app.completions import build_cached_completion_service
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.guardrails.compliance import (
+    LoggingMedicalClaimTelemetry,
+    MedicalClaimTelemetry,
+    ResponsePostProcessor,
+)
 from app.guardrails.policy import (
     LoggingOutputPolicyTelemetry,
     OutputContentPolicy,
@@ -88,12 +97,14 @@ class RecommendationResult:
     """Everything the recommendation use case produces for one request.
 
     ``alignment`` is ``None`` when there is nothing to score against (no targets and no hard
-    preferences); ``reasoning`` is ``None`` when the model did not provide one.
+    preferences); ``reasoning`` is ``None`` when the model did not provide one (or it was dropped by
+    a guardrail); ``disclaimer`` is the AIA-505 medical disclaimer attached to every response.
     """
 
     recipes: tuple[RecommendedRecipe, ...]
     reasoning: str | None = None
     alignment: RecommendationAlignment | None = None
+    disclaimer: str | None = None
 
 
 class RecommendationService:
@@ -111,6 +122,7 @@ class RecommendationService:
         fallback: CuratedRecipeFallback | None = None,
         sanitizer: PromptSanitizer | None = None,
         output_policy: OutputContentPolicy | None = None,
+        post_processor: ResponsePostProcessor | None = None,
     ) -> None:
         self._assembler = assembler
         self._completion = completion
@@ -122,6 +134,7 @@ class RecommendationService:
         self._fallback = fallback or CuratedRecipeFallback()
         self._sanitizer = sanitizer or PromptSanitizer()
         self._output_policy = output_policy or OutputContentPolicy()
+        self._post_processor = post_processor or ResponsePostProcessor()
 
     def recommend(
         self,
@@ -129,7 +142,7 @@ class RecommendationService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> RecommendationResult:
-        """Clamp targets, sanitize input, prompt, screen, fall back if unusable, diversify."""
+        """Clamp targets, sanitize input, prompt, screen, fall back, diversify, then disclaim."""
         command = self._bounds_guard.clamp(command)
         command = self._sanitize_command(command)
         prompt = self._assembler.assemble(command, locale=locale)
@@ -143,7 +156,8 @@ class RecommendationService:
             screen=lambda candidates: self._screen(candidates, command),
         )
         recipes = tuple(
-            self._diversifier.diversify(
+            self._strip_claims(recipe)
+            for recipe in self._diversifier.diversify(
                 resolved,
                 previous_meals=command.previous_meals,
                 limit=command.count,
@@ -152,9 +166,24 @@ class RecommendationService:
         alignment = self._aligner.align(recipes, command)
         return RecommendationResult(
             recipes=recipes,
-            reasoning=self._safe_reasoning(draft.reasoning),
+            reasoning=self._post_processor.scrub_optional(
+                self._safe_reasoning(draft.reasoning), source="reasoning"
+            ),
             alignment=alignment,
+            disclaimer=self._post_processor.disclaimer(locale),
         )
+
+    def _strip_claims(self, recipe: RecommendedRecipe) -> RecommendedRecipe:
+        """Remove any diagnostic/medical claim from a recipe's free-text (AIA-505)."""
+        description = self._post_processor.scrub_optional(
+            recipe.description, source="recipe_description"
+        )
+        instructions = self._post_processor.scrub_each(
+            recipe.instructions, source="recipe_instructions"
+        )
+        if description == recipe.description and instructions == recipe.instructions:
+            return recipe
+        return dataclasses.replace(recipe, description=description, instructions=instructions)
 
     def _sanitize_command(self, command: RecommendationCommand) -> RecommendationCommand:
         """Scrub injection attempts out of the command's free-text fields before prompting."""
@@ -224,6 +253,7 @@ def build_recommendation_service(
     fallback_telemetry: FallbackTelemetry | None = None,
     sanitization_telemetry: SanitizationTelemetry | None = None,
     output_policy_telemetry: OutputPolicyTelemetry | None = None,
+    medical_claim_telemetry: MedicalClaimTelemetry | None = None,
 ) -> RecommendationService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -247,5 +277,8 @@ def build_recommendation_service(
         sanitizer=PromptSanitizer(sanitization_telemetry or LoggingSanitizationTelemetry()),
         output_policy=OutputContentPolicy(
             output_policy_telemetry or LoggingOutputPolicyTelemetry()
+        ),
+        post_processor=ResponsePostProcessor(
+            medical_claim_telemetry or LoggingMedicalClaimTelemetry()
         ),
     )
