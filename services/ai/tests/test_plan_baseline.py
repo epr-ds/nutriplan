@@ -17,6 +17,7 @@ from app.optimization.baseline import (
     BaselineMetric,
     baseline_for,
     measure_metric,
+    metric_direction,
 )
 from app.optimization.commands import OptimizationGoal
 from app.optimization.plan import (
@@ -139,3 +140,19 @@ class TestImprovesOn:
         assert baseline.improves_on(1800.0) is True
         assert baseline.improves_on(2000.0) is False
         assert baseline.improves_on(2200.0) is False
+
+
+class TestMetricDirection:
+    @pytest.mark.parametrize(
+        ("goal", "direction"),
+        [
+            (OptimizationGoal.INCREASE_PROTEIN, BaselineDirection.MAXIMIZE),
+            (OptimizationGoal.REDUCE_CALORIES, BaselineDirection.MINIMIZE),
+            (OptimizationGoal.INCREASE_SATISFACTION, BaselineDirection.MAXIMIZE),
+            (OptimizationGoal.BALANCE_MACROS, BaselineDirection.MAXIMIZE),
+        ],
+    )
+    def test_exposes_each_goal_direction_for_the_optimizer(
+        self, goal: OptimizationGoal, direction: BaselineDirection
+    ) -> None:
+        assert metric_direction(goal) is direction

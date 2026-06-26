@@ -2,9 +2,9 @@
 
 This slice owns Bearer auth, request validation (``planId`` UUID + ``goal`` enum), the caller-owned
 plan lookup (a missing or not-owned plan -> ``404``), and the ``MealPlanResponse`` envelope. The
-optimization service is overridden with one backed by an in-memory gateway, so these tests run
-offline and also pin the request -> command mapping and the response projection. Real optimization
-lands in AIA-402-405 behind the same service seam without changing this edge.
+optimization service is overridden with one backed by an in-memory gateway and a pass-through
+optimizer, so these tests run offline and pin the request -> command mapping and the response
+projection without depending on AIA-403's edit behavior (pinned in ``test_plan_optimizer.py``).
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from app.api.deps import get_plan_optimization_service
 from app.api.optimization import _to_command
 from app.api.schemas import OptimizePlanRequest
 from app.main import app
+from app.optimization.commands import OptimizationGoal
 from app.optimization.gateway import InMemoryPlanGateway
 from app.optimization.plan import (
     NutritionTargets,
@@ -35,6 +36,13 @@ _AUTH = {"Authorization": f"Bearer {_TOKEN}"}
 _PROBLEM_JSON = "application/problem+json"
 _PLAN_ID = "11111111-1111-1111-1111-111111111111"
 _UNKNOWN_PLAN_ID = "99999999-9999-9999-9999-999999999999"
+
+
+class _PassThroughOptimizer:
+    """Keeps the edge tests about transport + projection: the plan is returned unedited."""
+
+    def optimize(self, plan: OptimizationPlan, goal: OptimizationGoal) -> OptimizationPlan:
+        return plan
 
 
 def _plan() -> OptimizationPlan:
@@ -66,7 +74,7 @@ def _plan() -> OptimizationPlan:
 def _service() -> PlanOptimizationService:
     gateway = InMemoryPlanGateway()
     gateway.add(_plan(), owner=_TOKEN)
-    return PlanOptimizationService(gateway=gateway)
+    return PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
 
 @pytest.fixture(autouse=True)
@@ -178,7 +186,7 @@ def test_projects_a_plan_without_a_summary_as_null() -> None:
         owner=_TOKEN,
     )
     app.dependency_overrides[get_plan_optimization_service] = lambda: PlanOptimizationService(
-        gateway=gateway
+        gateway=gateway, optimizer=_PassThroughOptimizer()
     )
 
     body = client.post("/ai/optimize-plan", json={"planId": _PLAN_ID}, headers=_AUTH).json()

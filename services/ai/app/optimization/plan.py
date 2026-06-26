@@ -3,7 +3,9 @@
 These are the application-level value objects for a meal plan as loaded from the dietary service
 (via the :class:`~app.optimization.gateway.PlanGateway` port). They are free of any HTTP/pydantic
 concern; the route projects an :class:`OptimizationPlan` onto the contract's ``MealPlanResponse``.
-AIA-401 loads and echoes the plan; AIA-402 computes baseline metrics over these same objects.
+AIA-401 loads and echoes the plan; AIA-402 computes baseline metrics over these same objects;
+AIA-403 adjusts meal servings (carrying each meal's ingredients + the plan's constraints so edits
+honor the caller's allergies/exclusions).
 
 A ``None`` nutrient means "unknown / not measured", kept distinct from a measured zero (matching the
 dietary nutrition model). Recipes are referenced by id only — plan reads do not expand them.
@@ -39,6 +41,23 @@ class NutritionTargets:
 
 
 @dataclass(frozen=True, slots=True)
+class OptimizationConstraints:
+    """The caller's hard dietary limits, loaded with the plan and honored by every edit (AIA-403).
+
+    Allergies and excluded ingredients are kept separate (they have different provenance and AIA-501
+    logs them differently) but enforced identically: an edit must never amplify a meal containing
+    any of them. :meth:`excluded` folds both into one case-insensitive lookup set.
+    """
+
+    allergies: tuple[str, ...] = ()
+    excluded_ingredients: tuple[str, ...] = ()
+
+    def excluded(self) -> frozenset[str]:
+        """Allergies + exclusions as one case-insensitive set of tokens to avoid."""
+        return frozenset(item.casefold() for item in (*self.allergies, *self.excluded_ingredients))
+
+
+@dataclass(frozen=True, slots=True)
 class PlanNutritionSummary:
     """The plan's total and daily-average nutrition versus its targets (dietary DPL-302)."""
 
@@ -49,12 +68,17 @@ class PlanNutritionSummary:
 
 @dataclass(frozen=True, slots=True)
 class OptimizationMeal:
-    """One planned meal: its slot, servings, and (optional) computed nutrition."""
+    """One planned meal: its slot, servings, optional computed nutrition, and ingredient tokens.
+
+    ``ingredients`` lists the meal's ingredient names so the optimizer can honor the caller's
+    allergies/exclusions (AIA-403); it defaults to empty (the AIA-401/402 reads do not populate it).
+    """
 
     id: str
     meal_type: str
     servings: float
     nutrition: PlanNutrition | None = None
+    ingredients: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +93,7 @@ class OptimizationPlan:
     status: str
     meals: tuple[OptimizationMeal, ...] = field(default_factory=tuple)
     nutritional_summary: PlanNutritionSummary | None = None
+    constraints: OptimizationConstraints = field(default_factory=OptimizationConstraints)
 
     @classmethod
     def with_meals(
@@ -82,6 +107,7 @@ class OptimizationPlan:
         status: str,
         meals: Iterable[OptimizationMeal] = (),
         nutritional_summary: PlanNutritionSummary | None = None,
+        constraints: OptimizationConstraints | None = None,
     ) -> OptimizationPlan:
         """Build a plan from any iterable of meals (normalized to a tuple for immutability)."""
         return cls(
@@ -93,4 +119,5 @@ class OptimizationPlan:
             status=status,
             meals=tuple(meals),
             nutritional_summary=nutritional_summary,
+            constraints=constraints or OptimizationConstraints(),
         )

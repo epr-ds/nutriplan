@@ -1,10 +1,11 @@
-"""Unit tests for the plan-optimization application layer (AIA-401).
+"""Unit tests for the plan-optimization application layer (AIA-401-403).
 
 These pin the seam established by the ``POST /ai/optimize-plan`` slice: a :class:`PlanGateway`
 port that loads a caller-owned plan (forwarding the Bearer token so ownership is enforced
 downstream, mirroring how the gateway does JWT verification — AIA-804), an in-memory adapter for
-offline tests, and a stub :class:`PlanOptimizationService` that returns the loaded plan unchanged.
-Real optimization (baseline metrics, constrained edits, re-scoring) fills this seam in AIA-402-405.
+offline tests, and a :class:`PlanOptimizationService` that measures a baseline and runs the
+injected :class:`PlanOptimizer` over the loaded plan. The optimizer is stubbed here (its own edits
+are pinned in ``test_plan_optimizer.py``) so these tests isolate the service's wiring.
 """
 
 from __future__ import annotations
@@ -97,20 +98,63 @@ class _RecordingGateway:
         return self.result
 
 
+class _PassThroughOptimizer:
+    """An optimizer that makes no edits, so the outcome's optimized plan equals the loaded one."""
+
+    def optimize(self, plan: OptimizationPlan, goal: OptimizationGoal) -> OptimizationPlan:
+        return plan
+
+
+class _SpyOptimizer:
+    """Records the (plan, goal) it was called with and returns a fixed optimized plan."""
+
+    def __init__(self, result: OptimizationPlan) -> None:
+        self.result = result
+        self.calls: list[tuple[OptimizationPlan, OptimizationGoal]] = []
+
+    def optimize(self, plan: OptimizationPlan, goal: OptimizationGoal) -> OptimizationPlan:
+        self.calls.append((plan, goal))
+        return self.result
+
+
 class TestPlanOptimizationService:
-    def test_returns_an_outcome_carrying_the_loaded_plan(self) -> None:
-        # AIA-401/402 seam: the "optimized" plan is the loaded plan (real edits = AIA-403+).
+    def test_returns_an_outcome_carrying_the_loaded_and_optimized_plans(self) -> None:
         gateway = _RecordingGateway(_plan())
-        service = PlanOptimizationService(gateway=gateway)
+        service = PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
         outcome = service.optimize(_command(), token=_OWNER)
 
         assert isinstance(outcome, OptimizationOutcome)
-        assert outcome.plan == _plan()
+        assert outcome.original == _plan()
+        assert outcome.optimized == _plan()
+        assert outcome.plan == outcome.optimized
+
+    def test_optimizes_the_loaded_plan_toward_the_effective_goal(self) -> None:
+        optimized = _plan("33333333-3333-3333-3333-333333333333")
+        spy = _SpyOptimizer(optimized)
+        service = PlanOptimizationService(gateway=_RecordingGateway(_plan()), optimizer=spy)
+
+        outcome = service.optimize(
+            OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
+            token=_OWNER,
+        )
+
+        assert spy.calls == [(_plan(), OptimizationGoal.INCREASE_PROTEIN)]
+        assert outcome is not None
+        assert outcome.optimized is optimized
+        assert outcome.plan is optimized
+
+    def test_optimizer_receives_the_defaulted_goal(self) -> None:
+        spy = _SpyOptimizer(_plan())
+        service = PlanOptimizationService(gateway=_RecordingGateway(_plan()), optimizer=spy)
+
+        service.optimize(OptimizePlanCommand(plan_id=_PLAN_ID), token=_OWNER)
+
+        assert spy.calls == [(_plan(), OptimizationGoal.BALANCE_MACROS)]
 
     def test_measures_a_baseline_for_the_requested_goal(self) -> None:
         gateway = _RecordingGateway(_plan())
-        service = PlanOptimizationService(gateway=gateway)
+        service = PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
         outcome = service.optimize(
             OptimizePlanCommand(plan_id=_PLAN_ID, goal=OptimizationGoal.INCREASE_PROTEIN),
@@ -123,7 +167,7 @@ class TestPlanOptimizationService:
 
     def test_defaults_the_goal_to_balance_macros_when_omitted(self) -> None:
         gateway = _RecordingGateway(_plan())
-        service = PlanOptimizationService(gateway=gateway)
+        service = PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
         outcome = service.optimize(OptimizePlanCommand(plan_id=_PLAN_ID), token=_OWNER)
 
@@ -132,7 +176,7 @@ class TestPlanOptimizationService:
 
     def test_forwards_the_plan_id_and_token_to_the_gateway(self) -> None:
         gateway = _RecordingGateway(_plan())
-        service = PlanOptimizationService(gateway=gateway)
+        service = PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
         service.optimize(_command(), token=_OWNER)
 
@@ -140,14 +184,14 @@ class TestPlanOptimizationService:
 
     def test_returns_none_when_the_plan_is_absent_or_not_owned(self) -> None:
         gateway = _RecordingGateway(None)
-        service = PlanOptimizationService(gateway=gateway)
+        service = PlanOptimizationService(gateway=gateway, optimizer=_PassThroughOptimizer())
 
         assert service.optimize(_command(), token=_OWNER) is None
 
 
 class TestBuildPlanOptimizationService:
     def test_defaults_to_an_empty_gateway(self) -> None:
-        # Until a real dietary-service adapter lands (AIA-402), production loads no plans -> 404.
+        # Until a real dietary-service adapter lands, production loads no plans -> 404.
         service = build_plan_optimization_service()
 
         assert service.optimize(_command(), token=_OWNER) is None
