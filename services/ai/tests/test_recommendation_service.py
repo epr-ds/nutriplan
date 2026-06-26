@@ -16,6 +16,10 @@ from app.llm.fake import FakeLLMProvider
 from app.llm.retry import RetryPolicy
 from app.llm.types import LLMResponse, Role
 from app.recommendations.assembler import build_recommendation_prompt_assembler
+from app.recommendations.bounds import (
+    InMemoryBoundsTelemetry,
+    NutritionBoundsGuard,
+)
 from app.recommendations.catalogue import InMemoryRecipeCatalogue
 from app.recommendations.commands import RecommendationCommand, RecommendationContext
 from app.recommendations.draft import RecommendationDraft
@@ -72,6 +76,7 @@ def _service(
     max_attempts: int = 1,
     diversifier: RecommendationDiversifier | None = None,
     safety_filter: AllergenFilter | None = None,
+    bounds_guard: NutritionBoundsGuard | None = None,
 ) -> RecommendationService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -87,6 +92,7 @@ def _service(
         mapper,
         diversifier=diversifier,
         safety_filter=safety_filter,
+        bounds_guard=bounds_guard,
     )
 
 
@@ -291,3 +297,56 @@ def test_recommend_keeps_violating_recipe_when_no_allergies_declared() -> None:
 
     assert {recipe.name for recipe in result.recipes} == {"Safe Oatmeal", "Peanut Toast"}
     assert telemetry.count == 0
+
+
+_INSANE_DRAFT = {
+    "recipes": [
+        {
+            "name": "Sane Soup",
+            "ingredients": [{"name": "broth"}],
+            "instructions": ["Heat."],
+            "servings": 1,
+            "nutrition": {"calories": 300},
+        },
+        {
+            "name": "Mega Cake",
+            "ingredients": [{"name": "flour"}],
+            "instructions": ["Bake."],
+            "servings": 1,
+            "nutrition": {"calories": 9000},
+        },
+    ],
+}
+
+
+def test_recommend_rejects_out_of_bounds_recipe_and_counts_it() -> None:
+    # AIA-502 AC1/AC3: the model returned a recipe far over the calorie ceiling; the bounds guard
+    # rejects it (the good one survives) and the rejection is recorded.
+    telemetry = InMemoryBoundsTelemetry()
+    service = _service(
+        FakeLLMProvider([_response(json.dumps(_INSANE_DRAFT))]),
+        bounds_guard=NutritionBoundsGuard(telemetry),
+    )
+
+    result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
+
+    assert [recipe.name for recipe in result.recipes] == ["Sane Soup"]
+    assert telemetry.rejection_count == 1
+
+
+def test_recommend_clamps_calorie_target_before_prompting() -> None:
+    # AIA-502 AC2: an out-of-bounds target is clamped to the sane range before the model is asked,
+    # so the prompt (and the alignment) work from 1200 rather than 800.
+    telemetry = InMemoryBoundsTelemetry()
+    provider = FakeLLMProvider([_response(json.dumps(_DRAFT))])
+    service = _service(provider, bounds_guard=NutritionBoundsGuard(telemetry))
+    command = RecommendationCommand(
+        context=RecommendationContext.MEAL_PLAN,
+        daily_calorie_target=800,
+    )
+
+    service.recommend(command)
+
+    assert telemetry.clamps[0].clamped == 1200
+    rendered = " ".join(message.content for message in provider.calls[0].messages)
+    assert "1200 kcal" in rendered
