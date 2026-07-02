@@ -1,0 +1,557 @@
+openapi: 3.0.3
+info:
+  title: NutriPlan AI Advisor API
+  version: 1.0.0
+  description: |
+    AI-powered recipe recommendations, nutritional meal analysis, and meal-plan
+    optimization for the NutriPlan AI Advisor bounded context. Every AI response
+    carries a medical disclaimer (AIA-505), and every 4xx/5xx error is an RFC 7807
+    `application/problem+json` document (mirrors the platform error standard).
+
+    This contract is the source of truth the AI service is verified against: the
+    provider contract tests (`services/ai/tests/test_contract.py`) drive each
+    documented operation to each response it declares and validate the real
+    response with `openapi-core`, so a breaking change (renamed/removed required
+    field, changed type, drifted enum, undocumented status) fails the build.
+  contact:
+    name: NutriPlan Team
+    url: https://github.com/epr-ds/nutriplan
+  license:
+    name: Proprietary
+    url: https://github.com/epr-ds/nutriplan/blob/main/LICENSE
+servers:
+  - url: https://api.nutriplan.app
+    description: Production (behind the API gateway)
+  - url: http://localhost:8000
+    description: Local development
+tags:
+  - name: AI
+    description: AI advisor operations (all require a Bearer token).
+  - name: Health
+    description: Liveness and readiness probes (no authentication).
+
+paths:
+  /ai/recommendations:
+    post:
+      tags: [AI]
+      operationId: getAIRecommendations
+      summary: Get AI-powered recipe recommendations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRecommendationRequest'
+      responses:
+        '200':
+          description: AI recommendations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecommendationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /ai/analyze-meal:
+    post:
+      tags: [AI]
+      operationId: analyzeMeal
+      summary: Analyze the nutritional content of a meal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeMealRequest'
+      responses:
+        '200':
+          description: Nutritional analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionalAnalysisResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /ai/optimize-plan:
+    post:
+      tags: [AI]
+      operationId: optimizePlan
+      summary: Optimize a meal plan toward its goals
+      description: >-
+        Optimize the caller's plan into a reviewable draft (returned with
+        `status: draft`; the stored original is left untouched). A plan that does
+        not exist, or is owned by a different caller, is reported as `404` with no
+        existence/ownership leak.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizePlanRequest'
+      responses:
+        '200':
+          description: Optimized plan (draft)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /health:
+    get:
+      tags: [Health]
+      operationId: health
+      summary: Liveness probe
+      responses:
+        '200':
+          description: The service process is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /health/ready:
+    get:
+      tags: [Health]
+      operationId: readiness
+      summary: Readiness probe
+      description: >-
+        Reports whether the service can actually serve AI traffic. Returns `200`
+        when ready and `503` when a dependency check hard-fails; the body lists
+        each check either way.
+      responses:
+        '200':
+          description: The service is ready to serve AI traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: The service is live but not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Authentication is required; the bearer token is missing
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: >-
+        The meal plan does not exist, or is not visible to the caller. A plan
+        owned by a different user is deliberately reported as not found (no
+        existence/ownership leak).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: >-
+        The request was well-formed but failed validation. Validation failures
+        additionally carry a machine-readable `errors` array.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    AIRecommendationRequest:
+      type: object
+      required: [context]
+      properties:
+        context:
+          type: string
+          enum: [meal_plan, single_meal, ingredient_based]
+        dietaryPreferences:
+          $ref: '#/components/schemas/DietaryPreferencesRequest'
+        availableIngredients:
+          type: array
+          items:
+            type: string
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        calorieTarget:
+          type: integer
+        previousMeals:
+          type: array
+          items:
+            type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        language:
+          type: string
+          enum: [es, en]
+          default: es
+
+    DietaryPreferencesRequest:
+      type: object
+      properties:
+        dietType:
+          type: string
+          enum: [omnivore, vegetarian, vegan, keto, paleo, mediterranean]
+        allergies:
+          type: array
+          items:
+            type: string
+        dailyCalorieTarget:
+          type: integer
+          minimum: 1200
+          maximum: 5000
+        macroTargets:
+          $ref: '#/components/schemas/MacroTargets'
+        excludedIngredients:
+          type: array
+          items:
+            type: string
+        cuisinePreferences:
+          type: array
+          items:
+            type: string
+
+    MacroTargets:
+      type: object
+      properties:
+        proteinGrams:
+          type: integer
+        carbsGrams:
+          type: integer
+        fatGrams:
+          type: integer
+        sugarGrams:
+          type: integer
+
+    AIRecommendationResponse:
+      type: object
+      required: [recommendations]
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeResponse'
+        reasoning:
+          type: string
+          nullable: true
+        nutritionalAlignment:
+          $ref: '#/components/schemas/NutritionalAlignment'
+        disclaimer:
+          type: string
+          nullable: true
+          description: Medical disclaimer attached to every AI response (AIA-505)
+
+    AnalyzeMealRequest:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+          description: Free-text description of the meal
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientResponse'
+
+    NutritionalAnalysisResponse:
+      type: object
+      required: [warnings]
+      properties:
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+        alignment:
+          $ref: '#/components/schemas/NutritionalAlignment'
+        warnings:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string
+          nullable: true
+          description: Medical disclaimer attached to every AI response (AIA-505)
+
+    OptimizePlanRequest:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: string
+          format: uuid
+        goal:
+          type: string
+          enum: [balance_macros, increase_protein, reduce_calories, increase_satisfaction]
+
+    MealPlanResponse:
+      type: object
+      required: [id, name, startDate, endDate, dailyCalorieTarget, status, meals]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        dailyCalorieTarget:
+          type: integer
+        status:
+          type: string
+          enum: [draft, active, completed, saved]
+        meals:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealResponse'
+        nutritionalSummary:
+          $ref: '#/components/schemas/NutritionalSummary'
+
+    MealResponse:
+      type: object
+      required: [id, mealType, servings]
+      properties:
+        id:
+          type: string
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        servings:
+          type: number
+        recipe:
+          description: >-
+            Optimized plans do not expand the recipe and return null here; the
+            shape allows a full recipe so the same projection can carry one.
+          anyOf:
+            - $ref: '#/components/schemas/RecipeResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+
+    RecipeResponse:
+      type: object
+      required: [id, name, servings, ingredients, instructions, dietaryTypes]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientResponse'
+        instructions:
+          type: array
+          items:
+            type: string
+        prepTime:
+          type: integer
+          nullable: true
+        cookTime:
+          type: integer
+          nullable: true
+        servings:
+          type: integer
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        nutritionalInfo:
+          $ref: '#/components/schemas/NutritionalInfo'
+        dietaryTypes:
+          type: array
+          items:
+            type: string
+            enum: [omnivore, vegetarian, vegan, keto, paleo]
+
+    IngredientResponse:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        calories:
+          type: integer
+          nullable: true
+        protein:
+          type: number
+          nullable: true
+        carbs:
+          type: number
+          nullable: true
+        fat:
+          type: number
+          nullable: true
+        sugar:
+          type: number
+          nullable: true
+
+    NutritionalInfo:
+      description: >-
+        A bundle of nutrient values. Nullable as a whole (a meal may carry no
+        nutrition yet) and per nutrient: a null nutrient means "unknown / not
+        estimated", kept distinct from an estimated zero.
+      type: object
+      nullable: true
+      properties:
+        calories:
+          type: integer
+          nullable: true
+        protein:
+          type: number
+          nullable: true
+        carbs:
+          type: number
+          nullable: true
+        fat:
+          type: number
+          nullable: true
+        sugar:
+          type: number
+          nullable: true
+
+    NutritionalAlignment:
+      description: >-
+        How well a recommendation or analyzed meal aligns with the caller's
+        targets, projected as a 0-100 `score` plus human-readable `details`.
+        Null as a whole when there were no targets to align against.
+      type: object
+      nullable: true
+      properties:
+        score:
+          type: number
+          nullable: true
+        details:
+          type: string
+          nullable: true
+
+    NutritionalSummary:
+      description: >-
+        The plan's total and daily-average nutrition versus its targets. Null as
+        a whole on a plan that carries no meals yet.
+      type: object
+      nullable: true
+      required: [total, dailyAverage, targets]
+      properties:
+        total:
+          $ref: '#/components/schemas/NutritionalInfo'
+        dailyAverage:
+          $ref: '#/components/schemas/NutritionalInfo'
+        targets:
+          $ref: '#/components/schemas/NutritionalTargets'
+
+    NutritionalTargets:
+      description: >-
+        A plan's nutrition goals: daily calorie target plus optional macro gram
+        targets. A null macro means no target was set for that nutrient.
+      type: object
+      properties:
+        calories:
+          type: integer
+          nullable: true
+        protein:
+          type: integer
+          nullable: true
+        carbs:
+          type: integer
+          nullable: true
+        fat:
+          type: integer
+          nullable: true
+        sugar:
+          type: integer
+          nullable: true
+
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Always `ok` while the process is live.
+
+    ReadinessResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadinessCheck'
+
+    ReadinessCheck:
+      type: object
+      required: [name, status, detail]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ok, warn, fail]
+        detail:
+          type: string
+
+    Problem:
+      type: object
+      description: |
+        RFC 7807 problem detail returned as `application/problem+json` for every
+        4xx/5xx error. Additional members (e.g. `errors` for validation failures)
+        may be present.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A URI reference identifying the problem type (`about:blank` by default)
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type
+        status:
+          type: integer
+          description: The HTTP status code
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence
+        instance:
+          type: string
+          description: A URI reference identifying the specific occurrence (the request path)
