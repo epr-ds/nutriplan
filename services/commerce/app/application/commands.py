@@ -1,0 +1,28 @@
+"""Application commands — the transport-agnostic inputs to the use cases."""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from datetime import date
+
+from app.domain.address import Address
+from app.domain.enums import FulfillmentType
+
+
+@dataclass(frozen=True)
+class CreateOrderCommand:
+    """Everything needed to turn a meal plan into an order, with auth already resolved.
+
+    ``user_id`` is the authenticated caller; ``meal_plan_id`` is validated for ownership by the
+    Dietary service when the plan is fetched (the caller's token is forwarded out-of-band).
+    """
+
+    user_id: uuid.UUID
+    meal_plan_id: str
+    fulfillment_type: FulfillmentType
+    delivery_address: Address
+    delivery_date: date
+    delivery_time_slot: str
+    provider_id: str | None = None
+    notes: str | None = None
