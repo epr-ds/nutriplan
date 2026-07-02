@@ -165,6 +165,37 @@ services:
     profiles: ["test"]
     command: ["pytest", "-q"]
 
+  commerce:
+    build:
+      context: ../services/commerce
+      target: runtime
+    environment:
+      COMMERCE_ENVIRONMENT: development
+      COMMERCE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nutriplan}:${POSTGRES_PASSWORD:-nutriplan}@postgres:5432/commerce
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8083"]
+
+  # One-shot test runner (Postgres-backed). Run with: docker compose --profile test run --rm commerce-test
+  commerce-test:
+    build:
+      context: ../services/commerce
+      target: test
+    environment:
+      COMMERCE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nutriplan}:${POSTGRES_PASSWORD:-nutriplan}@postgres:5432/commerce_test
+    volumes:
+      # The OpenAPI contract lives outside the build context; mount it so the projection
+      # drift-guard test (tests/test_order_response_projection.py) runs here instead of skipping.
+      - ../contracts:/contracts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["test"]
+    command: ["pytest", "-q"]
+
 volumes:
   postgres-data:
   mongo-data:
