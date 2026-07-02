@@ -7,11 +7,12 @@ contract; the exact ``Decimal`` stays in the domain/storage layers.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus, ProviderType
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
@@ -19,6 +20,43 @@ from app.domain.order import Order, OrderItem
 
 class _Camel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class AddressRequest(_Camel):
+    street: str
+    city: str
+    state: str
+    zip_code: str
+    country: str
+    apartment: str | None = None
+    instructions: str | None = None
+
+    def to_domain(self) -> Address:
+        return Address(
+            street=self.street,
+            city=self.city,
+            state=self.state,
+            zip_code=self.zip_code,
+            country=self.country,
+            apartment=self.apartment,
+            instructions=self.instructions,
+        )
+
+
+class PaymentMethodRequest(_Camel):
+    type: str
+    token: str
+
+
+class CreateOrderRequest(_Camel):
+    meal_plan_id: uuid.UUID
+    fulfillment_type: FulfillmentType
+    delivery_address: AddressRequest
+    delivery_date: date
+    delivery_time_slot: str
+    provider_id: str | None = None
+    payment_method: PaymentMethodRequest | None = None
+    notes: str | None = None
 
 
 class MoneyResponse(_Camel):
