@@ -88,6 +88,10 @@ services:
       target: test
     environment:
       AI_ENVIRONMENT: test
+    volumes:
+      # The OpenAPI contract lives outside the build context; mount it so the provider
+      # contract tests (tests/test_contract.py) run here instead of skipping.
+      - ../contracts:/contracts:ro
     profiles: ["test"]
     command: ["pytest", "-q"]
 
