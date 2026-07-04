@@ -22,6 +22,9 @@ from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.db.base import get_db
+from app.domain.enums import FulfillmentType
+from app.domain.money import Money
+from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
 from app.domain.repositories import OrderRepository
 from app.repositories.sql_order_repository import SqlOrderRepository
 
@@ -88,11 +91,35 @@ def get_meal_plan_provider() -> MealPlanProvider:
     )
 
 
+@lru_cache(maxsize=1)
+def get_order_pricer() -> OrderPricer:
+    """Build the (cached) pricing engine from configured per-serving rates and delivery fees."""
+    price_book = MealTypePriceBook(
+        rates={
+            "breakfast": Money(settings.price_per_serving_breakfast),
+            "lunch": Money(settings.price_per_serving_lunch),
+            "dinner": Money(settings.price_per_serving_dinner),
+            "snack": Money(settings.price_per_serving_snack),
+        },
+        default_rate=Money(settings.price_per_serving_default),
+    )
+    delivery_fees = DeliveryFeeSchedule(
+        fees={
+            FulfillmentType.DARK_KITCHEN: Money(settings.delivery_fee_dark_kitchen),
+            FulfillmentType.GROCERY_DELIVERY: Money(settings.delivery_fee_grocery_delivery),
+            FulfillmentType.PICKUP: Money(settings.delivery_fee_pickup),
+        },
+        free_delivery_threshold=Money(settings.free_delivery_threshold),
+    )
+    return OrderPricer(price_book, delivery_fees, currency=settings.default_currency)
+
+
 def get_create_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
+    pricer: Annotated[OrderPricer, Depends(get_order_pricer)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans)
+    return CreateOrderService(orders, meal_plans, pricer)
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]

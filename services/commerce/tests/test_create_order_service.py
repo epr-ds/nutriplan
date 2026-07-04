@@ -1,4 +1,4 @@
-"""COM-102 unit tests for :class:`CreateOrderService` (no DB, no network)."""
+"""COM-102/103 unit tests for :class:`CreateOrderService` (no DB, no network)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.errors import MealPlanNotFoundError, OrderValidationError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
-from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository
+from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository, make_test_pricer
 
 USER_ID = uuid.uuid4()
 PLAN_ID = str(uuid.uuid4())
@@ -57,7 +57,7 @@ def _service(
 ) -> tuple[CreateOrderService, InMemoryOrderRepository, FakeMealPlanProvider]:
     repo = InMemoryOrderRepository()
     provider = FakeMealPlanProvider(snapshot)
-    return CreateOrderService(repo, provider), repo, provider
+    return CreateOrderService(repo, provider, make_test_pricer()), repo, provider
 
 
 def test_builds_items_from_plan_meals():
@@ -71,15 +71,17 @@ def test_builds_items_from_plan_meals():
     assert [i.name for i in order.items] == ["Oatmeal Bowl", "Lunch"]
     assert [i.quantity for i in order.items] == [Decimal("1"), Decimal("2")]
     assert all(i.unit == "serving" for i in order.items)
-    assert all(i.unit_price.amount == Decimal("0.00") for i in order.items)
+    # Priced by make_test_pricer: breakfast 10.00, lunch 20.00 per serving.
+    assert [i.unit_price.amount for i in order.items] == [Decimal("10.00"), Decimal("20.00")]
+    assert [i.line_total.amount for i in order.items] == [Decimal("10.00"), Decimal("40.00")]
 
 
-def test_totals_start_at_zero_pending_pricing():
+def test_computes_subtotal_delivery_fee_and_total():
     service, _, _ = _service(_snapshot())
     order = service.create(_command(), bearer_token=TOKEN)
-    assert order.subtotal.amount == Decimal("0.00")
-    assert order.delivery_fee.amount == Decimal("0.00")
-    assert order.total.amount == Decimal("0.00")
+    assert order.subtotal.amount == Decimal("50.00")  # 10 + 40
+    assert order.delivery_fee.amount == Decimal("35.00")  # dark_kitchen
+    assert order.total.amount == Decimal("85.00")
 
 
 def test_forwards_bearer_token_and_plan_id_to_provider():
@@ -113,9 +115,13 @@ def test_grocery_delivery_with_provider_is_accepted():
     )
     assert order.fulfillment_type is FulfillmentType.GROCERY_DELIVERY
     assert order.provider_id == "freshbasket"
+    assert order.delivery_fee.amount == Decimal("49.00")  # grocery_delivery
+    assert order.total.amount == Decimal("99.00")  # 50 subtotal + 49
 
 
 def test_empty_plan_produces_order_with_no_items():
     service, _, _ = _service(MealPlanSnapshot(plan_id=PLAN_ID, meals=[]))
     order = service.create(_command(), bearer_token=TOKEN)
     assert order.items == []
+    assert order.subtotal.amount == Decimal("0.00")
+    assert order.total.amount == Decimal("35.00")  # dark_kitchen fee still applies

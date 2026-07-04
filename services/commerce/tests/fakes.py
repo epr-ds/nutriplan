@@ -4,12 +4,41 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError
-from app.domain.enums import OrderStatus
+from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.meal_plan import MealPlanSnapshot
+from app.domain.money import Money
 from app.domain.order import Order
+from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
+
+
+def make_test_pricer() -> OrderPricer:
+    """A real :class:`OrderPricer` with small, fixed rates for deterministic assertions.
+
+    Rates (MXN per serving): breakfast 10, lunch 20, dinner 30, snack 5, default 15.
+    Delivery fees: dark_kitchen 35, grocery_delivery 49, pickup 0. No free-delivery threshold
+    (so the small subtotals in service/API tests never trip free delivery unexpectedly).
+    """
+    price_book = MealTypePriceBook(
+        rates={
+            "breakfast": Money(Decimal("10.00")),
+            "lunch": Money(Decimal("20.00")),
+            "dinner": Money(Decimal("30.00")),
+            "snack": Money(Decimal("5.00")),
+        },
+        default_rate=Money(Decimal("15.00")),
+    )
+    delivery_fees = DeliveryFeeSchedule(
+        fees={
+            FulfillmentType.DARK_KITCHEN: Money(Decimal("35.00")),
+            FulfillmentType.GROCERY_DELIVERY: Money(Decimal("49.00")),
+            FulfillmentType.PICKUP: Money(Decimal("0.00")),
+        },
+    )
+    return OrderPricer(price_book, delivery_fees)
 
 
 class InMemoryOrderRepository:

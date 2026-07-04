@@ -19,7 +19,12 @@ from app.core.principal import Principal
 from app.domain.errors import MealPlanUnavailableError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.main import app
-from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository, StubVerifier
+from tests.fakes import (
+    FakeMealPlanProvider,
+    InMemoryOrderRepository,
+    StubVerifier,
+    make_test_pricer,
+)
 
 GOOD_TOKEN = "good-token"
 PRINCIPAL = Principal(user_id=str(uuid.uuid4()), email="a@b.com")
@@ -58,7 +63,9 @@ def _restore_overrides():
 
 def _build(provider) -> tuple[TestClient, InMemoryOrderRepository]:
     repo = InMemoryOrderRepository()
-    app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(repo, provider)
+    app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
+        repo, provider, make_test_pricer()
+    )
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo
 
@@ -79,8 +86,11 @@ def test_create_returns_201_with_projection():
     assert data["provider"] is None
     assert [item["name"] for item in data["items"]] == ["Oatmeal Bowl", "Lunch"]
     assert data["items"][0]["unit"] == "serving"
-    assert data["subtotal"]["amount"] == 0.0
-    assert data["total"]["amount"] == 0.0
+    assert data["items"][0]["unitPrice"]["amount"] == 10.0
+    assert data["items"][0]["lineTotal"]["amount"] == 10.0
+    assert data["subtotal"]["amount"] == 50.0
+    assert data["deliveryFee"]["amount"] == 35.0
+    assert data["total"]["amount"] == 85.0
     assert data["total"]["currency"] == "MXN"
     assert uuid.UUID(data["id"])
 
@@ -138,6 +148,8 @@ def test_grocery_delivery_with_provider_returns_201():
     data = response.json()
     assert data["fulfillmentType"] == "grocery_delivery"
     assert data["provider"]["id"] == "freshbasket"
+    assert data["deliveryFee"]["amount"] == 49.0
+    assert data["total"]["amount"] == 99.0
 
 
 def test_malformed_body_returns_422():
