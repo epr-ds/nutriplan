@@ -1,8 +1,9 @@
-"""COM-102 use case: create an order from a meal plan.
+"""COM-102/103 use case: create a priced order from a meal plan.
 
 Orchestrates the anti-corruption boundary (fetch + ownership-check the plan via Dietary), turns the
-plan's meals into order line items, and persists a new PENDING order scoped to the caller. Line
-items and totals start at zero here — the pricing engine (COM-103) fills them in next.
+plan's meals into *priced* order line items, computes the order totals, and persists a new PENDING
+order scoped to the caller. Item pricing and the subtotal/deliveryFee/total math live in the
+:class:`~app.domain.pricing.OrderPricer` domain service (COM-103).
 """
 
 from __future__ import annotations
@@ -11,30 +12,23 @@ from app.application.commands import CreateOrderCommand
 from app.application.ports import MealPlanProvider
 from app.domain.enums import FulfillmentType
 from app.domain.errors import MealPlanNotFoundError, OrderValidationError
-from app.domain.meal_plan import PlannedMeal
-from app.domain.money import Money
-from app.domain.order import Order, OrderItem
+from app.domain.order import Order
+from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
 
 
-def _meal_to_item(meal: PlannedMeal) -> OrderItem:
-    """Project a planned meal onto an (as-yet unpriced) order line item."""
-    name = meal.recipe_name or meal.meal_type.replace("_", " ").title()
-    return OrderItem(
-        name=name,
-        quantity=meal.servings,
-        unit="serving",
-        unit_price=Money.zero(),
-        line_total=Money.zero(),
-    )
-
-
 class CreateOrderService:
-    """Creates orders from meal plans (COM-102)."""
+    """Creates priced orders from meal plans (COM-102 + COM-103)."""
 
-    def __init__(self, orders: OrderRepository, meal_plans: MealPlanProvider) -> None:
+    def __init__(
+        self,
+        orders: OrderRepository,
+        meal_plans: MealPlanProvider,
+        pricer: OrderPricer,
+    ) -> None:
         self._orders = orders
         self._meal_plans = meal_plans
+        self._pricer = pricer
 
     def create(self, command: CreateOrderCommand, *, bearer_token: str) -> Order:
         if command.fulfillment_type is FulfillmentType.GROCERY_DELIVERY and not command.provider_id:
@@ -54,6 +48,7 @@ class CreateOrderService:
             notes=command.notes,
         )
         for meal in snapshot.meals:
-            order.add_item(_meal_to_item(meal))
+            order.add_item(self._pricer.price_item(meal))
+        self._pricer.price_order(order)
 
         return self._orders.add(order)
