@@ -9,7 +9,7 @@ detekt = "1.23.6"
 androidxCoreKtx = "1.13.1"
 androidxActivityCompose = "1.9.2"
 androidxLifecycle = "2.8.6"
-composeBom = "2024.09.02"
+composeBom = "2026.06.01"
 
 androidMinSdk = "24"
 androidTargetSdk = "34"
