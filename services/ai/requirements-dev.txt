@@ -1,4 +1,4 @@
 -r requirements.txt
 ruff>=0.15.20,<1.0
 pytest>=9.1.1,<10.0
-openapi-core>=0.19,<0.20
+openapi-core>=0.23.1,<0.24
