@@ -1,4 +1,4 @@
-"""Orders API router (COM-102 create, COM-104 list)."""
+"""Orders API router (COM-102 create, COM-104 list, COM-105 get)."""
 
 from __future__ import annotations
 
@@ -12,11 +12,12 @@ from app.api.deps import (
     BearerToken,
     CreateOrderServiceDep,
     CurrentPrincipal,
+    GetOrderServiceDep,
     ListOrdersServiceDep,
 )
 from app.api.schemas import CreateOrderRequest, OrderResponse
 from app.application.commands import CreateOrderCommand
-from app.application.queries import ListOrdersQuery
+from app.application.queries import GetOrderQuery, ListOrdersQuery
 from app.domain.enums import OrderStatus
 
 router = APIRouter(tags=["Orders"])
@@ -91,3 +92,23 @@ def list_orders(
     )
     orders = service.list(query)
     return [OrderResponse.from_order(order) for order in orders]
+
+
+@router.get(
+    "/orders/{order_id}",
+    response_model=OrderResponse,
+    summary="Get one of the current user's orders",
+)
+def get_order(
+    order_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    service: GetOrderServiceDep,
+) -> OrderResponse:
+    """Return the caller's order identified by ``orderId`` with full detail (COM-105).
+
+    Reads are owner-scoped: an unknown id and another user's order are indistinguishable and both
+    yield ``404`` (no enumeration). A malformed (non-UUID) ``orderId`` is rejected with ``422``.
+    """
+    query = GetOrderQuery(user_id=_principal_user_id(principal), order_id=order_id)
+    order = service.get(query)
+    return OrderResponse.from_order(order)

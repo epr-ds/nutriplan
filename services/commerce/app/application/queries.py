@@ -10,6 +10,18 @@ from app.domain.enums import OrderStatus
 
 
 @dataclass(frozen=True)
+class GetOrderQuery:
+    """A caller-scoped request for a single order by id (COM-105).
+
+    ``user_id`` is the authenticated caller; the order is only returned when it belongs to them, so
+    an unknown id and another user's id are indistinguishable (no enumeration).
+    """
+
+    user_id: uuid.UUID
+    order_id: uuid.UUID
+
+
+@dataclass(frozen=True)
 class ListOrdersQuery:
     """A caller-scoped, filtered, paginated request for a user's orders (COM-104).
 

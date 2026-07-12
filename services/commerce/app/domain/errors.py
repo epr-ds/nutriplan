@@ -25,5 +25,17 @@ class MealPlanNotFoundError(DomainError):
         self.plan_id = plan_id
 
 
+class OrderNotFoundError(DomainError):
+    """The referenced order does not exist or is not owned by the caller.
+
+    Unknown and not-owned are deliberately indistinguishable (both raise this) so one user can
+    never probe for another user's order ids (COM-105 "no enumeration").
+    """
+
+    def __init__(self, order_id: object) -> None:
+        super().__init__(f"order {order_id} not found")
+        self.order_id = order_id
+
+
 class MealPlanUnavailableError(DomainError):
     """The Dietary service could not be reached or returned an unexpected error."""
