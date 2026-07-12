@@ -1,4 +1,4 @@
-"""Orders API router (COM-102 create, COM-104 list, COM-105 get)."""
+"""Orders API router (COM-102 create, COM-104 list, COM-105 get, COM-107 cancel)."""
 
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import (
     BearerToken,
+    CancelOrderServiceDep,
     CreateOrderServiceDep,
     CurrentPrincipal,
     GetOrderServiceDep,
     ListOrdersServiceDep,
 )
 from app.api.schemas import CreateOrderRequest, OrderResponse
-from app.application.commands import CreateOrderCommand
+from app.application.commands import CancelOrderCommand, CreateOrderCommand
 from app.application.queries import GetOrderQuery, ListOrdersQuery
 from app.domain.enums import OrderStatus
 
@@ -111,4 +112,26 @@ def get_order(
     """
     query = GetOrderQuery(user_id=_principal_user_id(principal), order_id=order_id)
     order = service.get(query)
+    return OrderResponse.from_order(order)
+
+
+@router.post(
+    "/orders/{order_id}/cancel",
+    response_model=OrderResponse,
+    summary="Cancel an order",
+)
+def cancel_order(
+    order_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    service: CancelOrderServiceDep,
+) -> OrderResponse:
+    """Cancel the caller's order identified by ``orderId`` (COM-107).
+
+    Cancellation is owner-scoped: an unknown id and another user's order both yield ``404`` (no
+    enumeration, as with reads). An order may only be cancelled before dispatch; once it is
+    ``in_transit`` or in a terminal state the lifecycle state machine refuses and this returns
+    ``409``. On success the updated order is returned with ``200``.
+    """
+    command = CancelOrderCommand(user_id=_principal_user_id(principal), order_id=order_id)
+    order = service.cancel(command)
     return OrderResponse.from_order(order)

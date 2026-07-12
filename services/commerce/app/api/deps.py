@@ -16,6 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
+from app.application.cancel_order import CancelOrderService
 from app.application.create_order import CreateOrderService
 from app.application.get_order import GetOrderService
 from app.application.list_orders import ListOrdersService
@@ -136,9 +137,16 @@ def get_get_order_service(
     return GetOrderService(orders)
 
 
+def get_cancel_order_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+) -> CancelOrderService:
+    return CancelOrderService(orders)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 BearerToken = Annotated[str, Depends(get_bearer_token)]
 OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
 CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_service)]
 ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
+CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
