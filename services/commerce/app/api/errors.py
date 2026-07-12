@@ -23,6 +23,7 @@ from app.domain.errors import (
     DomainError,
     MealPlanNotFoundError,
     MealPlanUnavailableError,
+    OrderNotFoundError,
 )
 
 PROBLEM_JSON = "application/problem+json"
@@ -32,6 +33,7 @@ PROBLEM_JSON = "application/problem+json"
 # violation is an Unprocessable Entity.
 _DOMAIN_STATUS: tuple[tuple[type[DomainError], int], ...] = (
     (MealPlanNotFoundError, HTTPStatus.NOT_FOUND),
+    (OrderNotFoundError, HTTPStatus.NOT_FOUND),
     (MealPlanUnavailableError, HTTPStatus.SERVICE_UNAVAILABLE),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),
 )
