@@ -161,3 +161,60 @@ def test_list_combines_status_filter_with_pagination(order_repo):
 
     assert len(delivered) == 2
     assert all(order.status is OrderStatus.DELIVERED for order in delivered)
+
+
+def test_update_persists_status_and_history(order_repo):
+    user_id = uuid.uuid4()
+    saved = order_repo.add(_make_order(user_id))
+    when = datetime(2026, 7, 6, 12, 0, tzinfo=UTC)
+
+    saved.transition_to(OrderStatus.CONFIRMED, occurred_at=when)
+    order_repo.update(saved)
+
+    reloaded = order_repo.get(saved.id, user_id=user_id)
+    assert reloaded is not None
+    assert reloaded.status is OrderStatus.CONFIRMED
+    assert [(c.from_status, c.to_status) for c in reloaded.status_history] == [
+        (OrderStatus.PENDING, OrderStatus.CONFIRMED)
+    ]
+    # Timezone handling differs across SQLite (naive) and Postgres (aware); compare wall-clock.
+    persisted = reloaded.status_history[0].occurred_at
+    assert persisted.replace(tzinfo=None) == when.replace(tzinfo=None)
+
+
+def test_update_persists_full_multi_step_history(order_repo):
+    user_id = uuid.uuid4()
+    saved = order_repo.add(_make_order(user_id))
+
+    saved.confirm()
+    saved.start_preparing()
+    saved.mark_in_transit()
+    saved.mark_delivered()
+    order_repo.update(saved)
+
+    reloaded = order_repo.get(saved.id, user_id=user_id)
+    assert reloaded.status is OrderStatus.DELIVERED
+    assert [(c.from_status, c.to_status) for c in reloaded.status_history] == [
+        (OrderStatus.PENDING, OrderStatus.CONFIRMED),
+        (OrderStatus.CONFIRMED, OrderStatus.PREPARING),
+        (OrderStatus.PREPARING, OrderStatus.IN_TRANSIT),
+        (OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED),
+    ]
+
+
+def test_update_appends_only_new_history_rows(order_repo):
+    user_id = uuid.uuid4()
+    saved = order_repo.add(_make_order(user_id))
+
+    saved.confirm()
+    order_repo.update(saved)
+    saved.start_preparing()
+    order_repo.update(saved)
+
+    reloaded = order_repo.get(saved.id, user_id=user_id)
+    # Two separate updates must not duplicate the first transition.
+    assert [(c.from_status, c.to_status) for c in reloaded.status_history] == [
+        (OrderStatus.PENDING, OrderStatus.CONFIRMED),
+        (OrderStatus.CONFIRMED, OrderStatus.PREPARING),
+    ]
+    assert reloaded.status is OrderStatus.PREPARING

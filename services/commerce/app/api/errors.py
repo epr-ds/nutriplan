@@ -21,6 +21,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.domain.errors import (
     DomainError,
+    IllegalOrderTransitionError,
     MealPlanNotFoundError,
     MealPlanUnavailableError,
     OrderNotFoundError,
@@ -34,6 +35,7 @@ PROBLEM_JSON = "application/problem+json"
 _DOMAIN_STATUS: tuple[tuple[type[DomainError], int], ...] = (
     (MealPlanNotFoundError, HTTPStatus.NOT_FOUND),
     (OrderNotFoundError, HTTPStatus.NOT_FOUND),
+    (IllegalOrderTransitionError, HTTPStatus.CONFLICT),
     (MealPlanUnavailableError, HTTPStatus.SERVICE_UNAVAILABLE),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),
 )
