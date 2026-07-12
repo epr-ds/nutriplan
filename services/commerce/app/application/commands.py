@@ -26,3 +26,16 @@ class CreateOrderCommand:
     delivery_time_slot: str
     provider_id: str | None = None
     notes: str | None = None
+
+
+@dataclass(frozen=True)
+class CancelOrderCommand:
+    """A caller-scoped request to cancel a single order (COM-107).
+
+    ``user_id`` is the authenticated caller; the order is only cancellable when it belongs to them,
+    so an unknown id and another user's order are indistinguishable (no enumeration). Whether the
+    order may actually be cancelled from its current state is decided by the domain state machine.
+    """
+
+    user_id: uuid.UUID
+    order_id: uuid.UUID
