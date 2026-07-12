@@ -2,6 +2,9 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy import update
+
+from app.db.models import OrderModel
 from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.money import Money
@@ -110,3 +113,51 @@ def test_list_filters_by_from_date(order_repo):
 
     assert len(order_repo.list_for_user(owner, from_date=today)) == 1
     assert len(order_repo.list_for_user(owner, from_date=today + timedelta(days=1))) == 0
+
+
+def _stamp_created_at(order_repo, order_id, when):
+    order_repo._db.execute(
+        update(OrderModel).where(OrderModel.id == order_id).values(created_at=when)
+    )
+    order_repo._db.commit()
+    order_repo._db.expire_all()  # drop identity-map cache so the next read reflects the new value
+
+
+def test_list_returns_newest_first(order_repo):
+    owner = uuid.uuid4()
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    older = order_repo.add(_make_order(owner)).id
+    newer = order_repo.add(_make_order(owner)).id
+    _stamp_created_at(order_repo, older, base)
+    _stamp_created_at(order_repo, newer, base + timedelta(days=1))
+
+    ids = [order.id for order in order_repo.list_for_user(owner)]
+
+    assert ids == [newer, older]
+
+
+def test_list_paginates_with_limit_and_offset(order_repo):
+    owner = uuid.uuid4()
+    all_ids = {order_repo.add(_make_order(owner)).id for _ in range(3)}
+
+    page1 = order_repo.list_for_user(owner, limit=2, offset=0)
+    page2 = order_repo.list_for_user(owner, limit=2, offset=2)
+
+    assert len(page1) == 2
+    assert len(page2) == 1
+    page1_ids = {order.id for order in page1}
+    page2_ids = {order.id for order in page2}
+    assert page1_ids.isdisjoint(page2_ids)  # stable order → no overlap across pages
+    assert page1_ids | page2_ids == all_ids
+
+
+def test_list_combines_status_filter_with_pagination(order_repo):
+    owner = uuid.uuid4()
+    for _ in range(3):
+        order_repo.add(_make_order(owner, status=OrderStatus.DELIVERED))
+    order_repo.add(_make_order(owner, status=OrderStatus.PENDING))
+
+    delivered = order_repo.list_for_user(owner, status=OrderStatus.DELIVERED, limit=2)
+
+    assert len(delivered) == 2
+    assert all(order.status is OrderStatus.DELIVERED for order in delivered)
