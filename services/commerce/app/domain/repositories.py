@@ -21,6 +21,10 @@ class OrderRepository(Protocol):
         """Load an order owned by ``user_id``, or ``None`` if absent/not theirs."""
         ...
 
+    def update(self, order: Order) -> Order:
+        """Persist mutations to an existing order (status + appended history) and return it."""
+        ...
+
     def list_for_user(
         self,
         user_id: uuid.UUID,

@@ -1,9 +1,10 @@
-"""SQLAlchemy ORM models for the Commerce bounded context (COM-101).
+"""SQLAlchemy ORM models for the Commerce bounded context (COM-101, COM-106).
 
-Three tables — ``addresses``, ``orders``, ``order_items`` — persist the ``Order`` aggregate.
-Owner-scoped query paths are indexed per the acceptance criteria: ``orders.user_id``,
-``orders.status`` and ``orders.created_at`` (for "my recent orders" listings), plus
-``order_items.order_id`` for the aggregate's item fan-out.
+Four tables — ``addresses``, ``orders``, ``order_items`` and ``order_status_history`` — persist the
+``Order`` aggregate. Owner-scoped query paths are indexed per the acceptance criteria:
+``orders.user_id``, ``orders.status`` and ``orders.created_at`` (for "my recent orders" listings),
+``order_items.order_id`` for the aggregate's item fan-out, and ``order_status_history.order_id`` for
+its transition history (COM-106).
 """
 
 from __future__ import annotations
@@ -92,6 +93,33 @@ class OrderModel(Base):
         order_by="OrderItemModel.position",
         lazy="selectin",
     )
+    status_history: Mapped[list[OrderStatusHistoryModel]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderStatusHistoryModel.position",
+        lazy="selectin",
+    )
+
+
+class OrderStatusHistoryModel(Base):
+    """One row per lifecycle transition of an order (COM-106).
+
+    ``position`` preserves chronological order independently of clock skew, and ``order_id`` is
+    indexed for the aggregate's history fan-out.
+    """
+
+    __tablename__ = "order_status_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    from_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    order: Mapped[OrderModel] = relationship(back_populates="status_history")
 
 
 class OrderItemModel(Base):

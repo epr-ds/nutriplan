@@ -17,6 +17,19 @@ class OrderValidationError(DomainError):
     """A create-order request violates an invariant (e.g. grocery delivery without a provider)."""
 
 
+class IllegalOrderTransitionError(DomainError):
+    """An order was asked to move between lifecycle states the state machine forbids (COM-106).
+
+    Maps to ``409 Conflict``: the request is well-formed but conflicts with the order's current
+    state (e.g. cancelling an already-delivered order).
+    """
+
+    def __init__(self, current: object, target: object) -> None:
+        super().__init__(f"cannot transition order from '{current}' to '{target}'")
+        self.current = current
+        self.target = target
+
+
 class MealPlanNotFoundError(DomainError):
     """The referenced meal plan does not exist or is not owned by the caller."""
 

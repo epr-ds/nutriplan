@@ -28,3 +28,7 @@ def test_addresses_user_id_indexed(engine):
 
 def test_order_items_order_id_indexed(engine):
     assert "order_id" in _indexed_columns(engine, "order_items")
+
+
+def test_order_status_history_order_id_indexed(engine):
+    assert "order_id" in _indexed_columns(engine, "order_status_history")

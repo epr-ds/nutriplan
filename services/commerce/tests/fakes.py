@@ -57,6 +57,12 @@ class InMemoryOrderRepository:
             return None
         return order
 
+    def update(self, order: Order) -> Order:
+        # The aggregate is stored by reference, so its mutated status/history are already visible;
+        # re-key defensively to mirror the SQL adapter's "persist the passed-in order" contract.
+        self.orders[order.id] = order
+        return order
+
     def list_for_user(
         self,
         user_id: uuid.UUID,
