@@ -42,6 +42,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
     get:
       tags: [Orders]
       operationId: listOrders
@@ -81,6 +85,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /orders/{orderId}:
     get:
@@ -98,8 +106,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Order not found
+          $ref: '#/components/responses/NotFound'
 
   /orders/{orderId}/cancel:
     post:
@@ -117,10 +127,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Order not found
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Order cannot be cancelled in its current state
+          $ref: '#/components/responses/Conflict'
 
   /fulfillment/dark-kitchen/availability:
     get:
@@ -194,6 +206,36 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Authentication is required, or the bearer token is missing/invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: >-
+        The order does not exist, or is not visible to the caller. An order owned by a
+        different user is deliberately reported as not found (no existence/ownership leak).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: The request conflicts with the order's current state (e.g. an illegal transition)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: >-
+        The request was well-formed but failed validation or a domain precondition. Validation
+        failures additionally carry a machine-readable `errors` array.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
 
   parameters:
     OrderId:
@@ -364,3 +406,26 @@ components:
           format: uri
         estimatedDelivery:
           type: string
+
+    Problem:
+      type: object
+      description: |
+        RFC 7807 problem detail returned as `application/problem+json` for every 4xx/5xx
+        error (COM-108). Additional members (e.g. `errors` for validation failures) may be present.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A URI reference identifying the problem type (`about:blank` by default)
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type
+        status:
+          type: integer
+          description: The HTTP status code
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence
+        instance:
+          type: string
+          description: A URI reference identifying the specific occurrence (the request path)
