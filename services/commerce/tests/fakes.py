@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 
 from app.core.principal import Principal
@@ -63,8 +63,23 @@ class InMemoryOrderRepository:
         *,
         status: OrderStatus | None = None,
         from_date: date | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Order]:
-        return [o for o in self.orders.values() if o.user_id == user_id]
+        matches = [o for o in self.orders.values() if o.user_id == user_id]
+        if status is not None:
+            matches = [o for o in matches if o.status is status]
+        if from_date is not None:
+            start = datetime.combine(from_date, time.min, tzinfo=UTC)
+            matches = [o for o in matches if o.created_at >= start]
+        # Newest first, ties broken by id ascending — mirrors the SQL adapter's ORDER BY.
+        matches.sort(key=lambda o: o.id)
+        matches.sort(key=lambda o: o.created_at, reverse=True)
+        if offset:
+            matches = matches[offset:]
+        if limit is not None:
+            matches = matches[:limit]
+        return matches
 
 
 class FakeMealPlanProvider:

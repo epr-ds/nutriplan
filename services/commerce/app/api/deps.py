@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
 from app.application.create_order import CreateOrderService
+from app.application.list_orders import ListOrdersService
 from app.application.ports import MealPlanProvider
 from app.core.config import settings
 from app.core.principal import Principal
@@ -122,7 +123,14 @@ def get_create_order_service(
     return CreateOrderService(orders, meal_plans, pricer)
 
 
+def get_list_orders_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+) -> ListOrdersService:
+    return ListOrdersService(orders)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 BearerToken = Annotated[str, Depends(get_bearer_token)]
 OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
 CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_service)]
+ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]

@@ -27,6 +27,8 @@ class OrderRepository(Protocol):
         *,
         status: OrderStatus | None = None,
         from_date: date | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Order]:
-        """List the user's orders, newest first, optionally filtered by status/date."""
+        """List the user's orders, newest first, with optional filters and pagination."""
         ...

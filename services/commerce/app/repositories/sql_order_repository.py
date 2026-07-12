@@ -46,6 +46,8 @@ class SqlOrderRepository:
         *,
         status: OrderStatus | None = None,
         from_date: date | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Order]:
         stmt = select(OrderModel).where(OrderModel.user_id == user_id)
         if status is not None:
@@ -54,6 +56,10 @@ class SqlOrderRepository:
             start = datetime.combine(from_date, time.min, tzinfo=UTC)
             stmt = stmt.where(OrderModel.created_at >= start)
         stmt = stmt.order_by(OrderModel.created_at.desc(), OrderModel.id)
+        if offset:
+            stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
         models = self._db.execute(stmt).scalars().all()
         return [self._to_domain(model) for model in models]
 
