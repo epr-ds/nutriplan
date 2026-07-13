@@ -31,6 +31,8 @@ from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPric
 from app.domain.repositories import OrderRepository
 from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
+from app.payments.factory import build_payment_provider
+from app.payments.provider import PaymentProvider
 from app.repositories.sql_order_repository import SqlOrderRepository
 
 _bearer = HTTPBearer(auto_error=False)
@@ -123,6 +125,12 @@ def get_order_pricer() -> OrderPricer:
 def get_event_publisher() -> EventPublisher:
     """Build the (cached) domain-event publisher: a Redis stream in prod, in-process for dev/CI."""
     return build_event_publisher(settings)
+
+
+@lru_cache(maxsize=1)
+def get_payment_provider() -> PaymentProvider:
+    """Build the (cached) config-selected payment provider (Stripe/Conekta; fake for dev/CI)."""
+    return build_payment_provider(settings)
 
 
 def get_create_order_service(

@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +49,15 @@ class Settings(BaseSettings):
     # single replica, but does not leave the process).
     event_bus_url: str = ""
     event_stream: str = "commerce.order-events"
+
+    # Payments (COM-201). COMMERCE_PAYMENT_PROVIDER selects the processor (stripe/conekta/fake); the
+    # secret key is injected from the vault in production (COM-904) and is a SecretStr so it is
+    # masked in logs and reprs and never printed. Leave the provider blank or "fake" for dev/CI. The
+    # concrete Stripe/Conekta charge calls arrive in COM-202.
+    payment_provider: str = "fake"
+    payment_secret_key: SecretStr = SecretStr("")
+    stripe_base_url: str = "https://api.stripe.com"
+    conekta_base_url: str = "https://api.conekta.io"
 
 
 settings = Settings()
