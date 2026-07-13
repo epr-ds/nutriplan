@@ -25,6 +25,7 @@ from app.domain.errors import (
     MealPlanNotFoundError,
     MealPlanUnavailableError,
     OrderNotFoundError,
+    PaymentDeclinedError,
 )
 
 PROBLEM_JSON = "application/problem+json"
@@ -36,6 +37,7 @@ _DOMAIN_STATUS: tuple[tuple[type[DomainError], int], ...] = (
     (MealPlanNotFoundError, HTTPStatus.NOT_FOUND),
     (OrderNotFoundError, HTTPStatus.NOT_FOUND),
     (IllegalOrderTransitionError, HTTPStatus.CONFLICT),
+    (PaymentDeclinedError, HTTPStatus.PAYMENT_REQUIRED),
     (MealPlanUnavailableError, HTTPStatus.SERVICE_UNAVAILABLE),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),
 )

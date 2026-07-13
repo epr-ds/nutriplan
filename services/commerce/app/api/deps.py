@@ -138,8 +138,9 @@ def get_create_order_service(
     meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
     pricer: Annotated[OrderPricer, Depends(get_order_pricer)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+    payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans, pricer, publisher)
+    return CreateOrderService(orders, meal_plans, pricer, publisher, payments)
 
 
 def get_list_orders_service(

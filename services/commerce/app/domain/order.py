@@ -21,6 +21,7 @@ from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.errors import IllegalOrderTransitionError
 from app.domain.events import DomainEvent, OrderCreated, OrderStatusChanged
 from app.domain.money import Money
+from app.domain.payment import PaymentStatus
 
 # The order lifecycle as a directed graph. An order progresses forward through fulfilment and may be
 # cancelled at any point *before* it is dispatched; once in transit it can only be delivered, and
@@ -78,6 +79,12 @@ class Order:
     total: Money = field(default_factory=Money.zero)
     estimated_delivery: datetime | None = None
     tracking_url: str | None = None
+    # Payment outcome captured at checkout when a card is charged inline (COM-202); ``None`` while
+    # the order is unpaid (cash/async methods that settle later via webhook). ``payment_charge_id``
+    # is the provider's charge reference a later refund (COM-208) acts on.
+    payment_status: PaymentStatus | None = None
+    payment_provider: str | None = None
+    payment_charge_id: str | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -143,6 +150,24 @@ class Order:
     def cancel(self, *, occurred_at: datetime | None = None) -> None:
         """Cancel the order (allowed only before it is dispatched)."""
         self.transition_to(OrderStatus.CANCELLED, occurred_at=occurred_at)
+
+    def mark_paid(
+        self, *, provider: str, charge_id: str, occurred_at: datetime | None = None
+    ) -> None:
+        """Record a successful card charge and confirm the order (COM-202).
+
+        Captures the ``provider`` and its ``charge_id`` (so a later refund in COM-208 has a
+        reference to act on -- we never store the card itself, only this opaque handle) and drives
+        the ``pending -> confirmed`` transition, which records the accompanying
+        :class:`OrderStatusChanged` event. Only a ``pending`` order can be paid; anything else
+        raises :class:`IllegalOrderTransitionError` and leaves the payment fields untouched.
+        """
+        if not self.can_transition_to(OrderStatus.CONFIRMED):
+            raise IllegalOrderTransitionError(self.status, OrderStatus.CONFIRMED)
+        self.payment_status = PaymentStatus.SUCCEEDED
+        self.payment_provider = provider
+        self.payment_charge_id = charge_id
+        self.confirm(occurred_at=occurred_at)
 
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).

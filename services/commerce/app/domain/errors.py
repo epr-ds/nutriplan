@@ -52,3 +52,17 @@ class OrderNotFoundError(DomainError):
 
 class MealPlanUnavailableError(DomainError):
     """The Dietary service could not be reached or returned an unexpected error."""
+
+
+class PaymentDeclinedError(DomainError):
+    """The payment provider declined the card charge (COM-202).
+
+    Maps to ``402 Payment Required``: the request was well-formed but the charge did not succeed,
+    so the order is not placed. Carries the provider's ``error_code`` (and optional message) so the
+    client can tell the user why without our servers ever seeing the card itself.
+    """
+
+    def __init__(self, *, error_code: str, error_message: str | None = None) -> None:
+        super().__init__(error_message or f"payment declined ({error_code})")
+        self.error_code = error_code
+        self.error_message = error_message

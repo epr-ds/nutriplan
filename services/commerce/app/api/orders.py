@@ -46,11 +46,14 @@ def create_order(
     token: BearerToken,
     service: CreateOrderServiceDep,
 ) -> OrderResponse:
-    """Turn one of the caller's meal plans into a PENDING order (COM-102).
+    """Turn one of the caller's meal plans into an order (COM-102), charging a card if given.
 
     Ownership of ``mealPlanId`` is enforced by Dietary (the caller's token is forwarded); a missing
     or not-owned plan is ``404``, a ``grocery_delivery`` without ``providerId`` is ``422``, and an
-    unreachable Dietary is ``503``. On success the created order is returned with ``201``.
+    unreachable Dietary is ``503``. When ``paymentMethod`` is a card the order total is charged
+    inline via the payment provider (COM-202): success confirms the order, a decline is ``402`` and
+    no order is created. Other methods (or none) leave the order ``pending``. On success the order
+    is returned with ``201``.
     """
     command = CreateOrderCommand(
         user_id=_principal_user_id(principal),
@@ -61,6 +64,8 @@ def create_order(
         delivery_time_slot=body.delivery_time_slot,
         provider_id=body.provider_id,
         notes=body.notes,
+        payment_method_type=body.payment_method.type if body.payment_method else None,
+        payment_token=body.payment_method.token if body.payment_method else None,
     )
     order = service.create(command, bearer_token=token)
     return OrderResponse.from_order(order)

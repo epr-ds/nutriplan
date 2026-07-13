@@ -36,6 +36,7 @@ from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.domain.order import Order
 from app.events.memory import InMemoryEventPublisher
 from app.main import app
+from app.payments.fake import FakePaymentProvider
 from tests.fakes import (
     FakeMealPlanProvider,
     InMemoryOrderRepository,
@@ -92,7 +93,7 @@ def _build(
     provider = FakeMealPlanProvider(_snapshot() if plan_available else None)
     publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer(), publisher
+        repo, provider, make_test_pricer(), publisher, FakePaymentProvider()
     )
     app.dependency_overrides[get_list_orders_service] = lambda: ListOrdersService(repo)
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)

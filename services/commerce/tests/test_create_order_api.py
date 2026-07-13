@@ -20,6 +20,7 @@ from app.domain.errors import MealPlanUnavailableError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.events.memory import InMemoryEventPublisher
 from app.main import app
+from app.payments.fake import FakePaymentProvider
 from tests.fakes import (
     FakeMealPlanProvider,
     InMemoryOrderRepository,
@@ -66,7 +67,7 @@ def _build(provider) -> tuple[TestClient, InMemoryOrderRepository]:
     repo = InMemoryOrderRepository()
     publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer(), publisher
+        repo, provider, make_test_pricer(), publisher, FakePaymentProvider()
     )
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo

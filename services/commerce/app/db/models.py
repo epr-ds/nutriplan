@@ -1,10 +1,11 @@
-"""SQLAlchemy ORM models for the Commerce bounded context (COM-101, COM-106).
+"""SQLAlchemy ORM models for the Commerce bounded context (COM-101, COM-106, COM-202).
 
 Four tables — ``addresses``, ``orders``, ``order_items`` and ``order_status_history`` — persist the
 ``Order`` aggregate. Owner-scoped query paths are indexed per the acceptance criteria:
 ``orders.user_id``, ``orders.status`` and ``orders.created_at`` (for "my recent orders" listings),
 ``order_items.order_id`` for the aggregate's item fan-out, and ``order_status_history.order_id`` for
-its transition history (COM-106).
+its transition history (COM-106). ``orders`` also records the card-charge outcome (COM-202:
+``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN.
 """
 
 from __future__ import annotations
@@ -79,6 +80,11 @@ class OrderModel(Base):
         DateTime(timezone=True), nullable=True
     )
     tracking_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Payment outcome captured when a card is charged inline at checkout (COM-202); all nullable
+    # because cash / async methods leave the order unpaid until a later webhook confirms it.
+    payment_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    payment_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    payment_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )
