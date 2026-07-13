@@ -19,7 +19,7 @@ from decimal import Decimal
 from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.errors import IllegalOrderTransitionError
-from app.domain.events import OrderStatusChanged
+from app.domain.events import DomainEvent, OrderCreated, OrderStatusChanged
 from app.domain.money import Money
 
 # The order lifecycle as a directed graph. An order progresses forward through fulfilment and may be
@@ -83,11 +83,9 @@ class Order:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=_utcnow)
     updated_at: datetime = field(default_factory=_utcnow)
-    # Recorded on each transition, drained by pull_events(); excluded from equality/repr so it never
-    # perturbs value comparisons or leaks into logs.
-    _events: list[OrderStatusChanged] = field(
-        default_factory=list, init=False, compare=False, repr=False
-    )
+    # Recorded when the order is placed and on each transition, drained by pull_events(); excluded
+    # from equality/repr so it never perturbs value comparisons or leaks into logs.
+    _events: list[DomainEvent] = field(default_factory=list, init=False, compare=False, repr=False)
 
     def add_item(self, item: OrderItem) -> None:
         """Append a line item to the order."""
@@ -146,7 +144,23 @@ class Order:
         """Cancel the order (allowed only before it is dispatched)."""
         self.transition_to(OrderStatus.CANCELLED, occurred_at=occurred_at)
 
-    def pull_events(self) -> list[OrderStatusChanged]:
+    def record_created(self, *, occurred_at: datetime | None = None) -> None:
+        """Record that this order was placed, for the domain-event bus (COM-109).
+
+        Called once by the create-order use case after the order is fully built and priced -- never
+        from ``__init__``, so rehydrating a stored order via the repository emits no event. The
+        recorded :class:`OrderCreated` is drained together with any transition events by
+        :meth:`pull_events`. ``occurred_at`` defaults to the order's ``created_at``.
+        """
+        self._events.append(
+            OrderCreated(
+                order_id=self.id,
+                user_id=self.user_id,
+                occurred_at=occurred_at or self.created_at,
+            )
+        )
+
+    def pull_events(self) -> list[DomainEvent]:
         """Return and clear the events recorded since the last drain."""
         events = list(self._events)
         self._events.clear()

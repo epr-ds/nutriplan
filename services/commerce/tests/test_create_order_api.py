@@ -18,6 +18,7 @@ from app.application.create_order import CreateOrderService
 from app.core.principal import Principal
 from app.domain.errors import MealPlanUnavailableError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
+from app.events.memory import InMemoryEventPublisher
 from app.main import app
 from tests.fakes import (
     FakeMealPlanProvider,
@@ -63,8 +64,9 @@ def _restore_overrides():
 
 def _build(provider) -> tuple[TestClient, InMemoryOrderRepository]:
     repo = InMemoryOrderRepository()
+    publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer()
+        repo, provider, make_test_pricer(), publisher
     )
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo

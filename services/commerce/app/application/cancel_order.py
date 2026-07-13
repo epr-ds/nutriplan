@@ -14,17 +14,26 @@ from app.application.commands import CancelOrderCommand
 from app.domain.errors import OrderNotFoundError
 from app.domain.order import Order
 from app.domain.repositories import OrderRepository
+from app.events.publisher import EventPublisher
 
 
 class CancelOrderService:
-    """Cancels an order owned by the caller, enforcing the lifecycle guards (COM-107)."""
+    """Cancels an order owned by the caller, enforcing the lifecycle guards (COM-107).
 
-    def __init__(self, orders: OrderRepository) -> None:
+    On success it publishes the resulting ``order.status_changed`` event to the bus (COM-109).
+    """
+
+    def __init__(self, orders: OrderRepository, publisher: EventPublisher) -> None:
         self._orders = orders
+        self._publisher = publisher
 
     def cancel(self, command: CancelOrderCommand) -> Order:
         order = self._orders.get(command.order_id, user_id=command.user_id)
         if order is None:
             raise OrderNotFoundError(command.order_id)
         order.cancel()
-        return self._orders.update(order)
+        persisted = self._orders.update(order)
+        # Best-effort publish after the cancellation is committed; drain from the aggregate we hold.
+        for event in order.pull_events():
+            self._publisher.publish(event)
+        return persisted

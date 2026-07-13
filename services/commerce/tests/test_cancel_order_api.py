@@ -21,6 +21,7 @@ from app.core.principal import Principal
 from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.order import Order
+from app.events.memory import InMemoryEventPublisher
 from app.main import app
 from tests.fakes import InMemoryOrderRepository, StubVerifier
 
@@ -52,7 +53,9 @@ def _build(*orders: Order) -> tuple[TestClient, InMemoryOrderRepository]:
     repo = InMemoryOrderRepository()
     for order in orders:
         repo.add(order)
-    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo)
+    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(
+        repo, InMemoryEventPublisher()
+    )
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo

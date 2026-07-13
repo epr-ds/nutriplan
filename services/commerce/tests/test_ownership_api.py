@@ -34,6 +34,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.domain.order import Order
+from app.events.memory import InMemoryEventPublisher
 from app.main import app
 from tests.fakes import (
     FakeMealPlanProvider,
@@ -89,12 +90,13 @@ def _build(
     # An unavailable plan (provider returns None) models "not one of the caller's plans" for the
     # create route — Dietary reports a missing/not-owned plan as 404 (no enumeration).
     provider = FakeMealPlanProvider(_snapshot() if plan_available else None)
+    publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer()
+        repo, provider, make_test_pricer(), publisher
     )
     app.dependency_overrides[get_list_orders_service] = lambda: ListOrdersService(repo)
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)
-    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo)
+    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo, publisher)
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo
 

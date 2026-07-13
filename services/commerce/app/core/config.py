@@ -42,5 +42,12 @@ class Settings(BaseSettings):
     delivery_fee_pickup: Decimal = Decimal("0.00")
     free_delivery_threshold: Decimal = Decimal("500.00")
 
+    # Domain-event bus (COM-109). Order lifecycle events (created/confirmed/status-changed) are
+    # appended to a Redis stream that the P5 notification service consumes; leave
+    # COMMERCE_EVENT_BUS_URL blank and an in-process publisher is used (correct for dev/CI and a
+    # single replica, but does not leave the process).
+    event_bus_url: str = ""
+    event_stream: str = "commerce.order-events"
+
 
 settings = Settings()
