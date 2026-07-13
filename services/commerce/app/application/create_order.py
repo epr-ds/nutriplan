@@ -15,20 +15,23 @@ from app.domain.errors import MealPlanNotFoundError, OrderValidationError
 from app.domain.order import Order
 from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
+from app.events.publisher import EventPublisher
 
 
 class CreateOrderService:
-    """Creates priced orders from meal plans (COM-102 + COM-103)."""
+    """Creates priced orders from meal plans (COM-102 + COM-103) and publishes ``order.created``."""
 
     def __init__(
         self,
         orders: OrderRepository,
         meal_plans: MealPlanProvider,
         pricer: OrderPricer,
+        publisher: EventPublisher,
     ) -> None:
         self._orders = orders
         self._meal_plans = meal_plans
         self._pricer = pricer
+        self._publisher = publisher
 
     def create(self, command: CreateOrderCommand, *, bearer_token: str) -> Order:
         if command.fulfillment_type is FulfillmentType.GROCERY_DELIVERY and not command.provider_id:
@@ -50,5 +53,12 @@ class CreateOrderService:
         for meal in snapshot.meals:
             order.add_item(self._pricer.price_item(meal))
         self._pricer.price_order(order)
+        order.record_created()
 
-        return self._orders.add(order)
+        persisted = self._orders.add(order)
+        # Publish after the order is committed; drain from the aggregate we built (the repository
+        # may return a freshly rehydrated copy). Publishing is best-effort and never fails the
+        # originating write.
+        for event in order.pull_events():
+            self._publisher.publish(event)
+        return persisted

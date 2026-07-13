@@ -29,6 +29,8 @@ from app.domain.enums import FulfillmentType
 from app.domain.money import Money
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
 from app.domain.repositories import OrderRepository
+from app.events.factory import build_event_publisher
+from app.events.publisher import EventPublisher
 from app.repositories.sql_order_repository import SqlOrderRepository
 
 _bearer = HTTPBearer(auto_error=False)
@@ -117,12 +119,19 @@ def get_order_pricer() -> OrderPricer:
     return OrderPricer(price_book, delivery_fees, currency=settings.default_currency)
 
 
+@lru_cache(maxsize=1)
+def get_event_publisher() -> EventPublisher:
+    """Build the (cached) domain-event publisher: a Redis stream in prod, in-process for dev/CI."""
+    return build_event_publisher(settings)
+
+
 def get_create_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
     pricer: Annotated[OrderPricer, Depends(get_order_pricer)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans, pricer)
+    return CreateOrderService(orders, meal_plans, pricer, publisher)
 
 
 def get_list_orders_service(
@@ -139,8 +148,9 @@ def get_get_order_service(
 
 def get_cancel_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
 ) -> CancelOrderService:
-    return CancelOrderService(orders)
+    return CancelOrderService(orders, publisher)
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]

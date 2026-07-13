@@ -14,6 +14,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.errors import MealPlanNotFoundError, OrderValidationError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
+from app.events.memory import InMemoryEventPublisher
 from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository, make_test_pricer
 
 USER_ID = uuid.uuid4()
@@ -57,7 +58,8 @@ def _service(
 ) -> tuple[CreateOrderService, InMemoryOrderRepository, FakeMealPlanProvider]:
     repo = InMemoryOrderRepository()
     provider = FakeMealPlanProvider(snapshot)
-    return CreateOrderService(repo, provider, make_test_pricer()), repo, provider
+    service = CreateOrderService(repo, provider, make_test_pricer(), InMemoryEventPublisher())
+    return service, repo, provider
 
 
 def test_builds_items_from_plan_meals():

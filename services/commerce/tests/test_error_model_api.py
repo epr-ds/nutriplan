@@ -41,6 +41,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.domain.order import Order
+from app.events.memory import InMemoryEventPublisher
 from app.main import app
 from tests.fakes import (
     FakeMealPlanProvider,
@@ -106,12 +107,13 @@ def _build(*orders: Order) -> tuple[TestClient, InMemoryOrderRepository]:
     for order in orders:
         repo.add(order)
     provider = FakeMealPlanProvider(_snapshot())
+    publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer()
+        repo, provider, make_test_pricer(), publisher
     )
     app.dependency_overrides[get_list_orders_service] = lambda: ListOrdersService(repo)
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)
-    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo)
+    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo, publisher)
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo
 
