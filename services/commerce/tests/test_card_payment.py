@@ -40,6 +40,7 @@ from app.main import app
 from app.payments.fake import DECLINE_TOKEN_PREFIX, FakePaymentProvider
 from tests.fakes import (
     FakeMealPlanProvider,
+    InMemoryIdempotencyStore,
     InMemoryOrderRepository,
     StubVerifier,
     make_test_pricer,
@@ -93,6 +94,7 @@ def _service() -> tuple[CreateOrderService, InMemoryOrderRepository, FakePayment
         make_test_pricer(),
         InMemoryEventPublisher(),
         payments,
+        InMemoryIdempotencyStore(),
     )
     return service, repo, payments
 
@@ -256,6 +258,7 @@ def _build() -> tuple[TestClient, InMemoryOrderRepository, FakePaymentProvider]:
         make_test_pricer(),
         InMemoryEventPublisher(),
         payments,
+        InMemoryIdempotencyStore(),
     )
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo, payments

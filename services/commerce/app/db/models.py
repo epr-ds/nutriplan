@@ -5,7 +5,9 @@ Four tables — ``addresses``, ``orders``, ``order_items`` and ``order_status_hi
 ``orders.user_id``, ``orders.status`` and ``orders.created_at`` (for "my recent orders" listings),
 ``order_items.order_id`` for the aggregate's item fan-out, and ``order_status_history.order_id`` for
 its transition history (COM-106). ``orders`` also records the card-charge outcome (COM-202:
-``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN.
+``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN. The
+``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
+``(user_id, idempotency_key)``.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -143,3 +146,27 @@ class OrderItemModel(Base):
     line_total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     order: Mapped[OrderModel] = relationship(back_populates="items")
+
+
+class IdempotencyKeyModel(Base):
+    """A client ``Idempotency-Key`` and the order that a create-order request produced (COM-209).
+
+    Unique per ``(user_id, idempotency_key)`` so the same key can be reused freely by different
+    users; ``request_fingerprint`` is a hash of the originating request, compared on replay to
+    reject the same key presented with a different body. Only successful creates are recorded, so a
+    declined or invalid request leaves no key behind and can be retried.
+    """
+
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_idempotency_keys_user_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    order_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )

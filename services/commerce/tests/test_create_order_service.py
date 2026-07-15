@@ -16,7 +16,12 @@ from app.domain.errors import MealPlanNotFoundError, OrderValidationError
 from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.events.memory import InMemoryEventPublisher
 from app.payments.fake import FakePaymentProvider
-from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository, make_test_pricer
+from tests.fakes import (
+    FakeMealPlanProvider,
+    InMemoryIdempotencyStore,
+    InMemoryOrderRepository,
+    make_test_pricer,
+)
 
 USER_ID = uuid.uuid4()
 PLAN_ID = str(uuid.uuid4())
@@ -60,7 +65,12 @@ def _service(
     repo = InMemoryOrderRepository()
     provider = FakeMealPlanProvider(snapshot)
     service = CreateOrderService(
-        repo, provider, make_test_pricer(), InMemoryEventPublisher(), FakePaymentProvider()
+        repo,
+        provider,
+        make_test_pricer(),
+        InMemoryEventPublisher(),
+        FakePaymentProvider(),
+        InMemoryIdempotencyStore(),
     )
     return service, repo, provider
 

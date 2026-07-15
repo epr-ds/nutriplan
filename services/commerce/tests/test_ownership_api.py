@@ -39,6 +39,7 @@ from app.main import app
 from app.payments.fake import FakePaymentProvider
 from tests.fakes import (
     FakeMealPlanProvider,
+    InMemoryIdempotencyStore,
     InMemoryOrderRepository,
     StubVerifier,
     make_test_pricer,
@@ -93,7 +94,12 @@ def _build(
     provider = FakeMealPlanProvider(_snapshot() if plan_available else None)
     publisher = InMemoryEventPublisher()
     app.dependency_overrides[get_create_order_service] = lambda: CreateOrderService(
-        repo, provider, make_test_pricer(), publisher, FakePaymentProvider()
+        repo,
+        provider,
+        make_test_pricer(),
+        publisher,
+        FakePaymentProvider(),
+        InMemoryIdempotencyStore(),
     )
     app.dependency_overrides[get_list_orders_service] = lambda: ListOrdersService(repo)
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)

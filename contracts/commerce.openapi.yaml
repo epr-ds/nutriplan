@@ -29,6 +29,8 @@ paths:
       summary: Create an order from a meal plan
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -44,6 +46,8 @@ paths:
                 $ref: '#/components/schemas/OrderResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
     get:
@@ -223,7 +227,9 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: The request conflicts with the order's current state (e.g. an illegal transition)
+      description: >-
+        The request conflicts with existing state: an illegal order transition, or an
+        `Idempotency-Key` reused with a different request body (COM-209).
       content:
         application/problem+json:
           schema:
@@ -245,6 +251,17 @@ components:
       schema:
         type: string
         format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >-
+        Optional client-generated key that makes create-order safe to retry (COM-209). A repeat with
+        the same key returns the original order without creating or charging again; the same key with
+        a different body is a 409.
+      schema:
+        type: string
+        maxLength: 255
 
   schemas:
     CreateOrderRequest:

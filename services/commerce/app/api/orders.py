@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Header, HTTPException, Query, status
 
 from app.api.deps import (
     BearerToken,
@@ -45,6 +45,7 @@ def create_order(
     principal: CurrentPrincipal,
     token: BearerToken,
     service: CreateOrderServiceDep,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> OrderResponse:
     """Turn one of the caller's meal plans into an order (COM-102), charging a card if given.
 
@@ -54,6 +55,10 @@ def create_order(
     inline via the payment provider (COM-202): success confirms the order, a decline is ``402`` and
     no order is created. Other methods (or none) leave the order ``pending``. On success the order
     is returned with ``201``.
+
+    Supplying an ``Idempotency-Key`` header makes the create safe to retry (COM-209): a repeat with
+    the same key returns the original order without creating or charging again, while the same key
+    with a different body is a ``409``.
     """
     command = CreateOrderCommand(
         user_id=_principal_user_id(principal),
@@ -67,7 +72,7 @@ def create_order(
         payment_method_type=body.payment_method.type if body.payment_method else None,
         payment_token=body.payment_method.token if body.payment_method else None,
     )
-    order = service.create(command, bearer_token=token)
+    order = service.create(command, bearer_token=token, idempotency_key=idempotency_key)
     return OrderResponse.from_order(order)
 
 

@@ -19,6 +19,7 @@ from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
 from app.application.cancel_order import CancelOrderService
 from app.application.create_order import CreateOrderService
 from app.application.get_order import GetOrderService
+from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
 from app.application.ports import MealPlanProvider
 from app.core.config import settings
@@ -33,6 +34,7 @@ from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
 from app.payments.factory import build_payment_provider
 from app.payments.provider import PaymentProvider
+from app.repositories.sql_idempotency_store import SqlIdempotencyStore
 from app.repositories.sql_order_repository import SqlOrderRepository
 
 _bearer = HTTPBearer(auto_error=False)
@@ -91,6 +93,11 @@ def get_order_repository(db: DbSession) -> OrderRepository:
     return SqlOrderRepository(db)
 
 
+def get_idempotency_store(db: DbSession) -> IdempotencyStore:
+    """Provide the SQL-backed idempotency store bound to the request session (COM-209)."""
+    return SqlIdempotencyStore(db)
+
+
 def get_meal_plan_provider() -> MealPlanProvider:
     """Provide the HTTP meal-plan provider (anti-corruption layer over Dietary)."""
     return HttpMealPlanProvider(
@@ -139,8 +146,9 @@ def get_create_order_service(
     pricer: Annotated[OrderPricer, Depends(get_order_pricer)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
+    idempotency: Annotated[IdempotencyStore, Depends(get_idempotency_store)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans, pricer, publisher, payments)
+    return CreateOrderService(orders, meal_plans, pricer, publisher, payments, idempotency)
 
 
 def get_list_orders_service(
