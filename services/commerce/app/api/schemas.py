@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from app.domain.address import Address
-from app.domain.enums import FulfillmentType, OrderStatus, ProviderType
+from app.domain.enums import FulfillmentType, OrderStatus, PaymentMethodType, ProviderType
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 
@@ -44,7 +44,7 @@ class AddressRequest(_Camel):
 
 
 class PaymentMethodRequest(_Camel):
-    type: str
+    type: PaymentMethodType
     token: str
 
 

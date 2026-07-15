@@ -37,6 +37,7 @@ from app.events.envelope import (
     to_envelope,
 )
 from app.events.memory import InMemoryEventPublisher
+from app.payments.fake import FakePaymentProvider
 from tests.fakes import FakeMealPlanProvider, InMemoryOrderRepository, make_test_pricer
 
 USER_ID = uuid.uuid4()
@@ -227,7 +228,11 @@ def test_create_service_publishes_order_created():
     repo = InMemoryOrderRepository()
     publisher = InMemoryEventPublisher()
     service = CreateOrderService(
-        repo, FakeMealPlanProvider(_snapshot()), make_test_pricer(), publisher
+        repo,
+        FakeMealPlanProvider(_snapshot()),
+        make_test_pricer(),
+        publisher,
+        FakePaymentProvider(),
     )
 
     order = service.create(_command(), bearer_token=TOKEN)
@@ -243,7 +248,9 @@ def test_create_service_publishes_order_created():
 def test_failed_create_publishes_nothing():
     repo = InMemoryOrderRepository()
     publisher = InMemoryEventPublisher()
-    service = CreateOrderService(repo, FakeMealPlanProvider(None), make_test_pricer(), publisher)
+    service = CreateOrderService(
+        repo, FakeMealPlanProvider(None), make_test_pricer(), publisher, FakePaymentProvider()
+    )
 
     with pytest.raises(MealPlanNotFoundError):
         service.create(_command(), bearer_token=TOKEN)

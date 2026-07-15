@@ -18,6 +18,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem, OrderStatusChange
+from app.domain.payment import PaymentStatus
 
 
 class SqlOrderRepository:
@@ -118,6 +119,9 @@ class SqlOrderRepository:
             currency=order.total.currency,
             estimated_delivery=order.estimated_delivery,
             tracking_url=order.tracking_url,
+            payment_status=order.payment_status.value if order.payment_status else None,
+            payment_provider=order.payment_provider,
+            payment_charge_id=order.payment_charge_id,
             items=[
                 OrderItemModel(
                     id=item.id,
@@ -188,6 +192,9 @@ class SqlOrderRepository:
             total=Money(model.total_amount, currency),
             estimated_delivery=model.estimated_delivery,
             tracking_url=model.tracking_url,
+            payment_status=PaymentStatus(model.payment_status) if model.payment_status else None,
+            payment_provider=model.payment_provider,
+            payment_charge_id=model.payment_charge_id,
             items=items,
             status_history=status_history,
             created_at=model.created_at,
