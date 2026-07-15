@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
 
+from app.application.idempotency import IdempotencyRecord
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError
 from app.domain.enums import FulfillmentType, OrderStatus
@@ -111,3 +112,30 @@ class StubVerifier:
             return self._principals[token]
         except KeyError as exc:
             raise InvalidTokenError("unknown token") from exc
+
+
+class InMemoryIdempotencyStore:
+    """Satisfies the ``IdempotencyStore`` port with a dict keyed by ``(user_id, key)``.
+
+    ``save`` uses ``setdefault`` so the first write for a key wins and a later duplicate is a no-op,
+    mirroring the SQL adapter's unique-constraint semantics (a concurrent duplicate is benign).
+    """
+
+    def __init__(self) -> None:
+        self.records: dict[tuple[uuid.UUID, str], IdempotencyRecord] = {}
+
+    def find(self, key: str, *, user_id: uuid.UUID) -> IdempotencyRecord | None:
+        return self.records.get((user_id, key))
+
+    def save(
+        self, key: str, *, user_id: uuid.UUID, order_id: uuid.UUID, request_fingerprint: str
+    ) -> None:
+        self.records.setdefault(
+            (user_id, key),
+            IdempotencyRecord(
+                key=key,
+                user_id=user_id,
+                order_id=order_id,
+                request_fingerprint=request_fingerprint,
+            ),
+        )
