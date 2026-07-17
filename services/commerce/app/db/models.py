@@ -7,7 +7,9 @@ Four tables — ``addresses``, ``orders``, ``order_items`` and ``order_status_hi
 its transition history (COM-106). ``orders`` also records the card-charge outcome (COM-202:
 ``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN — and
 the OXXO voucher issued for an async payment (COM-203:
-``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``). The
+``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``) and the SPEI bank-transfer
+instructions issued for an async payment (COM-204:
+``payment_transfer_clabe``/``…_reference``/``…_expires_at``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
 ``(user_id, idempotency_key)``.
 """
@@ -97,6 +99,13 @@ class OrderModel(Base):
         DateTime(timezone=True), nullable=True
     )
     payment_voucher_barcode_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Bank-transfer instructions issued for an async method (SPEI, COM-204): the destination CLABE
+    # and reference the customer transfers to, and when they expire. Nullable -- only SPEI uses it.
+    payment_transfer_clabe: Mapped[str | None] = mapped_column(String(18), nullable=True)
+    payment_transfer_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_transfer_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )

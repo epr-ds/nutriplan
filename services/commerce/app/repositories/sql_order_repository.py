@@ -125,6 +125,9 @@ class SqlOrderRepository:
             payment_voucher_reference=order.payment_voucher_reference,
             payment_voucher_expires_at=order.payment_voucher_expires_at,
             payment_voucher_barcode_url=order.payment_voucher_barcode_url,
+            payment_transfer_clabe=order.payment_transfer_clabe,
+            payment_transfer_reference=order.payment_transfer_reference,
+            payment_transfer_expires_at=order.payment_transfer_expires_at,
             items=[
                 OrderItemModel(
                     id=item.id,
@@ -201,6 +204,9 @@ class SqlOrderRepository:
             payment_voucher_reference=model.payment_voucher_reference,
             payment_voucher_expires_at=model.payment_voucher_expires_at,
             payment_voucher_barcode_url=model.payment_voucher_barcode_url,
+            payment_transfer_clabe=model.payment_transfer_clabe,
+            payment_transfer_reference=model.payment_transfer_reference,
+            payment_transfer_expires_at=model.payment_transfer_expires_at,
             items=items,
             status_history=status_history,
             created_at=model.created_at,

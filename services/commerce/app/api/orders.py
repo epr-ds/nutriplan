@@ -53,8 +53,9 @@ def create_order(
     or not-owned plan is ``404``, a ``grocery_delivery`` without ``providerId`` is ``422``, and an
     unreachable Dietary is ``503``. When ``paymentMethod`` is a card the order total is charged
     inline via the payment provider (COM-202): success confirms the order, a decline is ``402`` and
-    no order is created. An ``oxxo`` method instead issues a voucher (COM-203) and leaves the order
-    ``pending`` and returns the voucher; other async methods (or none) also stay ``pending``.
+    no order is created. An ``oxxo`` method instead issues a cash voucher (COM-203) and a ``spei``
+    method issues bank-transfer instructions (COM-204); both leave the order ``pending`` and return
+    the voucher/transfer block. Other async methods (or none) also stay ``pending``.
     On success the order is returned with ``201``.
 
     Supplying an ``Idempotency-Key`` header makes the create safe to retry (COM-209): a repeat with

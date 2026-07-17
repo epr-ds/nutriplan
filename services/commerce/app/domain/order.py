@@ -91,6 +91,12 @@ class Order:
     payment_voucher_reference: str | None = None
     payment_voucher_expires_at: datetime | None = None
     payment_voucher_barcode_url: str | None = None
+    # Bank-transfer instructions issued for an asynchronous method (SPEI, COM-204): the destination
+    # CLABE and reference the customer transfers to, and when they expire. Set together with a
+    # ``pending`` ``payment_status``; the order stays ``pending`` until a webhook confirms it.
+    payment_transfer_clabe: str | None = None
+    payment_transfer_reference: str | None = None
+    payment_transfer_expires_at: datetime | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -199,6 +205,31 @@ class Order:
         self.payment_voucher_reference = reference
         self.payment_voucher_expires_at = expires_at
         self.payment_voucher_barcode_url = barcode_url
+
+    def attach_transfer(
+        self,
+        *,
+        provider: str,
+        clabe: str,
+        reference: str,
+        expires_at: datetime,
+    ) -> None:
+        """Attach issued SPEI transfer instructions, leaving the order ``pending`` (COM-204).
+
+        Records the provider, the destination ``clabe`` and customer-facing ``reference``, and when
+        they ``expires_at``, and marks ``payment_status`` :attr:`~PaymentStatus.PENDING` — the order
+        is *not* confirmed here. It stays ``pending`` until the provider webhook reports the
+        transfer received (COM-206). Instructions are only issued for an unsettled ``pending``
+        order; attaching to an order that has already left ``pending`` (or been paid) raises
+        :class:`IllegalOrderTransitionError`.
+        """
+        if self.status is not OrderStatus.PENDING or self.payment_status is not None:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.PENDING)
+        self.payment_status = PaymentStatus.PENDING
+        self.payment_provider = provider
+        self.payment_transfer_clabe = clabe
+        self.payment_transfer_reference = reference
+        self.payment_transfer_expires_at = expires_at
 
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).

@@ -10,6 +10,8 @@ from __future__ import annotations
 from app.domain.payment import (
     PaymentRequest,
     PaymentResult,
+    PaymentTransfer,
+    PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
 )
@@ -33,6 +35,9 @@ class ConektaPaymentProvider:
 
     def create_voucher(self, request: PaymentVoucherRequest) -> PaymentVoucher:
         raise NotImplementedError("Live Conekta OXXO voucher issuance is implemented in COM-203.")
+
+    def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
+        raise NotImplementedError("Live Conekta SPEI transfer issuance is implemented in COM-204.")
 
     def __repr__(self) -> str:
         # The secret key is deliberately excluded so it never leaks into logs or tracebacks.

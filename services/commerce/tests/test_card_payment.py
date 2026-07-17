@@ -200,7 +200,7 @@ def test_non_card_method_leaves_order_pending_without_charging():
     service, _, payments = _service()
 
     order = service.create(
-        _command(payment_method_type=PaymentMethodType.SPEI, payment_token="tok_spei"),
+        _command(payment_method_type=PaymentMethodType.PAYPAL, payment_token="tok_paypal"),
         bearer_token=TOKEN,
     )
 
@@ -296,9 +296,9 @@ def test_create_with_declined_card_returns_402_problem_json():
     assert repo.orders == {}
 
 
-def test_create_with_spei_returns_201_pending_without_charge():
+def test_create_with_paypal_returns_201_pending_without_charge():
     client, _, payments = _build()
-    body = {**VALID_BODY, "paymentMethod": {"type": "spei", "token": "tok_spei"}}
+    body = {**VALID_BODY, "paymentMethod": {"type": "paypal", "token": "tok_paypal"}}
 
     response = client.post("/orders", json=body, headers=_auth())
 

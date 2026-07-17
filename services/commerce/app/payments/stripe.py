@@ -11,6 +11,8 @@ from __future__ import annotations
 from app.domain.payment import (
     PaymentRequest,
     PaymentResult,
+    PaymentTransfer,
+    PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
 )
@@ -34,6 +36,9 @@ class StripePaymentProvider:
 
     def create_voucher(self, request: PaymentVoucherRequest) -> PaymentVoucher:
         raise NotImplementedError("Live Stripe OXXO voucher issuance is implemented in COM-203.")
+
+    def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
+        raise NotImplementedError("Live Stripe SPEI transfer issuance is implemented in COM-204.")
 
     def __repr__(self) -> str:
         # The secret key is deliberately excluded so it never leaks into logs or tracebacks.
