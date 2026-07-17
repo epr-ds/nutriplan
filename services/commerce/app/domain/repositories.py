@@ -21,6 +21,15 @@ class OrderRepository(Protocol):
         """Load an order owned by ``user_id``, or ``None`` if absent/not theirs."""
         ...
 
+    def get_by_id(self, order_id: uuid.UUID) -> Order | None:
+        """Load an order by id alone, or ``None`` if absent.
+
+        Unlike :meth:`get` this is **not** owner-scoped: it exists for the payment-webhook handler
+        (COM-206), which is authenticated by the provider's signature rather than a user token and
+        so has no ``user_id`` to scope by. It must never back a user-facing read path.
+        """
+        ...
+
     def update(self, order: Order) -> Order:
         """Persist mutations to an existing order (status + appended history) and return it."""
         ...

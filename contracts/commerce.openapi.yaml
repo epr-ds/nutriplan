@@ -138,6 +138,45 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /webhooks/payments:
+    post:
+      tags: [Webhooks]
+      operationId: paymentWebhook
+      summary: Provider payment webhook (async settlement)
+      description: >-
+        Settles an order from a payment provider's asynchronous webhook (COM-206). Authenticated by
+        the provider's signature over the raw request body (`X-Webhook-Signature`), not a bearer
+        token, so no `BearerAuth` applies here. A verified `payment.confirmed` event confirms the
+        referenced order (`pending` -> `confirmed`) and a `payment.failed` event cancels it
+        (`pending` -> `cancelled`); both are idempotent, so a redelivered event is a safe no-op.
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: >-
+            Hex-encoded HMAC-SHA256 of the raw request body, keyed by the shared webhook secret.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookEvent'
+      responses:
+        '200':
+          description: Webhook accepted (or idempotently re-accepted); the order was settled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentWebhookAck'
+        '400':
+          $ref: '#/components/responses/InvalidSignature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /fulfillment/dark-kitchen/availability:
     get:
       tags: [Fulfillment]
@@ -238,6 +277,15 @@ components:
       description: >-
         The request was well-formed but failed validation or a domain precondition. Validation
         failures additionally carry a machine-readable `errors` array.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvalidSignature:
+      description: >-
+        The payment webhook signature was missing or did not match the raw request body, or the
+        verified body could not be understood (COM-206). The event is not trusted and no order is
+        changed.
       content:
         application/problem+json:
           schema:
@@ -392,6 +440,44 @@ components:
           format: date-time
         provider:
           type: string
+
+    PaymentWebhookEvent:
+      type: object
+      description: >
+        A payment provider's asynchronous settlement webhook (COM-206). `data.reference` is the
+        order id handed to the provider when the OXXO voucher / SPEI transfer was issued, so the
+        handler can find the order and confirm or fail it.
+      required: [type, data]
+      properties:
+        type:
+          type: string
+          enum: [payment.confirmed, payment.failed]
+        data:
+          type: object
+          required: [reference]
+          properties:
+            reference:
+              type: string
+              format: uuid
+            charge_id:
+              type: string
+              description: The provider's settlement reference, when supplied.
+
+    PaymentWebhookAck:
+      type: object
+      description: >
+        Terse acknowledgement of a processed payment webhook (COM-206): confirms receipt and echoes
+        the referenced order's id and resulting status, without leaking any other order detail.
+      required: [received, orderId, status]
+      properties:
+        received:
+          type: boolean
+        orderId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
 
     OrderItemResponse:
       type: object

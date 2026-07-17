@@ -58,6 +58,10 @@ class InMemoryOrderRepository:
             return None
         return order
 
+    def get_by_id(self, order_id: uuid.UUID) -> Order | None:
+        # Not owner-scoped — mirrors the SQL adapter's signature-scoped webhook loader (COM-206).
+        return self.orders.get(order_id)
+
     def update(self, order: Order) -> Order:
         # The aggregate is stored by reference, so its mutated status/history are already visible;
         # re-key defensively to mirror the SQL adapter's "persist the passed-in order" contract.

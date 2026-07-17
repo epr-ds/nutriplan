@@ -8,7 +8,9 @@ this seam imports a payment SDK or assumes a specific processor.
 The asynchronous cash/transfer methods add two more operations: :meth:`create_voucher` asks the
 provider to *issue* an offline cash voucher (OXXO, COM-203) and :meth:`create_transfer` asks for
 bank-transfer instructions (SPEI, COM-204), both settled out of band and leaving the order
-``pending`` until a webhook confirms it (COM-206).
+``pending`` until a webhook confirms it (COM-206). :meth:`parse_webhook` closes that loop: it
+verifies an inbound provider webhook's signature and normalises it into a
+:class:`~app.domain.payment.PaymentWebhookEvent` the application can act on.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from app.domain.payment import (
     PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
+    PaymentWebhookEvent,
 )
 
 
@@ -44,4 +47,12 @@ class PaymentProvider(Protocol):
 
     def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
         """Issue bank-transfer instructions (SPEI) for ``request.amount`` to be settled later."""
+        ...
+
+    def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:
+        """Verify a webhook's ``signature`` over the raw ``payload`` and parse it (COM-206).
+
+        Raises :class:`~app.domain.errors.WebhookVerificationError` when the signature does not
+        match or the verified body cannot be understood.
+        """
         ...

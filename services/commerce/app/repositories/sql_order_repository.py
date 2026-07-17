@@ -41,17 +41,29 @@ class SqlOrderRepository:
         model = self._db.execute(stmt).scalar_one_or_none()
         return self._to_domain(model) if model is not None else None
 
+    def get_by_id(self, order_id: uuid.UUID) -> Order | None:
+        """Load an order by id alone (not owner-scoped) for the payment webhook (COM-206)."""
+        stmt = select(OrderModel).where(OrderModel.id == order_id)
+        model = self._db.execute(stmt).scalar_one_or_none()
+        return self._to_domain(model) if model is not None else None
+
     def update(self, order: Order) -> Order:
-        """Persist mutations to an existing order: its status/timestamp and any new history rows.
+        """Persist mutations to an existing order: status/timestamp, payment outcome, new history.
 
         History is append-only, so we compare the aggregate's ``status_history`` length against the
-        rows already stored and insert only the new tail (keyed by ``position``). Owner-scoping is
-        the loader's job — callers reach this only after an owner-scoped :meth:`get`.
+        rows already stored and insert only the new tail (keyed by ``position``). The payment
+        outcome fields are re-synced too so an async settlement webhook (COM-206) that flips
+        ``payment_status`` to succeeded/failed (and records a ``charge_id``) is durable.
+        Owner-scoping is the loader's job — callers reach this only after an owner-scoped
+        :meth:`get` (or the signature-scoped :meth:`get_by_id`).
         """
         stmt = select(OrderModel).where(OrderModel.id == order.id)
         model = self._db.execute(stmt).scalar_one()
         model.status = order.status.value
         model.updated_at = order.updated_at
+        model.payment_status = order.payment_status.value if order.payment_status else None
+        model.payment_provider = order.payment_provider
+        model.payment_charge_id = order.payment_charge_id
         stored = len(model.status_history)
         for position in range(stored, len(order.status_history)):
             change = order.status_history[position]

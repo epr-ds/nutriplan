@@ -22,6 +22,7 @@ from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
 from app.application.ports import MealPlanProvider
+from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
@@ -170,6 +171,14 @@ def get_cancel_order_service(
     return CancelOrderService(orders, publisher)
 
 
+def get_process_payment_webhook_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> ProcessPaymentWebhookService:
+    return ProcessPaymentWebhookService(orders, payments, publisher)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 BearerToken = Annotated[str, Depends(get_bearer_token)]
 OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
@@ -177,3 +186,6 @@ CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_s
 ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
 CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
+PaymentWebhookServiceDep = Annotated[
+    ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
+]
