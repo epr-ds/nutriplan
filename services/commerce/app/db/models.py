@@ -5,7 +5,9 @@ Four tables — ``addresses``, ``orders``, ``order_items`` and ``order_status_hi
 ``orders.user_id``, ``orders.status`` and ``orders.created_at`` (for "my recent orders" listings),
 ``order_items.order_id`` for the aggregate's item fan-out, and ``order_status_history.order_id`` for
 its transition history (COM-106). ``orders`` also records the card-charge outcome (COM-202:
-``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN. The
+``payment_status``/``payment_provider``/``payment_charge_id``) — a reference only, never a PAN — and
+the OXXO voucher issued for an async payment (COM-203:
+``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
 ``(user_id, idempotency_key)``.
 """
@@ -88,6 +90,13 @@ class OrderModel(Base):
     payment_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     payment_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
     payment_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Offline voucher issued for an async method (OXXO, COM-203): the reference the customer pays
+    # against, its expiry, and an optional barcode. Nullable -- only set for voucher payments.
+    payment_voucher_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_voucher_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    payment_voucher_barcode_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )

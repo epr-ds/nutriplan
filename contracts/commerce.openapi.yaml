@@ -348,6 +348,28 @@ components:
         trackingUrl:
           type: string
           format: uri
+        voucher:
+          $ref: '#/components/schemas/VoucherResponse'
+
+    VoucherResponse:
+      type: object
+      description: >
+        Offline payment voucher (OXXO) issued for an asynchronous payment. Present only for a
+        voucher method; the order stays `pending` until the provider confirms settlement via a
+        webhook. The customer pays `amount` using `reference` before `expiresAt`.
+      properties:
+        reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
+        expiresAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
+        barcodeUrl:
+          type: string
+          format: uri
 
     OrderItemResponse:
       type: object

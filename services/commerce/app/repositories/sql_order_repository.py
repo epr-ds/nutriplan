@@ -122,6 +122,9 @@ class SqlOrderRepository:
             payment_status=order.payment_status.value if order.payment_status else None,
             payment_provider=order.payment_provider,
             payment_charge_id=order.payment_charge_id,
+            payment_voucher_reference=order.payment_voucher_reference,
+            payment_voucher_expires_at=order.payment_voucher_expires_at,
+            payment_voucher_barcode_url=order.payment_voucher_barcode_url,
             items=[
                 OrderItemModel(
                     id=item.id,
@@ -195,6 +198,9 @@ class SqlOrderRepository:
             payment_status=PaymentStatus(model.payment_status) if model.payment_status else None,
             payment_provider=model.payment_provider,
             payment_charge_id=model.payment_charge_id,
+            payment_voucher_reference=model.payment_voucher_reference,
+            payment_voucher_expires_at=model.payment_voucher_expires_at,
+            payment_voucher_barcode_url=model.payment_voucher_barcode_url,
             items=items,
             status_history=status_history,
             created_at=model.created_at,

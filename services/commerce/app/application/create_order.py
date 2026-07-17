@@ -9,7 +9,9 @@ When the request carries a **card** payment method (COM-202), the priced total i
 the :class:`~app.payments.provider.PaymentProvider` port using the provider-issued token -- so no
 PAN ever reaches us. A successful charge confirms the order (``pending -> confirmed``) and records
 the charge reference; a decline raises :class:`PaymentDeclinedError` (a ``402``) and nothing is
-persisted. Non-card methods (or none) leave the order ``pending`` to settle asynchronously later.
+persisted. An **OXXO** request instead issues a voucher through the same port (COM-203) and leaves
+the order ``pending`` -- the customer pays it later and a webhook confirms settlement (COM-206).
+Other async methods (or none) also leave the order ``pending``.
 
 A client may pass an ``Idempotency-Key`` (COM-209): the first successful create is recorded so a
 retry carrying the same key *replays* the original order instead of creating — or charging — a
@@ -25,7 +27,7 @@ import json
 from app.application.commands import CreateOrderCommand
 from app.application.idempotency import IdempotencyStore
 from app.application.ports import MealPlanProvider
-from app.domain.enums import FulfillmentType
+from app.domain.enums import FulfillmentType, PaymentMethodType
 from app.domain.errors import (
     IdempotencyConflictError,
     MealPlanNotFoundError,
@@ -33,7 +35,7 @@ from app.domain.errors import (
     PaymentDeclinedError,
 )
 from app.domain.order import Order
-from app.domain.payment import PaymentRequest
+from app.domain.payment import PaymentRequest, PaymentVoucherRequest
 from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
 from app.events.publisher import EventPublisher
@@ -92,9 +94,10 @@ class CreateOrderService:
             order.add_item(self._pricer.price_item(meal))
         self._pricer.price_order(order)
         order.record_created()
-        # Charge before persisting so a decline leaves no order behind (COM-202); a successful
-        # charge confirms the order and records the OrderStatusChanged event drained below.
-        self._charge_card_if_requested(command, order, idempotency_key=idempotency_key)
+        # Settle payment before persisting so a decline leaves no order behind (COM-202); a
+        # successful card charge confirms the order, while an OXXO voucher (COM-203) leaves it
+        # pending. Either records the events drained below.
+        self._settle_payment(command, order, idempotency_key=idempotency_key)
 
         persisted = self._orders.add(order)
         # Record the key only after a successful create, so a declined/invalid request leaves no
@@ -132,20 +135,34 @@ class CreateOrderService:
             raise IdempotencyConflictError(key)
         return order
 
-    def _charge_card_if_requested(
+    def _settle_payment(
         self, command: CreateOrderCommand, order: Order, *, idempotency_key: str | None
     ) -> None:
-        """Charge the order total when a card method is supplied; otherwise leave it pending.
+        """Route the requested payment method to its settlement path (or leave the order pending).
 
-        Only ``credit_card``/``debit_card`` settle inline here (COM-202); OXXO/SPEI/PayPal are
-        confirmed asynchronously by their own stories, so those orders stay ``pending``. A declined
-        charge raises :class:`PaymentDeclinedError` (a ``402``) so the caller can retry -- crucially
-        *before* the order is persisted, so a failed payment never leaves an orphaned order. Any
-        ``idempotency_key`` is forwarded so the provider de-duplicates the charge too (COM-209).
+        Cards (``credit_card``/``debit_card``) charge inline and confirm the order (COM-202); OXXO
+        issues a voucher and leaves the order ``pending`` until a webhook confirms it (COM-203);
+        SPEI/PayPal and no method also stay ``pending``, settled by their own later stories. Any
+        ``idempotency_key`` is threaded through so the provider de-duplicates a retried request.
         """
         method = command.payment_method_type
-        if method is None or not method.is_card:
+        if method is None:
             return
+        if method.is_card:
+            self._charge_card(command, order, idempotency_key=idempotency_key)
+        elif method is PaymentMethodType.OXXO:
+            self._issue_oxxo_voucher(order, idempotency_key=idempotency_key)
+
+    def _charge_card(
+        self, command: CreateOrderCommand, order: Order, *, idempotency_key: str | None
+    ) -> None:
+        """Charge the order total against the supplied card token and confirm the order (COM-202).
+
+        A declined charge raises :class:`PaymentDeclinedError` (a ``402``) so the caller can
+        retry -- crucially *before* the order is persisted, so a failed payment never leaves an
+        orphaned order. Any ``idempotency_key`` is forwarded so the provider de-duplicates the
+        charge too (COM-209).
+        """
         if not command.payment_token:
             raise OrderValidationError("a card payment method requires a token")
 
@@ -164,6 +181,29 @@ class CreateOrderService:
                 error_message=result.error_message,
             )
         order.mark_paid(provider=result.provider, charge_id=result.charge_id or "")
+
+    def _issue_oxxo_voucher(self, order: Order, *, idempotency_key: str | None) -> None:
+        """Issue an OXXO voucher for the order total, leaving the order ``pending`` (COM-203).
+
+        The provider mints a reference (and barcode) the customer pays at an OXXO store; the order
+        stays ``pending`` until settlement is confirmed asynchronously by a webhook (COM-206). No
+        card token is involved -- there is nothing to charge yet. Any ``idempotency_key`` is
+        forwarded so a retried create re-issues the *same* voucher, not a duplicate (COM-209).
+        """
+        voucher = self._payments.create_voucher(
+            PaymentVoucherRequest(
+                amount=order.total,
+                reference=str(order.id),
+                description=f"NutriPlan order {order.id}",
+                idempotency_key=idempotency_key,
+            )
+        )
+        order.attach_voucher(
+            provider=voucher.provider,
+            reference=voucher.reference,
+            expires_at=voucher.expires_at,
+            barcode_url=voucher.barcode_url,
+        )
 
 
 def _fingerprint(command: CreateOrderCommand) -> str:

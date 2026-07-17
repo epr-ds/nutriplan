@@ -99,6 +99,16 @@ class ProviderResponse(_Camel):
     estimated_delivery: str | None = None
 
 
+class VoucherResponse(_Camel):
+    """An issued OXXO voucher for an async payment (COM-203); the order stays ``pending``."""
+
+    reference: str
+    amount: MoneyResponse
+    expires_at: datetime
+    provider: str | None = None
+    barcode_url: str | None = None
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -110,10 +120,20 @@ class OrderResponse(_Camel):
     total: MoneyResponse
     estimated_delivery: datetime | None = None
     tracking_url: str | None = None
+    voucher: VoucherResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
         provider = ProviderResponse(id=order.provider_id) if order.provider_id else None
+        voucher = None
+        if order.payment_voucher_reference is not None:
+            voucher = VoucherResponse(
+                reference=order.payment_voucher_reference,
+                amount=MoneyResponse.from_money(order.total),
+                expires_at=order.payment_voucher_expires_at,
+                provider=order.payment_provider,
+                barcode_url=order.payment_voucher_barcode_url,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -125,4 +145,5 @@ class OrderResponse(_Camel):
             total=MoneyResponse.from_money(order.total),
             estimated_delivery=order.estimated_delivery,
             tracking_url=order.tracking_url,
+            voucher=voucher,
         )

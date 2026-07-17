@@ -85,6 +85,12 @@ class Order:
     payment_status: PaymentStatus | None = None
     payment_provider: str | None = None
     payment_charge_id: str | None = None
+    # Offline voucher issued for an asynchronous method (OXXO, COM-203): the reference the customer
+    # pays against, its expiry, and an optional scannable barcode. Set together with a ``pending``
+    # ``payment_status``; the order stays ``pending`` until a webhook confirms settlement (COM-206).
+    payment_voucher_reference: str | None = None
+    payment_voucher_expires_at: datetime | None = None
+    payment_voucher_barcode_url: str | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -168,6 +174,31 @@ class Order:
         self.payment_provider = provider
         self.payment_charge_id = charge_id
         self.confirm(occurred_at=occurred_at)
+
+    def attach_voucher(
+        self,
+        *,
+        provider: str,
+        reference: str,
+        expires_at: datetime,
+        barcode_url: str | None = None,
+    ) -> None:
+        """Attach an issued OXXO voucher, leaving the order ``pending`` (COM-203).
+
+        Records the provider, the customer-facing ``reference`` (and optional ``barcode_url``), and
+        when it ``expires_at``, and marks ``payment_status`` :attr:`~PaymentStatus.PENDING` — the
+        order is *not* confirmed here. It stays ``pending`` until the provider webhook reports the
+        cash payment settled (COM-206). Vouchers are only issued for an unsettled ``pending`` order;
+        attaching one to an order that has already left ``pending`` (or been paid) raises
+        :class:`IllegalOrderTransitionError`.
+        """
+        if self.status is not OrderStatus.PENDING or self.payment_status is not None:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.PENDING)
+        self.payment_status = PaymentStatus.PENDING
+        self.payment_provider = provider
+        self.payment_voucher_reference = reference
+        self.payment_voucher_expires_at = expires_at
+        self.payment_voucher_barcode_url = barcode_url
 
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).

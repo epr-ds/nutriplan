@@ -5,11 +5,18 @@ port speaks, so nothing above the port depends on Stripe's or Conekta's wire sha
 :class:`PaymentRequest` says *what* to charge (an amount and a provider-issued token — never raw
 card data); a :class:`PaymentResult` says *what happened* (approved with a charge reference, or
 declined with a reason). The concrete provider adapters translate to and from these in COM-202.
+
+The asynchronous, cash/transfer methods speak a second pair: a :class:`PaymentVoucherRequest` asks
+the provider to *issue* an offline voucher (no token to charge), and the resulting
+:class:`PaymentVoucher` carries the reference the customer pays against, out of band, before it
+expires — the order staying ``pending`` until a webhook confirms settlement (OXXO in COM-203, SPEI
+in COM-204; confirmation in COM-206).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from app.domain.money import Money
@@ -72,3 +79,38 @@ class PaymentResult:
             error_code=error_code,
             error_message=error_message,
         )
+
+
+@dataclass(frozen=True)
+class PaymentVoucherRequest:
+    """A request to issue an offline payment voucher — OXXO cash, SPEI transfer (COM-203/204).
+
+    Unlike a card charge there is *no* provider token: the customer has nothing to charge yet. The
+    provider mints a reference the customer settles later (at an OXXO store or via a bank transfer),
+    so ``amount`` is what they must pay and ``reference`` links the voucher back to its order.
+    ``idempotency_key`` (COM-209) lets a retried create re-issue the *same* voucher rather than a
+    duplicate.
+    """
+
+    amount: Money
+    reference: str | None = None
+    description: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass(frozen=True)
+class PaymentVoucher:
+    """An issued offline payment voucher awaiting asynchronous settlement (COM-203).
+
+    The customer pays ``amount`` using ``reference`` before ``expires_at`` (``barcode_url`` points
+    at a scannable barcode when the provider supplies one); the order stays ``pending`` until a
+    provider webhook confirms the payment (COM-206). Its :attr:`status` is therefore always
+    :attr:`PaymentStatus.PENDING` at issue.
+    """
+
+    provider: str
+    reference: str
+    amount: Money
+    expires_at: datetime
+    barcode_url: str | None = None
+    status: PaymentStatus = PaymentStatus.PENDING
