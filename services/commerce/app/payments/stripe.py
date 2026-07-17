@@ -8,7 +8,12 @@ implemented in COM-202 (card tokenization & charge), which depends on this story
 
 from __future__ import annotations
 
-from app.domain.payment import PaymentRequest, PaymentResult
+from app.domain.payment import (
+    PaymentRequest,
+    PaymentResult,
+    PaymentVoucher,
+    PaymentVoucherRequest,
+)
 
 
 class StripePaymentProvider:
@@ -26,6 +31,9 @@ class StripePaymentProvider:
 
     def charge(self, request: PaymentRequest) -> PaymentResult:
         raise NotImplementedError("Live Stripe charging is implemented in COM-202.")
+
+    def create_voucher(self, request: PaymentVoucherRequest) -> PaymentVoucher:
+        raise NotImplementedError("Live Stripe OXXO voucher issuance is implemented in COM-203.")
 
     def __repr__(self) -> str:
         # The secret key is deliberately excluded so it never leaks into logs or tracebacks.
