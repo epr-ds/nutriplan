@@ -109,6 +109,16 @@ class VoucherResponse(_Camel):
     barcode_url: str | None = None
 
 
+class TransferResponse(_Camel):
+    """Issued SPEI bank-transfer instructions (COM-204); the order stays ``pending``."""
+
+    clabe: str
+    reference: str
+    amount: MoneyResponse
+    expires_at: datetime
+    provider: str | None = None
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -121,6 +131,7 @@ class OrderResponse(_Camel):
     estimated_delivery: datetime | None = None
     tracking_url: str | None = None
     voucher: VoucherResponse | None = None
+    transfer: TransferResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
@@ -134,6 +145,15 @@ class OrderResponse(_Camel):
                 provider=order.payment_provider,
                 barcode_url=order.payment_voucher_barcode_url,
             )
+        transfer = None
+        if order.payment_transfer_reference is not None:
+            transfer = TransferResponse(
+                clabe=order.payment_transfer_clabe,
+                reference=order.payment_transfer_reference,
+                amount=MoneyResponse.from_money(order.total),
+                expires_at=order.payment_transfer_expires_at,
+                provider=order.payment_provider,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -146,4 +166,5 @@ class OrderResponse(_Camel):
             estimated_delivery=order.estimated_delivery,
             tracking_url=order.tracking_url,
             voucher=voucher,
+            transfer=transfer,
         )

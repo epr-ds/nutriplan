@@ -5,9 +5,10 @@ payment seam can be exercised without a real processor or network — except for
 with :data:`DECLINE_TOKEN_PREFIX`, which it declines, letting checkout/refund tests drive the
 failure path too. It also records each request so a test can assert exactly what was charged.
 
-For the asynchronous methods it likewise *issues* a voucher deterministically (COM-203): every
-:meth:`create_voucher` mints an OXXO-style reference and a barcode URL, dated
-:data:`VOUCHER_TTL_DAYS` ahead, and records the request in :attr:`vouchers`.
+For the asynchronous methods it likewise *issues* the instrument deterministically: every
+:meth:`create_voucher` mints an OXXO-style reference and a barcode URL (COM-203), and every
+:meth:`create_transfer` mints an 18-digit SPEI CLABE and reference (COM-204), both dated
+:data:`VOUCHER_TTL_DAYS` ahead and recorded (in :attr:`vouchers` / :attr:`transfers`).
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from datetime import UTC, datetime, timedelta
 from app.domain.payment import (
     PaymentRequest,
     PaymentResult,
+    PaymentTransfer,
+    PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
 )
@@ -34,6 +37,7 @@ class FakePaymentProvider:
     def __init__(self) -> None:
         self.charges: list[PaymentRequest] = []
         self.vouchers: list[PaymentVoucherRequest] = []
+        self.transfers: list[PaymentTransferRequest] = []
 
     def charge(self, request: PaymentRequest) -> PaymentResult:
         self.charges.append(request)
@@ -54,4 +58,14 @@ class FakePaymentProvider:
             amount=request.amount,
             expires_at=datetime.now(UTC) + timedelta(days=VOUCHER_TTL_DAYS),
             barcode_url=f"https://vouchers.example/{reference}.png",
+        )
+
+    def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
+        self.transfers.append(request)
+        return PaymentTransfer(
+            provider=self.name,
+            clabe=f"{uuid.uuid4().int % 10**18:018d}",
+            reference=f"spei_{uuid.uuid4().hex[:12]}",
+            amount=request.amount,
+            expires_at=datetime.now(UTC) + timedelta(days=VOUCHER_TTL_DAYS),
         )

@@ -350,6 +350,8 @@ components:
           format: uri
         voucher:
           $ref: '#/components/schemas/VoucherResponse'
+        transfer:
+          $ref: '#/components/schemas/TransferResponse'
 
     VoucherResponse:
       type: object
@@ -370,6 +372,26 @@ components:
         barcodeUrl:
           type: string
           format: uri
+
+    TransferResponse:
+      type: object
+      description: >
+        Bank-transfer instructions (SPEI) issued for an asynchronous payment. Present only for a
+        transfer method; the order stays `pending` until the provider confirms the transfer landed
+        via a webhook. The customer transfers `amount` to the interbank `clabe` quoting `reference`
+        before `expiresAt`.
+      properties:
+        clabe:
+          type: string
+        reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
+        expiresAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
 
     OrderItemResponse:
       type: object

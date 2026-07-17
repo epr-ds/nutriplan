@@ -9,9 +9,10 @@ When the request carries a **card** payment method (COM-202), the priced total i
 the :class:`~app.payments.provider.PaymentProvider` port using the provider-issued token -- so no
 PAN ever reaches us. A successful charge confirms the order (``pending -> confirmed``) and records
 the charge reference; a decline raises :class:`PaymentDeclinedError` (a ``402``) and nothing is
-persisted. An **OXXO** request instead issues a voucher through the same port (COM-203) and leaves
-the order ``pending`` -- the customer pays it later and a webhook confirms settlement (COM-206).
-Other async methods (or none) also leave the order ``pending``.
+persisted. An **OXXO** request instead issues a cash voucher through the same port (COM-203) and a
+**SPEI** request issues bank-transfer instructions (COM-204), both leaving the order ``pending`` --
+the customer settles later and a webhook confirms it (COM-206). Other async methods (or none) also
+leave the order ``pending``.
 
 A client may pass an ``Idempotency-Key`` (COM-209): the first successful create is recorded so a
 retry carrying the same key *replays* the original order instead of creating — or charging — a
@@ -35,7 +36,7 @@ from app.domain.errors import (
     PaymentDeclinedError,
 )
 from app.domain.order import Order
-from app.domain.payment import PaymentRequest, PaymentVoucherRequest
+from app.domain.payment import PaymentRequest, PaymentTransferRequest, PaymentVoucherRequest
 from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
 from app.events.publisher import EventPublisher
@@ -141,9 +142,10 @@ class CreateOrderService:
         """Route the requested payment method to its settlement path (or leave the order pending).
 
         Cards (``credit_card``/``debit_card``) charge inline and confirm the order (COM-202); OXXO
-        issues a voucher and leaves the order ``pending`` until a webhook confirms it (COM-203);
-        SPEI/PayPal and no method also stay ``pending``, settled by their own later stories. Any
-        ``idempotency_key`` is threaded through so the provider de-duplicates a retried request.
+        issues a cash voucher and SPEI issues bank-transfer instructions, both leaving the order
+        ``pending`` until a webhook confirms settlement (COM-203/204); PayPal and no method also
+        stay ``pending``, settled by their own later stories. Any ``idempotency_key`` is threaded
+        through so the provider de-duplicates a retried request.
         """
         method = command.payment_method_type
         if method is None:
@@ -152,6 +154,8 @@ class CreateOrderService:
             self._charge_card(command, order, idempotency_key=idempotency_key)
         elif method is PaymentMethodType.OXXO:
             self._issue_oxxo_voucher(order, idempotency_key=idempotency_key)
+        elif method is PaymentMethodType.SPEI:
+            self._issue_spei_transfer(order, idempotency_key=idempotency_key)
 
     def _charge_card(
         self, command: CreateOrderCommand, order: Order, *, idempotency_key: str | None
@@ -203,6 +207,30 @@ class CreateOrderService:
             reference=voucher.reference,
             expires_at=voucher.expires_at,
             barcode_url=voucher.barcode_url,
+        )
+
+    def _issue_spei_transfer(self, order: Order, *, idempotency_key: str | None) -> None:
+        """Issue SPEI transfer instructions for the order total, leaving it ``pending`` (COM-204).
+
+        The provider mints a destination CLABE and reference the customer transfers to from their
+        bank; the order stays ``pending`` until settlement is confirmed asynchronously by a webhook
+        (COM-206). No card token is involved -- there is nothing to charge yet. Any
+        ``idempotency_key`` is forwarded so a retried create re-issues the *same* instructions,
+        not a duplicate (COM-209).
+        """
+        transfer = self._payments.create_transfer(
+            PaymentTransferRequest(
+                amount=order.total,
+                reference=str(order.id),
+                description=f"NutriPlan order {order.id}",
+                idempotency_key=idempotency_key,
+            )
+        )
+        order.attach_transfer(
+            provider=transfer.provider,
+            clabe=transfer.clabe,
+            reference=transfer.reference,
+            expires_at=transfer.expires_at,
         )
 
 

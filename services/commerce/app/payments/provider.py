@@ -5,9 +5,10 @@ charges through some provider, returning a :class:`PaymentResult`. Keeping it a 
 Conekta be interchangeable adapters (an in-process fake backs dev/CI and tests), so nothing above
 this seam imports a payment SDK or assumes a specific processor.
 
-The asynchronous cash/transfer methods add a second operation: :meth:`create_voucher` asks the
-provider to *issue* an offline voucher (OXXO in COM-203, SPEI in COM-204) the customer settles out
-of band, leaving the order ``pending`` until a webhook confirms it (COM-206).
+The asynchronous cash/transfer methods add two more operations: :meth:`create_voucher` asks the
+provider to *issue* an offline cash voucher (OXXO, COM-203) and :meth:`create_transfer` asks for
+bank-transfer instructions (SPEI, COM-204), both settled out of band and leaving the order
+``pending`` until a webhook confirms it (COM-206).
 """
 
 from __future__ import annotations
@@ -17,6 +18,8 @@ from typing import Protocol, runtime_checkable
 from app.domain.payment import (
     PaymentRequest,
     PaymentResult,
+    PaymentTransfer,
+    PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
 )
@@ -36,5 +39,9 @@ class PaymentProvider(Protocol):
         ...
 
     def create_voucher(self, request: PaymentVoucherRequest) -> PaymentVoucher:
-        """Issue an offline voucher (OXXO/SPEI) for ``request.amount`` to be settled later."""
+        """Issue an offline cash voucher (OXXO) for ``request.amount`` to be settled later."""
+        ...
+
+    def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
+        """Issue bank-transfer instructions (SPEI) for ``request.amount`` to be settled later."""
         ...

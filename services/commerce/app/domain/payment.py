@@ -6,11 +6,13 @@ port speaks, so nothing above the port depends on Stripe's or Conekta's wire sha
 card data); a :class:`PaymentResult` says *what happened* (approved with a charge reference, or
 declined with a reason). The concrete provider adapters translate to and from these in COM-202.
 
-The asynchronous, cash/transfer methods speak a second pair: a :class:`PaymentVoucherRequest` asks
-the provider to *issue* an offline voucher (no token to charge), and the resulting
-:class:`PaymentVoucher` carries the reference the customer pays against, out of band, before it
-expires — the order staying ``pending`` until a webhook confirms settlement (OXXO in COM-203, SPEI
-in COM-204; confirmation in COM-206).
+The asynchronous methods speak their own pairs. A :class:`PaymentVoucherRequest` asks the provider
+to *issue* an offline cash voucher (no token to charge) and the resulting :class:`PaymentVoucher`
+carries the reference the customer pays against at a store before it expires (OXXO, COM-203). A
+:class:`PaymentTransferRequest` likewise asks for bank-transfer instructions and the resulting
+:class:`PaymentTransfer` carries the destination ``clabe`` and reference the customer transfers to
+(SPEI, COM-204). Either way the order stays ``pending`` until a webhook confirms settlement
+(COM-206).
 """
 
 from __future__ import annotations
@@ -83,13 +85,12 @@ class PaymentResult:
 
 @dataclass(frozen=True)
 class PaymentVoucherRequest:
-    """A request to issue an offline payment voucher — OXXO cash, SPEI transfer (COM-203/204).
+    """A request to issue an offline cash voucher — OXXO (COM-203).
 
     Unlike a card charge there is *no* provider token: the customer has nothing to charge yet. The
-    provider mints a reference the customer settles later (at an OXXO store or via a bank transfer),
-    so ``amount`` is what they must pay and ``reference`` links the voucher back to its order.
-    ``idempotency_key`` (COM-209) lets a retried create re-issue the *same* voucher rather than a
-    duplicate.
+    provider mints a reference the customer settles later at a store, so ``amount`` is what they
+    must pay and ``reference`` links the voucher back to its order. ``idempotency_key`` (COM-209)
+    lets a retried create re-issue the *same* voucher rather than a duplicate.
     """
 
     amount: Money
@@ -113,4 +114,37 @@ class PaymentVoucher:
     amount: Money
     expires_at: datetime
     barcode_url: str | None = None
+    status: PaymentStatus = PaymentStatus.PENDING
+
+
+@dataclass(frozen=True)
+class PaymentTransferRequest:
+    """A request to issue bank-transfer instructions — SPEI (COM-204).
+
+    Like a voucher there is *no* provider token: the customer pushes the funds themselves. The
+    provider mints a destination ``clabe`` and reference the customer transfers to, so ``amount`` is
+    what they must send and ``reference`` links the transfer back to its order. ``idempotency_key``
+    (COM-209) lets a retried create re-issue the *same* instructions rather than a duplicate.
+    """
+
+    amount: Money
+    reference: str | None = None
+    description: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass(frozen=True)
+class PaymentTransfer:
+    """Issued bank-transfer instructions awaiting asynchronous settlement (SPEI, COM-204).
+
+    The customer transfers ``amount`` to the interbank ``clabe`` quoting ``reference`` before
+    ``expires_at``; the order stays ``pending`` until a provider webhook confirms the transfer
+    landed (COM-206). Its :attr:`status` is therefore always :attr:`PaymentStatus.PENDING` at issue.
+    """
+
+    provider: str
+    clabe: str
+    reference: str
+    amount: Money
+    expires_at: datetime
     status: PaymentStatus = PaymentStatus.PENDING
