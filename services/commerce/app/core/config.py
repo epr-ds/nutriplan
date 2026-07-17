@@ -59,5 +59,11 @@ class Settings(BaseSettings):
     stripe_base_url: str = "https://api.stripe.com"
     conekta_base_url: str = "https://api.conekta.io"
 
+    # Payment webhook verification (COM-206). Providers sign each asynchronous settlement webhook
+    # (OXXO/SPEI confirm/fail) with a shared secret, separate from the charge key above and injected
+    # from the vault in production. The fake provider uses it to verify an HMAC-SHA256 signature
+    # over the raw request body in dev/CI and tests.
+    payment_webhook_secret: SecretStr = SecretStr("")
+
 
 settings = Settings()

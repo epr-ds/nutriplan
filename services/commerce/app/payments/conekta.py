@@ -14,6 +14,7 @@ from app.domain.payment import (
     PaymentTransferRequest,
     PaymentVoucher,
     PaymentVoucherRequest,
+    PaymentWebhookEvent,
 )
 
 
@@ -38,6 +39,9 @@ class ConektaPaymentProvider:
 
     def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
         raise NotImplementedError("Live Conekta SPEI transfer issuance is implemented in COM-204.")
+
+    def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:
+        raise NotImplementedError("Live Conekta webhook verification is implemented in COM-206.")
 
     def __repr__(self) -> str:
         # The secret key is deliberately excluded so it never leaks into logs or tracebacks.

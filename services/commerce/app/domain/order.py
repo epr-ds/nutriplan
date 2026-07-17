@@ -231,6 +231,45 @@ class Order:
         self.payment_transfer_reference = reference
         self.payment_transfer_expires_at = expires_at
 
+    def confirm_payment(
+        self, *, charge_id: str | None = None, occurred_at: datetime | None = None
+    ) -> None:
+        """Confirm an asynchronous payment reported by a provider webhook (COM-206).
+
+        Idempotent: a duplicate confirmation for an already-succeeded order is a no-op, since a
+        provider may deliver the same event more than once. Otherwise the order must still be
+        ``pending`` -- the state an OXXO voucher (COM-203) or SPEI transfer (COM-204) leaves it in
+        -- and this records the settlement (``payment_status`` -> :attr:`~PaymentStatus.SUCCEEDED`,
+        capturing ``charge_id`` when the provider supplies one) and drives ``pending -> confirmed``,
+        recording the accompanying :class:`OrderStatusChanged`. A confirmation for an order that has
+        already left ``pending`` by any other route (cancelled or failed) conflicts and raises
+        :class:`IllegalOrderTransitionError`.
+        """
+        if self.payment_status is PaymentStatus.SUCCEEDED:
+            return
+        if self.status is not OrderStatus.PENDING:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.CONFIRMED)
+        self.payment_status = PaymentStatus.SUCCEEDED
+        if charge_id is not None:
+            self.payment_charge_id = charge_id
+        self.confirm(occurred_at=occurred_at)
+
+    def fail_payment(self, *, occurred_at: datetime | None = None) -> None:
+        """Fail an asynchronous payment reported by a provider webhook (COM-206).
+
+        Idempotent: a duplicate failure for an already-failed order is a no-op. Otherwise the order
+        must still be ``pending``; this records ``payment_status`` -> :attr:`~PaymentStatus.FAILED`
+        and drives ``pending -> cancelled`` (an un-settled async payment can never be fulfilled),
+        recording the accompanying :class:`OrderStatusChanged`. A failure for an order that has
+        already been confirmed/paid conflicts and raises :class:`IllegalOrderTransitionError`.
+        """
+        if self.payment_status is PaymentStatus.FAILED:
+            return
+        if self.status is not OrderStatus.PENDING:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.CANCELLED)
+        self.payment_status = PaymentStatus.FAILED
+        self.cancel(occurred_at=occurred_at)
+
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).
 

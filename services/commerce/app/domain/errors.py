@@ -68,6 +68,15 @@ class PaymentDeclinedError(DomainError):
         self.error_message = error_message
 
 
+class WebhookVerificationError(DomainError):
+    """A provider payment webhook could not be verified or understood (COM-206).
+
+    Maps to ``400 Bad Request``: either the signature did not match the raw request body (so the
+    event is not trusted to have come from the provider) or the verified body was malformed / has
+    an event type we do not recognise. Nothing about the referenced order is revealed.
+    """
+
+
 class IdempotencyConflictError(DomainError):
     """The same ``Idempotency-Key`` was reused for a *different* request (COM-209).
 

@@ -168,3 +168,19 @@ class OrderResponse(_Camel):
             voucher=voucher,
             transfer=transfer,
         )
+
+
+class PaymentWebhookAck(_Camel):
+    """Acknowledges a processed payment webhook (COM-206).
+
+    Deliberately terse: it confirms receipt and echoes the referenced order's id and resulting
+    status so the provider can reconcile, without leaking any other order detail to the caller.
+    """
+
+    received: bool
+    order_id: uuid.UUID
+    status: OrderStatus
+
+    @classmethod
+    def from_order(cls, order: Order) -> PaymentWebhookAck:
+        return cls(received=True, order_id=order.id, status=order.status)

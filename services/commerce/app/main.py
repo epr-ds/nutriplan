@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.api.errors import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.orders import router as orders_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -11,6 +12,7 @@ register_exception_handlers(app)
 
 app.include_router(health_router)
 app.include_router(orders_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/")

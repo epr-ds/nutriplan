@@ -13,6 +13,10 @@ carries the reference the customer pays against at a store before it expires (OX
 :class:`PaymentTransfer` carries the destination ``clabe`` and reference the customer transfers to
 (SPEI, COM-204). Either way the order stays ``pending`` until a webhook confirms settlement
 (COM-206).
+
+That settlement arrives as a :class:`PaymentWebhookEvent`: the provider posts a signed event whose
+:class:`PaymentEventType` tells us the async payment succeeded or failed, carrying the ``reference``
+that links it back to the order so the handler can confirm or fail it (COM-206).
 """
 
 from __future__ import annotations
@@ -34,6 +38,18 @@ class PaymentStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     PENDING = "pending"
+
+
+class PaymentEventType(StrEnum):
+    """The kind of asynchronous settlement a provider webhook reports (COM-206).
+
+    The provider posts one of these once an OXXO voucher / SPEI transfer settles out of band:
+    ``CONFIRMED`` means the funds arrived (confirm the order), ``FAILED`` means they did not (fail
+    it). The concrete provider adapters map their own event names onto this canonical pair.
+    """
+
+    CONFIRMED = "payment.confirmed"
+    FAILED = "payment.failed"
 
 
 @dataclass(frozen=True)
@@ -148,3 +164,21 @@ class PaymentTransfer:
     amount: Money
     expires_at: datetime
     status: PaymentStatus = PaymentStatus.PENDING
+
+
+@dataclass(frozen=True)
+class PaymentWebhookEvent:
+    """A verified provider webhook reporting an async payment's settlement (COM-206).
+
+    The provider posts this once an OXXO voucher / SPEI transfer settles out of band; the adapter
+    verifies its signature and normalises it into this canonical shape. ``reference`` is the value
+    we handed the provider at issue (the order id), so the handler can find the order and either
+    confirm it (:attr:`PaymentEventType.CONFIRMED`) or fail it (:attr:`PaymentEventType.FAILED`).
+    ``charge_id`` is the provider's settlement reference when supplied (kept so a later refund in
+    COM-208 has something to act on).
+    """
+
+    type: PaymentEventType
+    reference: str
+    provider: str
+    charge_id: str | None = None

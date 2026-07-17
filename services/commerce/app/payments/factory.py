@@ -3,8 +3,9 @@
 ``COMMERCE_PAYMENT_PROVIDER`` selects the processor (``stripe`` / ``conekta`` / ``fake``); the real
 providers are constructed with the secret pulled from ``COMMERCE_PAYMENT_SECRET_KEY`` (injected from
 the vault in production, COM-904) and the provider's API base URL. Leave the provider unset (or
-``fake``) and an in-process fake is used, which is correct for dev/CI and tests. The choice is
-invisible above the port.
+``fake``) and an in-process fake is used, which is correct for dev/CI and tests. The fake is handed
+``COMMERCE_PAYMENT_WEBHOOK_SECRET`` so it can verify signed settlement webhooks (COM-206). The
+choice is invisible above the port.
 """
 
 from __future__ import annotations
@@ -31,7 +32,9 @@ def build_payment_provider(settings: Settings | None = None) -> PaymentProvider:
     if choice == "conekta":
         return ConektaPaymentProvider(secret, base_url=settings.conekta_base_url)
     if choice in ("", "fake"):
-        return FakePaymentProvider()
+        return FakePaymentProvider(
+            webhook_secret=settings.payment_webhook_secret.get_secret_value()
+        )
     raise ValueError(
         f"Unknown COMMERCE_PAYMENT_PROVIDER {choice!r}; expected 'stripe', 'conekta', or 'fake'"
     )
