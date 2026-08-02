@@ -400,6 +400,8 @@ components:
           $ref: '#/components/schemas/VoucherResponse'
         transfer:
           $ref: '#/components/schemas/TransferResponse'
+        approval:
+          $ref: '#/components/schemas/ApprovalResponse'
 
     VoucherResponse:
       type: object
@@ -431,6 +433,27 @@ components:
       properties:
         clabe:
           type: string
+        reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
+        expiresAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
+
+    ApprovalResponse:
+      type: object
+      description: >
+        Redirect-approval order (PayPal) created for an asynchronous payment. Present only for a
+        `paypal` method; the order stays `pending` until the provider confirms the captured payment
+        via a webhook. The customer is redirected to `approvalUrl` to approve paying `amount`
+        before `expiresAt`; `reference` is the provider's order id.
+      properties:
+        approvalUrl:
+          type: string
+          format: uri
         reference:
           type: string
         amount:

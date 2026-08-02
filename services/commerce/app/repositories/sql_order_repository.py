@@ -140,6 +140,9 @@ class SqlOrderRepository:
             payment_transfer_clabe=order.payment_transfer_clabe,
             payment_transfer_reference=order.payment_transfer_reference,
             payment_transfer_expires_at=order.payment_transfer_expires_at,
+            payment_approval_reference=order.payment_approval_reference,
+            payment_approval_url=order.payment_approval_url,
+            payment_approval_expires_at=order.payment_approval_expires_at,
             items=[
                 OrderItemModel(
                     id=item.id,
@@ -219,6 +222,9 @@ class SqlOrderRepository:
             payment_transfer_clabe=model.payment_transfer_clabe,
             payment_transfer_reference=model.payment_transfer_reference,
             payment_transfer_expires_at=model.payment_transfer_expires_at,
+            payment_approval_reference=model.payment_approval_reference,
+            payment_approval_url=model.payment_approval_url,
+            payment_approval_expires_at=model.payment_approval_expires_at,
             items=items,
             status_history=status_history,
             created_at=model.created_at,
