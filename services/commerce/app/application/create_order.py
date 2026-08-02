@@ -36,7 +36,12 @@ from app.domain.errors import (
     PaymentDeclinedError,
 )
 from app.domain.order import Order
-from app.domain.payment import PaymentRequest, PaymentTransferRequest, PaymentVoucherRequest
+from app.domain.payment import (
+    PaymentApprovalRequest,
+    PaymentRequest,
+    PaymentTransferRequest,
+    PaymentVoucherRequest,
+)
 from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
 from app.events.publisher import EventPublisher
@@ -143,9 +148,10 @@ class CreateOrderService:
 
         Cards (``credit_card``/``debit_card``) charge inline and confirm the order (COM-202); OXXO
         issues a cash voucher and SPEI issues bank-transfer instructions, both leaving the order
-        ``pending`` until a webhook confirms settlement (COM-203/204); PayPal and no method also
-        stay ``pending``, settled by their own later stories. Any ``idempotency_key`` is threaded
-        through so the provider de-duplicates a retried request.
+        ``pending`` until a webhook confirms settlement (COM-203/204); PayPal creates a
+        redirect-approval order and likewise stays ``pending`` (COM-205); no method also stays
+        ``pending``. Any ``idempotency_key`` is threaded through so the provider de-duplicates a
+        retried request.
         """
         method = command.payment_method_type
         if method is None:
@@ -156,6 +162,8 @@ class CreateOrderService:
             self._issue_oxxo_voucher(order, idempotency_key=idempotency_key)
         elif method is PaymentMethodType.SPEI:
             self._issue_spei_transfer(order, idempotency_key=idempotency_key)
+        elif method is PaymentMethodType.PAYPAL:
+            self._issue_paypal_approval(order, idempotency_key=idempotency_key)
 
     def _charge_card(
         self, command: CreateOrderCommand, order: Order, *, idempotency_key: str | None
@@ -231,6 +239,30 @@ class CreateOrderService:
             clabe=transfer.clabe,
             reference=transfer.reference,
             expires_at=transfer.expires_at,
+        )
+
+    def _issue_paypal_approval(self, order: Order, *, idempotency_key: str | None) -> None:
+        """Create a PayPal approval order for the order total, leaving it ``pending`` (COM-205).
+
+        The provider creates an order and mints the ``approval_url`` the customer is redirected to
+        approve the payment at; the order stays ``pending`` until settlement is confirmed
+        asynchronously by a webhook (COM-206). No card token is involved -- the customer approves on
+        the provider's site. Any ``idempotency_key`` is forwarded so a retried create re-uses the
+        *same* provider order, not a duplicate (COM-209).
+        """
+        approval = self._payments.create_approval(
+            PaymentApprovalRequest(
+                amount=order.total,
+                reference=str(order.id),
+                description=f"NutriPlan order {order.id}",
+                idempotency_key=idempotency_key,
+            )
+        )
+        order.attach_approval(
+            provider=approval.provider,
+            reference=approval.reference,
+            approval_url=approval.approval_url,
+            expires_at=approval.expires_at,
         )
 
 

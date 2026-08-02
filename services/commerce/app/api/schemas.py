@@ -119,6 +119,16 @@ class TransferResponse(_Camel):
     provider: str | None = None
 
 
+class ApprovalResponse(_Camel):
+    """A created PayPal redirect-approval order (COM-205); the order stays ``pending``."""
+
+    approval_url: str
+    reference: str
+    amount: MoneyResponse
+    expires_at: datetime
+    provider: str | None = None
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -132,6 +142,7 @@ class OrderResponse(_Camel):
     tracking_url: str | None = None
     voucher: VoucherResponse | None = None
     transfer: TransferResponse | None = None
+    approval: ApprovalResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
@@ -154,6 +165,15 @@ class OrderResponse(_Camel):
                 expires_at=order.payment_transfer_expires_at,
                 provider=order.payment_provider,
             )
+        approval = None
+        if order.payment_approval_reference is not None:
+            approval = ApprovalResponse(
+                approval_url=order.payment_approval_url,
+                reference=order.payment_approval_reference,
+                amount=MoneyResponse.from_money(order.total),
+                expires_at=order.payment_approval_expires_at,
+                provider=order.payment_provider,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -167,6 +187,7 @@ class OrderResponse(_Camel):
             tracking_url=order.tracking_url,
             voucher=voucher,
             transfer=transfer,
+            approval=approval,
         )
 
 

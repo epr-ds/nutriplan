@@ -196,19 +196,6 @@ def test_no_payment_method_leaves_order_pending_without_charging():
     assert payments.charges == []
 
 
-def test_non_card_method_leaves_order_pending_without_charging():
-    service, _, payments = _service()
-
-    order = service.create(
-        _command(payment_method_type=PaymentMethodType.PAYPAL, payment_token="tok_paypal"),
-        bearer_token=TOKEN,
-    )
-
-    assert order.status is OrderStatus.PENDING
-    assert order.payment_status is None
-    assert payments.charges == []  # async methods settle via a later webhook (COM-206)
-
-
 def test_card_method_without_token_is_rejected_before_charging():
     service, repo, payments = _service()
 

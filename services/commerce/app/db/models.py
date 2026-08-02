@@ -9,7 +9,9 @@ its transition history (COM-106). ``orders`` also records the card-charge outcom
 the OXXO voucher issued for an async payment (COM-203:
 ``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``) and the SPEI bank-transfer
 instructions issued for an async payment (COM-204:
-``payment_transfer_clabe``/``…_reference``/``…_expires_at``). The
+``payment_transfer_clabe``/``…_reference``/``…_expires_at``) and the PayPal redirect-approval order
+created for an async payment (COM-205:
+``payment_approval_reference``/``…_url``/``…_expires_at``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
 ``(user_id, idempotency_key)``.
 """
@@ -104,6 +106,14 @@ class OrderModel(Base):
     payment_transfer_clabe: Mapped[str | None] = mapped_column(String(18), nullable=True)
     payment_transfer_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     payment_transfer_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Redirect-approval order created for an async method (PayPal, COM-205): the provider's order
+    # reference, the URL the customer approves at, and when it expires. Nullable -- only PayPal
+    # populates them.
+    payment_approval_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_approval_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    payment_approval_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

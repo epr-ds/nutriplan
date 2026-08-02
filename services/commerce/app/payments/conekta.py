@@ -8,6 +8,8 @@ of ``repr``/logs); the concrete charge call against Conekta's API lands in COM-2
 from __future__ import annotations
 
 from app.domain.payment import (
+    PaymentApproval,
+    PaymentApprovalRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -39,6 +41,9 @@ class ConektaPaymentProvider:
 
     def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
         raise NotImplementedError("Live Conekta SPEI transfer issuance is implemented in COM-204.")
+
+    def create_approval(self, request: PaymentApprovalRequest) -> PaymentApproval:
+        raise NotImplementedError("Live Conekta PayPal order creation is implemented in COM-205.")
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:
         raise NotImplementedError("Live Conekta webhook verification is implemented in COM-206.")

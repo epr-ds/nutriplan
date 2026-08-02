@@ -97,6 +97,13 @@ class Order:
     payment_transfer_clabe: str | None = None
     payment_transfer_reference: str | None = None
     payment_transfer_expires_at: datetime | None = None
+    # Redirect-approval order created for an asynchronous method (PayPal, COM-205): the provider's
+    # order reference, the URL the customer approves the payment at, and when it expires. Set
+    # together with a ``pending`` ``payment_status``; the order stays ``pending`` until a webhook
+    # confirms the captured payment (COM-206).
+    payment_approval_reference: str | None = None
+    payment_approval_url: str | None = None
+    payment_approval_expires_at: datetime | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -231,6 +238,32 @@ class Order:
         self.payment_transfer_reference = reference
         self.payment_transfer_expires_at = expires_at
 
+    def attach_approval(
+        self,
+        *,
+        provider: str,
+        reference: str,
+        approval_url: str,
+        expires_at: datetime,
+    ) -> None:
+        """Attach a created PayPal approval order, leaving the order ``pending`` (COM-205).
+
+        Records the provider, its order ``reference`` and the ``approval_url`` the customer is
+        redirected to approve the payment at, and when it ``expires_at``, and marks
+        ``payment_status`` :attr:`~PaymentStatus.PENDING` — the order is *not* confirmed here. It
+        stays ``pending`` until the provider webhook reports the captured payment (COM-206).
+        Approvals are only created for an unsettled ``pending`` order; attaching one to an order
+        that has already left ``pending`` (or been paid) raises
+        :class:`IllegalOrderTransitionError`.
+        """
+        if self.status is not OrderStatus.PENDING or self.payment_status is not None:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.PENDING)
+        self.payment_status = PaymentStatus.PENDING
+        self.payment_provider = provider
+        self.payment_approval_reference = reference
+        self.payment_approval_url = approval_url
+        self.payment_approval_expires_at = expires_at
+
     def confirm_payment(
         self, *, charge_id: str | None = None, occurred_at: datetime | None = None
     ) -> None:
@@ -238,12 +271,12 @@ class Order:
 
         Idempotent: a duplicate confirmation for an already-succeeded order is a no-op, since a
         provider may deliver the same event more than once. Otherwise the order must still be
-        ``pending`` -- the state an OXXO voucher (COM-203) or SPEI transfer (COM-204) leaves it in
-        -- and this records the settlement (``payment_status`` -> :attr:`~PaymentStatus.SUCCEEDED`,
-        capturing ``charge_id`` when the provider supplies one) and drives ``pending -> confirmed``,
-        recording the accompanying :class:`OrderStatusChanged`. A confirmation for an order that has
-        already left ``pending`` by any other route (cancelled or failed) conflicts and raises
-        :class:`IllegalOrderTransitionError`.
+        ``pending`` -- the state an OXXO voucher (COM-203), SPEI transfer (COM-204) or PayPal
+        approval (COM-205) leaves it in -- and this records the settlement (``payment_status`` ->
+        :attr:`~PaymentStatus.SUCCEEDED`, capturing ``charge_id`` when the provider supplies one)
+        and drives ``pending -> confirmed``, recording the accompanying :class:`OrderStatusChanged`.
+        A confirmation for an order that has already left ``pending`` by any other route (cancelled
+        or failed) conflicts and raises :class:`IllegalOrderTransitionError`.
         """
         if self.payment_status is PaymentStatus.SUCCEEDED:
             return

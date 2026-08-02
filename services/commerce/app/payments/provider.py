@@ -7,7 +7,8 @@ this seam imports a payment SDK or assumes a specific processor.
 
 The asynchronous cash/transfer methods add two more operations: :meth:`create_voucher` asks the
 provider to *issue* an offline cash voucher (OXXO, COM-203) and :meth:`create_transfer` asks for
-bank-transfer instructions (SPEI, COM-204), both settled out of band and leaving the order
+bank-transfer instructions (SPEI, COM-204), and :meth:`create_approval` asks it to create a
+redirect-approval order (PayPal, COM-205) — all settled out of band and leaving the order
 ``pending`` until a webhook confirms it (COM-206). :meth:`parse_webhook` closes that loop: it
 verifies an inbound provider webhook's signature and normalises it into a
 :class:`~app.domain.payment.PaymentWebhookEvent` the application can act on.
@@ -18,6 +19,8 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from app.domain.payment import (
+    PaymentApproval,
+    PaymentApprovalRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -47,6 +50,10 @@ class PaymentProvider(Protocol):
 
     def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
         """Issue bank-transfer instructions (SPEI) for ``request.amount`` to be settled later."""
+        ...
+
+    def create_approval(self, request: PaymentApprovalRequest) -> PaymentApproval:
+        """Create a redirect-approval order (PayPal) for ``request.amount``, settled later."""
         ...
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:
