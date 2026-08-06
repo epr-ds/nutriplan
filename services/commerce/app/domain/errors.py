@@ -88,3 +88,24 @@ class IdempotencyConflictError(DomainError):
     def __init__(self, key: str) -> None:
         super().__init__(f"Idempotency-Key '{key}' was already used for a different request")
         self.key = key
+
+
+class PaymentMethodValidationError(DomainError):
+    """A saved-payment-method request violates an invariant (COM-207).
+
+    Maps to ``422 Unprocessable Entity`` (the :class:`DomainError` default): the request was
+    well-formed JSON but a field is unusable — a blank token, a ``last4`` that is not four digits,
+    or an out-of-range expiry.
+    """
+
+
+class PaymentMethodNotFoundError(DomainError):
+    """The referenced saved payment method does not exist or is not owned by the caller (COM-207).
+
+    As with orders, unknown and not-owned are deliberately indistinguishable (both raise this) so
+    one user can never probe for another user's saved-method ids — the API renders it as ``404``.
+    """
+
+    def __init__(self, method_id: object) -> None:
+        super().__init__(f"payment method {method_id} not found")
+        self.method_id = method_id

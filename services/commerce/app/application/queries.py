@@ -40,3 +40,13 @@ class ListOrdersQuery:
     def offset(self) -> int:
         """Zero-based row offset for the requested page."""
         return (self.page - 1) * self.limit
+
+
+@dataclass(frozen=True)
+class ListPaymentMethodsQuery:
+    """A caller-scoped request for the user's saved payment methods (COM-207).
+
+    ``user_id`` is the authenticated caller; results are always scoped to them.
+    """
+
+    user_id: uuid.UUID

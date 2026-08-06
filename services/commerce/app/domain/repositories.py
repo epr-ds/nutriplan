@@ -8,6 +8,7 @@ from typing import Protocol
 
 from app.domain.enums import OrderStatus
 from app.domain.order import Order
+from app.domain.payment_method import SavedPaymentMethod
 
 
 class OrderRepository(Protocol):
@@ -44,4 +45,28 @@ class OrderRepository(Protocol):
         offset: int = 0,
     ) -> list[Order]:
         """List the user's orders, newest first, with optional filters and pagination."""
+        ...
+
+
+class PaymentMethodRepository(Protocol):
+    """Persistence port for the caller's saved payment methods (COM-207).
+
+    Every operation is owner-scoped by ``user_id`` so one user can neither list, read nor delete
+    another's stored instrument; an unknown id and a not-owned id are therefore indistinguishable.
+    """
+
+    def add(self, method: SavedPaymentMethod) -> SavedPaymentMethod:
+        """Persist a newly tokenized payment method and return it."""
+        ...
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[SavedPaymentMethod]:
+        """List the user's saved payment methods, newest first."""
+        ...
+
+    def get(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> SavedPaymentMethod | None:
+        """Load one of the user's saved methods, or ``None`` if absent/not theirs."""
+        ...
+
+    def delete(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> bool:
+        """Delete one of the user's saved methods; return ``True`` iff a row was removed."""
         ...

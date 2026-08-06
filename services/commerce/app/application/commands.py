@@ -43,3 +43,33 @@ class CancelOrderCommand:
 
     user_id: uuid.UUID
     order_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class AddPaymentMethodCommand:
+    """Everything needed to store a tokenized payment method for the caller (COM-207).
+
+    ``user_id`` is the authenticated caller. ``token`` is the durable provider handle produced by
+    on-device tokenization — **never** a PAN. The display metadata (``brand``/``last4``/expiry) is
+    optional: cards carry it, wallets such as PayPal do not.
+    """
+
+    user_id: uuid.UUID
+    type: PaymentMethodType
+    token: str
+    brand: str | None = None
+    last4: str | None = None
+    exp_month: int | None = None
+    exp_year: int | None = None
+
+
+@dataclass(frozen=True)
+class DeletePaymentMethodCommand:
+    """A caller-scoped request to delete one saved payment method (COM-207).
+
+    ``user_id`` is the authenticated caller; the method is only deletable when it belongs to them,
+    so an unknown id and another user's method are indistinguishable (no enumeration).
+    """
+
+    user_id: uuid.UUID
+    payment_method_id: uuid.UUID

@@ -20,6 +20,7 @@ servers:
 tags:
   - name: Orders
   - name: Fulfillment
+  - name: Payments
 
 paths:
   /orders:
@@ -177,6 +178,69 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /payment-methods:
+    get:
+      tags: [Payments]
+      operationId: listPaymentMethods
+      summary: List the current user's saved payment methods
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: The caller's saved payment methods, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Payments]
+      operationId: savePaymentMethod
+      summary: Save a tokenized payment method
+      description: >-
+        Stores a tokenized payment instrument for reuse at checkout (COM-207). The request carries a
+        provider `token` produced by on-device tokenization; a PAN/CVV is never sent or stored. The
+        stored token is never returned — the response holds only the id and display metadata.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavePaymentMethodRequest'
+      responses:
+        '201':
+          description: Payment method saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /payment-methods/{paymentMethodId}:
+    delete:
+      tags: [Payments]
+      operationId: deletePaymentMethod
+      summary: Delete a saved payment method
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentMethodId'
+      responses:
+        '204':
+          description: Payment method deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /fulfillment/dark-kitchen/availability:
     get:
       tags: [Fulfillment]
@@ -310,6 +374,13 @@ components:
       schema:
         type: string
         maxLength: 255
+    PaymentMethodId:
+      name: paymentMethodId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     CreateOrderRequest:
@@ -463,6 +534,52 @@ components:
           format: date-time
         provider:
           type: string
+
+    SavePaymentMethodRequest:
+      type: object
+      description: >
+        A tokenized payment instrument to save for reuse (COM-207). `token` is the durable handle
+        produced by on-device tokenization; a PAN/CVV is never sent. `brand`/`last4`/`expMonth`/
+        `expYear` are optional non-sensitive display metadata (cards carry it, wallets do not).
+      required: [type, token]
+      properties:
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, oxxo, spei]
+        token:
+          type: string
+        brand:
+          type: string
+        last4:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+
+    PaymentMethodResponse:
+      type: object
+      description: >
+        A saved payment method projected for display (COM-207). The stored provider token is
+        deliberately never returned — only the id and non-sensitive display metadata.
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, oxxo, spei]
+        brand:
+          type: string
+        last4:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
 
     PaymentWebhookEvent:
       type: object

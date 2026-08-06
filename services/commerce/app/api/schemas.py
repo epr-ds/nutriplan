@@ -16,6 +16,7 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus, PaymentMethodType, ProviderType
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
+from app.domain.payment_method import SavedPaymentMethod
 
 
 class _Camel(BaseModel):
@@ -205,3 +206,47 @@ class PaymentWebhookAck(_Camel):
     @classmethod
     def from_order(cls, order: Order) -> PaymentWebhookAck:
         return cls(received=True, order_id=order.id, status=order.status)
+
+
+class SavePaymentMethodRequest(_Camel):
+    """A tokenized payment method to save (COM-207).
+
+    Carries the provider ``token`` produced by on-device tokenization — **never** a PAN or CVV —
+    plus optional non-sensitive display metadata. Field *semantics* (``last4`` is four digits, the
+    expiry is in range) are validated by the domain, surfacing as ``422``.
+    """
+
+    type: PaymentMethodType
+    token: str
+    brand: str | None = None
+    last4: str | None = None
+    exp_month: int | None = None
+    exp_year: int | None = None
+
+
+class PaymentMethodResponse(_Camel):
+    """A saved payment method projected for display (COM-207).
+
+    Deliberately omits the stored provider ``token``: only the id and non-sensitive display
+    metadata are ever returned to the client, so the reusable credential never leaves the server.
+    """
+
+    id: uuid.UUID
+    type: PaymentMethodType
+    brand: str | None = None
+    last4: str | None = None
+    exp_month: int | None = None
+    exp_year: int | None = None
+    created_at: datetime
+
+    @classmethod
+    def from_method(cls, method: SavedPaymentMethod) -> PaymentMethodResponse:
+        return cls(
+            id=method.id,
+            type=method.type,
+            brand=method.brand,
+            last4=method.last4,
+            exp_month=method.exp_month,
+            exp_year=method.exp_year,
+            created_at=method.created_at,
+        )
