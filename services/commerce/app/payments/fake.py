@@ -13,7 +13,10 @@ dated ahead and recorded (in :attr:`vouchers` / :attr:`transfers` / :attr:`appro
 
 :meth:`parse_webhook` closes the async loop (COM-206): it verifies an HMAC-SHA256 signature over
 the raw request body using the configured ``webhook_secret`` (constant-time) and normalises the
-JSON event into a :class:`PaymentWebhookEvent`, exactly as a real provider adapter would.
+JSON event into a :class:`PaymentWebhookEvent`, exactly as a real provider adapter would. Finally
+:meth:`refund` returns all or part of a captured charge deterministically (minting a synthetic
+``refund_id`` and recording the request in :attr:`refunds`) so the cancel-refund path (COM-208) is
+exercisable without a real processor.
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ from app.domain.payment import (
     PaymentApproval,
     PaymentApprovalRequest,
     PaymentEventType,
+    PaymentRefund,
+    PaymentRefundRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -56,6 +61,7 @@ class FakePaymentProvider:
         self.vouchers: list[PaymentVoucherRequest] = []
         self.transfers: list[PaymentTransferRequest] = []
         self.approvals: list[PaymentApprovalRequest] = []
+        self.refunds: list[PaymentRefundRequest] = []
 
     def charge(self, request: PaymentRequest) -> PaymentResult:
         self.charges.append(request)
@@ -97,6 +103,14 @@ class FakePaymentProvider:
             approval_url=f"https://paypal.example/checkout/{reference}",
             amount=request.amount,
             expires_at=datetime.now(UTC) + timedelta(hours=APPROVAL_TTL_HOURS),
+        )
+
+    def refund(self, request: PaymentRefundRequest) -> PaymentRefund:
+        self.refunds.append(request)
+        return PaymentRefund(
+            provider=self.name,
+            refund_id=f"fake_re_{uuid.uuid4().hex}",
+            amount=request.amount,
         )
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:

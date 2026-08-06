@@ -10,7 +10,8 @@ the OXXO voucher issued for an async payment (COM-203:
 ``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``) and the SPEI bank-transfer
 instructions issued for an async payment (COM-204:
 ``payment_transfer_clabe``/``…_reference``/``…_expires_at``) and the PayPal redirect-approval order
-``payment_approval_reference``/``…_url``/``…_expires_at``). The
+``payment_approval_reference``/``…_url``/``…_expires_at``) and the refund captured when a paid order
+is cancelled (COM-208: ``payment_refund_id``/``refund_status``/``refunded_amount``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
 ``(user_id, idempotency_key)``, and the ``payment_methods`` table (COM-207) stores a user's
 tokenized payment instruments — a provider token plus non-sensitive display metadata, never a PAN.
@@ -116,6 +117,12 @@ class OrderModel(Base):
     payment_approval_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Refund captured when a paid order is cancelled (COM-208): the provider's refund reference,
+    # whether the whole total or only part was returned (``full``/``partial``), and the exact amount
+    # refunded. Nullable -- only a paid, cancelled order that was actually refunded populates them.
+    payment_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refund_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    refunded_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )

@@ -13,7 +13,13 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from app.domain.address import Address
-from app.domain.enums import FulfillmentType, OrderStatus, PaymentMethodType, ProviderType
+from app.domain.enums import (
+    FulfillmentType,
+    OrderStatus,
+    PaymentMethodType,
+    ProviderType,
+    RefundStatus,
+)
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -58,6 +64,17 @@ class CreateOrderRequest(_Camel):
     provider_id: str | None = None
     payment_method: PaymentMethodRequest | None = None
     notes: str | None = None
+
+
+class CancelOrderRequest(_Camel):
+    """Options for cancelling an order (COM-208).
+
+    ``refundAmount`` requests a *partial* refund of a paid order; omit it (or send an empty body) to
+    refund the order in full. A positive value no greater than the order total is required, else the
+    request is rejected with ``422``. It is ignored when the order was never paid.
+    """
+
+    refund_amount: float | None = None
 
 
 class MoneyResponse(_Camel):
@@ -130,6 +147,19 @@ class ApprovalResponse(_Camel):
     provider: str | None = None
 
 
+class RefundResponse(_Camel):
+    """A refund captured when a paid order was cancelled (COM-208).
+
+    Present only once a paid order has actually been refunded. ``status`` is ``full`` when the whole
+    total was returned or ``partial`` otherwise, and ``amount`` is the exact sum refunded.
+    """
+
+    refund_id: str
+    status: RefundStatus
+    amount: MoneyResponse
+    provider: str | None = None
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -144,6 +174,7 @@ class OrderResponse(_Camel):
     voucher: VoucherResponse | None = None
     transfer: TransferResponse | None = None
     approval: ApprovalResponse | None = None
+    refund: RefundResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
@@ -175,6 +206,14 @@ class OrderResponse(_Camel):
                 expires_at=order.payment_approval_expires_at,
                 provider=order.payment_provider,
             )
+        refund = None
+        if order.refund_status is not None:
+            refund = RefundResponse(
+                refund_id=order.payment_refund_id,
+                status=order.refund_status,
+                amount=MoneyResponse.from_money(order.refunded_amount),
+                provider=order.payment_provider,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -189,6 +228,7 @@ class OrderResponse(_Camel):
             voucher=voucher,
             transfer=transfer,
             approval=approval,
+            refund=refund,
         )
 
 

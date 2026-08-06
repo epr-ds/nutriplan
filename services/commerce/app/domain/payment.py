@@ -204,6 +204,41 @@ class PaymentApproval:
 
 
 @dataclass(frozen=True)
+class PaymentRefundRequest:
+    """A request to refund all or part of a previously captured charge — cancellation (COM-208).
+
+    ``charge_id`` is the provider reference recorded when the order was paid (COM-202); ``amount``
+    is how much to return — the full order total for a full refund, or a smaller sum for a partial
+    one. ``reference`` links the refund back to its order and ``idempotency_key`` (COM-209) lets a
+    retried refund be de-duplicated by the provider rather than returning the money twice.
+    """
+
+    charge_id: str
+    amount: Money
+    reference: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass(frozen=True)
+class PaymentRefund:
+    """The outcome of a refund: the provider's ``refund_id`` and the amount returned (COM-208).
+
+    Refunds through the port are synchronous — the provider either returns the money and hands back
+    a reference or raises — so :attr:`status` is :attr:`PaymentStatus.SUCCEEDED` at creation.
+    ``amount`` echoes what was actually refunded so the caller records the exact figure.
+    """
+
+    provider: str
+    refund_id: str
+    amount: Money
+    status: PaymentStatus = PaymentStatus.SUCCEEDED
+
+    @property
+    def is_success(self) -> bool:
+        return self.status is PaymentStatus.SUCCEEDED
+
+
+@dataclass(frozen=True)
 class PaymentWebhookEvent:
     """A verified provider webhook reporting an async payment's settlement (COM-206).
 

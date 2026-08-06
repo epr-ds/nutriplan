@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Query, status
@@ -16,7 +17,7 @@ from app.api.deps import (
     GetOrderServiceDep,
     ListOrdersServiceDep,
 )
-from app.api.schemas import CreateOrderRequest, OrderResponse
+from app.api.schemas import CancelOrderRequest, CreateOrderRequest, OrderResponse
 from app.application.commands import CancelOrderCommand, CreateOrderCommand
 from app.application.queries import GetOrderQuery, ListOrdersQuery
 from app.domain.enums import OrderStatus
@@ -137,14 +138,27 @@ def cancel_order(
     order_id: uuid.UUID,
     principal: CurrentPrincipal,
     service: CancelOrderServiceDep,
+    body: CancelOrderRequest | None = None,
 ) -> OrderResponse:
-    """Cancel the caller's order identified by ``orderId`` (COM-107).
+    """Cancel the caller's order identified by ``orderId``, refunding it if paid (COM-107/208).
 
     Cancellation is owner-scoped: an unknown id and another user's order both yield ``404`` (no
     enumeration, as with reads). An order may only be cancelled before dispatch; once it is
     ``in_transit`` or in a terminal state the lifecycle state machine refuses and this returns
-    ``409``. On success the updated order is returned with ``200``.
+    ``409``. When the cancelled order carried a captured payment it is refunded through the provider
+    (COM-208): in full by default, or partially when ``refundAmount`` is supplied (a positive value
+    no greater than the order total, else ``422``). On success the updated order is returned with
+    ``200``, carrying a ``refund`` block when money was returned.
     """
-    command = CancelOrderCommand(user_id=_principal_user_id(principal), order_id=order_id)
+    refund_amount = (
+        Decimal(str(body.refund_amount))
+        if body is not None and body.refund_amount is not None
+        else None
+    )
+    command = CancelOrderCommand(
+        user_id=_principal_user_id(principal),
+        order_id=order_id,
+        refund_amount=refund_amount,
+    )
     order = service.cancel(command)
     return OrderResponse.from_order(order)

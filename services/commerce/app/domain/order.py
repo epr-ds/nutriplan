@@ -17,8 +17,8 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from app.domain.address import Address
-from app.domain.enums import FulfillmentType, OrderStatus
-from app.domain.errors import IllegalOrderTransitionError
+from app.domain.enums import FulfillmentType, OrderStatus, RefundStatus
+from app.domain.errors import IllegalOrderTransitionError, OrderValidationError
 from app.domain.events import DomainEvent, OrderCreated, OrderStatusChanged
 from app.domain.money import Money
 from app.domain.payment import PaymentStatus
@@ -104,6 +104,12 @@ class Order:
     payment_approval_reference: str | None = None
     payment_approval_url: str | None = None
     payment_approval_expires_at: datetime | None = None
+    # Refund captured against a paid order when it is cancelled (COM-208): the provider's refund
+    # reference, whether the whole total or only part was returned, and the exact amount refunded.
+    # All nullable -- only a paid, cancelled order that was actually refunded populates them.
+    payment_refund_id: str | None = None
+    refund_status: RefundStatus | None = None
+    refunded_amount: Money | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -302,6 +308,61 @@ class Order:
             raise IllegalOrderTransitionError(self.status, OrderStatus.CANCELLED)
         self.payment_status = PaymentStatus.FAILED
         self.cancel(occurred_at=occurred_at)
+
+    @property
+    def can_refund(self) -> bool:
+        """Whether this order has a captured payment that has not yet been refunded (COM-208).
+
+        True only once a card charge (COM-202) or an async settlement (COM-206) has succeeded and
+        left a ``payment_charge_id`` to act on, and no refund has been recorded yet. Unpaid orders
+        (cash/async still pending, or a failed charge) and already-refunded ones are not refundable.
+        """
+        return (
+            self.payment_status is PaymentStatus.SUCCEEDED
+            and self.payment_charge_id is not None
+            and self.refund_status is None
+        )
+
+    def validate_refund(self, requested_amount: Money | None) -> Money:
+        """Resolve and validate the amount to refund, defaulting to a full refund (COM-208).
+
+        ``requested_amount`` of ``None`` means refund the whole order total; a supplied amount makes
+        it a partial refund. The order must have a captured, not-yet-refunded payment
+        (:attr:`can_refund`), else this raises :class:`IllegalOrderTransitionError` -- there is
+        nothing to return. The amount must be in the order's currency, positive, and no greater than
+        the total, else :class:`OrderValidationError` (a ``422``). Returns the effective amount to
+        hand the provider; it records nothing.
+        """
+        if not self.can_refund:
+            raise IllegalOrderTransitionError(self.payment_status, PaymentStatus.SUCCEEDED)
+        amount = requested_amount if requested_amount is not None else self.total
+        if amount.currency != self.total.currency:
+            raise OrderValidationError("refund amount must be in the order's currency")
+        if amount.amount <= 0:
+            raise OrderValidationError("refund amount must be positive")
+        if amount.amount > self.total.amount:
+            raise OrderValidationError("refund amount cannot exceed the order total")
+        return amount
+
+    def record_refund(
+        self, *, refund_id: str, amount: Money, occurred_at: datetime | None = None
+    ) -> None:
+        """Record a completed (full or partial) refund against the order (COM-208).
+
+        Called by the cancel use case after the provider has returned the money: captures the
+        provider's ``refund_id`` and the ``amount`` refunded, and sets :attr:`refund_status` to
+        :attr:`RefundStatus.FULL` when the whole total was returned or :attr:`RefundStatus.PARTIAL`
+        otherwise. Re-validates the amount (via :meth:`validate_refund`) so a bad figure can never
+        be persisted and a second refund is refused with :class:`IllegalOrderTransitionError`. Does
+        not move the lifecycle state -- the caller cancels the order separately.
+        """
+        resolved = self.validate_refund(amount)
+        self.payment_refund_id = refund_id
+        self.refunded_amount = resolved
+        self.refund_status = (
+            RefundStatus.FULL if resolved.amount == self.total.amount else RefundStatus.PARTIAL
+        )
+        self.updated_at = occurred_at or _utcnow()
 
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).

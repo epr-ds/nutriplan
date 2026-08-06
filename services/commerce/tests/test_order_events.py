@@ -274,7 +274,7 @@ def test_cancel_service_publishes_status_changed():
     repo = InMemoryOrderRepository()
     repo.add(order)
     publisher = InMemoryEventPublisher()
-    service = CancelOrderService(repo, publisher)
+    service = CancelOrderService(repo, FakePaymentProvider(), publisher)
 
     service.cancel(CancelOrderCommand(user_id=USER_ID, order_id=order.id))
 
