@@ -121,10 +121,20 @@ paths:
       tags: [Orders]
       operationId: cancelOrder
       summary: Cancel an order
+      description: >-
+        Cancels the caller's order (COM-107). When the order carried a captured payment it is
+        refunded through the provider (COM-208): in full by default, or partially when the optional
+        body supplies `refundAmount`. Refunds are ignored for orders that were never paid.
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
       responses:
         '200':
           description: Order cancelled
@@ -138,6 +148,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /webhooks/payments:
     post:
@@ -437,6 +449,18 @@ components:
         token:
           type: string
 
+    CancelOrderRequest:
+      type: object
+      description: >
+        Optional options for cancelling an order (COM-208). Supply `refundAmount` to request a
+        *partial* refund of a paid order; omit it (or send an empty body) to refund the order in
+        full. The value must be positive and no greater than the order total. Ignored when the
+        order was never paid.
+      properties:
+        refundAmount:
+          type: number
+          description: Amount to refund; defaults to the full order total when omitted.
+
     OrderResponse:
       type: object
       properties:
@@ -473,6 +497,8 @@ components:
           $ref: '#/components/schemas/TransferResponse'
         approval:
           $ref: '#/components/schemas/ApprovalResponse'
+        refund:
+          $ref: '#/components/schemas/RefundResponse'
 
     VoucherResponse:
       type: object
@@ -532,6 +558,23 @@ components:
         expiresAt:
           type: string
           format: date-time
+        provider:
+          type: string
+
+    RefundResponse:
+      type: object
+      description: >
+        A refund captured when a paid order was cancelled (COM-208). Present on an order only once a
+        captured payment has actually been refunded. `status` is `full` when the whole total was
+        returned or `partial` otherwise, and `amount` is the exact sum refunded.
+      properties:
+        refundId:
+          type: string
+        status:
+          type: string
+          enum: [full, partial]
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
         provider:
           type: string
 

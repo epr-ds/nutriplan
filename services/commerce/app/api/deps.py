@@ -174,9 +174,10 @@ def get_get_order_service(
 
 def get_cancel_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
 ) -> CancelOrderService:
-    return CancelOrderService(orders, publisher)
+    return CancelOrderService(orders, payments, publisher)
 
 
 def get_process_payment_webhook_service(

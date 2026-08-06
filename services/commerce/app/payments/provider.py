@@ -11,7 +11,9 @@ bank-transfer instructions (SPEI, COM-204), and :meth:`create_approval` asks it 
 redirect-approval order (PayPal, COM-205) — all settled out of band and leaving the order
 ``pending`` until a webhook confirms it (COM-206). :meth:`parse_webhook` closes that loop: it
 verifies an inbound provider webhook's signature and normalises it into a
-:class:`~app.domain.payment.PaymentWebhookEvent` the application can act on.
+:class:`~app.domain.payment.PaymentWebhookEvent` the application can act on. :meth:`refund` closes
+the lifecycle at the other end: it returns all or part of a captured charge when a paid order is
+cancelled (COM-208).
 """
 
 from __future__ import annotations
@@ -21,6 +23,8 @@ from typing import Protocol, runtime_checkable
 from app.domain.payment import (
     PaymentApproval,
     PaymentApprovalRequest,
+    PaymentRefund,
+    PaymentRefundRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -54,6 +58,10 @@ class PaymentProvider(Protocol):
 
     def create_approval(self, request: PaymentApprovalRequest) -> PaymentApproval:
         """Create a redirect-approval order (PayPal) for ``request.amount``, settled later."""
+        ...
+
+    def refund(self, request: PaymentRefundRequest) -> PaymentRefund:
+        """Refund all or part of a captured charge when a paid order is cancelled (COM-208)."""
         ...
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 
 from app.domain.address import Address
 from app.domain.enums import FulfillmentType, PaymentMethodType
@@ -34,15 +35,18 @@ class CreateOrderCommand:
 
 @dataclass(frozen=True)
 class CancelOrderCommand:
-    """A caller-scoped request to cancel a single order (COM-107).
+    """A caller-scoped request to cancel a single order, optionally refunding it (COM-107/208).
 
     ``user_id`` is the authenticated caller; the order is only cancellable when it belongs to them,
     so an unknown id and another user's order are indistinguishable (no enumeration). Whether the
     order may actually be cancelled from its current state is decided by the domain state machine.
+    ``refund_amount`` requests a *partial* refund of a paid order (``None`` refunds it in full); it
+    is ignored when the order was never paid.
     """
 
     user_id: uuid.UUID
     order_id: uuid.UUID
+    refund_amount: Decimal | None = None
 
 
 @dataclass(frozen=True)
