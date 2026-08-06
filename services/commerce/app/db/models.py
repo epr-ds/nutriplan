@@ -10,10 +10,10 @@ the OXXO voucher issued for an async payment (COM-203:
 ``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``) and the SPEI bank-transfer
 instructions issued for an async payment (COM-204:
 ``payment_transfer_clabe``/``…_reference``/``…_expires_at``) and the PayPal redirect-approval order
-created for an async payment (COM-205:
 ``payment_approval_reference``/``…_url``/``…_expires_at``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
-``(user_id, idempotency_key)``.
+``(user_id, idempotency_key)``, and the ``payment_methods`` table (COM-207) stores a user's
+tokenized payment instruments — a provider token plus non-sensitive display metadata, never a PAN.
 """
 
 from __future__ import annotations
@@ -195,6 +195,30 @@ class IdempotencyKeyModel(Base):
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     order_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class PaymentMethodModel(Base):
+    """A user's saved, tokenized payment method (COM-207).
+
+    Persists only the provider ``token`` (never a PAN or CVV) plus non-sensitive display metadata
+    (``brand``/``last4``/expiry) so the app can show "Visa ****4242" at checkout. The token is a
+    stored credential and is deliberately never projected back onto the API. ``user_id`` is indexed
+    for the per-user list; a user may save several methods, so there is no uniqueness constraint.
+    """
+
+    __tablename__ = "payment_methods"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    token: Mapped[str] = mapped_column(String(512), nullable=False)
+    brand: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    exp_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    exp_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

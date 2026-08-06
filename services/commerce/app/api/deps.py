@@ -7,6 +7,7 @@ dependencies. Tests swap any layer via ``app.dependency_overrides``.
 
 from __future__ import annotations
 
+import uuid
 from functools import lru_cache
 from typing import Annotated
 
@@ -21,6 +22,7 @@ from app.application.create_order import CreateOrderService
 from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
+from app.application.payment_methods import PaymentMethodService
 from app.application.ports import MealPlanProvider
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.core.config import settings
@@ -30,13 +32,14 @@ from app.db.base import get_db
 from app.domain.enums import FulfillmentType
 from app.domain.money import Money
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
-from app.domain.repositories import OrderRepository
+from app.domain.repositories import OrderRepository, PaymentMethodRepository
 from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
 from app.payments.factory import build_payment_provider
 from app.payments.provider import PaymentProvider
 from app.repositories.sql_idempotency_store import SqlIdempotencyStore
 from app.repositories.sql_order_repository import SqlOrderRepository
+from app.repositories.sql_payment_method_repository import SqlPaymentMethodRepository
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -92,6 +95,11 @@ def get_bearer_token(
 def get_order_repository(db: DbSession) -> OrderRepository:
     """Provide the SQL-backed order repository bound to the request session."""
     return SqlOrderRepository(db)
+
+
+def get_payment_method_repository(db: DbSession) -> PaymentMethodRepository:
+    """Provide the SQL-backed saved-payment-method repository bound to the request session."""
+    return SqlPaymentMethodRepository(db)
 
 
 def get_idempotency_store(db: DbSession) -> IdempotencyStore:
@@ -179,13 +187,33 @@ def get_process_payment_webhook_service(
     return ProcessPaymentWebhookService(orders, payments, publisher)
 
 
+def get_payment_method_service(
+    methods: Annotated[PaymentMethodRepository, Depends(get_payment_method_repository)],
+) -> PaymentMethodService:
+    return PaymentMethodService(methods)
+
+
+def get_current_user_id(
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> uuid.UUID:
+    """Resolve the caller's id from the verified token subject, or ``401`` if it is not a UUID."""
+    try:
+        return uuid.UUID(principal.user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Token subject is not a valid user id"
+        ) from exc
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+CurrentUserId = Annotated[uuid.UUID, Depends(get_current_user_id)]
 BearerToken = Annotated[str, Depends(get_bearer_token)]
 OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
 CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_service)]
 ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
 CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
+PaymentMethodServiceDep = Annotated[PaymentMethodService, Depends(get_payment_method_service)]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
 ]
