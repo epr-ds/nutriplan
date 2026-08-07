@@ -20,6 +20,7 @@ from app.domain.enums import (
     ProviderType,
     RefundStatus,
 )
+from app.domain.fulfillment import DarkKitchenAvailability
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -115,6 +116,26 @@ class ProviderResponse(_Camel):
     type: ProviderType | None = None
     logo_url: str | None = None
     estimated_delivery: str | None = None
+
+
+class AvailabilityResponse(_Camel):
+    """Dark-kitchen availability for a delivery area (COM-301), mirroring ``AvailabilityResponse``.
+
+    ``timeSlots`` lists the delivery windows offered when ``available`` is true, and is empty
+    otherwise.
+    """
+
+    available: bool
+    zip_code: str
+    time_slots: list[str]
+
+    @classmethod
+    def from_domain(cls, availability: DarkKitchenAvailability) -> AvailabilityResponse:
+        return cls(
+            available=availability.available,
+            zip_code=availability.zip_code,
+            time_slots=list(availability.time_slots),
+        )
 
 
 class VoucherResponse(_Camel):
