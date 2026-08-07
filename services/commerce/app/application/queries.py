@@ -50,3 +50,16 @@ class ListPaymentMethodsQuery:
     """
 
     user_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class DarkKitchenAvailabilityQuery:
+    """A request to check whether a dark kitchen serves a delivery area (COM-301).
+
+    ``zip_code`` is the delivery postcode (validated at the HTTP edge); ``delivery_date`` is an
+    optional target date. The check is not user-scoped — availability is a property of the area, not
+    the caller — so no ``user_id`` is carried, though the endpoint still requires authentication.
+    """
+
+    zip_code: str
+    delivery_date: date | None = None

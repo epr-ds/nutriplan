@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
 from app.application.cancel_order import CancelOrderService
 from app.application.create_order import CreateOrderService
+from app.application.dark_kitchen_availability import CheckDarkKitchenAvailabilityService
 from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
@@ -30,6 +31,7 @@ from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.db.base import get_db
 from app.domain.enums import FulfillmentType
+from app.domain.fulfillment import DarkKitchenServiceArea
 from app.domain.money import Money
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
 from app.domain.repositories import OrderRepository, PaymentMethodRepository
@@ -149,6 +151,20 @@ def get_payment_provider() -> PaymentProvider:
     return build_payment_provider(settings)
 
 
+def _split_csv(raw: str) -> tuple[str, ...]:
+    """Split a comma-separated config value into a tuple of trimmed, non-empty entries."""
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+@lru_cache(maxsize=1)
+def get_dark_kitchen_service_area() -> DarkKitchenServiceArea:
+    """Build the (cached) dark-kitchen coverage + schedule policy from config (COM-301)."""
+    return DarkKitchenServiceArea(
+        served_zip_prefixes=_split_csv(settings.dark_kitchen_service_zip_prefixes),
+        time_slots=_split_csv(settings.dark_kitchen_time_slots),
+    )
+
+
 def get_create_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
@@ -194,6 +210,12 @@ def get_payment_method_service(
     return PaymentMethodService(methods)
 
 
+def get_check_dark_kitchen_availability_service(
+    service_area: Annotated[DarkKitchenServiceArea, Depends(get_dark_kitchen_service_area)],
+) -> CheckDarkKitchenAvailabilityService:
+    return CheckDarkKitchenAvailabilityService(service_area)
+
+
 def get_current_user_id(
     principal: Annotated[Principal, Depends(get_current_principal)],
 ) -> uuid.UUID:
@@ -215,6 +237,9 @@ ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_serv
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
 CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
 PaymentMethodServiceDep = Annotated[PaymentMethodService, Depends(get_payment_method_service)]
+DarkKitchenAvailabilityServiceDep = Annotated[
+    CheckDarkKitchenAvailabilityService, Depends(get_check_dark_kitchen_availability_service)
+]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
 ]
