@@ -190,6 +190,46 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /webhooks/kitchen:
+    post:
+      tags: [Webhooks]
+      operationId: kitchenWebhook
+      summary: Kitchen status webhook (fulfilment sync)
+      description: >-
+        Advances an order's fulfilment state from a dark kitchen's asynchronous status webhook
+        (COM-303). Authenticated by the kitchen's signature over the raw request body
+        (`X-Webhook-Signature`), not a bearer token, so no `BearerAuth` applies here. A verified
+        `kitchen.preparing` event advances the referenced order (`confirmed` -> `preparing`) and a
+        `kitchen.dispatched` event advances it (`preparing` -> `in_transit`); both are idempotent, so
+        a redelivered event is a safe no-op, while an out-of-order report is a `409`.
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: >-
+            Hex-encoded HMAC-SHA256 of the raw request body, keyed by the shared webhook secret.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KitchenWebhookEvent'
+      responses:
+        '200':
+          description: Webhook accepted (or idempotently re-accepted); the order was advanced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KitchenWebhookAck'
+        '400':
+          $ref: '#/components/responses/InvalidSignature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /payment-methods:
     get:
       tags: [Payments]
@@ -650,6 +690,41 @@ components:
       type: object
       description: >
         Terse acknowledgement of a processed payment webhook (COM-206): confirms receipt and echoes
+        the referenced order's id and resulting status, without leaking any other order detail.
+      required: [received, orderId, status]
+      properties:
+        received:
+          type: boolean
+        orderId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+
+    KitchenWebhookEvent:
+      type: object
+      description: >
+        A dark kitchen's asynchronous status webhook (COM-303). `data.reference` is the order id
+        handed to the kitchen on the routing ticket when the order was confirmed, so the handler can
+        find the order and advance its fulfilment state.
+      required: [type, data]
+      properties:
+        type:
+          type: string
+          enum: [kitchen.preparing, kitchen.dispatched]
+        data:
+          type: object
+          required: [reference]
+          properties:
+            reference:
+              type: string
+              format: uuid
+
+    KitchenWebhookAck:
+      type: object
+      description: >
+        Terse acknowledgement of a processed kitchen webhook (COM-303): confirms receipt and echoes
         the referenced order's id and resulting status, without leaking any other order detail.
       required: [received, orderId, status]
       properties:

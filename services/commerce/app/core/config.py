@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     # over the raw request body in dev/CI and tests.
     payment_webhook_secret: SecretStr = SecretStr("")
 
+    # Kitchen status webhook verification (COM-303). A dark kitchen signs each fulfilment callback
+    # (kitchen.preparing / kitchen.dispatched) with a shared secret, separate from the payment
+    # secrets above and injected from the vault in production. Verified as an HMAC-SHA256 signature
+    # over the raw request body, exactly like the payment webhook.
+    kitchen_webhook_secret: SecretStr = SecretStr("")
+
     # Dark-kitchen fulfillment (COM-301, COM-302). Coverage is by Mexican postal-code prefix: a
     # delivery postcode is served when it starts with any of these comma-separated prefixes
     # (defaults cover a set of central CDMX delegations). Every serviceable day offers the same
