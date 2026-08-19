@@ -13,6 +13,7 @@ no-op that records (and publishes) nothing.
 
 from __future__ import annotations
 
+from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.application.webhook_references import reference_to_order_id
 from app.domain.errors import OrderNotFoundError
@@ -36,11 +37,13 @@ class ProcessPaymentWebhookService:
         payments: PaymentProvider,
         publisher: EventPublisher,
         kitchen_router: KitchenRouter | None = None,
+        slot_reservations: ReserveDeliverySlotService | None = None,
     ) -> None:
         self._orders = orders
         self._payments = payments
         self._publisher = publisher
         self._kitchen_router = kitchen_router
+        self._slot_reservations = slot_reservations
 
     def process(self, *, payload: bytes, signature: str) -> Order:
         # Verify + parse first: an untrusted or malformed event raises WebhookVerificationError
@@ -53,6 +56,11 @@ class ProcessPaymentWebhookService:
             order.confirm_payment(charge_id=event.charge_id)
         else:
             order.fail_payment()
+            # A failed async payment cancels the order (pending -> cancelled), so release any
+            # dark-kitchen slot it held to free the capacity (COM-304). Idempotent: a redelivered
+            # failure changes no state above and re-releasing an already-freed slot is a no-op.
+            if self._slot_reservations is not None:
+                self._slot_reservations.release_for(order.id)
         persisted = self._orders.update(order)
         # Best-effort publish after the settlement is committed; a redelivered webhook is an
         # idempotent no-op, so the aggregate recorded no events and nothing is published.

@@ -26,9 +26,15 @@ from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
 from app.application.payment_methods import PaymentMethodService
-from app.application.ports import EmptySlotInventory, KitchenQueue, MealPlanProvider, SlotInventory
+from app.application.ports import (
+    KitchenQueue,
+    MealPlanProvider,
+    SlotInventory,
+    SlotReservationStore,
+)
 from app.application.process_kitchen_webhook import ProcessKitchenWebhookService
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
+from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.core.config import settings
 from app.core.principal import Principal
@@ -46,6 +52,7 @@ from app.payments.provider import PaymentProvider
 from app.repositories.sql_idempotency_store import SqlIdempotencyStore
 from app.repositories.sql_order_repository import SqlOrderRepository
 from app.repositories.sql_payment_method_repository import SqlPaymentMethodRepository
+from app.repositories.sql_slot_reservation_store import SqlSlotReservationStore
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -193,14 +200,32 @@ def get_dark_kitchen_service_area() -> DarkKitchenServiceArea:
     )
 
 
-@lru_cache(maxsize=1)
-def get_slot_inventory() -> SlotInventory:
-    """Provide the dark-kitchen slot booking counts (COM-302).
+def get_slot_reservation_store(db: DbSession) -> SlotReservationStore:
+    """Provide the SQL-backed dark-kitchen slot reservation store, request-scoped (COM-304).
 
-    An empty inventory until slot reservation (COM-304) supplies a persistent booking store, so
-    every window currently shows its full configured capacity.
+    Not cached: it holds the per-request :class:`Session`, so reserving/releasing commits atomically
+    with the order it accompanies (create) or the cancellation that frees it.
     """
-    return EmptySlotInventory()
+    return SqlSlotReservationStore(db)
+
+
+def get_slot_inventory(
+    store: Annotated[SlotReservationStore, Depends(get_slot_reservation_store)],
+) -> SlotInventory:
+    """Provide dark-kitchen slot booking counts, now reflecting real reservations (COM-304).
+
+    The reservation store doubles as the read-side inventory, so availability (COM-302) subtracts
+    genuine bookings from each window's capacity rather than always showing it fully open.
+    """
+    return store
+
+
+def get_reserve_slot_service(
+    service_area: Annotated[DarkKitchenServiceArea, Depends(get_dark_kitchen_service_area)],
+    store: Annotated[SlotReservationStore, Depends(get_slot_reservation_store)],
+) -> ReserveDeliverySlotService:
+    """Build the dark-kitchen slot reserve/release use case for create and cancel (COM-304)."""
+    return ReserveDeliverySlotService(service_area, store)
 
 
 def get_create_order_service(
@@ -211,9 +236,17 @@ def get_create_order_service(
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     idempotency: Annotated[IdempotencyStore, Depends(get_idempotency_store)],
     kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
 ) -> CreateOrderService:
     return CreateOrderService(
-        orders, meal_plans, pricer, publisher, payments, idempotency, kitchen_router
+        orders,
+        meal_plans,
+        pricer,
+        publisher,
+        payments,
+        idempotency,
+        kitchen_router,
+        slot_reservations,
     )
 
 
@@ -233,8 +266,9 @@ def get_cancel_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
 ) -> CancelOrderService:
-    return CancelOrderService(orders, payments, publisher)
+    return CancelOrderService(orders, payments, publisher, slot_reservations)
 
 
 def get_process_payment_webhook_service(
@@ -242,8 +276,11 @@ def get_process_payment_webhook_service(
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
     kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
 ) -> ProcessPaymentWebhookService:
-    return ProcessPaymentWebhookService(orders, payments, publisher, kitchen_router)
+    return ProcessPaymentWebhookService(
+        orders, payments, publisher, kitchen_router, slot_reservations
+    )
 
 
 def get_process_kitchen_webhook_service(

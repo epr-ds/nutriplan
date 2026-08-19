@@ -16,6 +16,7 @@ before it is persisted via :meth:`OrderRepository.update` and returned.
 from __future__ import annotations
 
 from app.application.commands import CancelOrderCommand
+from app.application.reserve_slot import ReserveDeliverySlotService
 from app.domain.errors import OrderNotFoundError
 from app.domain.money import Money
 from app.domain.order import Order
@@ -36,10 +37,12 @@ class CancelOrderService:
         orders: OrderRepository,
         payments: PaymentProvider,
         publisher: EventPublisher,
+        slot_reservations: ReserveDeliverySlotService | None = None,
     ) -> None:
         self._orders = orders
         self._payments = payments
         self._publisher = publisher
+        self._slot_reservations = slot_reservations
 
     def cancel(self, command: CancelOrderCommand) -> Order:
         order = self._orders.get(command.order_id, user_id=command.user_id)
@@ -48,6 +51,11 @@ class CancelOrderService:
         # Cancel first so the lifecycle guard (a 409 for a dispatched/terminal order) runs before we
         # ever touch the provider; only a legitimately cancelled order is refunded.
         order.cancel()
+        # Release any dark-kitchen slot the order held so the freed capacity is bookable again
+        # (COM-304). Idempotent and a no-op for an order that never held one; the delete is
+        # committed atomically by orders.update() below.
+        if self._slot_reservations is not None:
+            self._slot_reservations.release_for(order.id)
         self._refund_if_paid(command, order)
         persisted = self._orders.update(order)
         # Best-effort publish after the cancellation is committed; drain from the aggregate we hold.

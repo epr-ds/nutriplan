@@ -90,6 +90,21 @@ class IdempotencyConflictError(DomainError):
         self.key = key
 
 
+class SlotUnavailableError(DomainError):
+    """The chosen dark-kitchen delivery window has no remaining capacity (COM-304).
+
+    Maps to ``409 Conflict``: the request is well-formed but the (area, day, window) the customer
+    picked is already booked to its capacity, so the slot cannot be reserved. Reserving is atomic
+    with creating the order, so a full slot places no order at all.
+    """
+
+    def __init__(self, *, zip_code: str, delivery_date: object, slot: str) -> None:
+        super().__init__(f"delivery slot '{slot}' on {delivery_date} is fully booked")
+        self.zip_code = zip_code
+        self.delivery_date = delivery_date
+        self.slot = slot
+
+
 class PaymentMethodValidationError(DomainError):
     """A saved-payment-method request violates an invariant (COM-207).
 

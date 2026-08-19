@@ -28,6 +28,7 @@ import json
 from app.application.commands import CreateOrderCommand
 from app.application.idempotency import IdempotencyStore
 from app.application.ports import MealPlanProvider
+from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.domain.enums import FulfillmentType, PaymentMethodType
 from app.domain.errors import (
@@ -61,6 +62,7 @@ class CreateOrderService:
         payments: PaymentProvider,
         idempotency: IdempotencyStore,
         kitchen_router: KitchenRouter | None = None,
+        slot_reservations: ReserveDeliverySlotService | None = None,
     ) -> None:
         self._orders = orders
         self._meal_plans = meal_plans
@@ -69,6 +71,7 @@ class CreateOrderService:
         self._payments = payments
         self._idempotency = idempotency
         self._kitchen_router = kitchen_router
+        self._slot_reservations = slot_reservations
 
     def create(
         self,
@@ -103,6 +106,13 @@ class CreateOrderService:
             order.add_item(self._pricer.price_item(meal))
         self._pricer.price_order(order)
         order.record_created()
+        # Reserve the dark-kitchen delivery slot before charging (COM-304): a full window raises
+        # SlotUnavailableError (409) before any payment is taken, and because nothing is committed
+        # until orders.add() below, a later payment decline rolls the pending reservation back too.
+        # A no-op for non-dark-kitchen orders. Runs after the idempotency replay early-return above,
+        # so a retried create never double-books.
+        if self._slot_reservations is not None:
+            self._slot_reservations.reserve_for(order)
         # Settle payment before persisting so a decline leaves no order behind (COM-202); a
         # successful card charge confirms the order, while an OXXO voucher (COM-203) leaves it
         # pending. Either records the events drained below.
