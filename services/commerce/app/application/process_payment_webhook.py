@@ -13,8 +13,8 @@ no-op that records (and publishes) nothing.
 
 from __future__ import annotations
 
-import uuid
-
+from app.application.route_to_kitchen import KitchenRouter
+from app.application.webhook_references import reference_to_order_id
 from app.domain.errors import OrderNotFoundError
 from app.domain.order import Order
 from app.domain.payment import PaymentEventType
@@ -35,16 +35,18 @@ class ProcessPaymentWebhookService:
         orders: OrderRepository,
         payments: PaymentProvider,
         publisher: EventPublisher,
+        kitchen_router: KitchenRouter | None = None,
     ) -> None:
         self._orders = orders
         self._payments = payments
         self._publisher = publisher
+        self._kitchen_router = kitchen_router
 
     def process(self, *, payload: bytes, signature: str) -> Order:
         # Verify + parse first: an untrusted or malformed event raises WebhookVerificationError
         # (a 400) before we touch any order.
         event = self._payments.parse_webhook(payload, signature)
-        order = self._orders.get_by_id(_reference_to_id(event.reference))
+        order = self._orders.get_by_id(reference_to_order_id(event.reference))
         if order is None:
             raise OrderNotFoundError(event.reference)
         if event.type is PaymentEventType.CONFIRMED:
@@ -56,17 +58,9 @@ class ProcessPaymentWebhookService:
         # idempotent no-op, so the aggregate recorded no events and nothing is published.
         for domain_event in order.pull_events():
             self._publisher.publish(domain_event)
+        # Route a now-confirmed dark-kitchen order to the kitchen (COM-303). Best-effort and a
+        # no-op unless this webhook actually confirmed a dark-kitchen order (a failure or
+        # redelivery skips it).
+        if self._kitchen_router is not None:
+            self._kitchen_router.route(order)
         return persisted
-
-
-def _reference_to_id(reference: str) -> uuid.UUID:
-    """Map the provider's echoed reference back to an order id.
-
-    The create-order flow hands the provider ``str(order.id)`` as the reference, so a well-formed
-    webhook carries a UUID. A reference that is not a UUID cannot name any order of ours, so it is
-    reported as a not-found order (a 404) rather than leaking that it was merely un-parseable.
-    """
-    try:
-        return uuid.UUID(reference)
-    except ValueError as exc:
-        raise OrderNotFoundError(reference) from exc

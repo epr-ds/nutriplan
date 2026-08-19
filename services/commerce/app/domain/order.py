@@ -168,6 +168,30 @@ class Order:
         """Transition ``preparing → in_transit`` (dispatch)."""
         self.transition_to(OrderStatus.IN_TRANSIT, occurred_at=occurred_at)
 
+    def report_preparing(self, *, occurred_at: datetime | None = None) -> None:
+        """Apply a kitchen ``preparing`` report, advancing ``confirmed → preparing`` (COM-303).
+
+        Idempotent: a redelivered report for an order already ``preparing`` (or further along --
+        ``in_transit``/``delivered``) is a no-op that records nothing. Otherwise the order must be
+        ``confirmed``; a report for one still ``pending`` or already ``cancelled`` conflicts and
+        raises :class:`IllegalOrderTransitionError`.
+        """
+        if self.status in (OrderStatus.PREPARING, OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED):
+            return
+        self.start_preparing(occurred_at=occurred_at)
+
+    def report_dispatched(self, *, occurred_at: datetime | None = None) -> None:
+        """Apply a kitchen ``dispatched`` report, advancing ``preparing → in_transit`` (COM-303).
+
+        Idempotent: a redelivered report for an order already ``in_transit`` (or ``delivered``) is a
+        no-op that records nothing. Otherwise the order must be ``preparing``; a dispatch report for
+        one not yet preparing (still ``confirmed``/``pending``) or ``cancelled`` conflicts and
+        raises :class:`IllegalOrderTransitionError` -- the kitchen skipped or contradicted a step.
+        """
+        if self.status in (OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED):
+            return
+        self.mark_in_transit(occurred_at=occurred_at)
+
     def mark_delivered(self, *, occurred_at: datetime | None = None) -> None:
         """Transition ``in_transit → delivered``."""
         self.transition_to(OrderStatus.DELIVERED, occurred_at=occurred_at)

@@ -269,6 +269,22 @@ class PaymentWebhookAck(_Camel):
         return cls(received=True, order_id=order.id, status=order.status)
 
 
+class KitchenWebhookAck(_Camel):
+    """Acknowledges a processed kitchen status webhook (COM-303).
+
+    Same terse shape as :class:`PaymentWebhookAck`: it confirms receipt and echoes the referenced
+    order's id and resulting status so the kitchen can reconcile, without leaking any other detail.
+    """
+
+    received: bool
+    order_id: uuid.UUID
+    status: OrderStatus
+
+    @classmethod
+    def from_order(cls, order: Order) -> KitchenWebhookAck:
+        return cls(received=True, order_id=order.id, status=order.status)
+
+
 class SavePaymentMethodRequest(_Camel):
     """A tokenized payment method to save (COM-207).
 

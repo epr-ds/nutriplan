@@ -28,6 +28,7 @@ import json
 from app.application.commands import CreateOrderCommand
 from app.application.idempotency import IdempotencyStore
 from app.application.ports import MealPlanProvider
+from app.application.route_to_kitchen import KitchenRouter
 from app.domain.enums import FulfillmentType, PaymentMethodType
 from app.domain.errors import (
     IdempotencyConflictError,
@@ -59,6 +60,7 @@ class CreateOrderService:
         publisher: EventPublisher,
         payments: PaymentProvider,
         idempotency: IdempotencyStore,
+        kitchen_router: KitchenRouter | None = None,
     ) -> None:
         self._orders = orders
         self._meal_plans = meal_plans
@@ -66,6 +68,7 @@ class CreateOrderService:
         self._publisher = publisher
         self._payments = payments
         self._idempotency = idempotency
+        self._kitchen_router = kitchen_router
 
     def create(
         self,
@@ -120,6 +123,10 @@ class CreateOrderService:
         # originating write.
         for event in order.pull_events():
             self._publisher.publish(event)
+        # Route a card-confirmed dark-kitchen order to the kitchen (COM-303). Best-effort and a
+        # no-op for anything not confirmed-and-dark-kitchen (e.g. an async order still pending).
+        if self._kitchen_router is not None:
+            self._kitchen_router.route(order)
         return persisted
 
     def _replay(self, command: CreateOrderCommand, *, key: str, fingerprint: str) -> Order | None:

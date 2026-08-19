@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Protocol, runtime_checkable
 
+from app.domain.kitchen import KitchenTicket
 from app.domain.meal_plan import MealPlanSnapshot
 
 
@@ -44,3 +45,17 @@ class EmptySlotInventory:
 
     def booked_counts(self, zip_code: str, delivery_date: date) -> Mapping[str, int]:
         return {}
+
+
+@runtime_checkable
+class KitchenQueue(Protocol):
+    """Where a confirmed dark-kitchen order is handed off to be cooked (COM-303).
+
+    A single outbound port the routing use case depends on: given a :class:`KitchenTicket`, deliver
+    it to a kitchen. Keeping it a port lets a real kitchen integration (an HTTP call or a durable
+    stream a kitchen consumes) be one adapter among others, while an in-process adapter backs
+    dev/CI and tests. Routing happens after the order is committed and is best-effort, so an
+    implementation should be safe to call in the request path.
+    """
+
+    def route(self, ticket: KitchenTicket) -> None: ...

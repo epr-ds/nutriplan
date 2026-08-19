@@ -17,6 +17,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
+from app.adapters.in_memory_kitchen_queue import InMemoryKitchenQueue
+from app.adapters.kitchen_webhook_verifier import KitchenWebhookVerifier
 from app.application.cancel_order import CancelOrderService
 from app.application.create_order import CreateOrderService
 from app.application.dark_kitchen_availability import CheckDarkKitchenAvailabilityService
@@ -24,8 +26,10 @@ from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
 from app.application.payment_methods import PaymentMethodService
-from app.application.ports import EmptySlotInventory, MealPlanProvider, SlotInventory
+from app.application.ports import EmptySlotInventory, KitchenQueue, MealPlanProvider, SlotInventory
+from app.application.process_kitchen_webhook import ProcessKitchenWebhookService
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
+from app.application.route_to_kitchen import KitchenRouter
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
@@ -151,6 +155,29 @@ def get_payment_provider() -> PaymentProvider:
     return build_payment_provider(settings)
 
 
+@lru_cache(maxsize=1)
+def get_kitchen_queue() -> KitchenQueue:
+    """Build the (cached) kitchen queue: an in-process recorder for dev/CI (COM-303).
+
+    A durable kitchen integration (an HTTP call, or a stream a kitchen consumes) replaces this
+    behind the ``KitchenQueue`` port without touching the routing use case.
+    """
+    return InMemoryKitchenQueue()
+
+
+def get_kitchen_router(
+    queue: Annotated[KitchenQueue, Depends(get_kitchen_queue)],
+) -> KitchenRouter:
+    """Build the router that hands confirmed dark-kitchen orders to the queue (COM-303)."""
+    return KitchenRouter(queue)
+
+
+@lru_cache(maxsize=1)
+def get_kitchen_webhook_verifier() -> KitchenWebhookVerifier:
+    """Build the (cached) verifier for inbound kitchen status webhooks (COM-303)."""
+    return KitchenWebhookVerifier(settings.kitchen_webhook_secret.get_secret_value())
+
+
 def _split_csv(raw: str) -> tuple[str, ...]:
     """Split a comma-separated config value into a tuple of trimmed, non-empty entries."""
     return tuple(part.strip() for part in raw.split(",") if part.strip())
@@ -183,8 +210,11 @@ def get_create_order_service(
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     idempotency: Annotated[IdempotencyStore, Depends(get_idempotency_store)],
+    kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans, pricer, publisher, payments, idempotency)
+    return CreateOrderService(
+        orders, meal_plans, pricer, publisher, payments, idempotency, kitchen_router
+    )
 
 
 def get_list_orders_service(
@@ -211,8 +241,17 @@ def get_process_payment_webhook_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+    kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
 ) -> ProcessPaymentWebhookService:
-    return ProcessPaymentWebhookService(orders, payments, publisher)
+    return ProcessPaymentWebhookService(orders, payments, publisher, kitchen_router)
+
+
+def get_process_kitchen_webhook_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    verifier: Annotated[KitchenWebhookVerifier, Depends(get_kitchen_webhook_verifier)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> ProcessKitchenWebhookService:
+    return ProcessKitchenWebhookService(orders, verifier, publisher)
 
 
 def get_payment_method_service(
@@ -254,4 +293,7 @@ DarkKitchenAvailabilityServiceDep = Annotated[
 ]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
+]
+KitchenWebhookServiceDep = Annotated[
+    ProcessKitchenWebhookService, Depends(get_process_kitchen_webhook_service)
 ]
