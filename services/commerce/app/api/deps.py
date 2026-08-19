@@ -24,7 +24,7 @@ from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
 from app.application.list_orders import ListOrdersService
 from app.application.payment_methods import PaymentMethodService
-from app.application.ports import MealPlanProvider
+from app.application.ports import EmptySlotInventory, MealPlanProvider, SlotInventory
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.core.config import settings
 from app.core.principal import Principal
@@ -158,11 +158,22 @@ def _split_csv(raw: str) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def get_dark_kitchen_service_area() -> DarkKitchenServiceArea:
-    """Build the (cached) dark-kitchen coverage + schedule policy from config (COM-301)."""
+    """Build the (cached) dark-kitchen coverage/schedule/capacity policy from config (COM-302)."""
     return DarkKitchenServiceArea(
         served_zip_prefixes=_split_csv(settings.dark_kitchen_service_zip_prefixes),
         time_slots=_split_csv(settings.dark_kitchen_time_slots),
+        slot_capacity=settings.dark_kitchen_slot_capacity,
     )
+
+
+@lru_cache(maxsize=1)
+def get_slot_inventory() -> SlotInventory:
+    """Provide the dark-kitchen slot booking counts (COM-302).
+
+    An empty inventory until slot reservation (COM-304) supplies a persistent booking store, so
+    every window currently shows its full configured capacity.
+    """
+    return EmptySlotInventory()
 
 
 def get_create_order_service(
@@ -212,8 +223,9 @@ def get_payment_method_service(
 
 def get_check_dark_kitchen_availability_service(
     service_area: Annotated[DarkKitchenServiceArea, Depends(get_dark_kitchen_service_area)],
+    inventory: Annotated[SlotInventory, Depends(get_slot_inventory)],
 ) -> CheckDarkKitchenAvailabilityService:
-    return CheckDarkKitchenAvailabilityService(service_area)
+    return CheckDarkKitchenAvailabilityService(service_area, inventory=inventory)
 
 
 def get_current_user_id(
