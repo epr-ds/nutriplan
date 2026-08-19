@@ -65,12 +65,16 @@ class Settings(BaseSettings):
     # over the raw request body in dev/CI and tests.
     payment_webhook_secret: SecretStr = SecretStr("")
 
-    # Dark-kitchen fulfillment (COM-301). Coverage is by Mexican postal-code prefix: a delivery
-    # postcode is served when it starts with any of these comma-separated prefixes (defaults cover a
-    # set of central CDMX delegations). Every serviceable day offers the same comma-separated
-    # delivery windows; per-day capacity/slot modelling arrives in COM-302.
+    # Dark-kitchen fulfillment (COM-301, COM-302). Coverage is by Mexican postal-code prefix: a
+    # delivery postcode is served when it starts with any of these comma-separated prefixes
+    # (defaults cover a set of central CDMX delegations). Every serviceable day offers the same
+    # comma-separated delivery windows, and each window can hold up to
+    # ``dark_kitchen_slot_capacity`` orders per day (COM-302); availability drops a window once
+    # that day's bookings reach capacity. The reservation write path that consumes this capacity
+    # arrives in COM-304.
     dark_kitchen_service_zip_prefixes: str = "06,01,03,11,14"
     dark_kitchen_time_slots: str = "09:00-11:00,11:00-13:00,13:00-15:00,17:00-19:00,19:00-21:00"
+    dark_kitchen_slot_capacity: int = 20
 
 
 settings = Settings()
