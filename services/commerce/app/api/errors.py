@@ -28,6 +28,7 @@ from app.domain.errors import (
     OrderNotFoundError,
     PaymentDeclinedError,
     PaymentMethodNotFoundError,
+    SlotUnavailableError,
     WebhookVerificationError,
 )
 
@@ -43,6 +44,7 @@ _DOMAIN_STATUS: tuple[tuple[type[DomainError], int], ...] = (
     (WebhookVerificationError, HTTPStatus.BAD_REQUEST),
     (IllegalOrderTransitionError, HTTPStatus.CONFLICT),
     (IdempotencyConflictError, HTTPStatus.CONFLICT),
+    (SlotUnavailableError, HTTPStatus.CONFLICT),
     (PaymentDeclinedError, HTTPStatus.PAYMENT_REQUIRED),
     (MealPlanUnavailableError, HTTPStatus.SERVICE_UNAVAILABLE),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),

@@ -27,6 +27,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -226,6 +227,39 @@ class PaymentMethodModel(Base):
     last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
     exp_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exp_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class SlotReservationModel(Base):
+    """One dark-kitchen delivery-window booking held for an order (COM-304).
+
+    A reservation consumes one unit of a delivery window's daily capacity for a service zone
+    (identified by the delivery postcode). ``order_id`` is unique so an order holds at most one
+    reservation, and there is deliberately **no** foreign key to ``orders`` so the reservation can
+    be inserted in the same transaction *before* the order row (the capacity guard must run first).
+    ``(service_zone, delivery_date, delivery_time_slot)`` is indexed for the capacity count that
+    availability (COM-302) and the reservation guard both read. Released (row deleted) when the
+    order is cancelled.
+    """
+
+    __tablename__ = "slot_reservations"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="uq_slot_reservations_order"),
+        Index(
+            "ix_slot_reservations_zone_date_slot",
+            "service_zone",
+            "delivery_date",
+            "delivery_time_slot",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    service_zone: Mapped[str] = mapped_column(String(16), nullable=False)
+    delivery_date: Mapped[date] = mapped_column(Date, nullable=False)
+    delivery_time_slot: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

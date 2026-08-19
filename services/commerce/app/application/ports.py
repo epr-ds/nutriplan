@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping
 from datetime import date
 from typing import Protocol, runtime_checkable
@@ -45,6 +46,39 @@ class EmptySlotInventory:
 
     def booked_counts(self, zip_code: str, delivery_date: date) -> Mapping[str, int]:
         return {}
+
+
+@runtime_checkable
+class SlotReservationStore(Protocol):
+    """Persistent dark-kitchen slot bookings: the capacity write path behind availability (COM-304).
+
+    A superset of :class:`SlotInventory` -- it also answers ``booked_counts`` (so it can serve
+    availability directly, reflecting real bookings) and adds the two mutations that consume and
+    release a window's daily capacity:
+
+    * ``reserve`` atomically books one unit of a window's capacity for an order: it counts the
+      window's existing bookings for ``(zip_code, delivery_date, slot)`` and, if that count has
+      already reached ``capacity``, raises :class:`~app.domain.errors.SlotUnavailableError`;
+      otherwise it records the reservation. It does **not** commit -- the reservation is made
+      durable by the order it is created alongside, so a later failure in the same request (e.g. a
+      declined payment) rolls the pending reservation back with it.
+    * ``release`` deletes an order's reservation, freeing the capacity when the order is cancelled.
+      Idempotent (a missing reservation is a no-op) and likewise does **not** commit.
+    """
+
+    def booked_counts(self, zip_code: str, delivery_date: date) -> Mapping[str, int]: ...
+
+    def reserve(
+        self,
+        *,
+        zip_code: str,
+        delivery_date: date,
+        slot: str,
+        order_id: uuid.UUID,
+        capacity: int,
+    ) -> None: ...
+
+    def release(self, *, order_id: uuid.UUID) -> None: ...
 
 
 @runtime_checkable
