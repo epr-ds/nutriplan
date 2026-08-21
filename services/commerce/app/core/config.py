@@ -1,7 +1,23 @@
 from decimal import Decimal
 
-from pydantic import SecretStr
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class GroceryProviderSetting(BaseModel):
+    """One configured grocery provider (COM-401), mapped to the domain registry in ``deps``.
+
+    ``id`` is the stable machine identifier; ``enabled`` gates whether the provider is offered in
+    this environment (per-env enable/disable). The remaining fields are display metadata surfaced on
+    ``ProviderResponse``. Override the whole catalogue per environment with a JSON array in
+    ``COMMERCE_GROCERY_PROVIDERS``.
+    """
+
+    id: str
+    name: str
+    enabled: bool = True
+    logo_url: str | None = None
+    estimated_delivery: str | None = None
 
 
 class Settings(BaseSettings):
@@ -81,6 +97,36 @@ class Settings(BaseSettings):
     dark_kitchen_service_zip_prefixes: str = "06,01,03,11,14"
     dark_kitchen_time_slots: str = "09:00-11:00,11:00-13:00,13:00-15:00,17:00-19:00,19:00-21:00"
     dark_kitchen_slot_capacity: int = 20
+
+    # Grocery-provider fulfillment (COM-401). The catalogue of grocery delivery providers, in the
+    # order they are offered, each with a per-environment ``enabled`` flag. Only enabled providers
+    # are surfaced by ``GET /fulfillment/grocery/providers`` and (from COM-403) fanned out to for
+    # search. FreshBasket is the one provider live in sandbox for M5; Walmart and Chedraui are
+    # defined but disabled until their ◇ adapters land (COM-405/406). Override the whole list per
+    # environment with a JSON array in ``COMMERCE_GROCERY_PROVIDERS``.
+    grocery_providers: tuple[GroceryProviderSetting, ...] = (
+        GroceryProviderSetting(
+            id="freshbasket",
+            name="FreshBasket",
+            enabled=True,
+            logo_url="https://cdn.nutriplan.mx/providers/freshbasket.png",
+            estimated_delivery="Same day, 1-2 h",
+        ),
+        GroceryProviderSetting(
+            id="walmart",
+            name="Walmart Súper",
+            enabled=False,
+            logo_url="https://cdn.nutriplan.mx/providers/walmart.png",
+            estimated_delivery="Same day, 2-4 h",
+        ),
+        GroceryProviderSetting(
+            id="chedraui",
+            name="Chedraui",
+            enabled=False,
+            logo_url="https://cdn.nutriplan.mx/providers/chedraui.png",
+            estimated_delivery="Next day",
+        ),
+    )
 
 
 settings = Settings()

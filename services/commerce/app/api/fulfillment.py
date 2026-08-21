@@ -1,4 +1,4 @@
-"""Fulfillment API router (COM-301 dark-kitchen availability)."""
+"""Fulfillment API router (COM-301 dark-kitchen availability, COM-401 grocery providers)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentPrincipal, DarkKitchenAvailabilityServiceDep
-from app.api.schemas import AvailabilityResponse
+from app.api.deps import (
+    CurrentPrincipal,
+    DarkKitchenAvailabilityServiceDep,
+    GroceryProvidersServiceDep,
+)
+from app.api.schemas import AvailabilityResponse, ProviderResponse
 from app.application.queries import DarkKitchenAvailabilityQuery
 
 router = APIRouter(tags=["Fulfillment"])
@@ -37,3 +41,22 @@ def get_dark_kitchen_availability(
         DarkKitchenAvailabilityQuery(zip_code=zip_code, delivery_date=delivery_date)
     )
     return AvailabilityResponse.from_domain(availability)
+
+
+@router.get(
+    "/fulfillment/grocery/providers",
+    response_model=list[ProviderResponse],
+    summary="List available grocery providers",
+)
+def list_grocery_providers(
+    principal: CurrentPrincipal,
+    service: GroceryProvidersServiceDep,
+) -> list[ProviderResponse]:
+    """List the grocery delivery providers enabled in this environment (COM-401).
+
+    Returns the configured providers that are enabled for the current environment, in configured
+    order; a disabled provider is omitted rather than returned with a flag. The listing is not
+    caller-specific, but a valid bearer token is still required (else ``401``).
+    """
+    providers = service.list_available()
+    return [ProviderResponse.from_domain(provider) for provider in providers]
