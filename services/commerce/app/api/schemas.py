@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.domain.address import Address
@@ -22,6 +23,7 @@ from app.domain.enums import (
 )
 from app.domain.fulfillment import DarkKitchenAvailability
 from app.domain.grocery import GroceryProvider
+from app.domain.grocery_catalog import GrocerySearchItem, GrocerySearchQuery
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -77,6 +79,42 @@ class CancelOrderRequest(_Camel):
     """
 
     refund_amount: float | None = None
+
+
+class GrocerySearchItemRequest(_Camel):
+    """One requested ingredient line in a grocery search (mirrors the contract's ``items[]``)."""
+
+    ingredient: str = Field(min_length=1)
+    quantity: float | None = None
+    unit: str | None = None
+
+
+class GrocerySearchRequest(_Camel):
+    """A product search across grocery providers (COM-403), mirroring ``GrocerySearchRequest``.
+
+    ``items`` must carry at least one ingredient and ``zipCode`` must be a 5-digit Mexican postal
+    code (else ``422``). ``providers`` optionally restricts the fan-out to specific provider ids;
+    omitted or empty means every enabled provider.
+    """
+
+    items: list[GrocerySearchItemRequest] = Field(min_length=1)
+    zip_code: str = Field(pattern=r"^\d{5}$")
+    providers: list[str] = Field(default_factory=list)
+
+    def to_query(self) -> GrocerySearchQuery:
+        """Project the request onto the provider-agnostic domain query (COM-402)."""
+        return GrocerySearchQuery(
+            zip_code=self.zip_code,
+            items=tuple(
+                GrocerySearchItem(
+                    ingredient=item.ingredient,
+                    quantity=Decimal(str(item.quantity)) if item.quantity is not None else None,
+                    unit=item.unit,
+                )
+                for item in self.items
+            ),
+            providers=tuple(self.providers),
+        )
 
 
 class MoneyResponse(_Camel):
