@@ -124,3 +124,16 @@ class PaymentMethodNotFoundError(DomainError):
     def __init__(self, method_id: object) -> None:
         super().__init__(f"payment method {method_id} not found")
         self.method_id = method_id
+
+
+class GroceryProviderUnavailableError(DomainError):
+    """A grocery provider could not be reached or returned an unusable response (COM-402).
+
+    The anti-corruption layer normalises every transport/upstream failure to this single domain
+    error, so nothing above :class:`~app.grocery.adapter.GroceryProviderAdapter` depends on a
+    provider's own exceptions; COM-407 layers per-provider circuit breakers and fallback over it.
+    """
+
+    def __init__(self, provider_id: object, message: str | None = None) -> None:
+        super().__init__(message or f"grocery provider {provider_id} is unavailable")
+        self.provider_id = provider_id
