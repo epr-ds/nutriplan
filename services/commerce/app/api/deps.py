@@ -24,6 +24,7 @@ from app.application.create_order import CreateOrderService
 from app.application.dark_kitchen_availability import CheckDarkKitchenAvailabilityService
 from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
+from app.application.list_grocery_providers import ListGroceryProvidersService
 from app.application.list_orders import ListOrdersService
 from app.application.payment_methods import PaymentMethodService
 from app.application.ports import (
@@ -42,6 +43,7 @@ from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.db.base import get_db
 from app.domain.enums import FulfillmentType
 from app.domain.fulfillment import DarkKitchenServiceArea
+from app.domain.grocery import GroceryProvider, GroceryProviderRegistry
 from app.domain.money import Money
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
 from app.domain.repositories import OrderRepository, PaymentMethodRepository
@@ -200,6 +202,30 @@ def get_dark_kitchen_service_area() -> DarkKitchenServiceArea:
     )
 
 
+@lru_cache(maxsize=1)
+def get_grocery_provider_registry() -> GroceryProviderRegistry:
+    """Build the (cached) grocery-provider registry from configured providers (COM-401)."""
+    return GroceryProviderRegistry(
+        providers=tuple(
+            GroceryProvider(
+                id=provider.id,
+                name=provider.name,
+                enabled=provider.enabled,
+                logo_url=provider.logo_url,
+                estimated_delivery=provider.estimated_delivery,
+            )
+            for provider in settings.grocery_providers
+        )
+    )
+
+
+def get_list_grocery_providers_service(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+) -> ListGroceryProvidersService:
+    """Build the use case that lists the environment's enabled grocery providers (COM-401)."""
+    return ListGroceryProvidersService(registry)
+
+
 def get_slot_reservation_store(db: DbSession) -> SlotReservationStore:
     """Provide the SQL-backed dark-kitchen slot reservation store, request-scoped (COM-304).
 
@@ -327,6 +353,9 @@ CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_s
 PaymentMethodServiceDep = Annotated[PaymentMethodService, Depends(get_payment_method_service)]
 DarkKitchenAvailabilityServiceDep = Annotated[
     CheckDarkKitchenAvailabilityService, Depends(get_check_dark_kitchen_availability_service)
+]
+GroceryProvidersServiceDep = Annotated[
+    ListGroceryProvidersService, Depends(get_list_grocery_providers_service)
 ]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)

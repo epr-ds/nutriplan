@@ -21,6 +21,7 @@ from app.domain.enums import (
     RefundStatus,
 )
 from app.domain.fulfillment import DarkKitchenAvailability
+from app.domain.grocery import GroceryProvider
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -116,6 +117,17 @@ class ProviderResponse(_Camel):
     type: ProviderType | None = None
     logo_url: str | None = None
     estimated_delivery: str | None = None
+
+    @classmethod
+    def from_domain(cls, provider: GroceryProvider) -> ProviderResponse:
+        """Project a configured grocery provider onto the wire shape (COM-401)."""
+        return cls(
+            id=provider.id,
+            name=provider.name,
+            type=provider.type,
+            logo_url=provider.logo_url,
+            estimated_delivery=provider.estimated_delivery,
+        )
 
 
 class AvailabilityResponse(_Camel):
