@@ -37,6 +37,7 @@ from app.application.process_kitchen_webhook import ProcessKitchenWebhookService
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
+from app.application.search_grocery_products import SearchGroceryProductsService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
@@ -49,6 +50,8 @@ from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPric
 from app.domain.repositories import OrderRepository, PaymentMethodRepository
 from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
+from app.grocery.adapter import GroceryProviderAdapter
+from app.grocery.factory import build_grocery_adapter
 from app.payments.factory import build_payment_provider
 from app.payments.provider import PaymentProvider
 from app.repositories.sql_idempotency_store import SqlIdempotencyStore
@@ -226,6 +229,25 @@ def get_list_grocery_providers_service(
     return ListGroceryProvidersService(registry)
 
 
+def get_grocery_adapters(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+) -> dict[str, GroceryProviderAdapter]:
+    """Build a provider-id -> adapter map for the enabled providers (COM-403).
+
+    Not cached: the adapters back the fan-out search and (in later stories) hold per-request state,
+    so each request gets a fresh set. A disabled provider is never queried, so it gets no adapter.
+    """
+    return {provider.id: build_grocery_adapter(provider.id) for provider in registry.available()}
+
+
+def get_search_grocery_products_service(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+) -> SearchGroceryProductsService:
+    """Build the cross-provider grocery search use case (COM-403)."""
+    return SearchGroceryProductsService(registry, adapters)
+
+
 def get_slot_reservation_store(db: DbSession) -> SlotReservationStore:
     """Provide the SQL-backed dark-kitchen slot reservation store, request-scoped (COM-304).
 
@@ -356,6 +378,9 @@ DarkKitchenAvailabilityServiceDep = Annotated[
 ]
 GroceryProvidersServiceDep = Annotated[
     ListGroceryProvidersService, Depends(get_list_grocery_providers_service)
+]
+GrocerySearchServiceDep = Annotated[
+    SearchGroceryProductsService, Depends(get_search_grocery_products_service)
 ]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
