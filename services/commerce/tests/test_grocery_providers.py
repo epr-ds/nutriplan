@@ -151,8 +151,8 @@ def test_api_rejects_unknown_token():
 
 def test_api_real_wiring_lists_only_enabled_default_providers():
     # No service override: exercises config -> deps -> domain for real. The default catalogue
-    # enables FreshBasket and Walmart (both live in sandbox) and dark-launches Chedraui (disabled),
-    # proving per-env gating.
+    # enables all three sandbox providers (FreshBasket, Walmart, Chedraui) for M5, in catalogue
+    # order.
     client = _build()
 
     response = client.get(_URL, headers=_auth())
@@ -160,8 +160,8 @@ def test_api_real_wiring_lists_only_enabled_default_providers():
     assert response.status_code == 200
     providers = response.json()
     ids = [p["id"] for p in providers]
-    assert ids == ["freshbasket", "walmart"]
+    assert ids == ["freshbasket", "walmart", "chedraui"]
     assert providers[0]["name"] == "FreshBasket"
     assert providers[0]["type"] == "grocery"
     assert providers[1]["name"] == "Walmart Súper"
-    assert "chedraui" not in ids
+    assert providers[2]["name"] == "Chedraui"

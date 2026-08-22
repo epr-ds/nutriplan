@@ -1,15 +1,16 @@
-"""Choose the adapter backing each grocery provider (COM-403, COM-404, COM-405).
+"""Choose the adapter backing each grocery provider (COM-403, COM-404, COM-405, COM-406).
 
 Central place that maps a provider id onto a concrete
 :class:`~app.grocery.adapter.GroceryProviderAdapter`, mirroring the payment-provider factory. The
 choice is invisible above the ACL.
 
-FreshBasket (COM-404) and Walmart (COM-405) are each backed by their real HTTP adapter when a
-sandbox API key is configured (``COMMERCE_FRESHBASKET_API_KEY`` / ``COMMERCE_WALMART_API_KEY``,
-injected from the vault in production per COM-905); with no key -- as in dev/CI -- the provider
-falls back to the in-process :class:`~app.grocery.fake.FakeGroceryProviderAdapter`, so grocery
-search fans out end to end without credentials. Chedraui stays on the fake until its adapter lands
-(COM-406), at which point this factory grows one more branch.
+FreshBasket (COM-404), Walmart (COM-405), and Chedraui (COM-406) are each backed by their real HTTP
+adapter when a sandbox API key is configured (``COMMERCE_FRESHBASKET_API_KEY`` /
+``COMMERCE_WALMART_API_KEY`` / ``COMMERCE_CHEDRAUI_API_KEY``, injected from the vault in production
+per COM-905); with no key -- as in dev/CI -- the provider falls back to the in-process
+:class:`~app.grocery.fake.FakeGroceryProviderAdapter`, so grocery search fans out end to end without
+credentials. Any provider without its own adapter stays on the fake until one lands, at which point
+this factory grows one more branch.
 """
 
 from __future__ import annotations
@@ -17,12 +18,14 @@ from __future__ import annotations
 from app.core.config import Settings
 from app.core.config import settings as default_settings
 from app.grocery.adapter import GroceryProviderAdapter
+from app.grocery.chedraui import ChedrauiGroceryAdapter
 from app.grocery.fake import FakeGroceryProviderAdapter
 from app.grocery.freshbasket import FreshBasketGroceryAdapter
 from app.grocery.walmart import WalmartGroceryAdapter
 
 _FRESHBASKET = "freshbasket"
 _WALMART = "walmart"
+_CHEDRAUI = "chedraui"
 
 
 def build_grocery_adapter(
@@ -45,6 +48,15 @@ def build_grocery_adapter(
             return WalmartGroceryAdapter(
                 api_key=api_key,
                 base_url=settings.walmart_base_url,
+                provider_id=provider_id,
+                timeout=settings.http_timeout_seconds,
+            )
+    elif provider_id == _CHEDRAUI:
+        api_key = settings.chedraui_api_key.get_secret_value()
+        if api_key:
+            return ChedrauiGroceryAdapter(
+                api_key=api_key,
+                base_url=settings.chedraui_base_url,
                 provider_id=provider_id,
                 timeout=settings.http_timeout_seconds,
             )

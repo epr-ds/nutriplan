@@ -222,12 +222,13 @@ def test_api_rejects_a_non_five_digit_zip_code():
 
 def test_api_real_wiring_searches_default_provider():
     # No service override: exercises config -> registry -> adapters -> service for real. The
-    # default catalogue enables FreshBasket and Walmart; both run on the fake adapter in CI (no
-    # sandbox key), whose catalogue carries milk, so both fulfil the search.
+    # default catalogue enables all three sandbox providers (FreshBasket, Walmart, Chedraui); each
+    # runs on the fake adapter in CI (no sandbox key), whose catalogue carries milk, so all fulfil
+    # the search.
     client = _build()
 
     response = client.post(_URL, json=_body("milk"), headers=_auth())
 
     assert response.status_code == 200
     body = response.json()
-    assert [p["id"] for p in body] == ["freshbasket", "walmart"]
+    assert [p["id"] for p in body] == ["freshbasket", "walmart", "chedraui"]
