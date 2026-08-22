@@ -101,9 +101,9 @@ class Settings(BaseSettings):
     # Grocery-provider fulfillment (COM-401). The catalogue of grocery delivery providers, in the
     # order they are offered, each with a per-environment ``enabled`` flag. Only enabled providers
     # are surfaced by ``GET /fulfillment/grocery/providers`` and (from COM-403) fanned out to for
-    # search. FreshBasket (COM-404) and Walmart (COM-405) are live in sandbox for M5; Chedraui is
-    # defined but disabled until its ◇ adapter lands (COM-406). Override the whole list per
-    # environment with a JSON array in ``COMMERCE_GROCERY_PROVIDERS``.
+    # search. FreshBasket (COM-404), Walmart (COM-405), and Chedraui (COM-406) are all live in
+    # sandbox for M5. Override the whole list per environment with a JSON array in
+    # ``COMMERCE_GROCERY_PROVIDERS``.
     grocery_providers: tuple[GroceryProviderSetting, ...] = (
         GroceryProviderSetting(
             id="freshbasket",
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
         GroceryProviderSetting(
             id="chedraui",
             name="Chedraui",
-            enabled=False,
+            enabled=True,
             logo_url="https://cdn.nutriplan.mx/providers/chedraui.png",
             estimated_delivery="Next day",
         ),
@@ -145,6 +145,15 @@ class Settings(BaseSettings):
     # HTTP timeout reuses ``http_timeout_seconds``.
     walmart_base_url: str = "https://sandbox.walmart.com.mx/api/v3"
     walmart_api_key: SecretStr = SecretStr("")
+
+    # Chedraui grocery adapter (COM-406) -- the third grocery provider live in sandbox, a
+    # fast-follow completing the M5 provider set. Same credential seam as the others: the adapter
+    # talks to Chedraui's REST API at COMMERCE_CHEDRAUI_BASE_URL with a sandbox API key injected
+    # from the vault in production; the key is a SecretStr so it is masked in logs and reprs. Leave
+    # COMMERCE_CHEDRAUI_API_KEY blank (dev/CI) and the factory falls back to the in-process fake.
+    # The HTTP timeout reuses ``http_timeout_seconds``.
+    chedraui_base_url: str = "https://sandbox.chedraui.com.mx/api/v2"
+    chedraui_api_key: SecretStr = SecretStr("")
 
 
 settings = Settings()
