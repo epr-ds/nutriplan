@@ -101,8 +101,8 @@ class Settings(BaseSettings):
     # Grocery-provider fulfillment (COM-401). The catalogue of grocery delivery providers, in the
     # order they are offered, each with a per-environment ``enabled`` flag. Only enabled providers
     # are surfaced by ``GET /fulfillment/grocery/providers`` and (from COM-403) fanned out to for
-    # search. FreshBasket is the one provider live in sandbox for M5; Walmart and Chedraui are
-    # defined but disabled until their ◇ adapters land (COM-405/406). Override the whole list per
+    # search. FreshBasket (COM-404) and Walmart (COM-405) are live in sandbox for M5; Chedraui is
+    # defined but disabled until its ◇ adapter lands (COM-406). Override the whole list per
     # environment with a JSON array in ``COMMERCE_GROCERY_PROVIDERS``.
     grocery_providers: tuple[GroceryProviderSetting, ...] = (
         GroceryProviderSetting(
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
         GroceryProviderSetting(
             id="walmart",
             name="Walmart Súper",
-            enabled=False,
+            enabled=True,
             logo_url="https://cdn.nutriplan.mx/providers/walmart.png",
             estimated_delivery="Same day, 2-4 h",
         ),
@@ -128,14 +128,23 @@ class Settings(BaseSettings):
         ),
     )
 
-    # FreshBasket grocery adapter (COM-404) -- the one grocery provider live in sandbox for M5. Its
-    # adapter talks to FreshBasket's REST API at COMMERCE_FRESHBASKET_BASE_URL with a sandbox API
+    # FreshBasket grocery adapter (COM-404) -- the first grocery provider live in sandbox for M5.
+    # Its adapter talks to FreshBasket's REST API at COMMERCE_FRESHBASKET_BASE_URL with a sandbox
     # key injected from the vault in production (COM-905); the key is a SecretStr so it is masked in
     # logs and reprs and never printed. Leave COMMERCE_FRESHBASKET_API_KEY blank (dev/CI) and the
     # factory falls back to the in-process fake, so grocery search still works end to end without
     # credentials. The HTTP timeout reuses ``http_timeout_seconds``.
     freshbasket_base_url: str = "https://sandbox.freshbasket.mx/api/v1"
     freshbasket_api_key: SecretStr = SecretStr("")
+
+    # Walmart grocery adapter (COM-405) -- the second grocery provider live in sandbox, a
+    # fast-follow behind FreshBasket. Same credential seam as FreshBasket: the adapter talks to
+    # Walmart's REST API at COMMERCE_WALMART_BASE_URL with a sandbox API key injected from the vault
+    # in production; the key is a SecretStr so it is masked in logs and reprs. Leave
+    # COMMERCE_WALMART_API_KEY blank (dev/CI) and the factory falls back to the in-process fake. The
+    # HTTP timeout reuses ``http_timeout_seconds``.
+    walmart_base_url: str = "https://sandbox.walmart.com.mx/api/v3"
+    walmart_api_key: SecretStr = SecretStr("")
 
 
 settings = Settings()
