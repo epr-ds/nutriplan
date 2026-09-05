@@ -151,6 +151,37 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /orders/{orderId}/grocery/sync:
+    post:
+      tags: [Orders]
+      operationId: syncGroceryOrder
+      summary: Sync an order's grocery provider status
+      description: >-
+        Refreshes the caller's grocery order from the provider it was placed with (COM-408). Grocery
+        providers do not call back, so fulfilment progress is pulled: the provider is polled through
+        the anti-corruption layer and the canonical status it reports is applied to the order's
+        lifecycle. Repeating the call is safe -- an unchanged or stale status leaves the order as it
+        is. An order that was never placed with a provider yields `409`.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order status synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
   /webhooks/payments:
     post:
       tags: [Webhooks]
@@ -406,6 +437,14 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: >-
+        A downstream provider could not be reached or returned an unusable response. The request
+        itself was valid, so retrying later is appropriate.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
 
   parameters:
     OrderId:
@@ -539,6 +578,8 @@ components:
           $ref: '#/components/schemas/ApprovalResponse'
         refund:
           $ref: '#/components/schemas/RefundResponse'
+        groceryOrder:
+          $ref: '#/components/schemas/GroceryOrderResponse'
 
     VoucherResponse:
       type: object
@@ -617,6 +658,32 @@ components:
           $ref: '#/components/schemas/MoneyResponse'
         provider:
           type: string
+
+    GroceryOrderResponse:
+      type: object
+      description: >
+        The order placed with a grocery provider on the user's behalf (COM-408). Present on an order
+        only once it has actually been placed. `externalOrderId` is the provider's own order
+        reference and `status` is the last fulfilment status it reported, mapped onto our canonical
+        vocabulary by the anti-corruption layer -- a raw provider status is never returned.
+      properties:
+        providerId:
+          type: string
+        externalOrderId:
+          type: string
+        status:
+          type: string
+          enum:
+            [
+              pending,
+              confirmed,
+              preparing,
+              out_for_delivery,
+              delivered,
+              cancelled,
+              failed,
+              unknown,
+            ]
 
     SavePaymentMethodRequest:
       type: object

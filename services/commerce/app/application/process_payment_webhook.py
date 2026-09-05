@@ -13,6 +13,7 @@ no-op that records (and publishes) nothing.
 
 from __future__ import annotations
 
+from app.application.place_grocery_order import GroceryOrderPlacer
 from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.application.webhook_references import reference_to_order_id
@@ -38,12 +39,14 @@ class ProcessPaymentWebhookService:
         publisher: EventPublisher,
         kitchen_router: KitchenRouter | None = None,
         slot_reservations: ReserveDeliverySlotService | None = None,
+        grocery_placer: GroceryOrderPlacer | None = None,
     ) -> None:
         self._orders = orders
         self._payments = payments
         self._publisher = publisher
         self._kitchen_router = kitchen_router
         self._slot_reservations = slot_reservations
+        self._grocery_placer = grocery_placer
 
     def process(self, *, payload: bytes, signature: str) -> Order:
         # Verify + parse first: an untrusted or malformed event raises WebhookVerificationError
@@ -71,4 +74,11 @@ class ProcessPaymentWebhookService:
         # redelivery skips it).
         if self._kitchen_router is not None:
             self._kitchen_router.route(order)
+        # Place a now-confirmed grocery order with its provider (COM-408). Best-effort and a no-op
+        # unless this webhook actually confirmed a grocery order; already-placed orders are skipped,
+        # so a redelivered confirmation never orders the groceries twice.
+        if self._grocery_placer is not None:
+            placed = self._grocery_placer.place(order)
+            if placed is not None:
+                persisted = placed
         return persisted

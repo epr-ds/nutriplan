@@ -23,7 +23,7 @@ from app.domain.enums import (
 )
 from app.domain.fulfillment import DarkKitchenAvailability
 from app.domain.grocery import GroceryProvider
-from app.domain.grocery_catalog import GrocerySearchItem, GrocerySearchQuery
+from app.domain.grocery_catalog import GroceryOrderStatus, GrocerySearchItem, GrocerySearchQuery
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -231,6 +231,19 @@ class RefundResponse(_Camel):
     provider: str | None = None
 
 
+class GroceryOrderResponse(_Camel):
+    """The order placed with a grocery provider on the user's behalf (COM-408).
+
+    Present only once the order has actually been placed. ``externalOrderId`` is the provider's own
+    order reference and ``status`` is the last canonical fulfilment status it reported, mapped onto
+    our vocabulary by the anti-corruption layer -- a raw provider status never reaches the wire.
+    """
+
+    provider_id: str
+    external_order_id: str
+    status: GroceryOrderStatus
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -246,6 +259,7 @@ class OrderResponse(_Camel):
     transfer: TransferResponse | None = None
     approval: ApprovalResponse | None = None
     refund: RefundResponse | None = None
+    grocery_order: GroceryOrderResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
@@ -285,6 +299,13 @@ class OrderResponse(_Camel):
                 amount=MoneyResponse.from_money(order.refunded_amount),
                 provider=order.payment_provider,
             )
+        grocery_order = None
+        if order.grocery_external_order_id is not None:
+            grocery_order = GroceryOrderResponse(
+                provider_id=order.provider_id,
+                external_order_id=order.grocery_external_order_id,
+                status=order.grocery_status or GroceryOrderStatus.UNKNOWN,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -300,6 +321,7 @@ class OrderResponse(_Camel):
             transfer=transfer,
             approval=approval,
             refund=refund,
+            grocery_order=grocery_order,
         )
 
 

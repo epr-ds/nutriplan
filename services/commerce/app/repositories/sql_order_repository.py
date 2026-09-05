@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.db.models import AddressModel, OrderItemModel, OrderModel, OrderStatusHistoryModel
 from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus, RefundStatus
+from app.domain.grocery_catalog import GroceryOrderStatus
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem, OrderStatusChange
 from app.domain.payment import PaymentStatus
@@ -54,7 +55,8 @@ class SqlOrderRepository:
         rows already stored and insert only the new tail (keyed by ``position``). The payment
         outcome fields are re-synced too so an async settlement webhook (COM-206) that flips
         ``payment_status`` to succeeded/failed (and records a ``charge_id``) is durable, as is a
-        refund captured when the order is cancelled (COM-208).
+        refund captured when the order is cancelled (COM-208), and the grocery provider's own order
+        reference and last reported status (COM-408).
         Owner-scoping is the loader's job — callers reach this only after an owner-scoped
         :meth:`get` (or the signature-scoped :meth:`get_by_id`).
         """
@@ -68,6 +70,8 @@ class SqlOrderRepository:
         model.payment_refund_id = order.payment_refund_id
         model.refund_status = order.refund_status.value if order.refund_status else None
         model.refunded_amount = order.refunded_amount.amount if order.refunded_amount else None
+        model.grocery_external_order_id = order.grocery_external_order_id
+        model.grocery_status = order.grocery_status.value if order.grocery_status else None
         stored = len(model.status_history)
         for position in range(stored, len(order.status_history)):
             change = order.status_history[position]
@@ -150,6 +154,8 @@ class SqlOrderRepository:
             payment_refund_id=order.payment_refund_id,
             refund_status=order.refund_status.value if order.refund_status else None,
             refunded_amount=order.refunded_amount.amount if order.refunded_amount else None,
+            grocery_external_order_id=order.grocery_external_order_id,
+            grocery_status=order.grocery_status.value if order.grocery_status else None,
             items=[
                 OrderItemModel(
                     id=item.id,
@@ -238,6 +244,10 @@ class SqlOrderRepository:
                 Money(model.refunded_amount, currency)
                 if model.refunded_amount is not None
                 else None
+            ),
+            grocery_external_order_id=model.grocery_external_order_id,
+            grocery_status=(
+                GroceryOrderStatus(model.grocery_status) if model.grocery_status else None
             ),
             items=items,
             status_history=status_history,

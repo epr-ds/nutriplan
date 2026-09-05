@@ -132,8 +132,25 @@ class GroceryProviderUnavailableError(DomainError):
     The anti-corruption layer normalises every transport/upstream failure to this single domain
     error, so nothing above :class:`~app.grocery.adapter.GroceryProviderAdapter` depends on a
     provider's own exceptions; COM-407 layers per-provider circuit breakers and fallback over it.
+
+    Maps to ``503 Service Unavailable`` when it reaches a route (COM-408): the request was perfectly
+    valid, the provider simply cannot answer right now, so retrying later is the right move. The
+    cross-provider search never surfaces it -- the fan-out skips the failing provider instead.
     """
 
     def __init__(self, provider_id: object, message: str | None = None) -> None:
         super().__init__(message or f"grocery provider {provider_id} is unavailable")
         self.provider_id = provider_id
+
+
+class GroceryOrderNotPlacedError(DomainError):
+    """A grocery status sync was asked for on an order that has no provider placement (COM-408).
+
+    Maps to ``409 Conflict``: the order exists and belongs to the caller, but there is nothing to
+    sync -- it is not a grocery order, or the provider has not accepted it yet, so no provider order
+    reference exists to poll.
+    """
+
+    def __init__(self, order_id: object) -> None:
+        super().__init__(f"order {order_id} has not been placed with a grocery provider")
+        self.order_id = order_id

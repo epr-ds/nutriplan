@@ -1,4 +1,4 @@
-"""Orders API router (COM-102 create, COM-104 list, COM-105 get, COM-107 cancel)."""
+"""Orders API router (COM-102 create, COM-104 list, COM-105 get, COM-107 cancel, COM-408 sync)."""
 
 from __future__ import annotations
 
@@ -16,10 +16,11 @@ from app.api.deps import (
     CurrentPrincipal,
     GetOrderServiceDep,
     ListOrdersServiceDep,
+    SyncGroceryOrderServiceDep,
 )
 from app.api.schemas import CancelOrderRequest, CreateOrderRequest, OrderResponse
 from app.application.commands import CancelOrderCommand, CreateOrderCommand
-from app.application.queries import GetOrderQuery, ListOrdersQuery
+from app.application.queries import GetOrderQuery, ListOrdersQuery, SyncGroceryOrderQuery
 from app.domain.enums import OrderStatus
 
 router = APIRouter(tags=["Orders"])
@@ -161,4 +162,28 @@ def cancel_order(
         refund_amount=refund_amount,
     )
     order = service.cancel(command)
+    return OrderResponse.from_order(order)
+
+
+@router.post(
+    "/orders/{order_id}/grocery/sync",
+    response_model=OrderResponse,
+    summary="Sync an order's grocery provider status",
+)
+def sync_grocery_order(
+    order_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    service: SyncGroceryOrderServiceDep,
+) -> OrderResponse:
+    """Refresh the caller's grocery order from its provider (COM-408).
+
+    Grocery providers do not call us back, so fulfilment progress is pulled: the provider is polled
+    through the anti-corruption layer and the canonical status it reports is applied to the order's
+    lifecycle, recording every intervening transition. Owner-scoped: an unknown id and another
+    user's order both yield ``404`` (no enumeration). An order that was never placed with a provider
+    yields ``409``, and a provider that cannot answer right now yields ``503``. On success the
+    updated order is returned with ``200``, carrying its ``groceryOrder`` block.
+    """
+    query = SyncGroceryOrderQuery(user_id=_principal_user_id(principal), order_id=order_id)
+    order = service.sync(query)
     return OrderResponse.from_order(order)

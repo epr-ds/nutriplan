@@ -53,6 +53,18 @@ class ListPaymentMethodsQuery:
 
 
 @dataclass(frozen=True)
+class SyncGroceryOrderQuery:
+    """A caller-scoped request to refresh an order's status from its grocery provider (COM-408).
+
+    ``user_id`` is the authenticated caller; the order is only synced when it belongs to them, so
+    an unknown id and another user's id are indistinguishable (no enumeration).
+    """
+
+    user_id: uuid.UUID
+    order_id: uuid.UUID
+
+
+@dataclass(frozen=True)
 class DarkKitchenAvailabilityQuery:
     """A request to check whether a dark kitchen serves a delivery area (COM-301).
 
