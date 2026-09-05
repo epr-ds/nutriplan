@@ -8,8 +8,11 @@ this area", so a provider that returns no matching product is dropped from the r
 
 The fan-out is resilient: a provider that raises
 :class:`~app.domain.errors.GroceryProviderUnavailableError` is skipped rather than failing the whole
-search (a single flaky provider must not sink the others). COM-407 layers per-provider circuit
-breakers, timeouts, and fallback over this same seam.
+search (a single flaky provider must not sink the others). COM-407 layers per-provider timeouts and
+circuit breakers over this same seam: each adapter is wrapped in
+:class:`~app.grocery.resilient.CircuitBreakingGroceryAdapter`, so a provider whose circuit is open
+raises that same error immediately -- without a network call -- and is skipped here, which is the
+fallback.
 
 Ordering and enablement come from the :class:`~app.domain.grocery.GroceryProviderRegistry`
 (COM-401), so results follow the configured provider order and a disabled provider is never queried.

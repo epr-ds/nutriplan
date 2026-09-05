@@ -51,7 +51,13 @@ from app.domain.repositories import OrderRepository, PaymentMethodRepository
 from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
 from app.grocery.adapter import GroceryProviderAdapter
+from app.grocery.circuit_breaker import (
+    BreakerPolicy,
+    CircuitBreakerRegistry,
+    LoggingBreakerTelemetry,
+)
 from app.grocery.factory import build_grocery_adapter
+from app.grocery.resilient import CircuitBreakingGroceryAdapter
 from app.payments.factory import build_payment_provider
 from app.payments.provider import PaymentProvider
 from app.repositories.sql_idempotency_store import SqlIdempotencyStore
@@ -229,15 +235,41 @@ def get_list_grocery_providers_service(
     return ListGroceryProvidersService(registry)
 
 
+@lru_cache(maxsize=1)
+def get_grocery_breakers() -> CircuitBreakerRegistry:
+    """Build the (cached) per-provider circuit-breaker registry (COM-407).
+
+    Deliberately cached for the life of the process: the adapters below are rebuilt per request, so
+    the breakers must outlive them -- a failure streak that reset on every call could never reach
+    the threshold and the circuit would never open. Transitions are logged as they happen and the
+    registry's snapshot is surfaced by the readiness probe.
+    """
+    return CircuitBreakerRegistry(
+        policy=BreakerPolicy(
+            failure_threshold=settings.grocery_breaker_failure_threshold,
+            reset_timeout_seconds=settings.grocery_breaker_reset_seconds,
+        ),
+        telemetry=LoggingBreakerTelemetry(),
+    )
+
+
 def get_grocery_adapters(
     registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+    breakers: Annotated[CircuitBreakerRegistry, Depends(get_grocery_breakers)],
 ) -> dict[str, GroceryProviderAdapter]:
-    """Build a provider-id -> adapter map for the enabled providers (COM-403).
+    """Build a provider-id -> adapter map for the enabled providers (COM-403, COM-407).
 
     Not cached: the adapters back the fan-out search and (in later stories) hold per-request state,
     so each request gets a fresh set. A disabled provider is never queried, so it gets no adapter.
+    Each adapter is wrapped in its provider's circuit breaker, which comes from the cached registry
+    and therefore remembers that provider's health across requests.
     """
-    return {provider.id: build_grocery_adapter(provider.id) for provider in registry.available()}
+    return {
+        provider.id: CircuitBreakingGroceryAdapter(
+            build_grocery_adapter(provider.id), breakers.for_provider(provider.id)
+        )
+        for provider in registry.available()
+    }
 
 
 def get_search_grocery_products_service(
@@ -382,6 +414,7 @@ GroceryProvidersServiceDep = Annotated[
 GrocerySearchServiceDep = Annotated[
     SearchGroceryProductsService, Depends(get_search_grocery_products_service)
 ]
+GroceryBreakersDep = Annotated[CircuitBreakerRegistry, Depends(get_grocery_breakers)]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
 ]
