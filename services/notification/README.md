@@ -14,8 +14,9 @@ Phase 5 in progress. **NTF-101** delivered the scaffold: the `NOTIFICATION_`-pre
 configuration surface for all three dependencies (Redis, the message bus, the push
 providers), an environment-aware readiness evaluation, and `/health` + `/health/ready`.
 **NTF-102** added the notification model and its Redis-backed store, so notifications now
-persist and can be listed per user. Nothing is *delivered* yet -- the bus consumer arrives
-in NTF-201/202, push delivery in NTF-301, and the in-app feed API in NTF-105.
+persist and can be listed per user. **NTF-103** made writing one idempotent, so a redelivered
+event cannot notify a user twice. Nothing is *delivered* yet -- the bus consumer arrives in
+NTF-201/202, push delivery in NTF-301, and the in-app feed API in NTF-105.
 
 ## Layout
 
@@ -23,13 +24,18 @@ in NTF-201/202, push delivery in NTF-301, and the in-app feed API in NTF-105.
 app/
   domain/enums.py       # notification type, channel, delivery status
   domain/notification.py# the immutable Notification record
-  domain/repositories.py# the persistence port
+  domain/dedupe.py      # the deterministic (event, user, type) key
+  domain/repositories.py# the persistence and deduplication ports
+  application/notification_recorder.py  # the idempotent write path
   adapters/codec.py     # JSON record <-> Notification
   adapters/keys.py      # the Redis key scheme
   adapters/retention.py # the age + length window both stores enforce
+  adapters/idempotency.py  # the replay window + provisional claim length
   adapters/redis_notification_repository.py
   adapters/in_memory_notification_repository.py
-  adapters/factory.py   # picks the store from configuration
+  adapters/redis_deduplication_store.py
+  adapters/in_memory_deduplication_store.py
+  adapters/factory.py   # picks the stores from configuration
   core/config.py        # NOTIFICATION_-prefixed settings (Redis, bus, push providers)
   core/readiness.py     # pure, environment-aware readiness evaluation
   core/probes.py        # the only place that opens a real connection
@@ -76,6 +82,49 @@ leave it blank and an in-process store stands in, which is correct for dev, CI, 
 container -- and is exactly the condition `/health/ready` warns about outside production and
 fails on inside it.
 
+## Idempotent delivery
+
+A message bus redelivers. Redis Streams re-serve a pending entry whenever a consumer dies
+mid-batch, a deploy restarts a pod, or NTF-204 replays a dead-letter, so "one event, one
+notification" is not something the bus can promise. `NotificationRecorder` is the write path
+consumers use, and it establishes that property here:
+
+```python
+result = recorder.record(notification, event_id=message_id)
+if result.duplicate:
+    ...  # already handled; result.notification is the original
+```
+
+Identity is the triple **(event, user, type)** -- not the event alone, because one order
+event legitimately raises a delivery notice *and* a prompt to rate the order, and reaches
+every user party to the order. The key is a SHA-256 digest over the length-prefixed triple.
+Length-prefixing makes it injective: plain concatenation would let `("order:1", "u")` and
+`("order", "1:u")` collide, so one event would permanently suppress an unrelated one. And
+the digest is SHA-256 rather than Python's `hash()`, which is randomized per process by
+`PYTHONHASHSEED` -- a key built on it would agree with itself in one worker and disagree with
+every other replica, which is exactly the bug you cannot reproduce locally.
+
+Claiming is **two-phase**, and the reason is the difference between the two ways this can go
+wrong:
+
+1. `claim` takes the key under a short provisional lease (`NOTIFICATION_DEDUPE_CLAIM_SECONDS`),
+2. the notification is written,
+3. `confirm` extends the lease to the full replay window (`NOTIFICATION_DEDUPE_TTL_SECONDS`).
+
+Claiming *before* the write is what prevents the duplicate. The short first lease is what
+stops that choice from converting a crash into a permanently swallowed notification: a worker
+killed between steps 1 and 2 never confirms, the lease lapses on its own, and the redelivered
+event gets through. A write that *raises* -- the common case, a store outage -- releases the
+claim immediately, so the retry does not even wait for the lease. Releasing is a
+compare-and-delete (a Lua script, the same ownership guard Redlock uses), because under a
+lapsed lease another delivery may already hold the key and an unguarded `DEL` would free
+*its* claim and let a third delivery through.
+
+The replay window is deliberately much shorter than the feed's retention. If it were longer,
+a replay could be suppressed on behalf of an original that had already aged out, and the user
+would see neither. Setting `NOTIFICATION_DEDUPE_TTL_SECONDS=0` turns deduplication off, which
+is only sensible when deliberately replaying a fixture stream.
+
 ## Dependencies and readiness
 
 Liveness (`/health`) answers "is the process up?"; readiness (`/health/ready`) answers "can
@@ -117,7 +166,11 @@ The store contract suite is parametrized over **both** adapters, so every test i
 expectation the in-memory and Redis stores must both satisfy. An in-memory stand-in checked
 only against itself proves nothing about production; this is what keeps the two from
 drifting -- it is how we caught the Redis adapter leasing records from write time instead of
-from creation time.
+from creation time. The deduplication store and the recorder are held to the same standard.
+
+The dedupe expiry tests really sleep for a second rather than injecting a clock. Injecting
+one would be faster but would only prove the in-memory adapter's arithmetic; Redis expires
+keys on its own clock, and whether the two agree is the entire question.
 
 `NOTIFICATION_TEST_REDIS_URL` is deliberately a different variable from
 `NOTIFICATION_REDIS_URL`: it points the store and probe suites at a live server without

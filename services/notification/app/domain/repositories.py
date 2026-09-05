@@ -19,6 +19,7 @@ from __future__ import annotations
 import uuid
 from typing import Protocol, runtime_checkable
 
+from app.domain.dedupe import Claim, DedupeKey
 from app.domain.notification import Notification
 
 
@@ -29,8 +30,12 @@ class NotificationRepository(Protocol):
     def add(self, notification: Notification) -> Notification:
         """Persist a notification and index it on its user's feed.
 
-        Re-adding the same id overwrites the record; the deterministic dedupe that makes a
-        replayed event a no-op is NTF-103's job, one layer above this port.
+        Re-adding the same id overwrites the record. Deciding whether a notification should
+        be written *at all* -- so that a replayed event is a no-op -- belongs one layer
+        above this port, in :class:`~app.application.notification_recorder.NotificationRecorder`
+        (NTF-103); a store that deduped on its own would have to guess what "the same
+        notification" means and would be unable to tell a replay from a legitimate second
+        notification of the same type.
         """
         ...
 
@@ -66,4 +71,54 @@ class NotificationRepository(Protocol):
 
     def count_unread(self, user_id: uuid.UUID) -> int:
         """Return how many unread notifications the user has inside the retention window."""
+        ...
+
+
+@runtime_checkable
+class DeduplicationStore(Protocol):
+    """The idempotency port: who owns a given ``(event, user, type)`` key right now (AC2).
+
+    Claiming is **two-phase**, and the reason is worth stating because a single-phase claim
+    looks simpler and is subtly wrong. If a worker claimed a key for the full idempotency
+    window and was then hard-killed before writing the notification, the key would sit there
+    unowned-but-taken for the whole window; the consumer group would redeliver the event
+    within seconds, find the key claimed, treat it as a duplicate, and drop the notification
+    permanently. So :meth:`claim` takes the key only for a short provisional lease, and
+    :meth:`confirm` extends it to the full window once the notification is safely stored. A
+    crash between the two lets the lease lapse on its own and the redelivery succeeds, while
+    a genuine duplicate arriving in that gap is still refused.
+
+    Implementations must make :meth:`claim` **atomic** -- a check followed by a separate
+    write would let two consumers processing the same redelivered event both win.
+    """
+
+    def claim(self, key: DedupeKey | str, holder: str) -> Claim:
+        """Take the key for ``holder`` under a short provisional lease.
+
+        Returns an acquired claim naming ``holder`` when the key was free, otherwise a
+        refused claim naming whoever holds it, so the caller can resolve the original
+        notification rather than merely learning that one exists.
+        """
+        ...
+
+    def confirm(self, key: DedupeKey | str, holder: str) -> bool:
+        """Extend ``holder``'s provisional lease to the full idempotency window.
+
+        Returns ``False`` when ``holder`` no longer owns the key -- its lease lapsed and
+        someone else took over -- which the caller should treat as "another delivery is
+        authoritative", not as an error.
+        """
+        ...
+
+    def release(self, key: DedupeKey | str, holder: str) -> bool:
+        """Give the key up, but only if ``holder`` still owns it.
+
+        The ownership check is not defensive noise: if a lease lapsed and a redelivery
+        re-claimed the key, an unguarded delete here would free *that* claim and let a third
+        delivery through -- the exact duplicate this store exists to prevent.
+        """
+        ...
+
+    def holder_of(self, key: DedupeKey | str) -> str | None:
+        """Return the current holder of ``key``, or ``None`` if it is unclaimed."""
         ...

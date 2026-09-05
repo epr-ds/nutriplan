@@ -8,17 +8,26 @@ production and a hard failure inside it (NTF-101), so the two decisions stay con
 
 The retention policy is built from settings here as well, so both adapters are constructed
 with the same window and neither can quietly disagree with the other.
+
+The same applies to the deduplication store (NTF-103): it follows ``NOTIFICATION_REDIS_URL``
+onto the same backend as the notification store, because a dedupe claim that lives somewhere
+the notifications do not is worse than no dedupe at all -- it would suppress replays on
+behalf of records another process cannot see.
 """
 
 from __future__ import annotations
 
+from app.adapters.idempotency import IdempotencyWindow
+from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.keys import NotificationKeys
+from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.retention import RetentionPolicy
+from app.application.notification_recorder import NotificationRecorder
 from app.core.config import Settings
 from app.core.config import settings as default_settings
-from app.domain.repositories import NotificationRepository
+from app.domain.repositories import DeduplicationStore, NotificationRepository
 
 
 def build_retention_policy(settings: Settings | None = None) -> RetentionPolicy:
@@ -27,6 +36,15 @@ def build_retention_policy(settings: Settings | None = None) -> RetentionPolicy:
     return RetentionPolicy(
         ttl_seconds=settings.feed_ttl_seconds,
         max_entries=settings.feed_max_entries,
+    )
+
+
+def build_idempotency_window(settings: Settings | None = None) -> IdempotencyWindow:
+    """Return the configured replay window and provisional claim length."""
+    settings = settings or default_settings
+    return IdempotencyWindow(
+        ttl_seconds=settings.dedupe_ttl_seconds,
+        provisional_seconds=settings.dedupe_claim_seconds,
     )
 
 
@@ -42,3 +60,26 @@ def build_notification_repository(settings: Settings | None = None) -> Notificat
             policy=policy,
         )
     return InMemoryNotificationRepository(policy=policy)
+
+
+def build_deduplication_store(settings: Settings | None = None) -> DeduplicationStore:
+    """Return a Redis-backed dedupe store when a URL is configured, else an in-process one."""
+    settings = settings or default_settings
+    window = build_idempotency_window(settings)
+    url = settings.redis_url.strip()
+    if url:
+        return RedisDeduplicationStore.from_url(
+            url,
+            keys=NotificationKeys(namespace=settings.redis_namespace),
+            window=window,
+        )
+    return InMemoryDeduplicationStore(window=window)
+
+
+def build_notification_recorder(settings: Settings | None = None) -> NotificationRecorder:
+    """Return the idempotent write path event consumers should use (NTF-201/202)."""
+    settings = settings or default_settings
+    return NotificationRecorder(
+        build_notification_repository(settings),
+        build_deduplication_store(settings),
+    )

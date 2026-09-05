@@ -30,6 +30,19 @@ class Settings(BaseSettings):
     feed_ttl_seconds: int = 2_592_000
     feed_max_entries: int = 500
 
+    # Idempotency (NTF-103). A bus redelivers, so "one event, one notification" is enforced
+    # here rather than assumed: a handled (event, user, type) triple is remembered for
+    # ``dedupe_ttl_seconds``, which must comfortably exceed the bus's realistic redelivery
+    # horizon (retries, a pod restart, an NTF-204 dead-letter replay) while staying well
+    # under ``feed_ttl_seconds`` -- suppressing a replay on behalf of an original that has
+    # already aged out of the feed would leave the user with neither. ``dedupe_claim_seconds``
+    # is the short lease held *before* the notification is written; it bounds how long a
+    # hard-killed worker can suppress a notification it never actually delivered. Set
+    # ``NOTIFICATION_DEDUPE_TTL_SECONDS=0`` to turn deduplication off, which is only sensible
+    # when deliberately replaying a fixture stream.
+    dedupe_ttl_seconds: int = 86_400
+    dedupe_claim_seconds: int = 60
+
     # Message bus (NTF-201, NTF-202). Commerce appends order lifecycle events to a Redis stream
     # (COM-109); this service consumes that stream as a named consumer group, so competing
     # replicas each get a disjoint slice and no event is delivered twice. The stream name must

@@ -26,6 +26,8 @@ def test_redis_group_is_env_driven(monkeypatch) -> None:
     monkeypatch.setenv("NOTIFICATION_REDIS_NAMESPACE", "ntf-stage")
     monkeypatch.setenv("NOTIFICATION_FEED_TTL_SECONDS", "604800")
     monkeypatch.setenv("NOTIFICATION_FEED_MAX_ENTRIES", "250")
+    monkeypatch.setenv("NOTIFICATION_DEDUPE_TTL_SECONDS", "7200")
+    monkeypatch.setenv("NOTIFICATION_DEDUPE_CLAIM_SECONDS", "15")
 
     settings = Settings()
 
@@ -33,7 +35,21 @@ def test_redis_group_is_env_driven(monkeypatch) -> None:
     assert settings.redis_namespace == "ntf-stage"
     assert settings.feed_ttl_seconds == 604_800
     assert settings.feed_max_entries == 250
+    assert settings.dedupe_ttl_seconds == 7_200
+    assert settings.dedupe_claim_seconds == 15
     assert settings.redis_configured is True
+
+
+def test_the_dedupe_window_defaults_inside_the_feed_retention_window() -> None:
+    """Not a coincidence worth losing: dedupe outliving the feed is a user-visible bug.
+
+    A replay suppressed on behalf of an original that has already aged out would leave the
+    user with neither the first notification nor its replacement.
+    """
+    settings = Settings()
+
+    assert settings.dedupe_ttl_seconds < settings.feed_ttl_seconds
+    assert settings.dedupe_claim_seconds < settings.dedupe_ttl_seconds
 
 
 def test_bus_group_is_env_driven(monkeypatch) -> None:
