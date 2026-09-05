@@ -23,10 +23,12 @@ class Settings(BaseSettings):
     # live in Redis so they are shared across replicas. Leave NOTIFICATION_REDIS_URL blank and
     # the service still starts -- correct for dev/CI, where an in-process store stands in --
     # but it is a hard readiness failure in production. The feed is a rolling window, not an
-    # archive, so entries expire after ``feed_ttl_seconds``.
+    # archive: entries age out after ``feed_ttl_seconds``, and a single user's index is capped
+    # at ``feed_max_entries`` so one very busy account cannot grow an unbounded sorted set.
     redis_url: str = ""
     redis_namespace: str = "notification"
     feed_ttl_seconds: int = 2_592_000
+    feed_max_entries: int = 500
 
     # Message bus (NTF-201, NTF-202). Commerce appends order lifecycle events to a Redis stream
     # (COM-109); this service consumes that stream as a named consumer group, so competing

@@ -25,12 +25,14 @@ def test_redis_group_is_env_driven(monkeypatch) -> None:
     monkeypatch.setenv("NOTIFICATION_REDIS_URL", "redis://cache:6379/2")
     monkeypatch.setenv("NOTIFICATION_REDIS_NAMESPACE", "ntf-stage")
     monkeypatch.setenv("NOTIFICATION_FEED_TTL_SECONDS", "604800")
+    monkeypatch.setenv("NOTIFICATION_FEED_MAX_ENTRIES", "250")
 
     settings = Settings()
 
     assert settings.redis_url == "redis://cache:6379/2"
     assert settings.redis_namespace == "ntf-stage"
     assert settings.feed_ttl_seconds == 604_800
+    assert settings.feed_max_entries == 250
     assert settings.redis_configured is True
 
 
