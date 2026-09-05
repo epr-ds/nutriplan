@@ -196,6 +196,42 @@ services:
     profiles: ["test"]
     command: ["pytest", "-q"]
 
+  notification:
+    build:
+      context: ../services/notification
+      target: runtime
+    environment:
+      NOTIFICATION_ENVIRONMENT: development
+      NOTIFICATION_REDIS_URL: redis://redis:6379/0
+      # The bus falls back to NOTIFICATION_REDIS_URL, so one Redis backs both locally.
+      # The stream name must match the commerce service's COMMERCE_EVENT_STREAM (COM-109).
+      NOTIFICATION_ORDER_EVENT_STREAM: commerce.order-events
+      NOTIFICATION_FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+      NOTIFICATION_FCM_CREDENTIALS_JSON: ${FCM_CREDENTIALS_JSON:-}
+      NOTIFICATION_APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      NOTIFICATION_APNS_KEY_ID: ${APNS_KEY_ID:-}
+      NOTIFICATION_APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+    ports:
+      - "8084:8084"
+    depends_on:
+      - redis
+
+  # One-shot test runner (Redis-backed). Run with: docker compose --profile test run --rm notification-test
+  notification-test:
+    build:
+      context: ../services/notification
+      target: test
+    environment:
+      NOTIFICATION_ENVIRONMENT: test
+      # Deliberately not NOTIFICATION_REDIS_URL: this points the probe suite at a live
+      # server without changing what the service itself is configured with, so the
+      # readiness tests that assert on an unconfigured service still hold.
+      NOTIFICATION_TEST_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    profiles: ["test"]
+    command: ["pytest", "-q"]
+
 volumes:
   postgres-data:
   mongo-data:
