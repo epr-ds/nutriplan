@@ -20,6 +20,8 @@ from app.domain.address import Address
 from app.domain.enums import FulfillmentType, OrderStatus, RefundStatus
 from app.domain.errors import IllegalOrderTransitionError, OrderValidationError
 from app.domain.events import DomainEvent, OrderCreated, OrderStatusChanged
+from app.domain.grocery_catalog import GroceryOrderStatus
+from app.domain.grocery_fulfillment import order_status_for, steps_between
 from app.domain.money import Money
 from app.domain.payment import PaymentStatus
 
@@ -110,6 +112,11 @@ class Order:
     payment_refund_id: str | None = None
     refund_status: RefundStatus | None = None
     refunded_amount: Money | None = None
+    # The order placed with the grocery provider on our behalf (COM-408): the provider's own order
+    # reference (what a status poll asks about) and the last canonical status it reported. Both
+    # nullable -- only a grocery order that was actually placed with a provider populates them.
+    grocery_external_order_id: str | None = None
+    grocery_status: GroceryOrderStatus | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -195,6 +202,62 @@ class Order:
     def mark_delivered(self, *, occurred_at: datetime | None = None) -> None:
         """Transition ``in_transit → delivered``."""
         self.transition_to(OrderStatus.DELIVERED, occurred_at=occurred_at)
+
+    @property
+    def is_placed_with_provider(self) -> bool:
+        """True once a grocery provider has accepted this order and given us its id (COM-408)."""
+        return self.grocery_external_order_id is not None
+
+    def record_grocery_placement(
+        self,
+        *,
+        external_order_id: str,
+        status: GroceryOrderStatus,
+        occurred_at: datetime | None = None,
+    ) -> None:
+        """Record that the order was placed with its grocery provider (COM-408).
+
+        Captures the provider's own ``external_order_id`` -- the handle a later status poll acts on
+        -- and the status the placement settled at, then applies that status to the lifecycle (a
+        provider that accepts immediately can move the order on the spot). Placement itself is not
+        a lifecycle transition, so a provider that merely acknowledges the order (``pending``)
+        changes no state and records no event.
+        """
+        if not external_order_id:
+            raise OrderValidationError("a grocery placement requires the provider's order id")
+        when = occurred_at or _utcnow()
+        self.grocery_external_order_id = external_order_id
+        self.grocery_status = status
+        self.updated_at = when
+        self.apply_grocery_status(status, occurred_at=when)
+
+    def apply_grocery_status(
+        self, status: GroceryOrderStatus, *, occurred_at: datetime | None = None
+    ) -> None:
+        """Apply a grocery provider's reported status to the order's lifecycle (COM-408).
+
+        The provider's canonical status is mapped onto our own states by
+        :mod:`app.domain.grocery_fulfillment` and then *walked* forward: because status sync is a
+        poll, a provider may report a state several steps ahead of the last one we saw, and each
+        intervening transition is recorded and timestamped rather than skipped.
+
+        Idempotent and monotonic: a status that maps to nothing (``pending``/``unknown``), or to a
+        state the order has already reached or passed, is a no-op that records nothing -- an order
+        never moves backwards on a stale report. A provider cancellation cancels the order, which
+        the state machine refuses once it is in transit or terminal
+        (:class:`~app.domain.errors.IllegalOrderTransitionError`).
+        """
+        self.grocery_status = status
+        target = order_status_for(status)
+        if target is None or target is self.status:
+            return
+        if target is OrderStatus.CANCELLED:
+            if self.status is OrderStatus.CANCELLED:
+                return
+            self.cancel(occurred_at=occurred_at)
+            return
+        for step in steps_between(self.status, target):
+            self.transition_to(step, occurred_at=occurred_at)
 
     def cancel(self, *, occurred_at: datetime | None = None) -> None:
         """Cancel the order (allowed only before it is dispatched)."""

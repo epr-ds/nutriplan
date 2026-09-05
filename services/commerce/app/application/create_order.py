@@ -27,6 +27,7 @@ import json
 
 from app.application.commands import CreateOrderCommand
 from app.application.idempotency import IdempotencyStore
+from app.application.place_grocery_order import GroceryOrderPlacer
 from app.application.ports import MealPlanProvider
 from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
@@ -63,6 +64,7 @@ class CreateOrderService:
         idempotency: IdempotencyStore,
         kitchen_router: KitchenRouter | None = None,
         slot_reservations: ReserveDeliverySlotService | None = None,
+        grocery_placer: GroceryOrderPlacer | None = None,
     ) -> None:
         self._orders = orders
         self._meal_plans = meal_plans
@@ -72,6 +74,7 @@ class CreateOrderService:
         self._idempotency = idempotency
         self._kitchen_router = kitchen_router
         self._slot_reservations = slot_reservations
+        self._grocery_placer = grocery_placer
 
     def create(
         self,
@@ -137,6 +140,13 @@ class CreateOrderService:
         # no-op for anything not confirmed-and-dark-kitchen (e.g. an async order still pending).
         if self._kitchen_router is not None:
             self._kitchen_router.route(order)
+        # Place a card-confirmed grocery order with its provider (COM-408). Best-effort and a no-op
+        # for anything not confirmed-and-grocery; a placement re-persists the order, so project the
+        # updated state it returns.
+        if self._grocery_placer is not None:
+            placed = self._grocery_placer.place(order)
+            if placed is not None:
+                persisted = placed
         return persisted
 
     def _replay(self, command: CreateOrderCommand, *, key: str, fingerprint: str) -> Order | None:

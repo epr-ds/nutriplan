@@ -124,6 +124,13 @@ class OrderModel(Base):
     payment_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     refund_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     refunded_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # The order placed with the grocery provider (COM-408): its own order reference -- indexed
+    # because a provider callback or reconciliation job looks an order up by it -- and the last
+    # canonical status it reported. Nullable: only a placed grocery order populates them.
+    grocery_external_order_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    grocery_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )

@@ -27,6 +27,7 @@ from app.application.idempotency import IdempotencyStore
 from app.application.list_grocery_providers import ListGroceryProvidersService
 from app.application.list_orders import ListOrdersService
 from app.application.payment_methods import PaymentMethodService
+from app.application.place_grocery_order import GroceryOrderPlacer
 from app.application.ports import (
     KitchenQueue,
     MealPlanProvider,
@@ -38,6 +39,7 @@ from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.application.search_grocery_products import SearchGroceryProductsService
+from app.application.sync_grocery_order import SyncGroceryOrderStatusService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
@@ -280,6 +282,24 @@ def get_search_grocery_products_service(
     return SearchGroceryProductsService(registry, adapters)
 
 
+def get_grocery_order_placer(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> GroceryOrderPlacer:
+    """Build the use case that places a confirmed grocery order with its provider (COM-408)."""
+    return GroceryOrderPlacer(orders, adapters, publisher)
+
+
+def get_sync_grocery_order_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> SyncGroceryOrderStatusService:
+    """Build the use case that refreshes an order's status from its provider (COM-408)."""
+    return SyncGroceryOrderStatusService(orders, adapters, publisher)
+
+
 def get_slot_reservation_store(db: DbSession) -> SlotReservationStore:
     """Provide the SQL-backed dark-kitchen slot reservation store, request-scoped (COM-304).
 
@@ -317,6 +337,7 @@ def get_create_order_service(
     idempotency: Annotated[IdempotencyStore, Depends(get_idempotency_store)],
     kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
     slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
+    grocery_placer: Annotated[GroceryOrderPlacer, Depends(get_grocery_order_placer)],
 ) -> CreateOrderService:
     return CreateOrderService(
         orders,
@@ -327,6 +348,7 @@ def get_create_order_service(
         idempotency,
         kitchen_router,
         slot_reservations,
+        grocery_placer,
     )
 
 
@@ -357,9 +379,10 @@ def get_process_payment_webhook_service(
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
     kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
     slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
+    grocery_placer: Annotated[GroceryOrderPlacer, Depends(get_grocery_order_placer)],
 ) -> ProcessPaymentWebhookService:
     return ProcessPaymentWebhookService(
-        orders, payments, publisher, kitchen_router, slot_reservations
+        orders, payments, publisher, kitchen_router, slot_reservations, grocery_placer
     )
 
 
@@ -413,6 +436,9 @@ GroceryProvidersServiceDep = Annotated[
 ]
 GrocerySearchServiceDep = Annotated[
     SearchGroceryProductsService, Depends(get_search_grocery_products_service)
+]
+SyncGroceryOrderServiceDep = Annotated[
+    SyncGroceryOrderStatusService, Depends(get_sync_grocery_order_service)
 ]
 GroceryBreakersDep = Annotated[CircuitBreakerRegistry, Depends(get_grocery_breakers)]
 PaymentWebhookServiceDep = Annotated[
