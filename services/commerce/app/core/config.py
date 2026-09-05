@@ -8,14 +8,17 @@ class GroceryProviderSetting(BaseModel):
     """One configured grocery provider (COM-401), mapped to the domain registry in ``deps``.
 
     ``id`` is the stable machine identifier; ``enabled`` gates whether the provider is offered in
-    this environment (per-env enable/disable). The remaining fields are display metadata surfaced on
-    ``ProviderResponse``. Override the whole catalogue per environment with a JSON array in
-    ``COMMERCE_GROCERY_PROVIDERS``.
+    this environment (per-env enable/disable). ``timeout_seconds`` is the provider's own request
+    budget (COM-407) -- leave it unset to inherit the service-wide ``http_timeout_seconds``, or set
+    it to give a slower provider more (or a flaky one less) room without touching the others. The
+    remaining fields are display metadata surfaced on ``ProviderResponse``. Override the whole
+    catalogue per environment with a JSON array in ``COMMERCE_GROCERY_PROVIDERS``.
     """
 
     id: str
     name: str
     enabled: bool = True
+    timeout_seconds: float | None = None
     logo_url: str | None = None
     estimated_delivery: str | None = None
 
@@ -154,6 +157,14 @@ class Settings(BaseSettings):
     # The HTTP timeout reuses ``http_timeout_seconds``.
     chedraui_base_url: str = "https://sandbox.chedraui.com.mx/api/v2"
     chedraui_api_key: SecretStr = SecretStr("")
+
+    # Grocery provider resilience (COM-407). Every provider is called through its own circuit
+    # breaker: after this many consecutive failures its circuit opens and further calls fail fast
+    # (so the fan-out skips it and answers from the healthy providers) for the reset window, after
+    # which a single probe decides whether it recovered. Per-provider request timeouts live on each
+    # ``GroceryProviderSetting.timeout_seconds`` and fall back to ``http_timeout_seconds``.
+    grocery_breaker_failure_threshold: int = 5
+    grocery_breaker_reset_seconds: float = 30.0
 
 
 settings = Settings()
