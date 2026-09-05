@@ -6,6 +6,10 @@ Three key shapes back the store::
     {ns}:v1:u:{user_id}:feed     -> every id, newest first      (sorted set)
     {ns}:v1:u:{user_id}:unread   -> the unread subset           (sorted set)
 
+and a fourth carries the idempotency claims (NTF-103)::
+
+    {ns}:v1:d:{type}:{digest}    -> the notification id that handled this event (string, EX)
+
 The two per-user sorted sets are the "indexed for feed queries" half of AC3: listing a
 page is a ``ZREVRANGE`` slice plus an ``MGET``, and the unread badge is a ``ZCOUNT`` --
 both O(log N + page) rather than a scan over the user's history.
@@ -55,3 +59,12 @@ class NotificationKeys:
     def index_for(self, user_id: uuid.UUID | str, *, unread_only: bool) -> str:
         """The index a feed query should read: the unread subset, or everything."""
         return self.unread(user_id) if unread_only else self.feed(user_id)
+
+    def dedupe(self, key: object) -> str:
+        """The key holding the idempotency claim for one (event, user, type) triple.
+
+        Sharing the namespace and version with the records is intentional: a schema bump
+        that invalidates stored notifications must invalidate the dedupe keys pointing at
+        them too, or a replay would be suppressed on behalf of a record no longer readable.
+        """
+        return f"{self.prefix}:d:{key}"

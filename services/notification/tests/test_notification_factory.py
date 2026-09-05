@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
-from app.adapters.factory import build_notification_repository, build_retention_policy
+from app.adapters.factory import (
+    build_deduplication_store,
+    build_idempotency_window,
+    build_notification_recorder,
+    build_notification_repository,
+    build_retention_policy,
+)
+from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.core.config import Settings
-from app.domain.repositories import NotificationRepository
+from app.domain.repositories import DeduplicationStore, NotificationRepository
 
 
 def _settings(**overrides: object) -> Settings:
@@ -74,3 +82,57 @@ def test_both_stores_are_built_with_the_same_window() -> None:
     )
 
     assert memory._policy == redis_backed._policy == build_retention_policy(settings)
+
+
+# -- the deduplication store (NTF-103) -------------------------------------------
+
+
+def test_without_a_redis_url_the_dedupe_store_is_in_process() -> None:
+    assert isinstance(build_deduplication_store(_settings()), InMemoryDeduplicationStore)
+
+
+def test_with_a_redis_url_the_dedupe_store_is_redis_backed() -> None:
+    store = build_deduplication_store(_settings(redis_url="redis://redis:6379/0"))
+
+    assert isinstance(store, RedisDeduplicationStore)
+
+
+def test_both_dedupe_adapters_satisfy_the_port() -> None:
+    for settings in (_settings(), _settings(redis_url="redis://redis:6379/0")):
+        assert isinstance(build_deduplication_store(settings), DeduplicationStore)
+
+
+def test_the_idempotency_window_comes_from_configuration() -> None:
+    window = build_idempotency_window(_settings(dedupe_ttl_seconds=300, dedupe_claim_seconds=9))
+
+    assert window.ttl_seconds == 300
+    assert window.provisional == 9
+
+
+def test_the_dedupe_store_follows_the_notification_store_onto_the_same_backend() -> None:
+    """Split backends would be worse than no dedupe at all.
+
+    A claim living where the notifications do not would suppress replays on behalf of
+    records the reading process cannot see, so the user would silently lose them.
+    """
+    configured = _settings(redis_url="redis://redis:6379/0")
+
+    assert isinstance(build_notification_repository(configured), RedisNotificationRepository)
+    assert isinstance(build_deduplication_store(configured), RedisDeduplicationStore)
+    assert isinstance(build_notification_repository(_settings()), InMemoryNotificationRepository)
+    assert isinstance(build_deduplication_store(_settings()), InMemoryDeduplicationStore)
+
+
+def test_the_dedupe_store_shares_the_configured_namespace() -> None:
+    store = build_deduplication_store(
+        _settings(redis_url="redis://redis:6379/0", redis_namespace="staging")
+    )
+
+    assert store._keys.prefix.startswith("staging:")
+
+
+def test_the_recorder_is_built_from_both_ports() -> None:
+    recorder = build_notification_recorder(_settings())
+
+    assert isinstance(recorder.repository, InMemoryNotificationRepository)
+    assert isinstance(recorder._deduplication, InMemoryDeduplicationStore)

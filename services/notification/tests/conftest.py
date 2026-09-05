@@ -13,22 +13,27 @@ The :func:`repository` fixture is the important one here. It is parametrized ove
 store adapters, so every test written against it is a contract both implementations must
 satisfy -- which is the only way the in-memory store stays a faithful stand-in rather than
 drifting into a convenient fiction. The Redis leg skips locally and is *required* under CI,
-where a Redis service container is always present.
+where a Redis service container is always present. :func:`dedupe_store` and :func:`recorder`
+do the same for NTF-103's idempotency store and the write path built on top of it.
 """
 
 from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 
+from app.adapters.idempotency import IdempotencyWindow
+from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.keys import NotificationKeys
+from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.retention import RetentionPolicy
-from app.domain.repositories import NotificationRepository
+from app.application.notification_recorder import NotificationRecorder
+from app.domain.repositories import DeduplicationStore, NotificationRepository
 
 PRESERVED = {"NOTIFICATION_TEST_REDIS_URL"}
 
@@ -37,6 +42,11 @@ TEST_REDIS_URL = os.getenv("NOTIFICATION_TEST_REDIS_URL", "").strip()
 
 TEST_POLICY = RetentionPolicy(ttl_seconds=3_600, max_entries=100)
 """A short, small window so retention is observable without waiting or writing thousands."""
+
+TEST_WINDOW = IdempotencyWindow(ttl_seconds=600, provisional_seconds=60)
+"""Long enough that nothing lapses mid-test; expiry tests pass their own short window."""
+
+DedupeStoreFactory = Callable[..., DeduplicationStore]
 
 
 @pytest.fixture(autouse=True)
@@ -108,6 +118,77 @@ def repository(request: pytest.FixtureRequest) -> Iterator[NotificationRepositor
     namespace = isolated_namespace()
     try:
         yield redis_repository(client, namespace=namespace)
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@pytest.fixture(params=["memory", "redis"])
+def dedupe_store(request: pytest.FixtureRequest) -> Iterator[DedupeStoreFactory]:
+    """A *factory* for dedupe stores, parametrized over both adapters.
+
+    A factory rather than a ready-made store because the interesting property of an
+    idempotency claim is when it lapses, and that means a test has to choose the window it
+    runs against. The factory keeps the backend and its cleanup here while leaving the
+    window to the test.
+    """
+    if request.param == "memory":
+
+        def build_memory(**kwargs: object) -> DeduplicationStore:
+            kwargs.setdefault("window", TEST_WINDOW)
+            return InMemoryDeduplicationStore(**kwargs)  # type: ignore[arg-type]
+
+        yield build_memory
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+
+    def build_redis(**kwargs: object) -> DeduplicationStore:
+        kwargs.pop("clock", None)  # a real server keeps its own time
+        return RedisDeduplicationStore(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+            window=kwargs.pop("window", TEST_WINDOW),  # type: ignore[arg-type]
+        )
+
+    try:
+        yield build_redis
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@pytest.fixture(params=["memory", "redis"])
+def recorder(request: pytest.FixtureRequest) -> Iterator[NotificationRecorder]:
+    """The idempotent write path, with both of its ports on the same backend.
+
+    Pairing them matters: a dedupe claim living somewhere its notifications do not would
+    suppress replays on behalf of records the reader cannot see, so the fixture never mixes
+    an in-memory claim with a Redis record.
+    """
+    if request.param == "memory":
+        yield NotificationRecorder(
+            InMemoryNotificationRepository(policy=TEST_POLICY),
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+        )
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    try:
+        yield NotificationRecorder(
+            redis_repository(client, namespace=namespace),
+            RedisDeduplicationStore(
+                client,  # type: ignore[arg-type]
+                keys=NotificationKeys(namespace=namespace),
+                window=TEST_WINDOW,
+            ),
+        )
     finally:
         drop_namespace(client, namespace)
         client.close()
