@@ -15,8 +15,11 @@ configuration surface for all three dependencies (Redis, the message bus, the pu
 providers), an environment-aware readiness evaluation, and `/health` + `/health/ready`.
 **NTF-102** added the notification model and its Redis-backed store, so notifications now
 persist and can be listed per user. **NTF-103** made writing one idempotent, so a redelivered
-event cannot notify a user twice. Nothing is *delivered* yet -- the bus consumer arrives in
-NTF-201/202, push delivery in NTF-301, and the in-app feed API in NTF-105.
+event cannot notify a user twice. **NTF-105** put the first read API in front of that store --
+the in-app feed -- and with it this service's first published contract,
+[`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml). Nothing
+is *delivered* yet: the bus consumer arrives in NTF-201/202 and push delivery in NTF-301, so
+today the feed only returns what a test or a direct writer has recorded.
 
 ## Layout
 
@@ -27,6 +30,7 @@ app/
   domain/dedupe.py      # the deterministic (event, user, type) key
   domain/repositories.py# the persistence and deduplication ports
   application/notification_recorder.py  # the idempotent write path
+  application/feed.py     # the paged feed query, badge count, and mark-read use cases
   adapters/codec.py     # JSON record <-> Notification
   adapters/keys.py      # the Redis key scheme
   adapters/retention.py # the age + length window both stores enforce
@@ -39,6 +43,12 @@ app/
   core/config.py        # NOTIFICATION_-prefixed settings (Redis, bus, push providers)
   core/readiness.py     # pure, environment-aware readiness evaluation
   core/probes.py        # the only place that opens a real connection
+  core/principal.py     # the authenticated caller
+  core/security.py      # RS256 bearer verification against the identity JWKS
+  api/deps.py           # the composition root (FastAPI Depends)
+  api/errors.py         # RFC 7807 application/problem+json
+  api/schemas.py        # the camelCase wire shapes
+  api/notifications.py  # GET /notifications, /unread-count, POST /{id}/read
   api/health.py         # GET /health, GET /health/ready
   main.py               # FastAPI wiring
 tests/                  # pytest
@@ -125,6 +135,41 @@ a replay could be suppressed on behalf of an original that had already aged out,
 would see neither. Setting `NOTIFICATION_DEDUPE_TTL_SECONDS=0` turns deduplication off, which
 is only sensible when deliberately replaying a fixture stream.
 
+## The in-app feed API
+
+Three endpoints, all authenticated with an RS256 bearer token verified against the identity
+service's JWKS. **The feed is always the caller's own**: the user id comes from the token's
+`sub`, never from a query parameter, so there is no request a client can make that reads
+somebody else's notifications.
+
+| endpoint | purpose |
+| --- | --- |
+| `GET /notifications` | the caller's feed, newest first, paged; `unreadOnly=true` filters |
+| `GET /notifications/unread-count` | just the badge, when a client doesn't need the page |
+| `POST /notifications/{id}/read` | mark one read; returns the updated notification |
+
+Paging is `page` (1-based) and `limit` (1-100, default 20). The response carries `hasMore`,
+which is answered by **over-fetching one record** rather than counting the feed. That is
+honest only because expiry is monotonic in feed order: every record's lease runs from its
+`created_at` against one uniform TTL, and the feed is newest-first, so live records are
+always a *prefix* of the index and a short page really is the tail. **If a later story gives
+records individual lifetimes, that argument collapses and `hasMore` has to become a real
+count** -- the reasoning is written out in `app/application/feed.py`.
+
+`unreadCount` is the badge for the whole feed, so it is deliberately *not* a total of
+`items` and does not change when `unreadOnly` is set. It is also a separate read from the
+page, so a mark-read landing between the two can make them disagree by one; that is a
+snapshot, not an invariant, and the next poll corrects it. Making them atomic would mean
+locking a user's feed reads on shared Redis to fix a discrepancy nobody can perceive.
+
+Marking an unknown id, an expired one, or another user's notification all return the **same**
+404 with the same message, so the endpoint cannot be used to discover which notification ids
+exist. Every 4xx/5xx is `application/problem+json` (RFC 7807), matching the other services.
+
+The wire shape is the stored shape minus the owner plus `isRead` -- `NotificationResponse`
+projects through the same `codec.to_record` the store writes with, so a renamed key breaks
+the projection loudly instead of letting the API and the store drift apart quietly.
+
 ## Dependencies and readiness
 
 Liveness (`/health`) answers "is the process up?"; readiness (`/health/ready`) answers "can
@@ -154,7 +199,8 @@ All builds/tests run in Docker.
 docker build --target test -t nutriplan-notification-test services/notification
 docker run --rm nutriplan-notification-test
 
-# CI-parity run (real Redis, so the Redis half of the store contract runs instead of skipping)
+# CI-parity run (real Redis + the mounted contract, so the Redis half of the store
+# contract and the OpenAPI drift tests all run instead of skipping)
 cd infra && docker compose --profile test run --rm --build notification-test
 
 # Run the service

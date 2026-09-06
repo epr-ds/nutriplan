@@ -35,7 +35,14 @@ from app.adapters.retention import RetentionPolicy
 from app.application.notification_recorder import NotificationRecorder
 from app.domain.repositories import DeduplicationStore, NotificationRepository
 
-PRESERVED = {"NOTIFICATION_TEST_REDIS_URL"}
+PRESERVED = {"NOTIFICATION_TEST_REDIS_URL", "NOTIFICATION_OPENAPI_SPEC"}
+"""Harness inputs, not service configuration -- they must survive the isolation fixture.
+
+Both merely match the service's env prefix. Stripping ``NOTIFICATION_OPENAPI_SPEC`` would
+make the contract tests silently skip whenever the spec is mounted somewhere the
+walk-up-the-parents search can't find it, which reads as "no contract drift" rather than
+"the gate never ran".
+"""
 
 TEST_REDIS_URL = os.getenv("NOTIFICATION_TEST_REDIS_URL", "").strip()
 """A live Redis to exercise the real adapter against; empty means "skip those tests"."""
