@@ -21,3 +21,24 @@ class InvalidDedupeKey(NotificationError, ValueError):
     Raised rather than defaulted, because every fallback is worse: a blank event id would
     silently merge unrelated events onto one key and suppress notifications for good.
     """
+
+
+class NotificationNotFound(NotificationError):
+    """The requested notification is not visible to the caller (NTF-105).
+
+    Deliberately raised for three different situations -- the id never existed, it aged out
+    of the rolling window, or it belongs to somebody else -- because the API renders all of
+    them as the same ``404``. Distinguishing them on the wire would turn the endpoint into an
+    oracle: a caller could enumerate UUIDs and learn which ones are real notifications
+    belonging to other users. The store enforces the same rule by returning ``None`` for all
+    three, so this error carries no more information than the store was willing to give.
+    """
+
+
+class InvalidFeedQuery(NotificationError, ValueError):
+    """A feed page was requested with bounds the service will not serve (NTF-105).
+
+    Page size is capped rather than honoured: an unbounded ``limit`` would let one request
+    materialize a user's entire retained feed, and the cost of that lands on the shared Redis
+    every other request depends on.
+    """
