@@ -15,13 +15,19 @@ satisfy -- which is the only way the in-memory store stays a faithful stand-in r
 drifting into a convenient fiction. The Redis leg skips locally and is *required* under CI,
 where a Redis service container is always present. :func:`dedupe_store` and :func:`recorder`
 do the same for NTF-103's idempotency store and the write path built on top of it.
+:func:`event_bus` does it once more for NTF-201's consumer adapters, where the stake is
+higher still: an in-process consumer that forgot to redeliver an unacked message would make
+the whole at-least-once framework pass in CI and lose events in production.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
+from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -40,6 +46,9 @@ from app.domain.repositories import (
     NotificationRepository,
     PreferencesRepository,
 )
+from app.events.consumer import EventConsumer
+from app.events.memory import InMemoryEventConsumer
+from app.events.redis_stream import PAYLOAD_FIELD, RedisStreamEventConsumer
 
 PRESERVED = {"NOTIFICATION_TEST_REDIS_URL", "NOTIFICATION_OPENAPI_SPEC"}
 """Harness inputs, not service configuration -- they must survive the isolation fixture.
@@ -58,6 +67,10 @@ TEST_POLICY = RetentionPolicy(ttl_seconds=3_600, max_entries=100)
 
 TEST_WINDOW = IdempotencyWindow(ttl_seconds=600, provisional_seconds=60)
 """Long enough that nothing lapses mid-test; expiry tests pass their own short window."""
+
+TEST_CONSUMER_GROUP = "notification-test"
+TEST_CONSUMER_NAME = "notification-test-1"
+"""Group and consumer names for the eventing suite; the stream is unique per test."""
 
 DedupeStoreFactory = Callable[..., DeduplicationStore]
 
@@ -110,6 +123,16 @@ def redis_repository(
 def isolated_namespace() -> str:
     """A namespace unique to one test, so no cleanup can affect another."""
     return f"nt-test-{uuid.uuid4().hex[:12]}"
+
+
+def isolated_stream() -> str:
+    """A stream name unique to one test.
+
+    Streams need this more than the key-value tests do: a consumer group carries an offset
+    and a pending list, so two tests sharing a stream would not merely see each other's data,
+    they would consume each other's messages and each would report the other's bug.
+    """
+    return f"nt-test-stream-{uuid.uuid4().hex[:12]}"
 
 
 def drop_namespace(client: object, namespace: str) -> None:
@@ -225,4 +248,64 @@ def recorder(request: pytest.FixtureRequest) -> Iterator[NotificationRecorder]:
         )
     finally:
         drop_namespace(client, namespace)
+        client.close()
+
+
+@dataclass
+class EventBus:
+    """A consumer plus the means to put something on the stream it reads.
+
+    The consumer port is read-only by design -- publishing is commerce's job, not this
+    service's -- so a test that needs an event to exist has to reach past the port to
+    whichever backend it is running against. Pairing the two here keeps that asymmetry in one
+    place, and lets a single test body run against both adapters unchanged.
+    """
+
+    consumer: EventConsumer
+    _publish: Callable[[str], str]
+
+    def publish(self, envelope: Mapping[str, Any] | str) -> str:
+        """Append an envelope to the stream exactly as the commerce publisher does."""
+        payload = envelope if isinstance(envelope, str) else json.dumps(dict(envelope))
+        return self._publish(payload)
+
+    def publish_all(self, *envelopes: Mapping[str, Any] | str) -> tuple[str, ...]:
+        """Append several envelopes in order, returning their entry ids."""
+        return tuple(self.publish(envelope) for envelope in envelopes)
+
+
+@pytest.fixture(params=["memory", "redis"])
+def event_bus(request: pytest.FixtureRequest) -> Iterator[EventBus]:
+    """One consumer per adapter, its group already created, with a way to publish to it.
+
+    The group is created before the test body runs because that is the order a worker starts
+    in, and because a group created at ``$`` would otherwise skip everything the test
+    published first -- correct behaviour that would look like a broken fixture. The one test
+    that cares about that offset builds its own consumer instead.
+    """
+    if request.param == "memory":
+        consumer = InMemoryEventConsumer()
+        consumer.ensure_group()
+        yield EventBus(consumer, consumer.publish)
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    stream = isolated_stream()
+    try:
+        consumer = RedisStreamEventConsumer(
+            client,  # type: ignore[arg-type]
+            stream=stream,
+            group=TEST_CONSUMER_GROUP,
+            consumer=TEST_CONSUMER_NAME,
+        )
+        consumer.ensure_group()
+
+        def publish(payload: str) -> str:
+            return str(client.xadd(stream, {PAYLOAD_FIELD: payload}))
+
+        yield EventBus(consumer, publish)
+    finally:
+        client.delete(stream)
         client.close()

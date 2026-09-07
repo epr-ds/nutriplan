@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     consumer_name: str = "notification-1"
     event_batch_size: int = 32
     event_block_ms: int = 5_000
+    # How long a delivered-but-unacked event must sit idle before another consumer takes it
+    # over. This is the mechanism that recovers events stranded by a pod that died mid-batch,
+    # so it has to be comfortably longer than a slow-but-healthy handler takes -- reclaiming
+    # an event still being processed produces the duplicate NTF-103 then has to suppress.
+    event_reclaim_idle_ms: int = 60_000
     # Retry budget before an event is parked on the dead-letter queue (NTF-204).
     event_max_delivery_attempts: int = 5
 
