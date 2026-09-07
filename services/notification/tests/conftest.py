@@ -28,12 +28,18 @@ import pytest
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
+from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.retention import RetentionPolicy
 from app.application.notification_recorder import NotificationRecorder
-from app.domain.repositories import DeduplicationStore, NotificationRepository
+from app.domain.repositories import (
+    DeduplicationStore,
+    NotificationRepository,
+    PreferencesRepository,
+)
 
 PRESERVED = {"NOTIFICATION_TEST_REDIS_URL", "NOTIFICATION_OPENAPI_SPEC"}
 """Harness inputs, not service configuration -- they must survive the isolation fixture.
@@ -163,6 +169,27 @@ def dedupe_store(request: pytest.FixtureRequest) -> Iterator[DedupeStoreFactory]
 
     try:
         yield build_redis
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@pytest.fixture(params=["memory", "redis"])
+def preferences_repository(request: pytest.FixtureRequest) -> Iterator[PreferencesRepository]:
+    """One preferences store per adapter, so every test using it is a parity contract."""
+    if request.param == "memory":
+        yield InMemoryPreferencesRepository()
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    try:
+        yield RedisPreferencesRepository(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+        )
     finally:
         drop_namespace(client, namespace)
         client.close()

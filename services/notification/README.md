@@ -17,9 +17,11 @@ providers), an environment-aware readiness evaluation, and `/health` + `/health/
 persist and can be listed per user. **NTF-103** made writing one idempotent, so a redelivered
 event cannot notify a user twice. **NTF-105** put the first read API in front of that store --
 the in-app feed -- and with it this service's first published contract,
-[`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml). Nothing
-is *delivered* yet: the bus consumer arrives in NTF-201/202 and push delivery in NTF-301, so
-today the feed only returns what a test or a direct writer has recorded.
+[`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml).
+**NTF-104** added per-type, per-channel preferences and a nightly quiet-hours window, and
+wired them into the write path, so a user can now turn a notification off and have it stay
+off. Nothing is *delivered* yet: the bus consumer arrives in NTF-201/202 and push delivery in
+NTF-301, so today the feed only returns what a test or a direct writer has recorded.
 
 ## Layout
 
@@ -28,10 +30,14 @@ app/
   domain/enums.py       # notification type, channel, delivery status
   domain/notification.py# the immutable Notification record
   domain/dedupe.py      # the deterministic (event, user, type) key
+  domain/quiet_hours.py # the nightly window, in the user's own zone
+  domain/preferences.py # the per-type, per-channel deny-list
   domain/repositories.py# the persistence and deduplication ports
-  application/notification_recorder.py  # the idempotent write path
+  application/notification_recorder.py  # the idempotent, preference-gated write path
   application/feed.py     # the paged feed query, badge count, and mark-read use cases
+  application/preferences.py  # the settings-screen matrix and the replace use case
   adapters/codec.py     # JSON record <-> Notification
+  adapters/preferences_codec.py  # JSON record <-> NotificationPreferences
   adapters/keys.py      # the Redis key scheme
   adapters/retention.py # the age + length window both stores enforce
   adapters/idempotency.py  # the replay window + provisional claim length
@@ -39,6 +45,8 @@ app/
   adapters/in_memory_notification_repository.py
   adapters/redis_deduplication_store.py
   adapters/in_memory_deduplication_store.py
+  adapters/redis_preferences_repository.py
+  adapters/in_memory_preferences_repository.py
   adapters/factory.py   # picks the stores from configuration
   core/config.py        # NOTIFICATION_-prefixed settings (Redis, bus, push providers)
   core/readiness.py     # pure, environment-aware readiness evaluation
@@ -49,6 +57,7 @@ app/
   api/errors.py         # RFC 7807 application/problem+json
   api/schemas.py        # the camelCase wire shapes
   api/notifications.py  # GET /notifications, /unread-count, POST /{id}/read
+  api/preferences.py    # GET + PUT /notifications/preferences
   api/health.py         # GET /health, GET /health/ready
   main.py               # FastAPI wiring
 tests/                  # pytest
@@ -169,6 +178,65 @@ exist. Every 4xx/5xx is `application/problem+json` (RFC 7807), matching the othe
 The wire shape is the stored shape minus the owner plus `isRead` -- `NotificationResponse`
 projects through the same `codec.to_record` the store writes with, so a renamed key breaks
 the projection loudly instead of letting the API and the store drift apart quietly.
+
+## Notification preferences and quiet hours
+
+Two endpoints, owner-scoped by the token subject exactly as the feed is:
+
+| endpoint | purpose |
+| --- | --- |
+| `GET /notifications/preferences` | the caller's complete matrix, every type listed |
+| `PUT /notifications/preferences` | replace it wholesale; returns what is now stored |
+
+A user who has never saved anything gets the **defaults** -- everything enabled, no quiet
+hours -- rather than a `404`. They do have preferences; they simply have not changed any.
+
+### Stored as a deny-list, never as a matrix
+
+Only the *mutes* are persisted. It would be simpler to store the matrix the settings screen
+shows, and it would be wrong: `NotificationType` grows, and a matrix written by last
+release's client says nothing about a type added since. Reading "absent" as "disabled" would
+then silently mute a brand-new notification for every existing user, on their behalf, without
+anyone choosing it. **Absent means enabled.** The full matrix is materialised on read by
+iterating the enum, so a new type appears on every settings screen the day it ships.
+
+`PUT` is a replacement, not a patch: a type omitted from `types` returns to enabled, and
+`quietHours: null` clears the window. That is also why `types` is **required** with no
+default -- a client that forgot the field would otherwise be sending "switch everything back
+on". Listing the same type twice is a `422` rather than last-wins, since two rows for one
+type are two different answers to the same question and neither is more likely to be meant.
+
+### Quiet hours suppress push only
+
+The in-app feed is pull-based and silent. Withholding an entry from it overnight would spare
+the user nothing and would either surface the notification out of order in the morning or
+lose it outright. So a notification recorded inside the window still lands in the feed; only
+the push channel is dropped, and if push was the *only* channel it was going to, the delivery
+is suppressed entirely.
+
+The window is stored as **local wall-clock times plus an IANA zone name**, never as an
+offset. Daylight saving is a non-issue here only because of the direction of conversion:
+turning an instant into a local time (`astimezone`) is total and unambiguous, while the
+reverse is not -- 02:30 does not exist on a spring-forward night and happens twice on a
+fall-back night. Storing an offset would quietly shift "ten at night" by an hour twice a
+year. The window is half-open, `[start, end)`, and **wrapping past midnight is the normal
+case** (`22:00`-`07:00` is one window, not two); `start == end` is rejected, since it reads
+equally well as "no window" and "all day".
+
+### The gate runs before the dedupe claim
+
+`NotificationRecorder` checks preferences *before* claiming the dedupe key, and the ordering
+is load-bearing. A suppressed notification that burned its key would leave NTF-204's
+dead-letter replay -- run after the user turns the type back on -- refused as a duplicate of
+a notification that never existed. A suppressed delivery therefore leaves the key free.
+
+If the preferences store is unavailable the recorder **fails open**: it logs
+`notification.preferences.unavailable` at WARNING and delivers unfiltered. The alternative is
+withholding notifications a user asked for because a side lookup failed, which is worse than
+sending one they had muted.
+
+Preferences never expire. They are the user's own configuration, not a cached derivative, so
+the Redis write carries no `EX` -- asserted by reading `TTL == -1` back from a live server.
 
 ## Dependencies and readiness
 

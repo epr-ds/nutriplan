@@ -23,10 +23,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.adapters import codec
+from app.adapters import codec, preferences_codec
 from app.application.feed import FeedPage
+from app.application.preferences import PreferenceMatrix, TypePreference
 from app.domain.enums import DeliveryStatus, NotificationChannel, NotificationType
 from app.domain.notification import Notification
+from app.domain.quiet_hours import DEFAULT_TIME_ZONE, QuietHours
 
 
 class _Camel(BaseModel):
@@ -83,3 +85,108 @@ class UnreadCountResponse(_Camel):
     """The badge count on its own, for a client that only needs the number."""
 
     unread_count: int
+
+
+_TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+"""``HH:MM`` in 24-hour local wall-clock time.
+
+Deliberately not OpenAPI's ``format: time``, which is RFC 3339 ``full-time`` and *requires* an
+offset (``22:00:00-06:00``). An offset is exactly what this field must not carry: quiet hours
+are stored as a local wall-clock time plus an IANA zone name so that the window keeps meaning
+"ten at night" across a daylight-saving change, instead of silently shifting by an hour twice
+a year. A pattern says what is actually accepted; ``format: time`` would say something else.
+"""
+
+
+class QuietHoursSchema(_Camel):
+    """A recurring nightly window, in the user's own local time, during which push is withheld."""
+
+    start: str = Field(pattern=_TIME_PATTERN, examples=["22:00"])
+    end: str = Field(pattern=_TIME_PATTERN, examples=["07:00"])
+    time_zone: str = Field(
+        default=DEFAULT_TIME_ZONE,
+        examples=["America/Mexico_City"],
+        description="IANA time zone name. An offset is not accepted; see the field pattern.",
+    )
+
+    @classmethod
+    def from_domain(cls, quiet_hours: QuietHours) -> QuietHoursSchema:
+        return cls(
+            start=preferences_codec.format_time(quiet_hours.start),
+            end=preferences_codec.format_time(quiet_hours.end),
+            time_zone=quiet_hours.time_zone,
+        )
+
+    def to_domain(self) -> QuietHours:
+        """Build the domain window, letting it own the validation the pattern cannot express.
+
+        The regex proves the strings are times; it cannot know whether the zone exists or
+        whether ``start`` and ``end`` differ. Both are :class:`InvalidPreferences`, rendered
+        as ``422`` -- the same status a pattern violation produces, so a client sees one
+        consistent answer to "that window is not acceptable".
+        """
+        return QuietHours(
+            start=preferences_codec.parse_time(self.start, name="quietHours.start"),
+            end=preferences_codec.parse_time(self.end, name="quietHours.end"),
+            time_zone=self.time_zone,
+        )
+
+
+class TypePreferenceSchema(_Camel):
+    """One row of the preference matrix: a notification type and its per-channel switches."""
+
+    type: NotificationType
+    in_app: bool = True
+    push: bool = True
+
+    @classmethod
+    def from_domain(cls, row: TypePreference) -> TypePreferenceSchema:
+        return cls(type=row.type, in_app=row.in_app, push=row.push)
+
+    def to_domain(self) -> TypePreference:
+        return TypePreference(type=self.type, in_app=self.in_app, push=self.push)
+
+
+class NotificationPreferencesResponse(_Camel):
+    """A user's complete preference matrix.
+
+    ``types`` is an **array of rows**, not an object keyed by type. A map would be shorter on
+    the wire and worse everywhere else: OpenAPI can only describe it as free-form
+    ``additionalProperties``, so no generated client gets a typed accessor or an exhaustive
+    switch; key order is not guaranteed, so a settings screen would have to impose one; and
+    the array renders directly as the list the user is looking at. Rows arrive in
+    ``NotificationType`` declaration order, which groups the order-lifecycle types together.
+    """
+
+    types: list[TypePreferenceSchema]
+    quiet_hours: QuietHoursSchema | None = None
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, matrix: PreferenceMatrix) -> NotificationPreferencesResponse:
+        return cls(
+            types=[TypePreferenceSchema.from_domain(row) for row in matrix.types],
+            quiet_hours=(
+                None
+                if matrix.quiet_hours is None
+                else QuietHoursSchema.from_domain(matrix.quiet_hours)
+            ),
+            updated_at=matrix.updated_at,
+        )
+
+
+class UpdateNotificationPreferencesRequest(_Camel):
+    """A full replacement of the caller's preferences.
+
+    Any type left out of ``types`` returns to its default (enabled on every channel), and a
+    ``quietHours`` of ``null`` clears the window. See
+    :mod:`app.application.preferences` for why this is a replacement rather than a patch.
+
+    ``types`` is **required**, with no default. Since omitting a row resets it, a defaulted
+    ``types`` would turn a client that forgot the field -- one sending only ``quietHours``,
+    say -- into a request that silently switches every notification back on. Requiring it
+    makes that a ``422`` instead. A client that really does want the defaults sends ``[]``.
+    """
+
+    types: list[TypePreferenceSchema]
+    quiet_hours: QuietHoursSchema | None = None
