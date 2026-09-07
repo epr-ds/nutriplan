@@ -68,3 +68,13 @@ class NotificationKeys:
         them too, or a replay would be suppressed on behalf of a record no longer readable.
         """
         return f"{self.prefix}:d:{key}"
+
+    def preferences(self, user_id: uuid.UUID | str) -> str:
+        """The key holding one user's notification preferences (NTF-104).
+
+        Deliberately *not* under the ``u:{user_id}:`` prefix the feed indexes use. Those keys
+        all carry the feed's retention TTL and are swept together; preferences must outlive
+        every notification they govern, so they are kept clearly apart from anything a
+        retention sweep touches.
+        """
+        return f"{self.prefix}:p:{user_id}"

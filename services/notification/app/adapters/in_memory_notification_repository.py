@@ -19,6 +19,7 @@ from collections.abc import Callable
 
 from app.adapters import codec
 from app.adapters.retention import RetentionPolicy
+from app.domain.enums import NotificationChannel
 from app.domain.notification import Notification
 
 Clock = Callable[[], float]
@@ -90,6 +91,15 @@ class InMemoryNotificationRepository:
 
         self._records[key] = codec.encode(notification)
         self._created[key] = score
+
+        if not notification.targets(NotificationChannel.IN_APP):
+            # Stored, but not part of the in-app feed: a push-only notification still needs a
+            # record (the push adapter renders from it and NTF-303 records receipts against
+            # it) while having no business appearing in a feed it does not target. The
+            # removals matter for ``update``, where a notification's channels can narrow.
+            self._feed.get(user, {}).pop(key, None)
+            self._unread.get(user, {}).pop(key, None)
+            return notification
 
         self._prune(self._feed, user)[key] = score
         unread = self._prune(self._unread, user)

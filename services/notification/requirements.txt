@@ -5,3 +5,9 @@ pydantic-settings>=2.14.2,<3.0
 httpx>=0.28.1,<1.0
 pyjwt[crypto]>=2.11.0,<3.0
 redis>=8.0.1,<9.0
+# Ships the IANA time-zone database so ``zoneinfo`` can resolve a quiet-hours zone name
+# (NTF-104) regardless of what the base image happens to include. python:3.12-slim does carry
+# tzdata today, but relying on that would make an unrelated base-image change surface as every
+# user's time zone becoming "unknown" -- a 422 on a valid request, in a code path with no
+# obvious link to the cause.
+tzdata>=2025.2

@@ -1,6 +1,8 @@
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.domain.quiet_hours import DEFAULT_TIME_ZONE
+
 
 class Settings(BaseSettings):
     """Runtime configuration, overridable via NOTIFICATION_-prefixed environment variables.
@@ -42,6 +44,14 @@ class Settings(BaseSettings):
     # when deliberately replaying a fixture stream.
     dedupe_ttl_seconds: int = 86_400
     dedupe_claim_seconds: int = 60
+
+    # Preferences (NTF-104). ``default_time_zone`` is the IANA zone a quiet-hours window is
+    # interpreted in when a client does not name one -- a zone *name*, never a fixed offset,
+    # so the window keeps meaning "ten at night" across a daylight-saving change instead of
+    # silently shifting by an hour twice a year. Preferences themselves are stored without a
+    # TTL on purpose (see the Redis adapter): an opt-out that expired would switch itself back
+    # on at a moment with no connection to anything the user did.
+    default_time_zone: str = DEFAULT_TIME_ZONE
 
     # Message bus (NTF-201, NTF-202). Commerce appends order lifecycle events to a Redis stream
     # (COM-109); this service consumes that stream as a named consumer group, so competing

@@ -20,14 +20,20 @@ from __future__ import annotations
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
+from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.retention import RetentionPolicy
 from app.application.notification_recorder import NotificationRecorder
 from app.core.config import Settings
 from app.core.config import settings as default_settings
-from app.domain.repositories import DeduplicationStore, NotificationRepository
+from app.domain.repositories import (
+    DeduplicationStore,
+    NotificationRepository,
+    PreferencesRepository,
+)
 
 
 def build_retention_policy(settings: Settings | None = None) -> RetentionPolicy:
@@ -76,10 +82,23 @@ def build_deduplication_store(settings: Settings | None = None) -> Deduplication
     return InMemoryDeduplicationStore(window=window)
 
 
+def build_preferences_repository(settings: Settings | None = None) -> PreferencesRepository:
+    """Return a Redis-backed preferences store when a URL is configured, else an in-process one."""
+    settings = settings or default_settings
+    url = settings.redis_url.strip()
+    if url:
+        return RedisPreferencesRepository.from_url(
+            url,
+            keys=NotificationKeys(namespace=settings.redis_namespace),
+        )
+    return InMemoryPreferencesRepository()
+
+
 def build_notification_recorder(settings: Settings | None = None) -> NotificationRecorder:
     """Return the idempotent write path event consumers should use (NTF-201/202)."""
     settings = settings or default_settings
     return NotificationRecorder(
         build_notification_repository(settings),
         build_deduplication_store(settings),
+        build_preferences_repository(settings),
     )
