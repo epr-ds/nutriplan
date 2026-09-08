@@ -20,8 +20,11 @@ the in-app feed -- and with it this service's first published contract,
 [`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml).
 **NTF-104** added per-type, per-channel preferences and a nightly quiet-hours window, and
 wired them into the write path, so a user can now turn a notification off and have it stay
-off. Nothing is *delivered* yet: the bus consumer arrives in NTF-201/202 and push delivery in
-NTF-301, so today the feed only returns what a test or a direct writer has recorded.
+off. **NTF-201** built the consumer framework and the versioned event-schema registry, so the
+service can read Commerce's order stream, validate what it finds, and settle every delivery
+exactly once. Nothing is *acted on* yet: the first handler arrives in NTF-202 and push
+delivery in NTF-301, so today the framework consumes, validates and acknowledges without
+producing a notification.
 
 ## Layout
 
@@ -36,6 +39,15 @@ app/
   application/notification_recorder.py  # the idempotent, preference-gated write path
   application/feed.py     # the paged feed query, badge count, and mark-read use cases
   application/preferences.py  # the settings-screen matrix and the replace use case
+  events/envelope.py    # the wire envelope Commerce publishes, parsed
+  events/registry.py    # the versioned schema registry and its four verdicts
+  events/consumer.py    # the EventConsumer port and DeliveredEvent
+  events/dispatcher.py  # settle-or-retry: the outcome table
+  events/dead_letter.py # where a permanently-failed event is parked
+  events/redis_stream.py# Redis Streams consumer group adapter
+  events/memory.py      # in-process adapter, PEL semantics and all
+  events/worker.py      # the poll/reclaim loop and its stop signal
+  events/factory.py     # picks the consumer from configuration
   adapters/codec.py     # JSON record <-> Notification
   adapters/preferences_codec.py  # JSON record <-> NotificationPreferences
   adapters/keys.py      # the Redis key scheme
@@ -237,6 +249,79 @@ sending one they had muted.
 
 Preferences never expire. They are the user's own configuration, not a cached derivative, so
 the Redis write carries no `EX` -- asserted by reading `TTL == -1` back from a live server.
+
+## Consuming events
+
+Commerce publishes order lifecycle events to a Redis stream (`COM-109`); this service reads
+them from the stream named by `NOTIFICATION_ORDER_EVENT_STREAM`, which defaults to
+`commerce.order-events` and must match the publisher exactly. The worker runs as its **own
+process**, not as a FastAPI lifespan task -- a consumer restarted by an HTTP autoscaler is a
+consumer whose backlog grows with traffic, and it must be possible to drain a backlog without
+serving a single request:
+
+```bash
+python -m app.events.worker
+```
+
+### The consumer group starts at the end of the stream
+
+`ensure_group` creates the group at `$`, never `0`. Starting at `0` would, on the very first
+deploy, replay the entire history of the order stream and notify every user about every order
+they have ever placed. NTF-103's dedupe cannot save us there -- no keys exist for events that
+were never handled -- so the offset is the only thing standing between a green deploy and a
+mass mis-notification. The cost is that events published before the group exists are never
+seen, which is the correct trade for a notification service.
+
+### Two identifiers, and which one dedupe uses
+
+Each delivery carries a `delivery_id` (the broker's entry id, assigned on `XADD`) and an
+`event_id` (the producer's id, inside the payload). They are not interchangeable: NTF-204's
+replay re-adds a parked event, which mints a **new** entry id while keeping the original
+envelope id. Deduplication therefore keys on `event_id` -- keying on the entry id would let a
+replay through as if it were a new event.
+
+### Settle or retry
+
+Every delivery ends in exactly one of these, and `EventDispatcher` is the only place that
+decides which:
+
+| outcome | when | what happens |
+| --- | --- | --- |
+| handled | a registered handler returned | ack |
+| skipped | no handler registered for the type | ack |
+| skipped | the registry does not know the type | ack, **not** parked |
+| parked | the schema version is unsupported | dead-letter, then ack |
+| parked | required data is missing, or a handler raised `EventError` | dead-letter, then ack |
+| parked | the retry budget is exhausted | dead-letter, then ack |
+| retried | any other exception | no ack; redelivered after the idle window |
+
+Two of those rows carry the load. **A permanent failure is acked after parking** -- leaving it
+pending only means the reclaim pass serves it again and parks it again, forever. And **an
+unrecognised exception is treated as transient**: guessing "permanent" loses a notification
+silently, whereas guessing "transient" costs a few retries and then hits the budget, which
+parks it anyway. The budget is the backstop that makes optimism safe.
+
+An **unknown type is acked, not parked**, because producers add event types routinely and a
+dead-letter queue full of ordinary traffic is a dead-letter queue nobody reads. An
+**unsupported version is parked**, because a version bump is precisely the signal that the
+meaning of an event we *do* handle has changed.
+
+### Reclaiming stalled work
+
+A consumer that dies mid-batch leaves its messages pending. The worker periodically reclaims
+entries idle longer than `NOTIFICATION_EVENT_RECLAIM_IDLE_MS`, using `XPENDING` + `XCLAIM`
+rather than `XAUTOCLAIM`: the delivery count is the entire reason for reclaiming (it drives
+the retry budget) and `XAUTOCLAIM` does not report it. `XCLAIM` itself increments that
+counter, so the reported attempt is `times_delivered + 1`. The idle window is configured to
+comfortably exceed the block time, because reclaiming a message that is merely slow
+manufactures a duplicate delivery.
+
+### The in-memory consumer reproduces the same semantics
+
+`InMemoryEventConsumer` keeps a real pending-entries list, tracks delivery counts, and honours
+the same idle window. A double that simply hands back messages would make dev and CI a more
+forgiving world than production, and every bug in this list would be found in production
+first.
 
 ## Dependencies and readiness
 
