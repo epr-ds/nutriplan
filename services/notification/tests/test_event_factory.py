@@ -11,7 +11,7 @@ from __future__ import annotations
 from app.core.config import Settings
 from app.events.dispatcher import EventDispatcher
 from app.events.factory import (
-    build_dead_letter_sink,
+    build_dead_letter_queue,
     build_event_consumer,
     build_event_dispatcher,
 )
@@ -97,9 +97,9 @@ class TestTheAssembledDispatcher:
 
         assert dispatcher.poll_once(count=1, block_ms=0).total == 0
 
-    def test_a_dead_letter_sink_is_always_present(self) -> None:
+    def test_a_dead_letter_queue_is_always_present(self) -> None:
         """So "park it" is a real branch from day one rather than a silent drop."""
-        assert build_dead_letter_sink(Settings()).parked == ()  # type: ignore[attr-defined]
+        assert build_dead_letter_queue(Settings()).depth() == 0
 
 
 class TestTheEventingConfiguration:

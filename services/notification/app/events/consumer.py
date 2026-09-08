@@ -23,14 +23,24 @@ eligible to come back through :meth:`EventConsumer.reclaim`. That is at-least-on
 not a detail of the Redis adapter -- the in-process adapter reproduces it exactly, or the
 dev/CI path would be a more forgiving world than production and every ordering bug would
 wait until deploy to appear.
+
+**Why the retry schedule is applied down here** (NTF-204). :meth:`EventConsumer.reclaim` takes
+a :class:`~app.events.backoff.RetrySchedule` rather than a flat idle threshold, which puts a
+policy object in a transport port -- normally the wrong direction. It is done deliberately,
+because the alternative does not work: claiming an entry *is* the act that resets its idle
+timer and increments its delivery count, so a dispatcher that claimed first and then decided
+the entry was not due yet would have already spent the attempt it was trying to postpone.
+Due-ness has to be decided while the entry is still only a row in the pending list, and the
+adapter is the only layer that can see it there.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from app.events.backoff import RetrySchedule
 from app.events.envelope import EventEnvelope
 
 
@@ -64,6 +74,27 @@ class DeliveredEvent:
     """
 
 
+@dataclass(frozen=True, slots=True)
+class ReclaimResult:
+    """What one reclaim sweep found: the entries taken over, and those not yet due.
+
+    ``deferred`` exists so the worker can tell two situations apart that look identical from
+    outside: a pending list that is not draining because backoff is deliberately holding
+    entries back, and one that is not draining because the consumer has stopped working. A
+    bare list of deliveries reports both as "nothing to do" (NTF-204).
+    """
+
+    deliveries: Sequence[DeliveredEvent] = ()
+    deferred: int = 0
+
+    def __iter__(self) -> Iterator[DeliveredEvent]:
+        """Iterate the claimed deliveries, so a caller can treat this as the batch it is."""
+        return iter(self.deliveries)
+
+    def __len__(self) -> int:
+        return len(self.deliveries)
+
+
 @runtime_checkable
 class EventConsumer(Protocol):
     """A durable, at-least-once subscription to one stream as one consumer group."""
@@ -84,13 +115,17 @@ class EventConsumer(Protocol):
         """
         ...
 
-    def reclaim(self, *, min_idle_ms: int, count: int) -> Sequence[DeliveredEvent]:
-        """Take over messages another consumer left pending for longer than ``min_idle_ms``.
+    def reclaim(self, *, schedule: RetrySchedule, count: int) -> ReclaimResult:
+        """Take over pending messages whose backoff has elapsed, per ``schedule``.
 
         This is what makes at-least-once true across a crash. Without it, a consumer killed
         between receiving a message and acking it would strand that message in the pending
         list forever -- delivered once, handled never, and invisible to every liveness check
         the service has.
+
+        It is also the *only* retry path, which is why the schedule is applied here and not
+        above: see the module docstring. Entries that are pending but not yet due are counted
+        into :attr:`ReclaimResult.deferred` and left exactly where they are.
         """
         ...
 

@@ -72,6 +72,25 @@ class Settings(BaseSettings):
     event_reclaim_idle_ms: int = 60_000
     # Retry budget before an event is parked on the dead-letter queue (NTF-204).
     event_max_delivery_attempts: int = 5
+    # Exponential backoff between retries (NTF-204). The *base* wait is
+    # ``event_reclaim_idle_ms`` and is not configurable separately: a retry is physically a
+    # reclaim, and reclaiming sooner than that window would take work away from a replica that
+    # is still doing it. Each further attempt multiplies the wait, capped, so a handler failing
+    # against a dependency that is down stops hammering it. Jitter spreads each due time over
+    # the last ``event_retry_jitter`` of its window -- derived from the delivery id rather than
+    # rolled, so competing replicas agree on when an entry is due. With the defaults, five
+    # attempts span roughly a quarter of an hour before the event is parked.
+    event_retry_multiplier: float = 2.0
+    event_retry_cap_ms: int = 3_600_000
+    event_retry_jitter: float = 0.2
+    # The dead-letter queue itself (NTF-204). Bounded by count *and* by age, for different
+    # reasons: the cap stops a producer looping on a bad payload from turning into a memory
+    # incident, and the TTL stops a single unnoticed failure sitting there forever. The TTL is
+    # deliberately long -- a dead letter that expires is evidence destroyed, and the only thing
+    # worse than a full dead-letter queue is one that quietly emptied itself before anyone
+    # looked at it.
+    dead_letter_max_entries: int = 500
+    dead_letter_ttl_seconds: int = 1_209_600
     # How long an order's announced progress is remembered (NTF-202). This is what lets a
     # stale status -- ``in_transit`` arriving after ``delivered`` -- be recognised as stale
     # rather than announced, so it must outlive the longest plausible order by a wide margin;

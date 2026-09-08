@@ -14,14 +14,19 @@ from typing import Any
 
 import pytest
 
+from app.events.backoff import RetrySchedule
 from app.events.consumer import DeliveredEvent
-from app.events.dead_letter import DeadLetterSink, LoggingDeadLetterSink
+from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
 from app.events.dispatcher import BatchResult, EventDispatcher
 from app.events.envelope import EventEnvelope
 from app.events.errors import MalformedEvent, UnsupportedEvent
 from app.events.memory import InMemoryEventConsumer
 from app.events.registry import ORDER_CONFIRMED, default_registry
 from tests.test_event_envelope import COMMERCE_ORDER_CONFIRMED, envelope
+
+NO_BACKOFF = RetrySchedule(base_ms=0, jitter=0.0)
+"""Everything is due the moment it is pending -- NTF-201's behaviour, for tests about
+the settle rules rather than about the schedule itself (which test_event_backoff owns)."""
 
 
 class RecordingHandler:
@@ -61,11 +66,11 @@ class Harness:
         *,
         handlers: Mapping[str, Any] | None = None,
         max_attempts: int = 5,
-        dead_letters: DeadLetterSink | None = None,
+        dead_letters: DeadLetterQueue | None = None,
     ) -> None:
         self.consumer = InMemoryEventConsumer()
         self.consumer.ensure_group()
-        self.sink = dead_letters or LoggingDeadLetterSink()
+        self.sink = dead_letters or InMemoryDeadLetterQueue()
         self.dispatcher = EventDispatcher(
             self.consumer,
             registry=default_registry(),
@@ -148,7 +153,7 @@ class TestATransientFailureIsRedelivered:
         harness.publish(COMMERCE_ORDER_CONFIRMED)
         harness.run()
 
-        harness.dispatcher.reclaim_once(min_idle_ms=0, count=10)
+        harness.dispatcher.reclaim_once(count=10, schedule=NO_BACKOFF)
 
         assert handler.calls == 2
 
@@ -160,7 +165,7 @@ class TestATransientFailureIsRedelivered:
         harness.run()
 
         for _ in range(5):
-            harness.dispatcher.reclaim_once(min_idle_ms=0, count=10)
+            harness.dispatcher.reclaim_once(count=10, schedule=NO_BACKOFF)
 
         assert handler.calls == 3
         assert harness.pending == 0
@@ -361,7 +366,7 @@ class TestSubscribing:
         """Deferred out of the constructor so building a dispatcher touches no network."""
         consumer = InMemoryEventConsumer()
         dispatcher = EventDispatcher(
-            consumer, registry=default_registry(), dead_letters=LoggingDeadLetterSink()
+            consumer, registry=default_registry(), dead_letters=InMemoryDeadLetterQueue()
         )
         consumer.publish(COMMERCE_ORDER_CONFIRMED)
 

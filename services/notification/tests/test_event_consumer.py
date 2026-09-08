@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 
+from app.events.backoff import RetrySchedule
 from app.events.memory import InMemoryEventConsumer
 from app.events.redis_stream import PAYLOAD_FIELD, RedisStreamEventConsumer
 from tests.conftest import (
@@ -33,6 +34,11 @@ EVENT = {
     "occurredAt": "2026-07-12T21:00:00+00:00",
     "data": {"orderId": "o-1", "userId": "u-1"},
 }
+
+
+NO_BACKOFF = RetrySchedule(base_ms=0, jitter=0.0)
+"""Everything pending is due immediately, so a test about redelivery is not also a test
+about waiting. The schedule itself is exercised in test_event_backoff."""
 
 
 def event(event_id: str) -> dict[str, object]:
@@ -113,7 +119,7 @@ class TestAtLeastOnce:
         event_bus.publish(EVENT)
         event_bus.consumer.poll(count=10, block_ms=100)
 
-        reclaimed = event_bus.consumer.reclaim(min_idle_ms=0, count=10)
+        reclaimed = event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries
 
         assert ids(reclaimed) == ["evt-1"]
 
@@ -123,7 +129,7 @@ class TestAtLeastOnce:
 
         event_bus.consumer.ack(delivered[0].delivery_id)
 
-        assert event_bus.consumer.reclaim(min_idle_ms=0, count=10) == ()
+        assert event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries == ()
         assert event_bus.consumer.poll(count=10, block_ms=50) == ()
 
     def test_reclaiming_increments_the_attempt(self, event_bus: EventBus) -> None:
@@ -131,8 +137,8 @@ class TestAtLeastOnce:
         event_bus.publish(EVENT)
         event_bus.consumer.poll(count=10, block_ms=100)
 
-        first = event_bus.consumer.reclaim(min_idle_ms=0, count=10)
-        second = event_bus.consumer.reclaim(min_idle_ms=0, count=10)
+        first = event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries
+        second = event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries
 
         assert first[0].attempt == 2
         assert second[0].attempt == 3
@@ -142,24 +148,30 @@ class TestAtLeastOnce:
         event_bus.publish(EVENT)
         event_bus.consumer.poll(count=10, block_ms=100)
 
-        assert event_bus.consumer.reclaim(min_idle_ms=60_000, count=10) == ()
+        batch = event_bus.consumer.reclaim(
+            schedule=RetrySchedule(base_ms=60_000, jitter=0.0), count=10
+        )
+
+        assert batch.deliveries == ()
 
     def test_reclaim_finds_the_event_once_it_has_gone_idle(self, event_bus: EventBus) -> None:
         event_bus.publish(EVENT)
         event_bus.consumer.poll(count=10, block_ms=100)
         time.sleep(0.05)
 
-        assert len(event_bus.consumer.reclaim(min_idle_ms=10, count=10)) == 1
+        batch = event_bus.consumer.reclaim(schedule=RetrySchedule(base_ms=10, jitter=0.0), count=10)
+
+        assert len(batch.deliveries) == 1
 
     def test_reclaim_is_capped_at_the_requested_count(self, event_bus: EventBus) -> None:
         event_bus.publish_all(event("a"), event("b"), event("c"))
         event_bus.consumer.poll(count=10, block_ms=100)
 
-        assert len(event_bus.consumer.reclaim(min_idle_ms=0, count=2)) == 2
+        assert len(event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=2).deliveries) == 2
 
     def test_reclaim_on_a_clean_group_returns_nothing(self, event_bus: EventBus) -> None:
         """The overwhelmingly common case: nothing is stranded, so the sweep is cheap."""
-        assert event_bus.consumer.reclaim(min_idle_ms=0, count=10) == ()
+        assert event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries == ()
 
     def test_acking_an_unknown_id_is_a_no_op(self, event_bus: EventBus) -> None:
         """As ``XACK`` is -- a double ack after a retry must not become an error."""
@@ -172,7 +184,7 @@ class TestAtLeastOnce:
         event_bus.consumer.ack(delivered[0].delivery_id)
         event_bus.consumer.ack(delivered[0].delivery_id)
 
-        assert event_bus.consumer.reclaim(min_idle_ms=0, count=10) == ()
+        assert event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries == ()
 
     def test_only_the_unacked_half_of_a_batch_comes_back(self, event_bus: EventBus) -> None:
         """The realistic crash: some of a batch settled, some did not."""
@@ -181,7 +193,7 @@ class TestAtLeastOnce:
         event_bus.consumer.ack(delivered[0].delivery_id)
         event_bus.consumer.ack(delivered[2].delivery_id)
 
-        assert ids(event_bus.consumer.reclaim(min_idle_ms=0, count=10)) == ["b"]
+        assert ids(event_bus.consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries) == ["b"]
 
 
 class TestANewGroupStartsAtTheEndOfTheStream:
@@ -309,7 +321,7 @@ class TestTheRedisAdapterSpecifically:
             stream_client.xadd(stream, {PAYLOAD_FIELD: json.dumps(EVENT)})
             dead.poll(count=10, block_ms=100)
 
-            reclaimed = alive.reclaim(min_idle_ms=0, count=10)
+            reclaimed = alive.reclaim(schedule=NO_BACKOFF, count=10).deliveries
 
             assert ids(reclaimed) == ["evt-1"]
             assert reclaimed[0].attempt == 2
@@ -355,8 +367,8 @@ class TestTheRedisAdapterSpecifically:
             consumer.poll(count=10, block_ms=100)
             stream_client.xdel(stream, entry_id)
 
-            assert consumer.reclaim(min_idle_ms=0, count=10) == ()
-            assert consumer.reclaim(min_idle_ms=0, count=10) == ()
+            assert consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries == ()
+            assert consumer.reclaim(schedule=NO_BACKOFF, count=10).deliveries == ()
         finally:
             stream_client.delete(stream)
 

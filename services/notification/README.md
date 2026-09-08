@@ -410,6 +410,87 @@ The bus defaults to the same Redis as the datastore, so one container backs both
 splitting them in production stays a config change rather than a code change. The stream
 name must match the commerce service's `COMMERCE_EVENT_STREAM` (COM-109).
 
+## Retry backoff and the dead-letter queue
+
+An event that keeps failing must neither spin forever nor vanish. Retries are spaced out by an
+exponential backoff, a finite budget ends them, and whatever is left over is parked in a
+dead-letter queue an operator can inspect and replay.
+
+### The backoff base *is* the reclaim idle window
+
+Waiting is not something this service does; it is something it *declines to do*. A failed entry
+stays pending, and the only mechanism that ever looks at it again is the reclaim sweep -- which
+`XPENDING` filters by idle time. So the shortest wait expressible is the reclaim idle window
+(`NOTIFICATION_EVENT_RECLAIM_IDLE_MS`, 60s), and `RetrySchedule`'s base cannot be configured
+below it. A shorter base would silently round up to it and the configuration would be a lie.
+
+`XPENDING` is asked for entries idle at least `floor_ms` (the shortest wait any attempt can
+have). That is a cheap server-side pre-filter, not the decision: an entry on its fourth attempt
+is fetched by it and then found not due, because its own wait is sixteen times longer. Doing the
+coarse filter server-side keeps a backlog of deferred entries off the wire every sweep.
+
+### Jitter is derived from the delivery id, never random
+
+Replicas must agree on when an entry is due, or one reclaims what another is still waiting on
+and manufactures the duplicate delivery the backoff exists to prevent. The offset is therefore a
+`blake2b` digest of the delivery id -- stable across processes and restarts. Python's built-in
+`hash()` would be the obvious choice and is wrong: it is randomized per process by
+`PYTHONHASHSEED`, so every replica would compute a different answer for the same entry.
+
+Jitter only ever moves a retry *earlier*, so no entry can be pushed past the budget by chance.
+
+### `deferred` is not a failure
+
+A reclaim sweep reports `deferred` for entries it looked at and deliberately left alone. Without
+it, "the backoff is working" and "the consumer is dead" look identical from the outside -- both
+show pending entries that nobody is handling. It is deliberately excluded from `BatchResult.total`
+(nothing was settled) and carries no event type in metrics, because a deferred entry's payload is
+never fetched; only its delivery id is known.
+
+### What lands in the DLQ, and what replay does
+
+Parking is for deliveries that cannot succeed by being tried again: a permanent handler failure
+(`EventError`), an unsupported schema version, missing required data, or a retry budget that ran
+out. The queue is capped (`NOTIFICATION_DLQ_MAX_ENTRIES`) and evicts the **oldest** entry first --
+under a flood, the recent failures are the ones an operator can still act on.
+
+Replay re-runs the parked envelope through the live dispatcher **in process**. It does not
+re-publish to the stream, does not ack, and does not re-park on failure:
+
+- Re-publishing would hand the event a new stream entry id and lose the audit trail; NTF-103
+  dedupe keys on the envelope `event_id`, so a replayed event that already produced a
+  notification is correctly refused as a duplicate.
+- Re-parking a failed replay would let a broken handler churn the queue's eviction order and push
+  out entries that were never even tried.
+
+**Removal follows the handler**: an entry is dropped from the queue only when its replay
+succeeds. A failure leaves it parked, so retrying is always safe and never destructive.
+
+Queue depth is read live rather than counted into a metric series -- a counter would drift away
+from reality every time an entry was evicted, replayed, or purged out from under it.
+
+### The operator CLI
+
+```sh
+python -m app.events.dlq list [--limit N] [--offset N]
+python -m app.events.dlq show <delivery-id>
+python -m app.events.dlq replay (<delivery-id> | --all [--limit N])
+python -m app.events.dlq purge --yes
+```
+
+A CLI rather than an HTTP surface: authentication here has no roles or scopes, so an endpoint
+that can replay or purge the queue would be reachable by any valid user token. Shell access is
+the authorization.
+
+`--json` (global) emits machine-readable output for scripting. Exit codes are `0` on success,
+`1` when the requested work failed (an unknown delivery id, a replay that did not succeed), and
+`2` for usage errors -- `purge` without `--yes`, or `replay` given both an id and `--all` or
+neither.
+
+Note that `replay` runs events through the **real** consumer wiring, not a stub -- a replayed
+`order.confirmed` reaches the NTF-202 handler and writes a notification exactly as the live path
+would.
+
 ## Testing
 
 All builds/tests run in Docker.

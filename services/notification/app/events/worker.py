@@ -57,14 +57,12 @@ class EventWorker:
         *,
         batch_size: int,
         block_ms: int,
-        reclaim_idle_ms: int,
         reclaim_every: int = RECLAIM_EVERY_CYCLES,
         sleep: Callable[[float], None] | None = None,
     ) -> None:
         self._dispatcher = dispatcher
         self._batch_size = max(1, batch_size)
         self._block_ms = max(0, block_ms)
-        self._reclaim_idle_ms = max(0, reclaim_idle_ms)
         self._reclaim_every = max(1, reclaim_every)
         self._sleep = sleep or time.sleep
         self._cycles = 0
@@ -82,16 +80,19 @@ class EventWorker:
             dispatcher or build_event_dispatcher(settings),
             batch_size=settings.event_batch_size,
             block_ms=settings.event_block_ms,
-            reclaim_idle_ms=settings.event_reclaim_idle_ms,
         )
 
     def run_once(self) -> BatchResult:
-        """Run one cycle: a reclaim sweep when due, then a batch of new messages."""
+        """Run one cycle: a reclaim sweep when due, then a batch of new messages.
+
+        The sweep no longer carries an idle threshold of its own: NTF-204 moved that decision
+        into the dispatcher's :class:`~app.events.backoff.RetrySchedule`, so how long a given
+        entry waits depends on how many times it has already failed rather than on a single
+        number the worker holds.
+        """
         result = BatchResult()
         if self._cycles % self._reclaim_every == 0:
-            result += self._dispatcher.reclaim_once(
-                min_idle_ms=self._reclaim_idle_ms, count=self._batch_size
-            )
+            result += self._dispatcher.reclaim_once(count=self._batch_size)
         result += self._dispatcher.poll_once(count=self._batch_size, block_ms=self._block_ms)
         self._cycles += 1
         return result
@@ -112,11 +113,14 @@ class EventWorker:
                 logger.exception("notification.event.cycle_failed")
                 self._sleep(ERROR_BACKOFF_SECONDS)
         logger.info(
-            "notification.event.worker_stopped handled=%d dropped=%d dead_lettered=%d retried=%d",
+            "notification.event.worker_stopped handled=%d dropped=%d dead_lettered=%d "
+            "retried=%d deferred=%d dlq_depth=%d",
             total.handled,
             total.dropped,
             total.dead_lettered,
             total.retried,
+            total.deferred,
+            self._dispatcher.dead_letters.depth(),
         )
         return total
 
