@@ -31,7 +31,8 @@ import json
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-from app.events.consumer import DeliveredEvent
+from app.events.backoff import RetrySchedule
+from app.events.consumer import DeliveredEvent, ReclaimResult
 
 PAYLOAD_FIELD = "payload"
 """The stream field carrying the JSON envelope. Must match the commerce publisher."""
@@ -155,13 +156,19 @@ class RedisStreamEventConsumer:
                 delivered.append(DeliveredEvent(entry_id, _payload(fields), attempt=1))
         return tuple(delivered)
 
-    def reclaim(self, *, min_idle_ms: int, count: int) -> Sequence[DeliveredEvent]:
-        """Take over messages left pending longer than ``min_idle_ms`` by any consumer.
+    def reclaim(self, *, schedule: RetrySchedule, count: int) -> ReclaimResult:
+        """Take over pending messages whose backoff has elapsed; leave the rest pending.
 
         Two commands rather than ``XAUTOCLAIM`` because the delivery count is the whole
         reason for reclaiming: ``XPENDING`` reports it, ``XAUTOCLAIM`` does not, and without
-        it the retry budget could never be enforced against exactly the messages that keep
-        killing their consumer.
+        it neither the retry budget nor the backoff schedule could be applied to exactly the
+        messages that keep killing their consumer.
+
+        ``XPENDING`` is asked for entries idle at least :attr:`RetrySchedule.floor_ms`, which
+        is the shortest wait any entry can have. That is a cheap server-side pre-filter, not
+        the decision: an entry on its fourth attempt is fetched by it and then found not due,
+        because its own wait is sixteen times longer. Doing the coarse filter server-side
+        keeps a backlog of deferred entries from being dragged across the wire every sweep.
         """
         pending = self._client.xpending_range(
             name=self._stream,
@@ -169,17 +176,36 @@ class RedisStreamEventConsumer:
             min="-",
             max="+",
             count=count,
-            idle=min_idle_ms,
+            idle=schedule.floor_ms,
         )
         if not pending:
-            return ()
+            return ReclaimResult()
 
-        attempts = {str(entry["message_id"]): int(entry["times_delivered"]) for entry in pending}
+        attempts: dict[str, int] = {}
+        deferred = 0
+        for entry in pending:
+            message_id = str(entry["message_id"])
+            times_delivered = int(entry["times_delivered"])
+            idle_ms = int(entry["time_since_delivered"])
+            if not schedule.is_due(
+                attempt=times_delivered, idle_ms=idle_ms, delivery_id=message_id
+            ):
+                deferred += 1
+                continue
+            attempts[message_id] = times_delivered
+
+        if not attempts:
+            return ReclaimResult(deferred=deferred)
+
         claimed = self._client.xclaim(
             name=self._stream,
             groupname=self._group,
             consumername=self._consumer,
-            min_idle_time=min_idle_ms,
+            # The claim re-checks idleness server-side against the shortest wait any entry
+            # could have. It is a guard against a race, not a second policy decision: another
+            # replica may have claimed the entry between the XPENDING and here, and without
+            # the guard both consumers would run the same handler at the same time.
+            min_idle_time=schedule.floor_ms,
             message_ids=list(attempts),
         )
 
@@ -196,7 +222,7 @@ class RedisStreamEventConsumer:
             # is one past what XPENDING reported a moment ago.
             attempt = attempts.get(str(entry_id), 0) + 1
             delivered.append(DeliveredEvent(entry_id, _payload(fields), attempt=attempt))
-        return tuple(delivered)
+        return ReclaimResult(deliveries=tuple(delivered), deferred=deferred)
 
     def ack(self, delivery_id: str) -> None:
         """Remove one message from the group's pending list."""

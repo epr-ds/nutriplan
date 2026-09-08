@@ -15,6 +15,7 @@ from collections.abc import Callable
 import pytest
 
 from app.core.config import Settings
+from app.events.dead_letter import InMemoryDeadLetterQueue
 from app.events.dispatcher import BatchResult
 from app.events.worker import RECLAIM_EVERY_CYCLES, EventWorker, StopSignal
 
@@ -25,7 +26,8 @@ class StubDispatcher:
     def __init__(self, *, fail_on: set[int] | None = None) -> None:
         self.subscribed = 0
         self.polls: list[tuple[int, int]] = []
-        self.reclaims: list[tuple[int, int]] = []
+        self.reclaims: list[int] = []
+        self.dead_letters = InMemoryDeadLetterQueue()
         self._fail_on = fail_on or set()
 
     def ensure_subscribed(self) -> None:
@@ -37,8 +39,8 @@ class StubDispatcher:
             raise ConnectionError("redis went away")
         return BatchResult(handled=1)
 
-    def reclaim_once(self, *, min_idle_ms: int, count: int) -> BatchResult:
-        self.reclaims.append((min_idle_ms, count))
+    def reclaim_once(self, *, count: int, schedule: object = None) -> BatchResult:
+        self.reclaims.append(count)
         return BatchResult(dead_lettered=1)
 
 
@@ -57,7 +59,6 @@ def worker(
     *,
     batch_size: int = 10,
     block_ms: int = 2_000,
-    reclaim_idle_ms: int = 60_000,
     reclaim_every: int = RECLAIM_EVERY_CYCLES,
     sleep: Callable[[float], None] | None = None,
 ) -> EventWorker:
@@ -65,7 +66,6 @@ def worker(
         dispatcher,  # type: ignore[arg-type]
         batch_size=batch_size,
         block_ms=block_ms,
-        reclaim_idle_ms=reclaim_idle_ms,
         reclaim_every=reclaim_every,
         sleep=sleep,
     )
@@ -91,7 +91,7 @@ class TestOneCycle:
 
         worker(dispatcher).run_once()
 
-        assert dispatcher.reclaims == [(60_000, 10)]
+        assert dispatcher.reclaims == [10]
 
     def test_it_returns_the_combined_result_of_both_passes(self) -> None:
         assert worker(StubDispatcher()).run_once() == BatchResult(handled=1, dead_lettered=1)
@@ -235,12 +235,12 @@ class TestTheStopSignal:
 class TestBuildingFromSettings:
     def test_it_reads_the_batch_and_block_from_configuration(self) -> None:
         dispatcher = StubDispatcher()
-        settings = Settings(event_batch_size=25, event_block_ms=500, event_reclaim_idle_ms=1_000)
+        settings = Settings(event_batch_size=25, event_block_ms=500)
 
         EventWorker.from_settings(settings, dispatcher=dispatcher).run_once()  # type: ignore[arg-type]
 
         assert dispatcher.polls == [(25, 500)]
-        assert dispatcher.reclaims == [(1_000, 25)]
+        assert dispatcher.reclaims == [25]
 
     def test_a_prewired_dispatcher_is_used_as_given(self) -> None:
         """NTF-202 builds a dispatcher with its handlers attached and hands it over."""

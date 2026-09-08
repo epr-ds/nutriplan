@@ -52,7 +52,9 @@ from app.domain.repositories import (
     PreferencesRepository,
 )
 from app.events.consumer import EventConsumer
+from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
 from app.events.memory import InMemoryEventConsumer
+from app.events.redis_dead_letter import RedisDeadLetterQueue
 from app.events.redis_stream import PAYLOAD_FIELD, RedisStreamEventConsumer
 
 PRESERVED = {"NOTIFICATION_TEST_REDIS_URL", "NOTIFICATION_OPENAPI_SPEC"}
@@ -76,6 +78,9 @@ TEST_WINDOW = IdempotencyWindow(ttl_seconds=600, provisional_seconds=60)
 TEST_CONSUMER_GROUP = "notification-test"
 TEST_CONSUMER_NAME = "notification-test-1"
 """Group and consumer names for the eventing suite; the stream is unique per test."""
+
+TEST_DLQ_CAPACITY = 5
+"""A tiny dead-letter queue, so eviction is reachable in a test without parking hundreds."""
 
 DedupeStoreFactory = Callable[..., DeduplicationStore]
 
@@ -317,6 +322,36 @@ def event_bus(request: pytest.FixtureRequest) -> Iterator[EventBus]:
 
 
 OrderProgressFactory = Callable[..., OrderProgressStore]
+
+
+@pytest.fixture(params=["memory", "redis"])
+def dead_letter_queue(request: pytest.FixtureRequest) -> Iterator[DeadLetterQueue]:
+    """One dead-letter queue per adapter, so every test using it is a parity contract.
+
+    Parametrized for the same reason the store fixtures are, and with more at stake than
+    most: this queue is the last copy of an event nobody else still has. An in-memory
+    stand-in that quietly accepted a park the durable one would have dropped -- or listed in
+    the opposite order -- would let the CLI, the replayer and every runbook built on them
+    pass here and mislead an operator mid-incident.
+    """
+    if request.param == "memory":
+        yield InMemoryDeadLetterQueue(capacity=TEST_DLQ_CAPACITY)
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    try:
+        yield RedisDeadLetterQueue(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+            max_entries=TEST_DLQ_CAPACITY,
+            ttl_seconds=3_600,
+        )
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
 
 
 @pytest.fixture(params=["memory", "redis"])

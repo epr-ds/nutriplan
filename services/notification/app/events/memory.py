@@ -13,8 +13,10 @@ So this class reproduces the parts of a Redis consumer group that the semantics 
 
 * a message stays **pending** until it is acked;
 * the pending entry remembers a **delivery count** and the time it was last handed out;
-* :meth:`reclaim` returns pending messages older than an idle threshold, incrementing that
-  count -- which is what a crashed consumer's messages do under ``XAUTOCLAIM``;
+* :meth:`reclaim` returns pending messages whose backoff has elapsed, incrementing that
+  count -- which is what a crashed consumer's messages do under ``XCLAIM``;
+* the same :class:`~app.events.backoff.RetrySchedule` decides due-ness, jitter included, so
+  NTF-204's backoff is exercised in CI rather than only in production;
 * the group has an **offset**, and one created against a stream that already has entries
   starts at the end of it, exactly as ``XGROUP CREATE ... $`` does.
 
@@ -32,7 +34,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from app.events.consumer import DeliveredEvent
+from app.events.backoff import RetrySchedule
+from app.events.consumer import DeliveredEvent, ReclaimResult
 
 MONOTONIC_START = 1
 """Entry ids count from 1; Redis uses ``<ms>-<seq>``, but only ordering is relied on."""
@@ -112,24 +115,33 @@ class InMemoryEventConsumer:
                 delivered.append(DeliveredEvent(entry_id, payload, attempt=1))
             return tuple(delivered)
 
-    def reclaim(self, *, min_idle_ms: int, count: int) -> Sequence[DeliveredEvent]:
-        """Re-serve pending entries idle for at least ``min_idle_ms``, bumping the attempt."""
+    def reclaim(self, *, schedule: RetrySchedule, count: int) -> ReclaimResult:
+        """Re-serve pending entries whose backoff has elapsed, bumping the attempt.
+
+        Applies the same schedule the Redis adapter does, including the per-entry jitter
+        derived from the entry id. A stand-in that retried everything on a flat threshold
+        would make every backoff test pass in CI and prove nothing about production.
+        """
         with self._lock:
             now = self._clock()
-            threshold = min_idle_ms / 1000.0
             claimed = []
+            deferred = 0
             for entry_id in sorted(self._pending, key=int):
                 if len(claimed) >= max(0, count):
                     break
                 entry = self._pending[entry_id]
-                if now - entry.last_delivered_at < threshold:
+                idle_ms = int((now - entry.last_delivered_at) * 1000)
+                if not schedule.is_due(
+                    attempt=entry.delivered_count, idle_ms=idle_ms, delivery_id=entry_id
+                ):
+                    deferred += 1
                     continue
                 entry.delivered_count += 1
                 entry.last_delivered_at = now
                 claimed.append(
                     DeliveredEvent(entry_id, entry.payload, attempt=entry.delivered_count)
                 )
-            return tuple(claimed)
+            return ReclaimResult(deliveries=tuple(claimed), deferred=deferred)
 
     def ack(self, delivery_id: str) -> None:
         """Settle a message. Acking an unknown or already-acked id is a no-op, as ``XACK`` is."""
