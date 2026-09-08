@@ -78,3 +78,12 @@ class NotificationKeys:
         retention sweep touches.
         """
         return f"{self.prefix}:p:{user_id}"
+
+    def order_progress(self, order_id: str) -> str:
+        """The key holding how far along one order has been announced (NTF-202).
+
+        Keyed by *order*, not by user, because the question it answers is about the order's
+        lifecycle. Commerce puts exactly one user on an order, so nothing is lost, and a
+        key that named both would be unreachable from an event that carried only one of them.
+        """
+        return f"{self.prefix}:o:{order_id}"

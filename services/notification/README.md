@@ -22,9 +22,9 @@ the in-app feed -- and with it this service's first published contract,
 wired them into the write path, so a user can now turn a notification off and have it stay
 off. **NTF-201** built the consumer framework and the versioned event-schema registry, so the
 service can read Commerce's order stream, validate what it finds, and settle every delivery
-exactly once. Nothing is *acted on* yet: the first handler arrives in NTF-202 and push
-delivery in NTF-301, so today the framework consumes, validates and acknowledges without
-producing a notification.
+exactly once. **NTF-202** plugged the first real handler into that framework: an order event
+now becomes a notification in the user's feed. Delivery is still in-app only -- push arrives
+in NTF-301.
 
 ## Layout
 
@@ -35,10 +35,12 @@ app/
   domain/dedupe.py      # the deterministic (event, user, type) key
   domain/quiet_hours.py # the nightly window, in the user's own zone
   domain/preferences.py # the per-type, per-channel deny-list
+  domain/order_status.py# the order vocabulary and how far an order has progressed
   domain/repositories.py# the persistence and deduplication ports
   application/notification_recorder.py  # the idempotent, preference-gated write path
   application/feed.py     # the paged feed query, badge count, and mark-read use cases
   application/preferences.py  # the settings-screen matrix and the replace use case
+  application/order_status_consumer.py  # order event -> notification
   events/envelope.py    # the wire envelope Commerce publishes, parsed
   events/registry.py    # the versioned schema registry and its four verdicts
   events/consumer.py    # the EventConsumer port and DeliveredEvent
@@ -59,6 +61,8 @@ app/
   adapters/in_memory_deduplication_store.py
   adapters/redis_preferences_repository.py
   adapters/in_memory_preferences_repository.py
+  adapters/redis_order_progress.py       # the monotonic progress mark, in Redis
+  adapters/in_memory_order_progress.py   # the same mark, in process
   adapters/factory.py   # picks the stores from configuration
   core/config.py        # NOTIFICATION_-prefixed settings (Redis, bus, push providers)
   core/readiness.py     # pure, environment-aware readiness evaluation
@@ -323,7 +327,70 @@ the same idle window. A double that simply hands back messages would make dev an
 forgiving world than production, and every bug in this list would be found in production
 first.
 
-## Dependencies and readiness
+## Turning an order event into a notification
+
+**NTF-202** registers the first handler on that framework. Commerce publishes either
+`order.confirmed` or `order.status_changed` -- never both for the same move -- and both route
+to the same consumer, because to a user they are the same thing: the order moved.
+`order.created` is deliberately **left unregistered**; placing an order is not news to the
+person who just placed it, and the absence is visible in `events/factory.py` rather than
+buried in a handler that quietly does nothing.
+
+### Each status maps to one notification type
+
+| order status | notification type |
+| --- | --- |
+| `confirmed` | `order_confirmed` |
+| `preparing` | `order_preparing` |
+| `in_transit` | `order_in_transit` |
+| `delivered` | `order_delivered` |
+| `cancelled` | `order_cancelled` |
+| `pending` | none -- not news |
+
+A status this build has never heard of raises `UnknownOrderStatus`, which the dispatcher parks.
+That is the **opposite** of its treatment of an unknown event *type*, and deliberately so: a new
+type is routine producer growth, whereas a new status on an event we already handle is a rare,
+deliberate change to the order lifecycle -- exactly what a dead-letter queue is for.
+
+### The progress mark, and why it ranks cancellation last
+
+Streams redeliver and reorder. A `preparing` event arriving after `delivered` must not tell the
+user their food is being cooked, so the consumer keeps a **monotonic mark** per order --
+`OrderProgressStore`, one key per order, holding the *rank* of the furthest status announced.
+`advance` only ever moves it forward; in Redis that is a Lua script, because a read-then-write
+would let two workers each see the old value. An event at or behind the mark is dropped.
+
+`PROGRESS` ranks `cancelled` **above** `delivered`. That is not Commerce's state machine -- it
+is a notification ordering, and it encodes that "your order was cancelled" is the last word on
+an order regardless of what raced in behind it.
+
+The mark outlives a realistic order (`NOTIFICATION_ORDER_PROGRESS_TTL_SECONDS`, 7 days) and is
+asserted to be longer than the dedupe window: a mark that expired first would let a late
+redelivery re-announce a status the user has already seen.
+
+### Read the guard, record, then advance -- in that order
+
+`handle` reads the mark, records the notification, and *only then* advances. Advancing first
+and treating "it moved" as permission to notify would lose the notification permanently if the
+recorder then failed -- the mark would already say the user had been told. Reading first means
+a crash leaves the mark **behind**, the event is redelivered, and NTF-103's dedupe absorbs the
+duplicate. The mark is advanced for **every** non-exception outcome, including a duplicate and
+a preference-suppressed delivery, because it tracks what we have *decided about*, not what we
+managed to tell the user.
+
+### What the client gets
+
+The payload carries `orderId`, `status`, `occurredAt`, and `previousStatus` when the event
+named a prior state. The status *values* are Commerce's own vocabulary, unaltered -- only the
+keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
+notification would expect. There is no title or body: copy is localized on the client, and a
+Spanish user should not receive English text baked in at write time.
+
+`created_at` is the moment we record, **not** the event's `occurredAt`. Back-dating a replayed
+event would file it under a day the user has already scrolled past, so the original instant
+travels in the payload instead, where a client can render "2 hours ago" if it wants to.
+
+
 
 Liveness (`/health`) answers "is the process up?"; readiness (`/health/ready`) answers "can
 it actually do its job?", and reports a named check per dependency so operators can see

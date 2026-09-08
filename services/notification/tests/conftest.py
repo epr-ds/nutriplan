@@ -34,16 +34,21 @@ import pytest
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_notification_repository import RedisNotificationRepository
+from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.retention import RetentionPolicy
 from app.application.notification_recorder import NotificationRecorder
+from app.application.order_status_consumer import OrderStatusConsumer
+from app.domain.notification import Notification
 from app.domain.repositories import (
     DeduplicationStore,
     NotificationRepository,
+    OrderProgressStore,
     PreferencesRepository,
 )
 from app.events.consumer import EventConsumer
@@ -308,4 +313,106 @@ def event_bus(request: pytest.FixtureRequest) -> Iterator[EventBus]:
         yield EventBus(consumer, publish)
     finally:
         client.delete(stream)
+        client.close()
+
+
+OrderProgressFactory = Callable[..., OrderProgressStore]
+
+
+@pytest.fixture(params=["memory", "redis"])
+def order_progress(request: pytest.FixtureRequest) -> Iterator[OrderProgressFactory]:
+    """A *factory* for order-progress stores, parametrized over both adapters (NTF-202).
+
+    A factory for the same reason ``dedupe_store`` is one: the interesting property of the
+    mark is what happens when it expires, and that means the test has to choose the window.
+    """
+    if request.param == "memory":
+
+        def build_memory(**kwargs: object) -> OrderProgressStore:
+            kwargs.setdefault("ttl_seconds", 3_600)
+            return InMemoryOrderProgressStore(**kwargs)  # type: ignore[arg-type]
+
+        yield build_memory
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+
+    def build_redis(**kwargs: object) -> OrderProgressStore:
+        kwargs.pop("clock", None)  # a real server keeps its own time
+        return RedisOrderProgressStore(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+            ttl_seconds=kwargs.pop("ttl_seconds", 3_600),  # type: ignore[arg-type]
+        )
+
+    try:
+        yield build_redis
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@dataclass
+class OrderConsumerHarness:
+    """The NTF-202 consumer with the stores behind it left reachable.
+
+    A consumer's whole output is a side effect, so a test needs to read the store to see
+    what it did. Bundling the two here keeps every assertion going through the same backend
+    the consumer wrote to -- the mistake that would make an in-memory test pass while the
+    Redis one silently asserted nothing.
+    """
+
+    consumer: OrderStatusConsumer
+    repository: NotificationRepository
+    progress: OrderProgressStore
+    preferences: PreferencesRepository
+
+    def feed(self, user_id: uuid.UUID) -> list[Notification]:
+        """Everything recorded for a user, newest first."""
+        return self.repository.list_for_user(user_id)
+
+    def types(self, user_id: uuid.UUID) -> list[str]:
+        """Just the notification types in the user's feed, for readable assertions."""
+        return [n.type.value for n in self.feed(user_id)]
+
+
+@pytest.fixture(params=["memory", "redis"])
+def order_consumer(request: pytest.FixtureRequest) -> Iterator[OrderConsumerHarness]:
+    """The order-status consumer wired to one backend, with its stores exposed."""
+    if request.param == "memory":
+        repository: NotificationRepository = InMemoryNotificationRepository(policy=TEST_POLICY)
+        preferences: PreferencesRepository = InMemoryPreferencesRepository()
+        progress: OrderProgressStore = InMemoryOrderProgressStore(ttl_seconds=3_600)
+        recorder = NotificationRecorder(
+            repository,
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+            preferences,
+        )
+        yield OrderConsumerHarness(
+            OrderStatusConsumer(recorder, progress), repository, progress, preferences
+        )
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    keys = NotificationKeys(namespace=namespace)
+    try:
+        repository = redis_repository(client, namespace=namespace)
+        preferences = RedisPreferencesRepository(client, keys=keys)  # type: ignore[arg-type]
+        progress = RedisOrderProgressStore(client, keys=keys, ttl_seconds=3_600)  # type: ignore[arg-type]
+        recorder = NotificationRecorder(
+            repository,
+            RedisDeduplicationStore(client, keys=keys, window=TEST_WINDOW),  # type: ignore[arg-type]
+            preferences,
+        )
+        yield OrderConsumerHarness(
+            OrderStatusConsumer(recorder, progress), repository, progress, preferences
+        )
+    finally:
+        drop_namespace(client, namespace)
         client.close()

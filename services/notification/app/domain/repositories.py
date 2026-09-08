@@ -21,6 +21,7 @@ from typing import Protocol, runtime_checkable
 
 from app.domain.dedupe import Claim, DedupeKey
 from app.domain.notification import Notification
+from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
 
 
@@ -150,4 +151,49 @@ class PreferencesRepository(Protocol):
 
     def save(self, preferences: NotificationPreferences) -> NotificationPreferences:
         """Persist a user's preferences, replacing any previous record, and return them."""
+        ...
+
+
+@runtime_checkable
+class OrderProgressStore(Protocol):
+    """How far along each order we have already told the user about (NTF-202, AC3).
+
+    This is the memory that makes "out-of-order events handled" possible, and it is a
+    genuinely different question from the one :class:`DeduplicationStore` answers. Dedupe asks
+    *"have I handled this exact event?"* and is keyed by the producer's event id. This asks
+    *"has this order already moved past here?"* and is keyed by the order. Neither subsumes
+    the other: a redelivery of the ``in_transit`` event is the same event (dedupe catches it),
+    whereas an ``in_transit`` event arriving after ``delivered`` has been announced is a
+    *different, never-before-seen* event that must still be suppressed -- and dedupe, correctly,
+    has nothing to say about it.
+
+    Both directions of failure are worth naming. Suppressing a stale status tells a user their
+    order is being prepared after they have already received it, which reads as a broken
+    system. Failing to suppress it is not merely untidy: it is the one notification a user
+    cannot reconcile with reality.
+
+    :meth:`advance` must be **atomic and monotonic** -- a read followed by a separate write
+    would let two workers handling adjacent statuses interleave and leave the mark behind the
+    order's true position, which re-opens the window for a stale event to be announced.
+    """
+
+    def progress_of(self, order_id: str) -> int:
+        """Return the highest rank recorded for ``order_id``.
+
+        Returns :data:`~app.domain.order_status.NO_PROGRESS` for an order nothing has been
+        recorded against -- including one whose mark has expired. Expiry is why this is a
+        *guard* and not the sole defence: it bounds memory, and the window is configured to
+        outlive any plausible order, but a sufficiently late event will still be treated as
+        new. The dedupe store, whose window is independent, is what covers a replay of it.
+        """
+        ...
+
+    def advance(self, order_id: str, status: OrderStatus) -> bool:
+        """Record ``status`` as reached, if it is further along than what is stored.
+
+        Returns ``True`` when the mark actually moved. Callers use the return value for
+        observability rather than for control flow: the decision to notify is made *before*
+        this is called, deliberately, so that a crash between the two costs a redelivery that
+        the dedupe store then suppresses, rather than a notification nobody ever sends.
+        """
         ...
