@@ -12,9 +12,13 @@ a hard failure inside it, so nobody ships it by accident.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from app.adapters.factory import build_notification_recorder, build_order_progress_store
+from app.application.order_status_consumer import HANDLED_EVENT_TYPES, OrderStatusConsumer
 from app.core.config import Settings
 from app.core.config import settings as default_settings
-from app.events.consumer import EventConsumer
+from app.events.consumer import EventConsumer, EventHandler
 from app.events.dead_letter import DeadLetterSink, LoggingDeadLetterSink
 from app.events.dispatcher import EventDispatcher
 from app.events.memory import InMemoryEventConsumer
@@ -47,25 +51,42 @@ def build_dead_letter_sink(settings: Settings | None = None) -> DeadLetterSink:
     return LoggingDeadLetterSink()
 
 
+def build_order_status_consumer(settings: Settings | None = None) -> OrderStatusConsumer:
+    """Assemble the handler that turns order events into notifications (NTF-202)."""
+    settings = settings or default_settings
+    return OrderStatusConsumer(
+        build_notification_recorder(settings),
+        build_order_progress_store(settings),
+    )
+
+
 def build_event_dispatcher(
     settings: Settings | None = None,
     *,
     consumer: EventConsumer | None = None,
     registry: EventSchemaRegistry | None = None,
     dead_letters: DeadLetterSink | None = None,
+    handlers: Mapping[str, EventHandler] | None = None,
 ) -> EventDispatcher:
     """Assemble the dispatcher, letting a caller substitute any single collaborator.
 
-    The dispatcher is built with **no handlers**. NTF-201 is the framework and the schema
-    registry; deciding what an order event should turn into is NTF-202's job, and it
-    registers its handlers on the returned dispatcher. Until it does, the service consumes
-    the stream, validates every event against the registry, and acknowledges each one without
-    acting -- which is exactly what a framework with nothing plugged into it should do.
+    NTF-201 built this with no handlers; NTF-202 registers the first. The order-status
+    consumer is bound to both of Commerce's transition events -- ``order.confirmed`` for the
+    ``pending -> confirmed`` move and ``order.status_changed`` for every other -- because
+    COM-109 publishes one *or* the other, never both.
+
+    ``order.created`` is deliberately left unregistered rather than handled-and-ignored. The
+    dispatcher acks an event nothing is registered for, so the absence *is* the decision, and
+    it is visible here in one place instead of being a ``return`` buried in a handler.
     """
     settings = settings or default_settings
+    if handlers is None:
+        order_status = build_order_status_consumer(settings)
+        handlers = dict.fromkeys(HANDLED_EVENT_TYPES, order_status)
     return EventDispatcher(
         consumer or build_event_consumer(settings),
         registry=registry or default_registry(),
         dead_letters=dead_letters or build_dead_letter_sink(settings),
+        handlers=handlers,
         max_attempts=settings.event_max_delivery_attempts,
     )

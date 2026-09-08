@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     event_reclaim_idle_ms: int = 60_000
     # Retry budget before an event is parked on the dead-letter queue (NTF-204).
     event_max_delivery_attempts: int = 5
+    # How long an order's announced progress is remembered (NTF-202). This is what lets a
+    # stale status -- ``in_transit`` arriving after ``delivered`` -- be recognised as stale
+    # rather than announced, so it must outlive the longest plausible order by a wide margin;
+    # a week covers a grocery delivery scheduled days out with room to spare. It is not a
+    # substitute for the dedupe window: that suppresses a *replay of one event*, this
+    # suppresses a *different, older event*, and the two windows expire independently.
+    order_progress_ttl_seconds: int = 604_800
 
     # Push providers (NTF-301). Android goes through FCM, iOS through APNs; the concrete
     # clients arrive with that story, so this slice owns only the configuration surface and the

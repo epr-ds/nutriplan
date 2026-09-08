@@ -17,7 +17,12 @@ from app.events.factory import (
 )
 from app.events.memory import InMemoryEventConsumer
 from app.events.redis_stream import RedisStreamEventConsumer
-from app.events.registry import ORDER_CREATED, ORDER_EVENT_VERSION
+from app.events.registry import (
+    ORDER_CONFIRMED,
+    ORDER_CREATED,
+    ORDER_EVENT_VERSION,
+    ORDER_STATUS_CHANGED,
+)
 
 
 class TestChoosingTheBackend:
@@ -65,9 +70,24 @@ class TestTheAssembledDispatcher:
 
         assert isinstance(dispatcher, EventDispatcher)
 
-    def test_it_ships_with_no_handlers(self) -> None:
-        """NTF-201 builds the framework; NTF-202 is what plugs behaviour into it."""
-        assert build_event_dispatcher(Settings()).handled_types == ()
+    def test_it_ships_with_the_order_consumer_registered(self) -> None:
+        """NTF-201 built the framework; NTF-202 is the first behaviour plugged into it."""
+        assert build_event_dispatcher(Settings()).handled_types == (
+            ORDER_CONFIRMED,
+            ORDER_STATUS_CHANGED,
+        )
+
+    def test_order_created_is_deliberately_left_unhandled(self) -> None:
+        """The user is watching the confirmation screen as it arrives, so it is not news.
+
+        Visible here rather than as an early ``return`` inside the handler: the absence of a
+        registration *is* the decision, and NTF-201 acks an event with no handler.
+        """
+        assert ORDER_CREATED not in build_event_dispatcher(Settings()).handled_types
+
+    def test_a_handler_set_can_be_substituted(self) -> None:
+        """So a test can drive the dispatcher without the production consumer attached."""
+        assert build_event_dispatcher(Settings(), handlers={}).handled_types == ()
 
     def test_a_collaborator_can_be_substituted(self) -> None:
         """The seam NTF-202's tests will use to drive the dispatcher off a fake consumer."""
