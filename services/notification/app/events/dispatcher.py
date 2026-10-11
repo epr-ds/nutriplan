@@ -58,6 +58,11 @@ from app.events.envelope import EventEnvelope, parse_envelope
 from app.events.errors import EventError
 from app.events.metrics import EventMetrics, Outcome
 from app.events.registry import Compatibility, EventSchemaRegistry
+from app.domain.event_router import EventRouter
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -103,23 +108,31 @@ class BatchResult:
 
 
 class EventDispatcher:
-    """Applies the settle-or-retry rules to deliveries from one consumer."""
+    """Applies the settle-or-retry rules to deliveries from one consumer.
+
+    The dispatcher uses a router to look up handler names for each event type,
+    then resolves those names to handler instances through the handler registry.
+    This separation allows routing rules (which handlers) to be configured
+    independently from handler wiring (how instances are created).
+    """
 
     def __init__(
         self,
         consumer: EventConsumer,
         *,
+        router: EventRouter,
+        handler_registry: Mapping[str, EventHandler],
         registry: EventSchemaRegistry,
         dead_letters: DeadLetterQueue,
-        handlers: Mapping[str, EventHandler] | None = None,
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         schedule: RetrySchedule | None = None,
         metrics: EventMetrics | None = None,
     ) -> None:
         self._consumer = consumer
+        self._router = router
+        self._handler_registry = dict(handler_registry)
         self._registry = registry
         self._dead_letters = dead_letters
-        self._handlers: dict[str, EventHandler] = dict(handlers or {})
         self._max_attempts = max(1, max_attempts)
         self._schedule = schedule or RetrySchedule(base_ms=60_000)
         self._metrics = metrics or EventMetrics()
@@ -134,21 +147,32 @@ class EventDispatcher:
         """The queue parked events go to -- what the replayer and the CLI drain."""
         return self._dead_letters
 
-    def register(self, event_type: str, handler: EventHandler) -> None:
+    def register(self, event_type: str, handler: EventHandler, handler_name: str | None = None) -> None:
         """Route ``event_type`` to ``handler``, refusing to silently replace an existing one.
 
         Two handlers for one type is a wiring mistake, and the failure mode of allowing it is
         that the second registration wins and the first never runs again -- with no error
         anywhere. NTF-202 registers order handlers through this method.
+
+        :param event_type: The event type to register.
+        :param handler: The handler instance to call for this type.
+        :param handler_name: Optional handler name to register; if omitted, the dispatcher's
+                             handler registry is checked first, then the router.
         """
-        if event_type in self._handlers:
-            raise ValueError(f"a handler is already registered for {event_type!r}")
-        self._handlers[event_type] = handler
+        if handler_name is None:
+            # Use the router to get handler names for this event type
+            handler_names = self._router.get_handlers(event_type)
+            if not handler_names:
+                raise ValueError(f"no handler configured for event type {event_type!r}")
+            handler_name = handler_names[0]
+        if handler_name in self._handler_registry:
+            raise ValueError(f"a handler is already registered with name {handler_name!r}")
+        self._handler_registry[handler_name] = handler
 
     @property
     def handled_types(self) -> tuple[str, ...]:
         """Every event type with a handler, sorted."""
-        return tuple(sorted(self._handlers))
+        return tuple(sorted(self._router._handlers_by_type.keys()))
 
     def ensure_subscribed(self) -> None:
         """Create the consumer group if it is not there yet.
@@ -183,12 +207,24 @@ class EventDispatcher:
         if not verdict:
             return self._park(delivery, verdict.reason, event_type=envelope.type)
 
-        handler = self._handlers.get(envelope.type)
-        if handler is None:
+        handler_names = self._router.get_handlers(envelope.type)
+        if not handler_names:
             logger.debug(
                 "notification.event.unhandled delivery_id=%s type=%s",
                 delivery.delivery_id,
                 envelope.type,
+            )
+            return self._drop(delivery, event_type=envelope.type)
+
+        # Use the first handler for this type (NTF-205: ordered handlers, first wins)
+        handler_name = handler_names[0]
+        handler = self._handler_registry.get(handler_name)
+        if handler is None:
+            logger.warning(
+                "notification.event.handler_missing delivery_id=%s type=%s handler=%s",
+                delivery.delivery_id,
+                envelope.type,
+                handler_name,
             )
             return self._drop(delivery, event_type=envelope.type)
 
@@ -229,9 +265,14 @@ class EventDispatcher:
         verdict = self._registry.check(envelope)
         if not verdict:
             raise EventError(verdict.reason)
-        handler = self._handlers.get(envelope.type)
-        if handler is None:
+        handler_names = self._router.get_handlers(envelope.type)
+        if not handler_names:
             raise NoHandlerRegistered(f"no handler is registered for {envelope.type}")
+        # Use the first handler for this type
+        handler_name = handler_names[0]
+        handler = self._handler_registry.get(handler_name)
+        if handler is None:
+            raise NoHandlerRegistered(f"no handler instance found for {handler_name}")
         handler.handle(envelope)
         return envelope.type
 
