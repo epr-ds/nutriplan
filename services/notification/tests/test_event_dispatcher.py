@@ -108,7 +108,7 @@ class Harness:
 class TestASuccessfulHandlerSettlesTheDelivery:
     def test_the_handler_receives_the_parsed_envelope(self) -> None:
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         harness.run()
@@ -118,7 +118,7 @@ class TestASuccessfulHandlerSettlesTheDelivery:
         assert handler.seen[0].data["orderId"] == COMMERCE_ORDER_CONFIRMED["data"]["orderId"]  # type: ignore[index]
 
     def test_the_delivery_is_acked(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         result = harness.run()
@@ -127,7 +127,7 @@ class TestASuccessfulHandlerSettlesTheDelivery:
         assert harness.pending == 0
 
     def test_nothing_is_parked(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         harness.run()
@@ -139,7 +139,7 @@ class TestATransientFailureIsRedelivered:
     """The asymmetry that matters: an unclassified failure must not lose an event."""
 
     def test_the_delivery_is_left_pending(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         result = harness.run()
@@ -149,7 +149,7 @@ class TestATransientFailureIsRedelivered:
 
     def test_it_is_not_parked(self) -> None:
         """Parking a transient fault would silently discard a notification a user wanted."""
-        harness = Harness(handlers={ORDER_CONFIRMED: FailingHandler(TimeoutError())})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(TimeoutError())})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         harness.run()
@@ -158,7 +158,7 @@ class TestATransientFailureIsRedelivered:
 
     def test_the_reclaim_pass_hands_it_back(self) -> None:
         handler = FailingHandler(RuntimeError("redis down"))
-        harness = Harness(handlers={ORDER_CONFIRMED: handler})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
         harness.run()
 
@@ -169,7 +169,7 @@ class TestATransientFailureIsRedelivered:
     def test_a_persistently_failing_event_is_eventually_parked(self) -> None:
         """The self-correcting half of the asymmetry: guessing "transient" costs retries."""
         handler = FailingHandler(RuntimeError("still down"))
-        harness = Harness(handlers={ORDER_CONFIRMED: handler}, max_attempts=3)
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler}, max_attempts=3)
         harness.publish(COMMERCE_ORDER_CONFIRMED)
         harness.run()
 
@@ -183,7 +183,7 @@ class TestATransientFailureIsRedelivered:
 
 class TestAPermanentFailureIsParkedAndAcked:
     def test_a_handler_raising_an_event_error_parks_the_delivery(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         result = harness.run()
@@ -193,7 +193,7 @@ class TestAPermanentFailureIsParkedAndAcked:
         assert "no orderId" in harness.parked_reasons[0]
 
     def test_an_unsupported_event_from_a_handler_is_also_permanent(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         assert harness.run() == BatchResult(dead_lettered=1)
@@ -209,7 +209,7 @@ class TestAPermanentFailureIsParkedAndAcked:
         assert harness.sink.parked[0].delivery.payload == "{ this is not json"  # type: ignore[attr-defined]
 
     def test_an_unsupported_schema_version_is_parked(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
         harness.publish(envelope(schemaVersion=2))
 
         result = harness.run()
@@ -220,7 +220,7 @@ class TestAPermanentFailureIsParkedAndAcked:
     def test_an_unsupported_version_never_reaches_the_handler(self) -> None:
         """The entire point: a changed meaning must not be guessed at."""
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler})
         harness.publish(envelope(schemaVersion=2))
 
         harness.run()
@@ -228,7 +228,7 @@ class TestAPermanentFailureIsParkedAndAcked:
         assert handler.seen == []
 
     def test_a_payload_missing_required_fields_is_parked(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
         harness.publish(envelope(data={"orderId": "o-1"}))
 
         result = harness.run()
@@ -265,7 +265,7 @@ class TestEventsThatAreNotOurs:
 class TestTheRetryBudget:
     def test_a_delivery_past_the_budget_is_parked_without_being_handled(self) -> None:
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler}, max_attempts=2)
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler}, max_attempts=2)
 
         result = harness.dispatcher.dispatch(
             DeliveredEvent("1", json.dumps(COMMERCE_ORDER_CONFIRMED), attempt=3)
@@ -278,7 +278,7 @@ class TestTheRetryBudget:
     def test_a_delivery_at_the_budget_is_still_attempted(self) -> None:
         """Off-by-one here would silently cost every event its last retry."""
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler}, max_attempts=2)
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler}, max_attempts=2)
 
         harness.dispatcher.dispatch(
             DeliveredEvent("1", json.dumps(COMMERCE_ORDER_CONFIRMED), attempt=2)
@@ -289,7 +289,7 @@ class TestTheRetryBudget:
     def test_a_budget_below_one_is_clamped(self) -> None:
         """A misconfigured zero would park every event on first delivery."""
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler}, max_attempts=0)
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler}, max_attempts=0)
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         harness.run()
@@ -323,13 +323,13 @@ class TestHandlerRegistration:
 
     def test_registering_two_handlers_for_one_type_is_refused(self) -> None:
         """Silent replacement would leave the first handler never running, with no error."""
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
 
         with pytest.raises(ValueError, match="already registered"):
             harness.dispatcher.register(ORDER_CONFIRMED, RecordingHandler())
 
     def test_the_dispatcher_reports_what_it_handles(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
 
         assert harness.dispatcher.handled_types == (ORDER_CONFIRMED,)
 
@@ -339,7 +339,7 @@ class TestHandlerRegistration:
 
 class TestBatchAccounting:
     def test_a_mixed_batch_is_counted_by_outcome(self) -> None:
-        harness = Harness(handlers={ORDER_CONFIRMED: RecordingHandler()})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: RecordingHandler()})
         harness.publish(COMMERCE_ORDER_CONFIRMED)
         harness.publish(envelope(type="loyalty.points_awarded"))
         harness.publish("not json")
@@ -361,7 +361,7 @@ class TestBatchAccounting:
     def test_one_failure_does_not_stop_the_rest_of_the_batch(self) -> None:
         """A poison message in position one must not strand the nine behind it."""
         handler = RecordingHandler()
-        harness = Harness(handlers={ORDER_CONFIRMED: handler})
+        harness = Harness(handler_registry={ORDER_CONFIRMED: handler})
         harness.publish("not json")
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 

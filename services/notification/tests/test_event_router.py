@@ -362,7 +362,7 @@ class TestEndToEnd:
             consumer,
             registry=registry,
             dead_letters=dead_letters,
-            handlers=handlers_by_type,
+            handler_registry=handlers_by_type,
         )
 
         # Publish events
@@ -406,7 +406,7 @@ class TestEndToEnd:
             consumer,
             registry=registry,
             dead_letters=dead_letters,
-            handlers=handlers_by_type,
+            handler_registry=handlers_by_type,
         )
 
         # Publish event
