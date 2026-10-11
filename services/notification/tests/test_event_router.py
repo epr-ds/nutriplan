@@ -91,13 +91,13 @@ class TestRouting:
     def test_known_type_returns_handlers(self) -> None:
         """A registered type yields its handler paths in order."""
         handlers = {
-            ORDER_CONFIRMED: ["app.application order_status_consumer.OrderStatusConsumer"],
+            ORDER_CONFIRMED: ["app.application.order_status_consumer.OrderStatusConsumer"],
         }
         router = EventRouter(handlers)
 
         result = router.get_handlers(ORDER_CONFIRMED)
 
-        assert result == ["app.application order_status_consumer.OrderStatusConsumer"]
+        assert result == ["app.application.order_status_consumer.OrderStatusConsumer"]
 
     def test_known_type_with_multiple_handlers_returns_ordered_list(self) -> None:
         """Multiple handlers appear in the order they were registered."""
