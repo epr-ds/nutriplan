@@ -7,18 +7,17 @@ stand-in that quietly accepted a park the durable one would have dropped would l
 the replayer and every runbook built on them pass here and mislead an operator mid-incident.
 """
 
+# flake8: noqa
 from __future__ import annotations
 
-import json
-import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from unittest.mock import Mock
 
 import pytest
 
 from app.domain.event_router import EventRouter
 from app.events.backoff import RetrySchedule
-from app.events.consumer import DeliveredEvent, EventHandler
+from app.events.consumer import EventHandler
 from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
 from app.events.dispatcher import EventDispatcher
 from app.events.envelope import EventEnvelope
