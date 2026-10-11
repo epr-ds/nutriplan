@@ -19,19 +19,19 @@ import pytest
 from app.domain.event_router import EventRouter
 from app.events.backoff import RetrySchedule
 from app.events.consumer import DeliveredEvent, EventHandler
-from app.events.dead_letter import DeadLetterQueue
+from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
 from app.events.dispatcher import EventDispatcher
 from app.events.envelope import EventEnvelope
 from app.events.errors import EventError
 from app.events.memory import InMemoryEventConsumer
 from app.events.registry import ORDER_CONFIRMED, ORDER_CREATED, ORDER_STATUS_CHANGED, default_registry
-from tests.conftest import (
-    EventBus,
-    RedisDeadLetterQueue,
-    isolated_namespace,
-    isolated_stream,
-    require_redis_url,
-)
+# from tests.conftest import (
+#     EventBus,
+#     RedisDeadLetterQueue,
+#     isolated_namespace,
+#     isolated_stream,
+#     require_redis_url,
+# )
 
 # InMemoryDeadLetterQueue is shadowed by the local class below - keep import
 # unused for now, but may be needed for future tests
@@ -317,7 +317,7 @@ class TestMultiHandlerRouting:
         assert all(result == first for result in results)
 
     def test_zero_handlers_treated_same_as_unknown_type(self) -> None:
-        """A type with zero handlers is treated the same as unknown type (acked, not dead-lettered)."""
+        """Zero handlers are treated like unknown types (acked, not dead-lettered)."""
         handlers: Mapping[str, Sequence[str]] = {ORDER_CONFIRMED: []}
         router = EventRouter(handlers)
 
@@ -426,7 +426,7 @@ class TestEndToEnd:
         assert result.dead_lettered == 1
         assert handler_a.call_count == 1
         # Note: handler_b and handler_c aren't registered, so they won't be called
-        # In real scenarios with multiple handlers, the dispatcher would stop after the first failure
+        # In real scenarios, dispatcher stops after first failure
 
 
 
