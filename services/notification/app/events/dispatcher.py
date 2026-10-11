@@ -172,7 +172,15 @@ class EventDispatcher:
     @property
     def handled_types(self) -> tuple[str, ...]:
         """Every event type with a handler, sorted."""
-        return tuple(sorted(self._router._handlers_by_type.keys()))
+        # Get all handler names in the registry
+        handler_names = set(self._handler_registry.keys())
+        # Find event types that have at least one handler in the registry
+        types_with_handlers = [
+            event_type
+            for event_type, handler_paths in self._router._handlers_by_type.items()
+            if any(path in handler_names for path in handler_paths)
+        ]
+        return tuple(sorted(types_with_handlers))
 
     def ensure_subscribed(self) -> None:
         """Create the consumer group if it is not there yet.
