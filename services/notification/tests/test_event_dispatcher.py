@@ -68,14 +68,23 @@ class Harness:
         max_attempts: int = 5,
         dead_letters: DeadLetterQueue | None = None,
     ) -> None:
+        from app.domain.event_router import EventRouter
         self.consumer = InMemoryEventConsumer()
         self.consumer.ensure_group()
         self.sink = dead_letters or InMemoryDeadLetterQueue()
+        # Build router: map event_type → [handler_name]
+        handlers_by_type: dict[str, list[str]] = {}
+        if handlers:
+            for event_type, handler in handlers.items():
+                handler_name = f"{handler.__class__.__module__}.{handler.__class__.__name__}"
+                handlers_by_type[event_type] = [handler_name]
+        router = EventRouter(handlers_by_type)
         self.dispatcher = EventDispatcher(
             self.consumer,
+            router=router,
+            handler_registry=handlers or {},
             registry=default_registry(),
             dead_letters=self.sink,
-            handlers=handlers,
             max_attempts=max_attempts,
         )
 
