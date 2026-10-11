@@ -65,6 +65,7 @@ class Harness:
         self,
         *,
         handlers: Mapping[str, Any] | None = None,
+        handler_registry: Mapping[str, Any] | None = None,
         max_attempts: int = 5,
         dead_letters: DeadLetterQueue | None = None,
     ) -> None:
@@ -72,17 +73,19 @@ class Harness:
         self.consumer = InMemoryEventConsumer()
         self.consumer.ensure_group()
         self.sink = dead_letters or InMemoryDeadLetterQueue()
-        # Build router: map event_type → [handler_name]
+        effective_handlers = handlers if handlers is not None else handler_registry
         handlers_by_type: dict[str, list[str]] = {}
-        if handlers:
-            for event_type, handler in handlers.items():
+        proper_handler_registry: dict[str, Any] = {}
+        if effective_handlers:
+            for event_type, handler in effective_handlers.items():
                 handler_name = f"{handler.__class__.__module__}.{handler.__class__.__name__}"
                 handlers_by_type[event_type] = [handler_name]
+                proper_handler_registry[handler_name] = handler
         router = EventRouter(handlers_by_type)
         self.dispatcher = EventDispatcher(
             self.consumer,
             router=router,
-            handler_registry=handlers or {},
+            handler_registry=proper_handler_registry,
             registry=default_registry(),
             dead_letters=self.sink,
             max_attempts=max_attempts,

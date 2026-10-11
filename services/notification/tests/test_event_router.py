@@ -55,9 +55,9 @@ class MockHandler:
         self.seen: list[EventEnvelope] = []
 
     def handle(self, envelope: EventEnvelope) -> None:
+        self.call_count += 1
         if self._fail_with is not None:
             raise self._fail_with
-        self.call_count += 1
         self.seen.append(envelope)
 
     def reset(self) -> None:
@@ -370,7 +370,7 @@ class TestEndToEnd:
             "id": "evt-1",
             "type": ORDER_CONFIRMED,
             "occurredAt": "2026-07-12T21:00:00+00:00",
-            "data": {"orderId": "o-1", "userId": "u-1"},
+            "data": {"orderId": "o-1", "userId": "u-1", "fromStatus": "pending", "toStatus": "confirmed"},
         }
         consumer.publish(envelope)
 
@@ -414,7 +414,7 @@ class TestEndToEnd:
             "id": "evt-3",
             "type": ORDER_CONFIRMED,
             "occurredAt": "2026-07-12T21:00:00+00:00",
-            "data": {"orderId": "o-3", "userId": "u-3"},
+            "data": {"orderId": "o-3", "userId": "u-3", "fromStatus": "pending", "toStatus": "confirmed"},
         }
         consumer.publish(envelope)
 

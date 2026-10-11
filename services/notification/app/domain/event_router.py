@@ -34,15 +34,27 @@ class EventRouter:
     def __init__(self, handlers_by_type: Mapping[str, Sequence[str]]) -> None:
         """Build a router with the given mapping.
 
-       :param handlers_by_type: A mapping from event type to a sequence of handler import paths.
+        :param handlers_by_type: A mapping from event type to a sequence of handler import paths.
+        :raises TypeError: If any handler list contains ``None`` as a value.
         """
+        # Validate that no handler list contains None values.
+        for event_type, handlers in handlers_by_type.items():
+            if any(h is None for h in handlers):
+                raise TypeError("handler list for event type cannot contain None")
         self._handlers_by_type = dict(handlers_by_type)
 
     def get_handlers(self, event_type: str) -> Sequence[str]:
-        """Return the handler import paths for ``event_type``.
+        """Return a **copy** of the handler import paths for ``event_type``.
 
+        Returning a copy prevents callers from mutating the internal routing table.
         :param event_type: The event type to look up.
-        :return: An ordered sequence of handler import paths, or an empty sequence if the
+        :return: An ordered list of handler import paths, or an empty list if the
                  type is unknown or has no handlers.
         """
-        return self._handlers_by_type.get(event_type, [])
+        # Return a new list to ensure callers cannot modify the internal mapping.
+        handlers = self._handlers_by_type.get(event_type, [])
+        return list(handlers)
+
+    def handled_types(self) -> tuple[str, ...]:
+        """Return all event types that have handlers, sorted."""
+        return tuple(sorted(self._handlers_by_type.keys()))
