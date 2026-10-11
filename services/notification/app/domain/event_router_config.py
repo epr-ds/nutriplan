@@ -29,6 +29,26 @@ ROUTING_TABLE: Mapping[str, Sequence[str]] = {
     "order.status_changed": [
         "app.application.order_status_consumer.OrderStatusConsumer",
     ],
+    # Phase 5: Meal reminder events (NTF-401)
+    "meal.reminder.scheduled": [
+        "app.application.meal_reminder_consumer.MealReminderConsumer",
+    ],
+    "meal.reminder.due": [
+        "app.application.meal_reminder_consumer.MealReminderConsumer",
+    ],
+    "meal.reminder.cancelled": [
+        "app.application.meal_reminder_consumer.MealReminderConsumer",
+    ],
+    # Phase 5: Plan ending events (NTF-402)
+    "plan.ending.soon": [
+        "app.application.plan_ending_consumer.PlanEndingConsumer",
+    ],
+    "plan.ended": [
+        "app.application.plan_ending_consumer.PlanEndingConsumer",
+    ],
+    "plan.renewal.due": [
+        "app.application.plan_ending_consumer.PlanEndingConsumer",
+    ],
 }
 """Static mapping from event type to handler import paths.
 
