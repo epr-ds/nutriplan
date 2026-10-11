@@ -125,7 +125,7 @@ def build_event_dispatcher(
     return EventDispatcher(
         consumer or build_event_consumer(settings),
         router=router or build_router(),
-        handler_registry=handler_registry,
+        handler_registry=handler_registry or {},
         registry=registry or default_registry(),
         dead_letters=dead_letters or build_dead_letter_queue(settings),
         max_attempts=settings.event_max_delivery_attempts,
