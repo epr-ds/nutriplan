@@ -34,6 +34,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from app.domain.event_router import EventRouter
 from app.events.dead_letter import DeadLetterQueue
 from app.events.dispatcher import EventDispatcher, NoHandlerRegistered
 from app.events.errors import EventError
@@ -106,6 +107,7 @@ class DeadLetterReplayer:
     ) -> None:
         self._queue = queue
         self._dispatcher = dispatcher
+        self._router = dispatcher._router
         # Defaults to the dispatcher's own counters so a replay shows up on the same series
         # NTF-706 graphs. Injectable because a caller may want the replay run's numbers in
         # isolation.
@@ -116,6 +118,12 @@ class DeadLetterReplayer:
         entry = self._queue.get(delivery_id)
         if entry is None:
             return ReplayOutcome(delivery_id, ReplayStatus.NOT_FOUND, "no such parked entry")
+
+        # Check if the event type has any handlers before attempting replay
+        handler_names = self._router.get_handlers(entry.event_type)
+        if not handler_names:
+            # No handlers registered for this event type - mark as still failing
+            return self._failed(entry.delivery_id, entry.event_type, "no handlers configured")
 
         try:
             event_type = self._dispatcher.replay(entry.payload)
