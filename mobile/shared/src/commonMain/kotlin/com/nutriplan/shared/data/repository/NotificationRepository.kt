@@ -8,6 +8,7 @@ import com.nutriplan.shared.data.model.UpdateNotificationPreferencesRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
+import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -63,7 +64,7 @@ class NotificationRepositoryImpl : NotificationRepository {
 
     override suspend fun markAsRead(notificationId: String) {
         withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.NOTIFICATION}/notifications/$notificationId/read")
+            val response = client.post("${ApiConfig.NOTIFICATION}/notifications/$notificationId/read") {}
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,

@@ -11,10 +11,12 @@ import com.nutriplan.shared.data.model.UpdateMealPlanRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
+import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.UrlBuilder
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -64,7 +66,7 @@ class DietaryRepositoryImpl : DietaryRepository {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlan> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = io.ktor.http.UrlBuilder("${ApiConfig.DIETARY}/meal-plans")
+            val urlBuilder = UrlBuilder("${ApiConfig.DIETARY}/meal-plans")
             query?.let { q ->
                 q.status?.let { urlBuilder.appendQueryParameter("status", it) }
                 q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
@@ -96,13 +98,13 @@ class DietaryRepositoryImpl : DietaryRepository {
             val response = client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") {
                 setBody(request)
             }
-            response.body()
+            response.body<Any>()
         }
     }
 
     override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = io.ktor.http.UrlBuilder("${ApiConfig.DIETARY}/recipes")
+            val urlBuilder = UrlBuilder("${ApiConfig.DIETARY}/recipes")
             query?.let { q ->
                 q.dietaryPreference?.let { urlBuilder.appendQueryParameter("dietaryPreference", it) }
                 q.calorieRangeMin?.let { urlBuilder.appendQueryParameter("calorieRangeMin", it.toString()) }

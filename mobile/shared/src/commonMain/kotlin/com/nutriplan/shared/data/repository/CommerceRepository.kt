@@ -11,10 +11,12 @@ import com.nutriplan.shared.data.model.SyncGroceryRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
+import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.UrlBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -69,7 +71,7 @@ class CommerceRepositoryImpl : CommerceRepository {
 
     override suspend fun getOrders(query: OrderQuery?): List<Order> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = io.ktor.http.UrlBuilder("${ApiConfig.COMMERCE}/orders")
+            val urlBuilder = UrlBuilder("${ApiConfig.COMMERCE}/orders")
             query?.let { q ->
                 q.status?.let { urlBuilder.appendQueryParameter("status", it) }
                 q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
@@ -98,9 +100,7 @@ class CommerceRepositoryImpl : CommerceRepository {
 
     override suspend fun syncGrocery(orderId: String, request: SyncGroceryRequest) {
         withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.COMMERCE}/orders/$orderId/grocery/sync") {
-                setBody(request)
-            }
+            val response = client.post("${ApiConfig.COMMERCE}/orders/$orderId/grocery/sync")
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
@@ -128,7 +128,7 @@ class CommerceRepositoryImpl : CommerceRepository {
 
     override suspend fun deletePaymentMethod(id: String) {
         withContext(Dispatchers.IO) {
-            val response = client.delete("${ApiConfig.COMMERCE}/payment-methods/$id")
+            val response = client.delete("${ApiConfig.COMMERCE}/payment-methods/$id") {}
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
