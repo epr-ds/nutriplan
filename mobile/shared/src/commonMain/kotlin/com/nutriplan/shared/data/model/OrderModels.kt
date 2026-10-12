@@ -1,16 +1,14 @@
 package com.nutriplan.shared.data.model
 
 import kotlinx.serialization.Serializable
-import java.time.LocalDate
-import java.util.UUID
 
 /** Create order request. */
 @Serializable
 data class CreateOrderRequest(
-    val mealPlanId: UUID,
+    val mealPlanId: String,
     val fulfillmentType: String,
     val deliveryAddress: DeliveryAddress?,
-    val deliveryDate: LocalDate?,
+    val deliveryDate: String?,
     val deliveryTimeSlot: String?,
     val providerId: String?,
     val notes: String?,
@@ -37,12 +35,12 @@ data class PaymentMethodInput(
 /** Order response. */
 @Serializable
 data class OrderResponse(
-    val id: UUID,
+    val id: String,
     val status: String,
-    val mealPlanId: UUID,
+    val mealPlanId: String,
     val fulfillmentType: String,
     val deliveryAddress: DeliveryAddress?,
-    val deliveryDate: LocalDate?,
+    val deliveryDate: String?,
     val deliveryTimeSlot: String?,
     val providerId: String?,
     val groceryOrder: GroceryOrderInfo?,
@@ -110,7 +108,7 @@ data class CancelOrderRequest(
 /** Order list query parameters. */
 data class OrderListQuery(
     val status: String? = null,
-    val fromDate: LocalDate? = null,
+    val fromDate: String? = null,
     val page: Int = 1,
     val limit: Int = 20,
 )
@@ -118,7 +116,7 @@ data class OrderListQuery(
 /** Saved payment method response. */
 @Serializable
 data class PaymentMethodResponse(
-    val id: UUID,
+    val id: String,
     val type: String,
     val brand: String?,
     val last4: String?,

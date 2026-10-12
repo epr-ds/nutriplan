@@ -47,7 +47,9 @@ sealed class ApiException(
         body = null,
         message = cause?.message ?: "Network error",
         code = Code.NETWORK_ERROR,
-    )
+    ) {
+        override val cause: Throwable? = cause
+    }
 
     data class SerializationError(
         val cause: Throwable?,
@@ -55,9 +57,11 @@ sealed class ApiException(
         body = null,
         message = cause?.message ?: "Serialization error",
         code = Code.SERIALIZATION_ERROR,
-    )
+    ) {
+        override val cause: Throwable? = cause
+    }
 
-    data object Unknown : ApiException(
+    object Unknown : ApiException(
         body = null,
         message = "Unknown error",
         code = Code.UNKNOWN,

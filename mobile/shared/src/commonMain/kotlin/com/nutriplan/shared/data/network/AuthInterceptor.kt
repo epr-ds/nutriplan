@@ -10,7 +10,7 @@ import io.ktor.client.request.HttpRequestPipeline
 import io.ktor.http.HttpMethod
 
 /**
- * Ktor plugin that intercepts requests to attach the current Bearer token.
+ * Ktor plugin that intercepts requests to attach the current token.
  *
  * Handles 401 responses by attempting a token refresh before retrying.
  * If refresh fails, clears tokens and re-throws the 401.
@@ -23,14 +23,13 @@ object AuthInterceptor {
     private fun createAuthPlugin(): HttpClientPlugin<AuthConfig, AuthConfig> = object : HttpClientPlugin<AuthConfig, AuthConfig> {
         override val key = HttpClientPlugin.NamedKey("authInterceptor")
 
-        override fun install(configuration: AuthConfig, scope: HttpClient): AuthConfig {
+        override fun install(configuration: AuthConfig, scope: HttpClient) {
             scope.requestPipeline.intercept(HttpRequestPipeline.Before) {
                 val token = configuration.authRepository?.currentAccessToken
                 if (!token.isNullOrEmpty()) {
-                    context.headers.append("Authorization", "Bearer $token")
+                    context.headers.append("Authorization", "Bearer ")
                 }
             }
-            return configuration
         }
     }
 

@@ -2,6 +2,24 @@ package com.nutriplan.shared.data.model
 
 import kotlinx.serialization.Serializable
 
+/** Macro nutrient targets. */
+@Serializable
+data class MacroTargets(
+    val protein: Double? = null,
+    val carbs: Double? = null,
+    val fat: Double? = null,
+)
+
+/** Estimated nutrition from AI meal analysis. */
+@Serializable
+data class NutritionEstimate(
+    val calories: Int,
+    val protein: Double,
+    val carbs: Double,
+    val fat: Double,
+    val sugar: Double,
+)
+
 /** Recipe response from the Dietary service. */
 @Serializable
 data class RecipeResponse(
