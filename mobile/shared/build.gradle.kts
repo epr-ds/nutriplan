@@ -52,7 +52,7 @@ kotlin {
         androidUnitTest.dependencies {
             implementation(kotlin("test"))
             implementation("androidx.compose.ui:ui-test-junit4:1.7.8")
-            debugImplementation("androidx.compose.ui:ui-test-manifest:1.7.8")
+            implementation("androidx.compose.ui:ui-test-manifest:1.7.8")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
