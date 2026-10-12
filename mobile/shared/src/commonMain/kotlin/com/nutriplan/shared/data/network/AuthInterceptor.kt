@@ -20,22 +20,18 @@ object AuthInterceptor {
     /** Ktor plugin instance. */
     val plugin: HttpClientPlugin<*, *> = createAuthPlugin()
 
-    private fun createAuthPlugin(): HttpClientPlugin<*, *> = object : HttpClientPlugin<AuthConfig, AuthConfig> {
+    private fun createAuthPlugin(): HttpClientPlugin<AuthConfig, AuthConfig> = object : HttpClientPlugin<AuthConfig, AuthConfig> {
         override val key = HttpClientPlugin.NamedKey("authInterceptor")
 
-        override fun install(
-            configuration: AuthConfig,
-            scope: HttpClient,
-        ) {
+        override fun install(configuration: AuthConfig, scope: HttpClient): AuthConfig {
             scope.requestPipeline.intercept(HttpRequestPipeline.Before) {
-                val token = configuration.authRepository.currentAccessToken
-                if (token != null && token.isNotEmpty()) {
+                val token = configuration.authRepository?.currentAccessToken
+                if (!token.isNullOrEmpty()) {
                     context.headers.append("Authorization", "Bearer $token")
                 }
             }
+            return configuration
         }
-
-        override fun prepare() = configuration
     }
 
     /**
@@ -53,10 +49,10 @@ object AuthInterceptor {
                         refreshToken = authRepository.currentRefreshToken ?: "",
                     )
                 }
-                refreshTokens { refreshToken ->
+                refreshTokens { refreshToken: BearerTokens ->
                     try {
                         val response = authRepository.refreshToken(
-                            com.nutriplan.shared.data.model.RefreshRequest(refreshToken)
+                            com.nutriplan.shared.data.model.RefreshRequest(refreshToken.refreshToken)
                         )
                         authRepository.updateTokens(response.accessToken, response.refreshToken)
                         BearerTokens(response.accessToken, response.refreshToken)

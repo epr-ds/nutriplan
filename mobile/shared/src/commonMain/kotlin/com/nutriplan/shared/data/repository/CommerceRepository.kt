@@ -76,7 +76,7 @@ class CommerceRepositoryImpl : CommerceRepository {
                 q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
             }
             val response = client.get(urlBuilder.buildString())
-            handleListResponse(response)
+            handleListResponse<Order>(response)
         }
     }
 
@@ -141,15 +141,15 @@ class CommerceRepositoryImpl : CommerceRepository {
     private suspend inline fun <reified T> handleResponse(response: io.ktor.client.statement.HttpResponse): T {
         return when (response.status) {
             HttpStatusCode.OK, HttpStatusCode.Created -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException(
+            HttpStatusCode.Unauthorized -> throw ApiException.create(
                 message = "Unauthorized. Please log in again.",
                 code = ApiException.Code.UNAUTHORIZED,
             )
-            HttpStatusCode.Forbidden -> throw ApiException(
+            HttpStatusCode.Forbidden -> throw ApiException.create(
                 message = "Forbidden. You don't have permission.",
                 code = ApiException.Code.FORBIDDEN,
             )
-            HttpStatusCode.NotFound -> throw ApiException(
+            HttpStatusCode.NotFound -> throw ApiException.create(
                 message = "Resource not found.",
                 code = ApiException.Code.NOT_FOUND,
             )
@@ -163,7 +163,7 @@ class CommerceRepositoryImpl : CommerceRepository {
     private suspend inline fun <reified T> handleListResponse(response: io.ktor.client.statement.HttpResponse): List<T> {
         return when (response.status) {
             HttpStatusCode.OK -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException(
+            HttpStatusCode.Unauthorized -> throw ApiException.create(
                 message = "Unauthorized. Please log in again.",
                 code = ApiException.Code.UNAUTHORIZED,
             )

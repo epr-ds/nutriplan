@@ -4,6 +4,7 @@ package com.nutriplan.shared.data.network
  * Exception thrown by API calls to represent various failure modes.
  */
 sealed class ApiException(
+    open val body: String?,
     message: String,
     val code: Code,
 ) : RuntimeException(message) {
@@ -19,10 +20,16 @@ sealed class ApiException(
         UNKNOWN,
     }
 
+    companion object {
+        fun create(message: String, code: Code): ApiException =
+            ApiException(body = null, message = message, code = code)
+    }
+
     data class HttpError(
         val statusCode: Int,
         override val body: String?,
     ) : ApiException(
+        body = body,
         message = "HTTP $statusCode: ${body ?: "Unknown error"}",
         code = when (statusCode) {
             400 -> Code.CONFLICT
@@ -35,20 +42,23 @@ sealed class ApiException(
     )
 
     data class NetworkError(
-        override val cause: Throwable?,
+        val cause: Throwable?,
     ) : ApiException(
+        body = null,
         message = cause?.message ?: "Network error",
         code = Code.NETWORK_ERROR,
     )
 
     data class SerializationError(
-        override val cause: Throwable?,
+        val cause: Throwable?,
     ) : ApiException(
+        body = null,
         message = cause?.message ?: "Serialization error",
         code = Code.SERIALIZATION_ERROR,
     )
 
     data object Unknown : ApiException(
+        body = null,
         message = "Unknown error",
         code = Code.UNKNOWN,
     )
