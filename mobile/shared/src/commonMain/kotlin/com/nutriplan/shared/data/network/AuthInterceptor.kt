@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.network
 
 import com.nutriplan.shared.data.repository.AuthRepository
 import io.ktor.client.HttpClient
+import io.ktor.client.install
 import io.ktor.client.plugins.HttpClientPlugin
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
@@ -51,7 +52,7 @@ object AuthInterceptor {
                 }
                 refreshTokens {
                     try {
-                        val refreshToken = it.refreshToken
+                        val refreshToken = this.refreshToken
                         val response = authRepository.refreshToken(refreshToken)
                         authRepository.updateTokens(response.accessToken, response.refreshToken)
                         BearerTokens(response.accessToken, response.refreshToken)
