@@ -55,8 +55,6 @@ object HttpClientFactory {
                 headers.append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 headers.append(HttpHeaders.Accept, ContentType.Application.Json.toString())
             }
-
-            install(AuthInterceptor)
         }
     }
 }

@@ -143,7 +143,7 @@ class DietaryRepositoryImpl : DietaryRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.text,
+                body = response.body<String>(),
             )
         }
     }
@@ -157,7 +157,7 @@ class DietaryRepositoryImpl : DietaryRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.text,
+                body = response.body<String>(),
             )
         }
     }

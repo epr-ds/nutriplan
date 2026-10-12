@@ -63,7 +63,7 @@ class NotificationRepositoryImpl : NotificationRepository {
 
     override suspend fun markAsRead(notificationId: String) {
         withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.NOTIFICATION}/notifications/$notificationId/read") {}
+            val response = client.post("${ApiConfig.NOTIFICATION}/notifications/$notificationId/read", null)
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,

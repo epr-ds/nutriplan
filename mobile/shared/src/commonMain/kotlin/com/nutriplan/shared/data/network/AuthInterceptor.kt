@@ -8,6 +8,7 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.request.HttpRequestPipeline
 import io.ktor.http.HttpMethod
+import io.ktor.util.NamedKey
 
 /**
  * Ktor plugin that intercepts requests to attach the current token.
@@ -21,7 +22,7 @@ object AuthInterceptor {
     val plugin: HttpClientPlugin<*, *> = createAuthPlugin()
 
     private fun createAuthPlugin(): HttpClientPlugin<AuthConfig, AuthConfig> = object : HttpClientPlugin<AuthConfig, AuthConfig> {
-        override val key = HttpClientPlugin.NamedKey("authInterceptor")
+        override val key = NamedKey("authInterceptor")
 
         override fun install(configuration: AuthConfig, scope: HttpClient) {
             scope.requestPipeline.intercept(HttpRequestPipeline.Before) {
@@ -40,7 +41,7 @@ object AuthInterceptor {
         client: HttpClient,
         authRepository: AuthRepository,
     ) {
-        client.createPlugin(Auth).apply {
+        client.install(Auth) {
             bearer {
                 loadTokens {
                     BearerTokens(
