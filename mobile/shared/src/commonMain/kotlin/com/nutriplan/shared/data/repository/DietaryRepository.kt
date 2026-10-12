@@ -1,0 +1,153 @@
+package com.nutriplan.shared.data.repository
+
+import com.nutriplan.shared.data.ApiConfig
+import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.CreateMealPlanRequest
+import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.MealPlanQuery
+import com.nutriplan.shared.data.model.Recipe
+import com.nutriplan.shared.data.model.RecipeQuery
+import com.nutriplan.shared.data.model.UpdateMealPlanRequest
+import com.nutriplan.shared.data.network.ApiException
+import com.nutriplan.shared.data.network.HttpClientProvider
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.patch
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
+
+/**
+ * Repository for dietary-related API operations.
+ *
+ * Covers meal plan CRUD, meal additions, and recipe queries.
+ */
+interface DietaryRepository {
+
+    /** Create a new meal plan. */
+    suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan
+
+    /** List meal plans with optional filters. */
+    suspend fun getMealPlans(query: MealPlanQuery? = null): List<MealPlan>
+
+    /** Get a specific meal plan by ID. */
+    suspend fun getMealPlan(planId: String): MealPlan
+
+    /** Update an existing meal plan. */
+    suspend fun updateMealPlan(planId: String, request: UpdateMealPlanRequest): MealPlan
+
+    /** Add a meal to a plan. */
+    suspend fun addMeal(planId: String, request: AddMealRequest): Any
+
+    /** List recipes with optional filters. */
+    suspend fun getRecipes(query: RecipeQuery? = null): List<Recipe>
+}
+
+/**
+ * Dietary service API client implementation.
+ */
+class DietaryRepositoryImpl : DietaryRepository {
+
+    private val client = HttpClientProvider.client
+
+    override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan {
+        return withContext(Dispatchers.IO) {
+            val response = client.post("${ApiConfig.DIETARY}/meal-plans") {
+                setBody(request)
+            }
+            handleResponse(response)
+        }
+    }
+
+    override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlan> {
+        return withContext(Dispatchers.IO) {
+            val urlBuilder = io.ktor.http.UrlBuilder("${ApiConfig.DIETARY}/meal-plans")
+            query?.let { q ->
+                q.status?.let { urlBuilder.appendQueryParameter("status", it) }
+                q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
+                q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
+            }
+            val response = client.get(urlBuilder.buildString())
+            handleListResponse(response)
+        }
+    }
+
+    override suspend fun getMealPlan(planId: String): MealPlan {
+        return withContext(Dispatchers.IO) {
+            val response = client.get("${ApiConfig.DIETARY}/meal-plans/$planId")
+            handleResponse(response)
+        }
+    }
+
+    override suspend fun updateMealPlan(planId: String, request: UpdateMealPlanRequest): MealPlan {
+        return withContext(Dispatchers.IO) {
+            val response = client.patch("${ApiConfig.DIETARY}/meal-plans/$planId") {
+                setBody(request)
+            }
+            handleResponse(response)
+        }
+    }
+
+    override suspend fun addMeal(planId: String, request: AddMealRequest): Any {
+        return withContext(Dispatchers.IO) {
+            val response = client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") {
+                setBody(request)
+            }
+            response.body()
+        }
+    }
+
+    override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> {
+        return withContext(Dispatchers.IO) {
+            val urlBuilder = io.ktor.http.UrlBuilder("${ApiConfig.DIETARY}/recipes")
+            query?.let { q ->
+                q.dietaryPreference?.let { urlBuilder.appendQueryParameter("dietaryPreference", it) }
+                q.calorieRangeMin?.let { urlBuilder.appendQueryParameter("calorieRangeMin", it.toString()) }
+                q.calorieRangeMax?.let { urlBuilder.appendQueryParameter("calorieRangeMax", it.toString()) }
+                q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
+                q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
+            }
+            val response = client.get(urlBuilder.buildString())
+            handleListResponse(response)
+        }
+    }
+
+    private suspend inline fun <reified T> handleResponse(response: io.ktor.client.statement.HttpResponse): T {
+        return when (response.status) {
+            HttpStatusCode.OK, HttpStatusCode.Created -> response.body()
+            HttpStatusCode.Unauthorized -> throw ApiException(
+                message = "Unauthorized. Please log in again.",
+                code = ApiException.Code.UNAUTHORIZED,
+            )
+            HttpStatusCode.Forbidden -> throw ApiException(
+                message = "Forbidden. You don't have permission.",
+                code = ApiException.Code.FORBIDDEN,
+            )
+            HttpStatusCode.NotFound -> throw ApiException(
+                message = "Resource not found.",
+                code = ApiException.Code.NOT_FOUND,
+            )
+            else -> throw ApiException.HttpError(
+                statusCode = response.status.value,
+                body = response.bodyAsText(),
+            )
+        }
+    }
+
+    private suspend inline fun <reified T> handleListResponse(response: io.ktor.client.statement.HttpResponse): List<T> {
+        return when (response.status) {
+            HttpStatusCode.OK -> response.body()
+            HttpStatusCode.Unauthorized -> throw ApiException(
+                message = "Unauthorized. Please log in again.",
+                code = ApiException.Code.UNAUTHORIZED,
+            )
+            else -> throw ApiException.HttpError(
+                statusCode = response.status.value,
+                body = response.bodyAsText(),
+            )
+        }
+    }
+}
