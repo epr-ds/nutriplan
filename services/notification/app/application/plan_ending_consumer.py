@@ -234,7 +234,8 @@ class PlanEndingConsumer:
             ending_date = datetime.fromisoformat(ending_date_str)
         except (ValueError, TypeError):
             raise MalformedEvent(
-                f"event {envelope.event_id} ({envelope.type}) has invalid endingDate {ending_date_str!r}"
+                f"event {envelope.event_id} ({envelope.type}) has invalid "
+                f"endingDate {ending_date_str!r}"
             ) from None
 
         return PlanEndingPayload(

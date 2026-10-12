@@ -52,6 +52,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from app.domain.event_router_config import build_router
 from app.events.backoff import RetrySchedule
 from app.events.consumer import DeliveredEvent, EventConsumer, EventHandler
 from app.events.dead_letter import DeadLetterQueue
@@ -59,11 +60,12 @@ from app.events.envelope import EventEnvelope, parse_envelope
 from app.events.errors import EventError
 from app.events.metrics import EventMetrics, Outcome
 from app.events.registry import Compatibility, EventSchemaRegistry
-from app.domain.event_router_config import build_router
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from dataclasses import dataclass
+
+    from app.domain.event_router import EventRouter
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +164,12 @@ class EventDispatcher:
         """The queue parked events go to -- what the replayer and the CLI drain."""
         return self._dead_letters
 
-    def register(self, event_type: str, handler: EventHandler, handler_name: str | None = None) -> None:
+    def register(
+        self,
+        event_type: str,
+        handler: EventHandler,
+        handler_name: str | None = None,
+    ) -> None:
         """Route ``event_type`` to ``handler``, refusing to silently replace an existing one.
 
         Two handlers for one type is a wiring mistake, and the failure mode of allowing it is
@@ -193,7 +200,11 @@ class EventDispatcher:
         # Also check _handlers for duplicate event types (legacy test access)
         if event_type in self._handlers:
             existing_name = next(
-                (name for name, h in self._handler_registry.items() if h is self._handlers[event_type]),
+                (
+                    name
+                    for name, h in self._handler_registry.items()
+                    if h is self._handlers[event_type]
+                ),
                 None,
             )
             existing_desc = f" ({existing_name})" if existing_name else ""

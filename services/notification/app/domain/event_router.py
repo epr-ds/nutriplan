@@ -38,7 +38,7 @@ class EventRouter:
         :raises TypeError: If any handler list contains ``None`` as a value.
         """
         # Validate that no handler list contains None values.
-        for event_type, handlers in handlers_by_type.items():
+        for _event_type, handlers in handlers_by_type.items():
             if any(h is None for h in handlers):
                 raise TypeError("handler list for event type cannot contain None")
         self._handlers_by_type = dict(handlers_by_type)

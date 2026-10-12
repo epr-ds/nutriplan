@@ -34,10 +34,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.domain.event_router import EventRouter
 from app.events.dead_letter import DeadLetterQueue
-from app.events.dispatcher import EventDispatcher, NoHandlerRegistered
-from app.events.errors import EventError
+from app.events.dispatcher import EventDispatcher
 from app.events.metrics import EventMetrics, Outcome
 
 logger = logging.getLogger(__name__)

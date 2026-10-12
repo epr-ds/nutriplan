@@ -84,8 +84,8 @@ def build_handler_registry() -> dict[str, EventHandler]:
 
     :return: Mapping from handler import path to handler instance.
     """
-    from app.application.order_status_consumer import OrderStatusConsumer
     from app.adapters.factory import build_notification_recorder, build_order_progress_store
+    from app.application.order_status_consumer import OrderStatusConsumer
     from app.core.config import settings
 
     handlers_by_name: dict[str, EventHandler] = {}

@@ -114,10 +114,7 @@ class FCMAdapter:
         """Create a JWT assertion for FCM authentication."""
         # Simplified JWT creation - in production, use a proper JWT library
         import base64
-        import hashlib
-        import hmac
         import json
-        import time
 
         header = {"alg": "RS256", "typ": "JWT"}
         payload = {
@@ -189,7 +186,7 @@ class FCMAdapter:
             return result.get("name", "")
         except httpx.HTTPStatusError as exc:
             error_data = exc.response.json() if exc.response.text else {}
-            error_code = error_data.get("error", {}).get("code", "UNKNOWN")
+            error_data.get("error", {}).get("code", "UNKNOWN")
             error_status = error_data.get("error", {}).get("status", "UNKNOWN")
 
             if error_status in PERMANENT_FCM_ERRORS:

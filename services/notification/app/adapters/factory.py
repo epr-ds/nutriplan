@@ -17,6 +17,12 @@ behalf of records another process cannot see.
 
 from __future__ import annotations
 
+import logging
+
+from app.adapters.apns_adapter import APNsAdapter, APNsConfig, build_apns_adapter  # noqa: F401
+
+# Phase 5: Push notification adapters
+from app.adapters.fcm_adapter import FCMAdapter, FCMConfig, build_fcm_adapter  # noqa: F401
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
@@ -28,10 +34,6 @@ from app.adapters.redis_notification_repository import RedisNotificationReposito
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.retention import RetentionPolicy
-
-# Phase 5: Push notification adapters
-from app.adapters.fcm_adapter import FCMAdapter, FCMConfig, build_fcm_adapter  # noqa: F401
-from app.adapters.apns_adapter import APNsAdapter, APNsConfig, build_apns_adapter  # noqa: F401
 from app.application.notification_recorder import NotificationRecorder
 from app.core.config import Settings
 from app.core.config import settings as default_settings
@@ -41,6 +43,8 @@ from app.domain.repositories import (
     OrderProgressStore,
     PreferencesRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def build_retention_policy(settings: Settings | None = None) -> RetentionPolicy:
@@ -154,7 +158,9 @@ def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapte
 
 # Phase 5: Meal reminder consumer builder
 
-def build_meal_reminder_consumer(settings: Settings | None = None) -> "MealReminderConsumer":
+def build_meal_reminder_consumer(
+    settings: Settings | None = None,
+) -> "MealReminderConsumer":  # noqa: F821
     """Assemble the meal reminder handler (NTF-401)."""
     from app.application.meal_reminder_consumer import MealReminderConsumer
 
@@ -166,7 +172,9 @@ def build_meal_reminder_consumer(settings: Settings | None = None) -> "MealRemin
 
 # Phase 5: Plan ending consumer builder
 
-def build_plan_ending_consumer(settings: Settings | None = None) -> "PlanEndingConsumer":
+def build_plan_ending_consumer(
+    settings: Settings | None = None,
+) -> "PlanEndingConsumer":  # noqa: F821
     """Assemble the plan ending handler (NTF-402)."""
     from app.application.plan_ending_consumer import PlanEndingConsumer
 

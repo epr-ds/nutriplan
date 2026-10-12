@@ -12,6 +12,7 @@ The adapter handles:
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import time
@@ -84,10 +85,6 @@ class APNsAdapter:
 
     async def _refresh_token(self) -> None:
         """Fetch a new JWT for APNs authentication."""
-        import base64
-        import hashlib
-        import hmac
-
         # Create JWT header
         header = {
             "alg": "ES256",

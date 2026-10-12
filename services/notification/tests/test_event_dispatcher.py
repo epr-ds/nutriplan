@@ -142,7 +142,11 @@ class TestATransientFailureIsRedelivered:
     """The asymmetry that matters: an unclassified failure must not lose an event."""
 
     def test_the_delivery_is_left_pending(self) -> None:
-        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))})
+        harness = Harness(
+            handler_registry={
+                ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))
+            }
+        )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         result = harness.run()
@@ -186,7 +190,11 @@ class TestATransientFailureIsRedelivered:
 
 class TestAPermanentFailureIsParkedAndAcked:
     def test_a_handler_raising_an_event_error_parks_the_delivery(self) -> None:
-        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))})
+        harness = Harness(
+            handler_registry={
+                ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))
+            }
+        )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         result = harness.run()
@@ -196,7 +204,11 @@ class TestAPermanentFailureIsParkedAndAcked:
         assert "no orderId" in harness.parked_reasons[0]
 
     def test_an_unsupported_event_from_a_handler_is_also_permanent(self) -> None:
-        harness = Harness(handler_registry={ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))})
+        harness = Harness(
+            handler_registry={
+                ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))
+            }
+        )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
         assert harness.run() == BatchResult(dead_lettered=1)

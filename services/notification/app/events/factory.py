@@ -17,11 +17,11 @@ from collections.abc import Mapping
 from app.adapters.factory import build_notification_recorder, build_order_progress_store
 from app.adapters.keys import NotificationKeys
 from app.application.dead_letter_replay import DeadLetterReplayer
-from app.application.order_status_consumer import HANDLED_EVENT_TYPES, OrderStatusConsumer
+from app.application.order_status_consumer import OrderStatusConsumer
 from app.core.config import Settings
 from app.core.config import settings as default_settings
 from app.domain.event_router import EventRouter
-from app.domain.event_router_config import build_handler_registry, build_router
+from app.domain.event_router_config import build_router
 from app.events.backoff import RetrySchedule
 from app.events.consumer import EventConsumer, EventHandler
 from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
@@ -121,7 +121,9 @@ def build_event_dispatcher(
     settings = settings or default_settings
     if handler_registry is None:
         order_status = build_order_status_consumer(settings)
-        handler_registry = {f"app.application.order_status_consumer.OrderStatusConsumer": order_status}
+        handler_registry = {
+            "app.application.order_status_consumer.OrderStatusConsumer": order_status
+        }
     return EventDispatcher(
         consumer or build_event_consumer(settings),
         router=router or build_router(),

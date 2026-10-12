@@ -174,7 +174,8 @@ class MealReminderConsumer:
             scheduled_time = datetime.fromisoformat(scheduled_time_str)
         except (ValueError, TypeError):
             raise MalformedEvent(
-                f"event {envelope.event_id} ({envelope.type}) has invalid scheduledTime {scheduled_time_str!r}"
+                f"event {envelope.event_id} ({envelope.type}) has invalid "
+                f"scheduledTime {scheduled_time_str!r}"
             ) from None
 
         return MealReminderPayload(
