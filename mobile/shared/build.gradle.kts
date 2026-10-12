@@ -46,6 +46,15 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(platform(libs.compose.bom))
+            implementation(libs.compose.ui)
+            implementation(libs.compose.material3)
+        }
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(platform(libs.compose.bom))
+            implementation(libs.compose.ui.test.junit4)
+            debugImplementation(libs.compose.ui.test.manifest)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
