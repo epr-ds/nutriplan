@@ -104,7 +104,7 @@ class CommerceRepositoryImpl : CommerceRepository {
 
     override suspend fun syncGrocery(orderId: String, request: SyncGroceryRequest) {
         withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.COMMERCE}/orders/$orderId/grocery/sync")
+            val response = client.post("${ApiConfig.COMMERCE}/orders/$orderId/grocery/sync") { }
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,

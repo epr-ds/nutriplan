@@ -1,5 +1,6 @@
 package com.nutriplan.shared.data.network
 
+import com.nutriplan.shared.data.repository.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineFactory
@@ -29,14 +30,16 @@ object HttpClientProvider {
      * Create and configure the [HttpClient] with the given engine.
      *
      * @param engineFactory The platform-specific HTTP engine factory.
+     * @param authRepository Optional auth repository for bearer token handling.
      * @param timeoutMillis Optional timeout in milliseconds.
      */
     fun create(
         engineFactory: HttpClientEngineFactory<*>,
+        authRepository: AuthRepository? = null,
         timeoutMillis: Long = 30_000L,
     ) {
         val engine = engineFactory.create()
-        instance = HttpClientFactory.create(engine, timeoutMillis)
+        instance = HttpClientFactory.create(engine, authRepository, timeoutMillis)
     }
 
     /**
@@ -44,9 +47,10 @@ object HttpClientProvider {
      */
     fun create(
         engine: HttpClientEngine,
+        authRepository: AuthRepository? = null,
         timeoutMillis: Long = 30_000L,
     ) {
-        instance = HttpClientFactory.create(engine, timeoutMillis)
+        instance = HttpClientFactory.create(engine, authRepository, timeoutMillis)
     }
 
     /**
