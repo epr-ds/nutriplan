@@ -54,7 +54,7 @@ dependencies {
 
     // Koin for Android
     implementation(libs.koin.core)
-    implementation(libs.koin.compose.multiplatform)
+    implementation(libs.koin.compose)
 }
 
 detekt {

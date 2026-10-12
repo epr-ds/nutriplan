@@ -82,7 +82,7 @@ class ApiExceptionTest {
 
     @Test
     fun `Unknown error has correct code and message`() {
-        val error = ApiException.Unknown
+        val error = ApiException.Unknown()
         assertEquals(ApiException.Code.UNKNOWN, error.code)
         assertEquals("Unknown error", error.message)
     }
