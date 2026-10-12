@@ -11,12 +11,10 @@ import com.nutriplan.shared.data.model.SyncGroceryRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
-import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.UrlBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -71,13 +69,19 @@ class CommerceRepositoryImpl : CommerceRepository {
 
     override suspend fun getOrders(query: OrderQuery?): List<Order> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = UrlBuilder("${ApiConfig.COMMERCE}/orders")
+            val queryParams = mutableListOf<String>()
             query?.let { q ->
-                q.status?.let { urlBuilder.appendQueryParameter("status", it) }
-                q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
-                q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
+                q.status?.let { queryParams.add("status=$it") }
+                q.limit?.let { queryParams.add("limit=$it") }
+                q.offset?.let { queryParams.add("offset=$it") }
             }
-            val response = client.get(urlBuilder.buildString())
+            val url = if (queryParams.isEmpty()) {
+                "${ApiConfig.COMMERCE}/orders"
+            } else {
+                "${ApiConfig.COMMERCE}/orders?${queryParams.joinToString("&")}"
+            }
+            val response = client.get(url)
+            val response = client.get(url)
             handleListResponse<Order>(response)
         }
     }
@@ -104,7 +108,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.text,
                 )
             }
         }
@@ -132,7 +136,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.text,
                 )
             }
         }
@@ -155,7 +159,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.text,
             )
         }
     }
@@ -169,7 +173,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.text,
             )
         }
     }

@@ -9,7 +9,6 @@ import com.nutriplan.shared.data.model.UserProfile
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
-import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -73,7 +72,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.text,
                 )
             }
         }
@@ -96,7 +95,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.text,
                 )
             }
         }
@@ -131,7 +130,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.text,
             )
         }
     }

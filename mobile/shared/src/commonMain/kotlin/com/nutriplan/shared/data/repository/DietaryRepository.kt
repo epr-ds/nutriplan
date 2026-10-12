@@ -11,12 +11,10 @@ import com.nutriplan.shared.data.model.UpdateMealPlanRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
-import io.ktor.client.call.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.http.UrlBuilder
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -66,13 +64,18 @@ class DietaryRepositoryImpl : DietaryRepository {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlan> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = UrlBuilder("${ApiConfig.DIETARY}/meal-plans")
+            val queryParams = mutableListOf<String>()
             query?.let { q ->
-                q.status?.let { urlBuilder.appendQueryParameter("status", it) }
-                q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
-                q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
+                q.status?.let { queryParams.add("status=$it") }
+                q.limit?.let { queryParams.add("limit=$it") }
+                q.offset?.let { queryParams.add("offset=$it") }
             }
-            val response = client.get(urlBuilder.buildString())
+            val url = if (queryParams.isEmpty()) {
+                "${ApiConfig.DIETARY}/meal-plans"
+            } else {
+                "${ApiConfig.DIETARY}/meal-plans?${queryParams.joinToString("&")}"
+            }
+            val response = client.get(url)
             handleListResponse<MealPlan>(response)
         }
     }
@@ -98,21 +101,27 @@ class DietaryRepositoryImpl : DietaryRepository {
             val response = client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") {
                 setBody(request)
             }
-            response.body<Any>()
+            @Suppress("UNCHECKED_CAST")
+            response.body() as Any
         }
     }
 
     override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> {
         return withContext(Dispatchers.IO) {
-            val urlBuilder = UrlBuilder("${ApiConfig.DIETARY}/recipes")
+            val queryParams = mutableListOf<String>()
             query?.let { q ->
-                q.dietaryPreference?.let { urlBuilder.appendQueryParameter("dietaryPreference", it) }
-                q.calorieRangeMin?.let { urlBuilder.appendQueryParameter("calorieRangeMin", it.toString()) }
-                q.calorieRangeMax?.let { urlBuilder.appendQueryParameter("calorieRangeMax", it.toString()) }
-                q.limit?.let { urlBuilder.appendQueryParameter("limit", it.toString()) }
-                q.offset?.let { urlBuilder.appendQueryParameter("offset", it.toString()) }
+                q.dietaryPreference?.let { queryParams.add("dietaryPreference=$it") }
+                q.calorieRangeMin?.let { queryParams.add("calorieRangeMin=$it") }
+                q.calorieRangeMax?.let { queryParams.add("calorieRangeMax=$it") }
+                q.limit?.let { queryParams.add("limit=$it") }
+                q.offset?.let { queryParams.add("offset=$it") }
             }
-            val response = client.get(urlBuilder.buildString())
+            val url = if (queryParams.isEmpty()) {
+                "${ApiConfig.DIETARY}/recipes"
+            } else {
+                "${ApiConfig.DIETARY}/recipes?${queryParams.joinToString("&")}"
+            }
+            val response = client.get(url)
             handleListResponse<Recipe>(response)
         }
     }
@@ -134,7 +143,7 @@ class DietaryRepositoryImpl : DietaryRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.text,
             )
         }
     }
@@ -148,7 +157,7 @@ class DietaryRepositoryImpl : DietaryRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.text,
             )
         }
     }
