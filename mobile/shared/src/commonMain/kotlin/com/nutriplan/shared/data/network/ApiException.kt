@@ -22,7 +22,7 @@ sealed class ApiException(
 
     companion object {
         fun create(message: String, code: Code): NetworkError =
-            NetworkError(errorCause = null, message = message, code = code)
+            NetworkError(errorCause = null, _message = message, _code = code)
     }
 
     data class HttpError(
@@ -43,24 +43,24 @@ sealed class ApiException(
 
     data class NetworkError(
         val errorCause: Throwable? = null,
-        val message: String = "Network error",
-        val code: Code = Code.NETWORK_ERROR,
+        val _message: String = "Network error",
+        val _code: Code = Code.NETWORK_ERROR,
     ) : ApiException(
         body = null,
-        message = message,
-        code = code,
+        message = _message,
+        code = _code,
     ) {
         override val cause: Throwable? = errorCause
     }
 
     data class SerializationError(
         val errorCause: Throwable? = null,
-        val message: String = "Serialization error",
-        val code: Code = Code.SERIALIZATION_ERROR,
+        val _message: String = "Serialization error",
+        val _code: Code = Code.SERIALIZATION_ERROR,
     ) : ApiException(
         body = null,
-        message = message,
-        code = code,
+        message = _message,
+        code = _code,
     ) {
         override val cause: Throwable? = errorCause
     }
