@@ -46,15 +46,13 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
-            implementation(platform(libs.compose.bom))
-            implementation(libs.compose.ui)
-            implementation(libs.compose.material3)
+            implementation("androidx.compose.ui:ui:1.7.8")
+            implementation("androidx.compose.material3:material3:1.3.2")
         }
         androidUnitTest.dependencies {
             implementation(kotlin("test"))
-            implementation(platform(libs.compose.bom))
-            implementation(libs.compose.ui.test.junit4)
-            debugImplementation(libs.compose.ui.test.manifest)
+            implementation("androidx.compose.ui:ui-test-junit4:1.7.8")
+            debugImplementation("androidx.compose.ui:ui-test-manifest:1.7.8")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
