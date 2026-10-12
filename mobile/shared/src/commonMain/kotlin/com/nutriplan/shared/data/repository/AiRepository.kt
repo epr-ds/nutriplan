@@ -85,7 +85,7 @@ class AiRepositoryImpl : AiRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.body<String>(),
             )
         }
     }
@@ -99,7 +99,7 @@ class AiRepositoryImpl : AiRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.bodyAsText(),
+                body = response.body<String>(),
             )
         }
     }

@@ -27,7 +27,7 @@ object AuthInterceptor {
             scope.requestPipeline.intercept(HttpRequestPipeline.Before) {
                 val token = configuration.authRepository?.currentAccessToken
                 if (!token.isNullOrEmpty()) {
-                    context.headers.append("Authorization", "Bearer ")
+                    context.headers.append("Authorization", "Bearer $token")
                 }
             }
         }
@@ -40,7 +40,7 @@ object AuthInterceptor {
         client: HttpClient,
         authRepository: AuthRepository,
     ) {
-        client.plugin(Auth).apply {
+        client.createPlugin(Auth).apply {
             bearer {
                 loadTokens {
                     BearerTokens(
@@ -48,11 +48,10 @@ object AuthInterceptor {
                         refreshToken = authRepository.currentRefreshToken ?: "",
                     )
                 }
-                refreshTokens { refreshToken: BearerTokens ->
+                refreshTokens {
                     try {
-                        val response = authRepository.refreshToken(
-                            com.nutriplan.shared.data.model.RefreshRequest(refreshToken.refreshToken)
-                        )
+                        val refreshToken = it.refreshToken
+                        val response = authRepository.refreshToken(refreshToken)
                         authRepository.updateTokens(response.accessToken, response.refreshToken)
                         BearerTokens(response.accessToken, response.refreshToken)
                     } catch (e: Exception) {

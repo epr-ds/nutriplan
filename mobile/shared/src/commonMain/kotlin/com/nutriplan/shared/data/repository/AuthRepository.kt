@@ -96,7 +96,7 @@ class InMemoryAuthRepository : AuthRepository {
             } else {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.body<String>(),
                 )
             }
         }
@@ -113,7 +113,7 @@ class InMemoryAuthRepository : AuthRepository {
             } else {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.body<String>(),
                 )
             }
         }
@@ -130,7 +130,7 @@ class InMemoryAuthRepository : AuthRepository {
             } else {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.bodyAsText(),
+                    body = response.body<String>(),
                 )
             }
         }

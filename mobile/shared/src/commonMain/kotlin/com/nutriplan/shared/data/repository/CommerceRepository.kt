@@ -14,6 +14,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -81,7 +82,6 @@ class CommerceRepositoryImpl : CommerceRepository {
                 "${ApiConfig.COMMERCE}/orders?${queryParams.joinToString("&")}"
             }
             val response = client.get(url)
-            val response = client.get(url)
             handleListResponse<Order>(response)
         }
     }
@@ -108,7 +108,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.text,
+                    body = response.body<String>(),
                 )
             }
         }
@@ -136,7 +136,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.text,
+                    body = response.body<String>(),
                 )
             }
         }
@@ -159,7 +159,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.text,
+                body = response.body<String>(),
             )
         }
     }
@@ -173,7 +173,7 @@ class CommerceRepositoryImpl : CommerceRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.text,
+                body = response.body<String>(),
             )
         }
     }

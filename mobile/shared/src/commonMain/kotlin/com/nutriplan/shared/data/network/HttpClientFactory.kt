@@ -52,8 +52,8 @@ object HttpClientFactory {
 
             defaultRequest {
                 url(ApiConfig.BASE_URL)
-                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                header(HttpHeaders.Accept, ContentType.Application.Json.toString())
+                headers.append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                headers.append(HttpHeaders.Accept, ContentType.Application.Json.toString())
             }
 
             install(AuthInterceptor)

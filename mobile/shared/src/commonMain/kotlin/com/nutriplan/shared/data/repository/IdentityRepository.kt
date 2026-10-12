@@ -72,7 +72,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.text,
+                    body = response.body<String>(),
                 )
             }
         }
@@ -95,7 +95,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
-                    body = response.text,
+                    body = response.body<String>(),
                 )
             }
         }
@@ -130,7 +130,7 @@ class IdentityRepositoryImpl : IdentityRepository {
             )
             else -> throw ApiException.HttpError(
                 statusCode = response.status.value,
-                body = response.text,
+                body = response.body<String>(),
             )
         }
     }
