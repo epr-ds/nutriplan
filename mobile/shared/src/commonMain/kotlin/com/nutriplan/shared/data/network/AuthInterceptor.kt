@@ -13,7 +13,7 @@ fun configureAuth(
     client: HttpClient,
     authRepository: AuthRepository,
 ) {
-    client.config.install(Auth) {
+    client.install(Auth) {
         bearer {
             loadTokens {
                 BearerTokens(
@@ -23,7 +23,7 @@ fun configureAuth(
             }
             refreshTokens {
                 try {
-                    val refreshToken = this@refreshTokens.refreshToken
+                    val refreshToken = this.refreshToken
                     val response = authRepository.refreshToken(refreshToken)
                     authRepository.updateTokens(response.accessToken, response.refreshToken)
                     BearerTokens(response.accessToken, response.refreshToken)
