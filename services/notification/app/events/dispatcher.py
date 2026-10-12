@@ -208,9 +208,7 @@ class EventDispatcher:
                 None,
             )
             existing_desc = f" ({existing_name})" if existing_name else ""
-            raise ValueError(
-                f"a handler is already registered for {event_type}{existing_desc}"
-            )
+            raise ValueError(f"a handler is already registered for {event_type}{existing_desc}")
         self._handler_registry[handler_name] = handler
         # Also map event type directly for legacy attribute access
         self._handlers[event_type] = handler
@@ -281,7 +279,6 @@ class EventDispatcher:
                 handler_name,
             )
             return self._drop(delivery, event_type=envelope.type)
-
 
         return self._handle(delivery, envelope, handler)
 

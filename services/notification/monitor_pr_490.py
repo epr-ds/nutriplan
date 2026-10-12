@@ -5,6 +5,7 @@ import time
 
 PR_NUMBER = "490"
 
+
 def all_completed():
     result = subprocess.run(
         ["gh", "pr", "view", PR_NUMBER, "--json", "statusCheckRollup"],
@@ -17,6 +18,7 @@ def all_completed():
     data = json.loads(result.stdout)
     rolls = data.get("statusCheckRollup", [])
     return all(item.get("status") == "COMPLETED" for item in rolls)
+
 
 while True:
     if all_completed():

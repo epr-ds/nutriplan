@@ -130,6 +130,7 @@ def build_notification_recorder(settings: Settings | None = None) -> Notificatio
 
 # Phase 5: Push adapter builders
 
+
 def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapter | APNsAdapter]:
     """Build configured push notification adapters (NTF-301/302).
 
@@ -158,6 +159,7 @@ def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapte
 
 # Phase 5: Meal reminder consumer builder
 
+
 def build_meal_reminder_consumer(
     settings: Settings | None = None,
 ) -> "MealReminderConsumer":  # noqa: F821
@@ -171,6 +173,7 @@ def build_meal_reminder_consumer(
 
 
 # Phase 5: Plan ending consumer builder
+
 
 def build_plan_ending_consumer(
     settings: Settings | None = None,

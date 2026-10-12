@@ -23,7 +23,12 @@ from app.events.dispatcher import EventDispatcher
 from app.events.envelope import EventEnvelope
 from app.events.errors import EventError
 from app.events.memory import InMemoryEventConsumer
-from app.events.registry import ORDER_CONFIRMED, ORDER_CREATED, ORDER_STATUS_CHANGED, default_registry
+from app.events.registry import (
+    ORDER_CONFIRMED,
+    ORDER_CREATED,
+    ORDER_STATUS_CHANGED,
+    default_registry,
+)
 # from tests.conftest import (
 #     EventBus,
 #     RedisDeadLetterQueue,
@@ -114,7 +119,7 @@ class TestRouting:
         assert result == ["handler.a", "handler.b", "handler.c"]
 
     def test_known_type_returns_copy_not_reference(self) -> None:
-        """ callers cannot mutate the internal mapping."""
+        """callers cannot mutate the internal mapping."""
         handlers: Mapping[str, Sequence[str]] = {
             ORDER_CONFIRMED: ["handler.a"],
         }
@@ -370,7 +375,12 @@ class TestEndToEnd:
             "id": "evt-1",
             "type": ORDER_CONFIRMED,
             "occurredAt": "2026-07-12T21:00:00+00:00",
-            "data": {"orderId": "o-1", "userId": "u-1", "fromStatus": "pending", "toStatus": "confirmed"},
+            "data": {
+                "orderId": "o-1",
+                "userId": "u-1",
+                "fromStatus": "pending",
+                "toStatus": "confirmed",
+            },
         }
         consumer.publish(envelope)
 
@@ -414,7 +424,12 @@ class TestEndToEnd:
             "id": "evt-3",
             "type": ORDER_CONFIRMED,
             "occurredAt": "2026-07-12T21:00:00+00:00",
-            "data": {"orderId": "o-3", "userId": "u-3", "fromStatus": "pending", "toStatus": "confirmed"},
+            "data": {
+                "orderId": "o-3",
+                "userId": "u-3",
+                "fromStatus": "pending",
+                "toStatus": "confirmed",
+            },
         }
         consumer.publish(envelope)
 
@@ -426,7 +441,6 @@ class TestEndToEnd:
         assert handler_a.call_count == 1
         # Note: handler_b and handler_c aren't registered, so they won't be called
         # In real scenarios, dispatcher stops after first failure
-
 
 
 # ---- Parameterized tests ------------------------------------------------------------

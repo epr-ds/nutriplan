@@ -70,6 +70,7 @@ class Harness:
         dead_letters: DeadLetterQueue | None = None,
     ) -> None:
         from app.domain.event_router import EventRouter
+
         self.consumer = InMemoryEventConsumer()
         self.consumer.ensure_group()
         self.sink = dead_letters or InMemoryDeadLetterQueue()
@@ -143,9 +144,7 @@ class TestATransientFailureIsRedelivered:
 
     def test_the_delivery_is_left_pending(self) -> None:
         harness = Harness(
-            handler_registry={
-                ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))
-            }
+            handler_registry={ORDER_CONFIRMED: FailingHandler(RuntimeError("redis down"))}
         )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
@@ -191,9 +190,7 @@ class TestATransientFailureIsRedelivered:
 class TestAPermanentFailureIsParkedAndAcked:
     def test_a_handler_raising_an_event_error_parks_the_delivery(self) -> None:
         harness = Harness(
-            handler_registry={
-                ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))
-            }
+            handler_registry={ORDER_CONFIRMED: FailingHandler(MalformedEvent("no orderId"))}
         )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
@@ -205,9 +202,7 @@ class TestAPermanentFailureIsParkedAndAcked:
 
     def test_an_unsupported_event_from_a_handler_is_also_permanent(self) -> None:
         harness = Harness(
-            handler_registry={
-                ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))
-            }
+            handler_registry={ORDER_CONFIRMED: FailingHandler(UnsupportedEvent("v9"))}
         )
         harness.publish(COMMERCE_ORDER_CONFIRMED)
 
