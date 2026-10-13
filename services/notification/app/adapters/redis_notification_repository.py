@@ -32,6 +32,7 @@ from typing import Any, Protocol
 from app.adapters import codec
 from app.adapters.keys import NotificationKeys
 from app.adapters.retention import RetentionPolicy
+from app.domain.enums import NotificationChannel
 from app.domain.notification import Notification
 
 Clock = Callable[[], float]
@@ -139,11 +140,19 @@ class RedisNotificationRepository:
             pipe.set(record_key, encoded, ex=max(1, int(remaining)))
         else:
             pipe.set(record_key, encoded)
-        pipe.zadd(feed_key, {str(notification.id): score})
-        if notification.is_read:
-            pipe.zrem(unread_key, str(notification.id))
+        if notification.targets(NotificationChannel.IN_APP):
+            pipe.zadd(feed_key, {str(notification.id): score})
+            if notification.is_read:
+                pipe.zrem(unread_key, str(notification.id))
+            else:
+                pipe.zadd(unread_key, {str(notification.id): score})
         else:
-            pipe.zadd(unread_key, {str(notification.id): score})
+            # Stored, but not part of the in-app feed: a push-only notification still needs a
+            # record (the push adapter renders from it, NTF-303 records receipts against it)
+            # while having no business appearing in a feed it does not target. The removals
+            # matter for ``update``, where a notification's channels can narrow.
+            pipe.zrem(feed_key, str(notification.id))
+            pipe.zrem(unread_key, str(notification.id))
         self._sweep(pipe, feed_key, now)
         self._sweep(pipe, unread_key, now)
         pipe.execute()

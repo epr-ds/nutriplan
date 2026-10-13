@@ -52,6 +52,19 @@ def test_the_dedupe_window_defaults_inside_the_feed_retention_window() -> None:
     assert settings.dedupe_claim_seconds < settings.dedupe_ttl_seconds
 
 
+def test_the_order_progress_window_outlives_a_realistic_order() -> None:
+    """A mark that expires mid-order stops guarding exactly the orders worth guarding.
+
+    A grocery delivery can be scheduled days out, so the window has to comfortably outlast
+    the slowest plausible lifecycle -- and it must reach past the dedupe window, because
+    once dedupe forgets an event the mark is the only thing left refusing a stale status.
+    """
+    settings = Settings()
+
+    assert settings.order_progress_ttl_seconds >= 604_800
+    assert settings.order_progress_ttl_seconds > settings.dedupe_ttl_seconds
+
+
 def test_bus_group_is_env_driven(monkeypatch) -> None:
     monkeypatch.setenv("NOTIFICATION_EVENT_BUS_URL", "redis://bus:6379/0")
     monkeypatch.setenv("NOTIFICATION_ORDER_EVENT_STREAM", "commerce.order-events")

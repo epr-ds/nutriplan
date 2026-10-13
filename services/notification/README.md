@@ -17,9 +17,14 @@ providers), an environment-aware readiness evaluation, and `/health` + `/health/
 persist and can be listed per user. **NTF-103** made writing one idempotent, so a redelivered
 event cannot notify a user twice. **NTF-105** put the first read API in front of that store --
 the in-app feed -- and with it this service's first published contract,
-[`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml). Nothing
-is *delivered* yet: the bus consumer arrives in NTF-201/202 and push delivery in NTF-301, so
-today the feed only returns what a test or a direct writer has recorded.
+[`contracts/notification.openapi.yaml`](../../contracts/notification.openapi.yaml).
+**NTF-104** added per-type, per-channel preferences and a nightly quiet-hours window, and
+wired them into the write path, so a user can now turn a notification off and have it stay
+off. **NTF-201** built the consumer framework and the versioned event-schema registry, so the
+service can read Commerce's order stream, validate what it finds, and settle every delivery
+exactly once. **NTF-202** plugged the first real handler into that framework: an order event
+now becomes a notification in the user's feed. Delivery is still in-app only -- push arrives
+in NTF-301.
 
 ## Layout
 
@@ -28,10 +33,25 @@ app/
   domain/enums.py       # notification type, channel, delivery status
   domain/notification.py# the immutable Notification record
   domain/dedupe.py      # the deterministic (event, user, type) key
+  domain/quiet_hours.py # the nightly window, in the user's own zone
+  domain/preferences.py # the per-type, per-channel deny-list
+  domain/order_status.py# the order vocabulary and how far an order has progressed
   domain/repositories.py# the persistence and deduplication ports
-  application/notification_recorder.py  # the idempotent write path
+  application/notification_recorder.py  # the idempotent, preference-gated write path
   application/feed.py     # the paged feed query, badge count, and mark-read use cases
+  application/preferences.py  # the settings-screen matrix and the replace use case
+  application/order_status_consumer.py  # order event -> notification
+  events/envelope.py    # the wire envelope Commerce publishes, parsed
+  events/registry.py    # the versioned schema registry and its four verdicts
+  events/consumer.py    # the EventConsumer port and DeliveredEvent
+  events/dispatcher.py  # settle-or-retry: the outcome table
+  events/dead_letter.py # where a permanently-failed event is parked
+  events/redis_stream.py# Redis Streams consumer group adapter
+  events/memory.py      # in-process adapter, PEL semantics and all
+  events/worker.py      # the poll/reclaim loop and its stop signal
+  events/factory.py     # picks the consumer from configuration
   adapters/codec.py     # JSON record <-> Notification
+  adapters/preferences_codec.py  # JSON record <-> NotificationPreferences
   adapters/keys.py      # the Redis key scheme
   adapters/retention.py # the age + length window both stores enforce
   adapters/idempotency.py  # the replay window + provisional claim length
@@ -39,6 +59,10 @@ app/
   adapters/in_memory_notification_repository.py
   adapters/redis_deduplication_store.py
   adapters/in_memory_deduplication_store.py
+  adapters/redis_preferences_repository.py
+  adapters/in_memory_preferences_repository.py
+  adapters/redis_order_progress.py       # the monotonic progress mark, in Redis
+  adapters/in_memory_order_progress.py   # the same mark, in process
   adapters/factory.py   # picks the stores from configuration
   core/config.py        # NOTIFICATION_-prefixed settings (Redis, bus, push providers)
   core/readiness.py     # pure, environment-aware readiness evaluation
@@ -49,6 +73,7 @@ app/
   api/errors.py         # RFC 7807 application/problem+json
   api/schemas.py        # the camelCase wire shapes
   api/notifications.py  # GET /notifications, /unread-count, POST /{id}/read
+  api/preferences.py    # GET + PUT /notifications/preferences
   api/health.py         # GET /health, GET /health/ready
   main.py               # FastAPI wiring
 tests/                  # pytest
@@ -170,7 +195,202 @@ The wire shape is the stored shape minus the owner plus `isRead` -- `Notificatio
 projects through the same `codec.to_record` the store writes with, so a renamed key breaks
 the projection loudly instead of letting the API and the store drift apart quietly.
 
-## Dependencies and readiness
+## Notification preferences and quiet hours
+
+Two endpoints, owner-scoped by the token subject exactly as the feed is:
+
+| endpoint | purpose |
+| --- | --- |
+| `GET /notifications/preferences` | the caller's complete matrix, every type listed |
+| `PUT /notifications/preferences` | replace it wholesale; returns what is now stored |
+
+A user who has never saved anything gets the **defaults** -- everything enabled, no quiet
+hours -- rather than a `404`. They do have preferences; they simply have not changed any.
+
+### Stored as a deny-list, never as a matrix
+
+Only the *mutes* are persisted. It would be simpler to store the matrix the settings screen
+shows, and it would be wrong: `NotificationType` grows, and a matrix written by last
+release's client says nothing about a type added since. Reading "absent" as "disabled" would
+then silently mute a brand-new notification for every existing user, on their behalf, without
+anyone choosing it. **Absent means enabled.** The full matrix is materialised on read by
+iterating the enum, so a new type appears on every settings screen the day it ships.
+
+`PUT` is a replacement, not a patch: a type omitted from `types` returns to enabled, and
+`quietHours: null` clears the window. That is also why `types` is **required** with no
+default -- a client that forgot the field would otherwise be sending "switch everything back
+on". Listing the same type twice is a `422` rather than last-wins, since two rows for one
+type are two different answers to the same question and neither is more likely to be meant.
+
+### Quiet hours suppress push only
+
+The in-app feed is pull-based and silent. Withholding an entry from it overnight would spare
+the user nothing and would either surface the notification out of order in the morning or
+lose it outright. So a notification recorded inside the window still lands in the feed; only
+the push channel is dropped, and if push was the *only* channel it was going to, the delivery
+is suppressed entirely.
+
+The window is stored as **local wall-clock times plus an IANA zone name**, never as an
+offset. Daylight saving is a non-issue here only because of the direction of conversion:
+turning an instant into a local time (`astimezone`) is total and unambiguous, while the
+reverse is not -- 02:30 does not exist on a spring-forward night and happens twice on a
+fall-back night. Storing an offset would quietly shift "ten at night" by an hour twice a
+year. The window is half-open, `[start, end)`, and **wrapping past midnight is the normal
+case** (`22:00`-`07:00` is one window, not two); `start == end` is rejected, since it reads
+equally well as "no window" and "all day".
+
+### The gate runs before the dedupe claim
+
+`NotificationRecorder` checks preferences *before* claiming the dedupe key, and the ordering
+is load-bearing. A suppressed notification that burned its key would leave NTF-204's
+dead-letter replay -- run after the user turns the type back on -- refused as a duplicate of
+a notification that never existed. A suppressed delivery therefore leaves the key free.
+
+If the preferences store is unavailable the recorder **fails open**: it logs
+`notification.preferences.unavailable` at WARNING and delivers unfiltered. The alternative is
+withholding notifications a user asked for because a side lookup failed, which is worse than
+sending one they had muted.
+
+Preferences never expire. They are the user's own configuration, not a cached derivative, so
+the Redis write carries no `EX` -- asserted by reading `TTL == -1` back from a live server.
+
+## Consuming events
+
+Commerce publishes order lifecycle events to a Redis stream (`COM-109`); this service reads
+them from the stream named by `NOTIFICATION_ORDER_EVENT_STREAM`, which defaults to
+`commerce.order-events` and must match the publisher exactly. The worker runs as its **own
+process**, not as a FastAPI lifespan task -- a consumer restarted by an HTTP autoscaler is a
+consumer whose backlog grows with traffic, and it must be possible to drain a backlog without
+serving a single request:
+
+```bash
+python -m app.events.worker
+```
+
+### The consumer group starts at the end of the stream
+
+`ensure_group` creates the group at `$`, never `0`. Starting at `0` would, on the very first
+deploy, replay the entire history of the order stream and notify every user about every order
+they have ever placed. NTF-103's dedupe cannot save us there -- no keys exist for events that
+were never handled -- so the offset is the only thing standing between a green deploy and a
+mass mis-notification. The cost is that events published before the group exists are never
+seen, which is the correct trade for a notification service.
+
+### Two identifiers, and which one dedupe uses
+
+Each delivery carries a `delivery_id` (the broker's entry id, assigned on `XADD`) and an
+`event_id` (the producer's id, inside the payload). They are not interchangeable: NTF-204's
+replay re-adds a parked event, which mints a **new** entry id while keeping the original
+envelope id. Deduplication therefore keys on `event_id` -- keying on the entry id would let a
+replay through as if it were a new event.
+
+### Settle or retry
+
+Every delivery ends in exactly one of these, and `EventDispatcher` is the only place that
+decides which:
+
+| outcome | when | what happens |
+| --- | --- | --- |
+| handled | a registered handler returned | ack |
+| skipped | no handler registered for the type | ack |
+| skipped | the registry does not know the type | ack, **not** parked |
+| parked | the schema version is unsupported | dead-letter, then ack |
+| parked | required data is missing, or a handler raised `EventError` | dead-letter, then ack |
+| parked | the retry budget is exhausted | dead-letter, then ack |
+| retried | any other exception | no ack; redelivered after the idle window |
+
+Two of those rows carry the load. **A permanent failure is acked after parking** -- leaving it
+pending only means the reclaim pass serves it again and parks it again, forever. And **an
+unrecognised exception is treated as transient**: guessing "permanent" loses a notification
+silently, whereas guessing "transient" costs a few retries and then hits the budget, which
+parks it anyway. The budget is the backstop that makes optimism safe.
+
+An **unknown type is acked, not parked**, because producers add event types routinely and a
+dead-letter queue full of ordinary traffic is a dead-letter queue nobody reads. An
+**unsupported version is parked**, because a version bump is precisely the signal that the
+meaning of an event we *do* handle has changed.
+
+### Reclaiming stalled work
+
+A consumer that dies mid-batch leaves its messages pending. The worker periodically reclaims
+entries idle longer than `NOTIFICATION_EVENT_RECLAIM_IDLE_MS`, using `XPENDING` + `XCLAIM`
+rather than `XAUTOCLAIM`: the delivery count is the entire reason for reclaiming (it drives
+the retry budget) and `XAUTOCLAIM` does not report it. `XCLAIM` itself increments that
+counter, so the reported attempt is `times_delivered + 1`. The idle window is configured to
+comfortably exceed the block time, because reclaiming a message that is merely slow
+manufactures a duplicate delivery.
+
+### The in-memory consumer reproduces the same semantics
+
+`InMemoryEventConsumer` keeps a real pending-entries list, tracks delivery counts, and honours
+the same idle window. A double that simply hands back messages would make dev and CI a more
+forgiving world than production, and every bug in this list would be found in production
+first.
+
+## Turning an order event into a notification
+
+**NTF-202** registers the first handler on that framework. Commerce publishes either
+`order.confirmed` or `order.status_changed` -- never both for the same move -- and both route
+to the same consumer, because to a user they are the same thing: the order moved.
+`order.created` is deliberately **left unregistered**; placing an order is not news to the
+person who just placed it, and the absence is visible in `events/factory.py` rather than
+buried in a handler that quietly does nothing.
+
+### Each status maps to one notification type
+
+| order status | notification type |
+| --- | --- |
+| `confirmed` | `order_confirmed` |
+| `preparing` | `order_preparing` |
+| `in_transit` | `order_in_transit` |
+| `delivered` | `order_delivered` |
+| `cancelled` | `order_cancelled` |
+| `pending` | none -- not news |
+
+A status this build has never heard of raises `UnknownOrderStatus`, which the dispatcher parks.
+That is the **opposite** of its treatment of an unknown event *type*, and deliberately so: a new
+type is routine producer growth, whereas a new status on an event we already handle is a rare,
+deliberate change to the order lifecycle -- exactly what a dead-letter queue is for.
+
+### The progress mark, and why it ranks cancellation last
+
+Streams redeliver and reorder. A `preparing` event arriving after `delivered` must not tell the
+user their food is being cooked, so the consumer keeps a **monotonic mark** per order --
+`OrderProgressStore`, one key per order, holding the *rank* of the furthest status announced.
+`advance` only ever moves it forward; in Redis that is a Lua script, because a read-then-write
+would let two workers each see the old value. An event at or behind the mark is dropped.
+
+`PROGRESS` ranks `cancelled` **above** `delivered`. That is not Commerce's state machine -- it
+is a notification ordering, and it encodes that "your order was cancelled" is the last word on
+an order regardless of what raced in behind it.
+
+The mark outlives a realistic order (`NOTIFICATION_ORDER_PROGRESS_TTL_SECONDS`, 7 days) and is
+asserted to be longer than the dedupe window: a mark that expired first would let a late
+redelivery re-announce a status the user has already seen.
+
+### Read the guard, record, then advance -- in that order
+
+`handle` reads the mark, records the notification, and *only then* advances. Advancing first
+and treating "it moved" as permission to notify would lose the notification permanently if the
+recorder then failed -- the mark would already say the user had been told. Reading first means
+a crash leaves the mark **behind**, the event is redelivered, and NTF-103's dedupe absorbs the
+duplicate. The mark is advanced for **every** non-exception outcome, including a duplicate and
+a preference-suppressed delivery, because it tracks what we have *decided about*, not what we
+managed to tell the user.
+
+### What the client gets
+
+The payload carries `orderId`, `status`, `occurredAt`, and `previousStatus` when the event
+named a prior state. The status *values* are Commerce's own vocabulary, unaltered -- only the
+keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
+notification would expect. There is no title or body: copy is localized on the client, and a
+Spanish user should not receive English text baked in at write time.
+
+`created_at` is the moment we record, **not** the event's `occurredAt`. Back-dating a replayed
+event would file it under a day the user has already scrolled past, so the original instant
+travels in the payload instead, where a client can render "2 hours ago" if it wants to.
+
+
 
 Liveness (`/health`) answers "is the process up?"; readiness (`/health/ready`) answers "can
 it actually do its job?", and reports a named check per dependency so operators can see
@@ -189,6 +409,87 @@ production pod with nothing wired stays out of rotation.
 The bus defaults to the same Redis as the datastore, so one container backs both locally;
 splitting them in production stays a config change rather than a code change. The stream
 name must match the commerce service's `COMMERCE_EVENT_STREAM` (COM-109).
+
+## Retry backoff and the dead-letter queue
+
+An event that keeps failing must neither spin forever nor vanish. Retries are spaced out by an
+exponential backoff, a finite budget ends them, and whatever is left over is parked in a
+dead-letter queue an operator can inspect and replay.
+
+### The backoff base *is* the reclaim idle window
+
+Waiting is not something this service does; it is something it *declines to do*. A failed entry
+stays pending, and the only mechanism that ever looks at it again is the reclaim sweep -- which
+`XPENDING` filters by idle time. So the shortest wait expressible is the reclaim idle window
+(`NOTIFICATION_EVENT_RECLAIM_IDLE_MS`, 60s), and `RetrySchedule`'s base cannot be configured
+below it. A shorter base would silently round up to it and the configuration would be a lie.
+
+`XPENDING` is asked for entries idle at least `floor_ms` (the shortest wait any attempt can
+have). That is a cheap server-side pre-filter, not the decision: an entry on its fourth attempt
+is fetched by it and then found not due, because its own wait is sixteen times longer. Doing the
+coarse filter server-side keeps a backlog of deferred entries off the wire every sweep.
+
+### Jitter is derived from the delivery id, never random
+
+Replicas must agree on when an entry is due, or one reclaims what another is still waiting on
+and manufactures the duplicate delivery the backoff exists to prevent. The offset is therefore a
+`blake2b` digest of the delivery id -- stable across processes and restarts. Python's built-in
+`hash()` would be the obvious choice and is wrong: it is randomized per process by
+`PYTHONHASHSEED`, so every replica would compute a different answer for the same entry.
+
+Jitter only ever moves a retry *earlier*, so no entry can be pushed past the budget by chance.
+
+### `deferred` is not a failure
+
+A reclaim sweep reports `deferred` for entries it looked at and deliberately left alone. Without
+it, "the backoff is working" and "the consumer is dead" look identical from the outside -- both
+show pending entries that nobody is handling. It is deliberately excluded from `BatchResult.total`
+(nothing was settled) and carries no event type in metrics, because a deferred entry's payload is
+never fetched; only its delivery id is known.
+
+### What lands in the DLQ, and what replay does
+
+Parking is for deliveries that cannot succeed by being tried again: a permanent handler failure
+(`EventError`), an unsupported schema version, missing required data, or a retry budget that ran
+out. The queue is capped (`NOTIFICATION_DLQ_MAX_ENTRIES`) and evicts the **oldest** entry first --
+under a flood, the recent failures are the ones an operator can still act on.
+
+Replay re-runs the parked envelope through the live dispatcher **in process**. It does not
+re-publish to the stream, does not ack, and does not re-park on failure:
+
+- Re-publishing would hand the event a new stream entry id and lose the audit trail; NTF-103
+  dedupe keys on the envelope `event_id`, so a replayed event that already produced a
+  notification is correctly refused as a duplicate.
+- Re-parking a failed replay would let a broken handler churn the queue's eviction order and push
+  out entries that were never even tried.
+
+**Removal follows the handler**: an entry is dropped from the queue only when its replay
+succeeds. A failure leaves it parked, so retrying is always safe and never destructive.
+
+Queue depth is read live rather than counted into a metric series -- a counter would drift away
+from reality every time an entry was evicted, replayed, or purged out from under it.
+
+### The operator CLI
+
+```sh
+python -m app.events.dlq list [--limit N] [--offset N]
+python -m app.events.dlq show <delivery-id>
+python -m app.events.dlq replay (<delivery-id> | --all [--limit N])
+python -m app.events.dlq purge --yes
+```
+
+A CLI rather than an HTTP surface: authentication here has no roles or scopes, so an endpoint
+that can replay or purge the queue would be reachable by any valid user token. Shell access is
+the authorization.
+
+`--json` (global) emits machine-readable output for scripting. Exit codes are `0` on success,
+`1` when the requested work failed (an unknown delivery id, a replay that did not succeed), and
+`2` for usage errors -- `purge` without `--yes`, or `replay` given both an id and `--all` or
+neither.
+
+Note that `replay` runs events through the **real** consumer wiring, not a stub -- a replayed
+`order.confirmed` reaches the NTF-202 handler and writes a notification exactly as the live path
+would.
 
 ## Testing
 

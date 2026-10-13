@@ -70,12 +70,17 @@ class DedupeKey:
     ) -> DedupeKey:
         """Derive the key for one (event, user, type) triple.
 
-        ``event_id`` is the upstream event's own identifier -- the Redis stream message id
-        for NTF-202, or whatever the producer guarantees stable across a redelivery. It is
-        required to be non-blank: an empty event id would collapse *every* event of that
-        type for that user onto one key, so the first notification a user ever received
-        would suppress all the rest. That is a silent, total outage of notifications for
-        that user, so it fails loudly here instead.
+        ``event_id`` is **the producer's own event id** -- the ``id`` field inside the
+        envelope Commerce publishes -- and specifically *not* the broker's message id. The
+        two look interchangeable and are not: NTF-204 replays a parked event by re-adding it
+        to the stream, which mints a brand-new Redis entry id while the envelope keeps its
+        original ``id``. Keying on the entry id would therefore let every replay through as a
+        new event, defeating the one guarantee this module exists to provide.
+
+        It is required to be non-blank: an empty event id would collapse *every* event of
+        that type for that user onto one key, so the first notification a user ever received
+        would suppress all the rest. That is a silent, total outage of notifications for that
+        user, so it fails loudly here instead.
         """
         notification_type = NotificationType(notification_type)
         event = event_id.strip()
