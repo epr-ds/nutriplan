@@ -1,10 +1,15 @@
 [versions]
-kotlin = "2.3.20"
-agp = "8.7.3"
+kotlin = "2.4.20"
+agp = "8.9.3"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 ktor = "2.3.12"
-detekt = "1.23.6"
+detekt = "1.23.8"
+koin = "3.5.6"
+navigation = "2.8.0"
+coroutinesTest = "1.11.0"
+ktorMock = "2.3.12"
+koinTest = "3.5.6"
 
 androidxCoreKtx = "1.13.1"
 androidxActivityCompose = "1.13.0"
@@ -13,13 +18,14 @@ composeBom = "2024.09.02"
 
 androidMinSdk = "24"
 androidTargetSdk = "34"
-androidCompileSdk = "34"
+androidCompileSdk = "36"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
@@ -35,6 +41,24 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+
+# Koin (dependency injection)
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
+koin-test = { module = "io.insert-koin:koin-test", version.ref = "koinTest" }
+
+# Ktor test
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktorMock" }
+
+# Coroutines test
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+
+# Compose Navigation (Android only)
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
