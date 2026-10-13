@@ -227,6 +227,10 @@ services:
       # server without changing what the service itself is configured with, so the
       # readiness tests that assert on an unconfigured service still hold.
       NOTIFICATION_TEST_REDIS_URL: redis://redis:6379/0
+    volumes:
+      # The OpenAPI contract lives outside the build context; mount it so the contract
+      # drift tests (tests/test_feed_contract.py) run here instead of skipping.
+      - ../contracts:/contracts:ro
     depends_on:
       - redis
     profiles: ["test"]
