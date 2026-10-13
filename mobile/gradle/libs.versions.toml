@@ -10,6 +10,7 @@ navigation = "2.8.0"
 coroutinesTest = "1.11.0"
 ktorMock = "2.3.12"
 koinTest = "3.5.6"
+sqldelight = "2.4.1"
 
 androidxCoreKtx = "1.19.1"
 androidxActivityCompose = "1.13.0"
@@ -57,6 +58,12 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktorMoc
 # Coroutines test
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 
+# SQLDelight (local database)
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+
 # Compose Navigation (Android only)
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 
@@ -68,3 +75,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
