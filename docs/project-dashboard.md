@@ -13,10 +13,10 @@
 | 348 | HRD-902 — Cross-device / OS-version matrix | quality | qa | 🔴 Open |
 | 346 | HRD-804 — Legal sign-off — ToS, privacy, data processing | launch | ux | 🔴 Open |
 | 345 | HRD-803 — Support readiness — help center, FAQ | launch | ux | 🔴 Open |
-| 344 | HRD-802 — Production cutover + scaling + DNS/CDN | launch | devops | 🔴 Open |
+| 344 | HRD-802 — Production cutover + scaling + DNS/CDN | launch | devops | 📝 Plan created (PRODUCTION-CUTOVER.md) |
 | 343 | HRD-706 — Staged rollout + kill-switch/feature flags | release-eng | devops | 🔴 Open |
 | 342 | HRD-705 — App Store + Play submission | release-eng | android, ios | 🔴 Open |
-| 331 | HRD-801 — GA go-live checklist + launch runbook | launch | devops | 🔴 Open |
+| 331 | HRD-801 — GA go-live checklist + launch runbook | launch | devops | 📝 Docs created (LAUNCH-RUNBOOK.md, GA-GO-LIVE-CHECKLIST.md) |
 | 330 | HRD-704 — Store listings | release-eng | ux | 🔴 Open |
 | 329 | HRD-703 — Play Data Safety + App Store privacy labels | release-eng | android, ios | 🔴 Open |
 
@@ -29,6 +29,18 @@
 | 345 | HRD-803 — Support readiness — help center, FAQ | ux |
 | 344 | HRD-802 — Production cutover + scaling + DNS/CDN | devops |
 | 331 | HRD-801 — GA go-live checklist + launch runbook | devops |
+
+### 📦 This Sprint's Deliverables
+| Artifact | Description | Related Issue |
+|----------|-------------|---------------|
+| [LAUNCH-RUNBOOK.md](LAUNCH-RUNBOOK.md) | GA launch runbook with phased procedure | HRD-801 |
+| [GA-GO-LIVE-CHECKLIST.md](GA-GO-LIVE-CHECKLIST.md) | Go-live checklist with sign-off | HRD-801 |
+| [PRODUCTION-CUTOVER.md](PRODUCTION-CUTOVER.md) | DNS/CDN cutover plan with rollback | HRD-802 |
+| [GA-EXIT-CRITERIA.md](GA-EXIT-CRITERIA.md) | GA exit criteria | HRD-805 |
+| [feature-flags.json](../config/feature-flags.json) | Feature flags + kill-switch config | HRD-706 |
+| [nutriplan.js](../load-tests/nutriplan.js) | k6 load testing config (100→200 RPS) | HRD-202 |
+| [regression.yml](../.github/workflows/regression.yml) | Release regression gate (expanded) | HRD-906 |
+| [release.yml](../.github/workflows/release.yml) | GA release gate workflow | HRD-906 |
 
 ### epic:release-eng (GA blockers)
 | # | Title | Track |

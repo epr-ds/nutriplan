@@ -23,4 +23,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check all required workflows passed
-        run: echo "All required CI checks passed — release is gated."
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredChecks = [
+              'Backend CI',
+              'Mobile CI',
+              'Contracts',
+              'Security (gitleaks)',
+              'Safety Regression'
+            ];
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.sha;
+
+            console.log(`Checking required checks for ${sha}...`);
+
+            // Fetch combined status for the commit
+            const { data: status } = await github.repos.getCombinedStatusForRef({
+              owner,
+              repo,
+              ref: sha
+            });
+
+            const failed = requiredChecks.filter(check => {
+              const found = status.states.find(s => s.context === check);
+              return !found || found.state !== 'SUCCESS';
+            });
+
+            if (failed.length > 0) {
+              core.setFailed(
+                `GA release gate blocked. Missing checks: ${failed.join(', ')}`
+              );
+            } else {
+              console.log('All required CI checks passed — release is gated.');
+            }
