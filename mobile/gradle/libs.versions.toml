@@ -11,7 +11,7 @@ coroutinesTest = "1.11.0"
 ktorMock = "2.3.12"
 koinTest = "3.5.6"
 
-androidxCoreKtx = "1.13.1"
+androidxCoreKtx = "1.19.1"
 androidxActivityCompose = "1.13.0"
 androidxLifecycle = "2.11.0"
 composeBom = "2026.09.00"
