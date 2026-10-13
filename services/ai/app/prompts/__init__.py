@@ -20,6 +20,9 @@ from app.prompts.errors import (
 from app.prompts.library import (
     DEFAULT_TEMPLATES,
     MEAL_RECOMMENDATION_ID,
+    RECOMMEND_INGREDIENT_BASED_ID,
+    RECOMMEND_MEAL_PLAN_ID,
+    RECOMMEND_SINGLE_MEAL_ID,
     build_default_catalog,
     build_default_renderer,
 )
@@ -48,6 +51,9 @@ __all__ = [
     "PromptRenderer",
     "PromptTelemetry",
     "PromptTemplate",
+    "RECOMMEND_INGREDIENT_BASED_ID",
+    "RECOMMEND_MEAL_PLAN_ID",
+    "RECOMMEND_SINGLE_MEAL_ID",
     "RenderedPrompt",
     "UnknownLocaleError",
     "build_default_catalog",

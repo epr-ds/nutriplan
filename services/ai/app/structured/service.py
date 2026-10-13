@@ -15,7 +15,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel
 
-from app.llm.client import LLMClient
+from app.llm.provider import LLMCompleter
 from app.llm.types import LLMMessage, LLMRequest, Role
 from app.structured.errors import StructuredOutputError
 from app.structured.parser import StructuredOutputParser
@@ -31,7 +31,7 @@ class StructuredCompletion[T: BaseModel]:
 
     def __init__(
         self,
-        client: LLMClient,
+        client: LLMCompleter,
         parser: StructuredOutputParser[T],
         *,
         max_attempts: int = 2,
