@@ -3,21 +3,13 @@ package com.nutriplan.android.screen.auth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
-import androidx.compose.foundation.background
 import androidx.compose.runtime.*
-import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
 import com.nutriplan.android.component.NutriPlanButton
-import androidx.compose.foundation.background
 import com.nutriplan.android.component.NutriPlanTextField
-import androidx.compose.foundation.background
 import com.nutriplan.android.di.koinInject
-import androidx.compose.foundation.background
 
 @Composable
 fun LoginScreen(

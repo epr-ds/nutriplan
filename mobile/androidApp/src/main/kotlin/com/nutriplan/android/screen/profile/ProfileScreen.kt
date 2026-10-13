@@ -2,30 +2,20 @@
 
 package com.nutriplan.android.screen.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.*
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import com.nutriplan.android.ui.theme.NutriPlanTheme
-import androidx.compose.foundation.clickable
 import com.nutriplan.android.di.koinInject
-import androidx.compose.foundation.clickable
 
 /**
  * Profile screen displaying user information and settings.
