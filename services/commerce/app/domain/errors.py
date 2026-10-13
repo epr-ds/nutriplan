@@ -90,6 +90,21 @@ class IdempotencyConflictError(DomainError):
         self.key = key
 
 
+class SlotUnavailableError(DomainError):
+    """The chosen dark-kitchen delivery window has no remaining capacity (COM-304).
+
+    Maps to ``409 Conflict``: the request is well-formed but the (area, day, window) the customer
+    picked is already booked to its capacity, so the slot cannot be reserved. Reserving is atomic
+    with creating the order, so a full slot places no order at all.
+    """
+
+    def __init__(self, *, zip_code: str, delivery_date: object, slot: str) -> None:
+        super().__init__(f"delivery slot '{slot}' on {delivery_date} is fully booked")
+        self.zip_code = zip_code
+        self.delivery_date = delivery_date
+        self.slot = slot
+
+
 class PaymentMethodValidationError(DomainError):
     """A saved-payment-method request violates an invariant (COM-207).
 
@@ -109,3 +124,33 @@ class PaymentMethodNotFoundError(DomainError):
     def __init__(self, method_id: object) -> None:
         super().__init__(f"payment method {method_id} not found")
         self.method_id = method_id
+
+
+class GroceryProviderUnavailableError(DomainError):
+    """A grocery provider could not be reached or returned an unusable response (COM-402).
+
+    The anti-corruption layer normalises every transport/upstream failure to this single domain
+    error, so nothing above :class:`~app.grocery.adapter.GroceryProviderAdapter` depends on a
+    provider's own exceptions; COM-407 layers per-provider circuit breakers and fallback over it.
+
+    Maps to ``503 Service Unavailable`` when it reaches a route (COM-408): the request was perfectly
+    valid, the provider simply cannot answer right now, so retrying later is the right move. The
+    cross-provider search never surfaces it -- the fan-out skips the failing provider instead.
+    """
+
+    def __init__(self, provider_id: object, message: str | None = None) -> None:
+        super().__init__(message or f"grocery provider {provider_id} is unavailable")
+        self.provider_id = provider_id
+
+
+class GroceryOrderNotPlacedError(DomainError):
+    """A grocery status sync was asked for on an order that has no provider placement (COM-408).
+
+    Maps to ``409 Conflict``: the order exists and belongs to the caller, but there is nothing to
+    sync -- it is not a grocery order, or the provider has not accepted it yet, so no provider order
+    reference exists to poll.
+    """
+
+    def __init__(self, order_id: object) -> None:
+        super().__init__(f"order {order_id} has not been placed with a grocery provider")
+        self.order_id = order_id

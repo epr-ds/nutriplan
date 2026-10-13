@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.domain.address import Address
@@ -21,6 +22,8 @@ from app.domain.enums import (
     RefundStatus,
 )
 from app.domain.fulfillment import DarkKitchenAvailability
+from app.domain.grocery import GroceryProvider
+from app.domain.grocery_catalog import GroceryOrderStatus, GrocerySearchItem, GrocerySearchQuery
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
@@ -78,6 +81,42 @@ class CancelOrderRequest(_Camel):
     refund_amount: float | None = None
 
 
+class GrocerySearchItemRequest(_Camel):
+    """One requested ingredient line in a grocery search (mirrors the contract's ``items[]``)."""
+
+    ingredient: str = Field(min_length=1)
+    quantity: float | None = None
+    unit: str | None = None
+
+
+class GrocerySearchRequest(_Camel):
+    """A product search across grocery providers (COM-403), mirroring ``GrocerySearchRequest``.
+
+    ``items`` must carry at least one ingredient and ``zipCode`` must be a 5-digit Mexican postal
+    code (else ``422``). ``providers`` optionally restricts the fan-out to specific provider ids;
+    omitted or empty means every enabled provider.
+    """
+
+    items: list[GrocerySearchItemRequest] = Field(min_length=1)
+    zip_code: str = Field(pattern=r"^\d{5}$")
+    providers: list[str] = Field(default_factory=list)
+
+    def to_query(self) -> GrocerySearchQuery:
+        """Project the request onto the provider-agnostic domain query (COM-402)."""
+        return GrocerySearchQuery(
+            zip_code=self.zip_code,
+            items=tuple(
+                GrocerySearchItem(
+                    ingredient=item.ingredient,
+                    quantity=Decimal(str(item.quantity)) if item.quantity is not None else None,
+                    unit=item.unit,
+                )
+                for item in self.items
+            ),
+            providers=tuple(self.providers),
+        )
+
+
 class MoneyResponse(_Camel):
     amount: float
     currency: str = "MXN"
@@ -116,6 +155,17 @@ class ProviderResponse(_Camel):
     type: ProviderType | None = None
     logo_url: str | None = None
     estimated_delivery: str | None = None
+
+    @classmethod
+    def from_domain(cls, provider: GroceryProvider) -> ProviderResponse:
+        """Project a configured grocery provider onto the wire shape (COM-401)."""
+        return cls(
+            id=provider.id,
+            name=provider.name,
+            type=provider.type,
+            logo_url=provider.logo_url,
+            estimated_delivery=provider.estimated_delivery,
+        )
 
 
 class AvailabilityResponse(_Camel):
@@ -181,6 +231,19 @@ class RefundResponse(_Camel):
     provider: str | None = None
 
 
+class GroceryOrderResponse(_Camel):
+    """The order placed with a grocery provider on the user's behalf (COM-408).
+
+    Present only once the order has actually been placed. ``externalOrderId`` is the provider's own
+    order reference and ``status`` is the last canonical fulfilment status it reported, mapped onto
+    our vocabulary by the anti-corruption layer -- a raw provider status never reaches the wire.
+    """
+
+    provider_id: str
+    external_order_id: str
+    status: GroceryOrderStatus
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -196,6 +259,7 @@ class OrderResponse(_Camel):
     transfer: TransferResponse | None = None
     approval: ApprovalResponse | None = None
     refund: RefundResponse | None = None
+    grocery_order: GroceryOrderResponse | None = None
 
     @classmethod
     def from_order(cls, order: Order) -> OrderResponse:
@@ -235,6 +299,13 @@ class OrderResponse(_Camel):
                 amount=MoneyResponse.from_money(order.refunded_amount),
                 provider=order.payment_provider,
             )
+        grocery_order = None
+        if order.grocery_external_order_id is not None:
+            grocery_order = GroceryOrderResponse(
+                provider_id=order.provider_id,
+                external_order_id=order.grocery_external_order_id,
+                status=order.grocery_status or GroceryOrderStatus.UNKNOWN,
+            )
         return cls(
             id=order.id,
             status=order.status,
@@ -250,6 +321,7 @@ class OrderResponse(_Camel):
             transfer=transfer,
             approval=approval,
             refund=refund,
+            grocery_order=grocery_order,
         )
 
 
@@ -266,6 +338,22 @@ class PaymentWebhookAck(_Camel):
 
     @classmethod
     def from_order(cls, order: Order) -> PaymentWebhookAck:
+        return cls(received=True, order_id=order.id, status=order.status)
+
+
+class KitchenWebhookAck(_Camel):
+    """Acknowledges a processed kitchen status webhook (COM-303).
+
+    Same terse shape as :class:`PaymentWebhookAck`: it confirms receipt and echoes the referenced
+    order's id and resulting status so the kitchen can reconcile, without leaking any other detail.
+    """
+
+    received: bool
+    order_id: uuid.UUID
+    status: OrderStatus
+
+    @classmethod
+    def from_order(cls, order: Order) -> KitchenWebhookAck:
         return cls(received=True, order_id=order.id, status=order.status)
 
 
