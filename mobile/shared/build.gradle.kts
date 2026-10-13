@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -31,6 +32,8 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            // NativeSqliteDriver needs the system SQLite library on iOS.
+            linkerOpts("-lsqlite3")
         }
     }
 
@@ -43,6 +46,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.koin.core)
+            implementation(libs.sqldelight.runtime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -52,10 +56,23 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.sqldelight.android.driver)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
             implementation(libs.ktor.client.auth)
+            implementation(libs.sqldelight.native.driver)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.sqldelight.sqlite.driver)
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("NutriPlanDatabase") {
+            packageName.set("com.nutriplan.db")
         }
     }
 }

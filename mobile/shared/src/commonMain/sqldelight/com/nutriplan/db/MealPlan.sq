@@ -1,0 +1,61 @@
+-- Offline cache of meal plans and their meals (mirrors data.model.MealPlan / PlanMeal).
+
+CREATE TABLE meal_plan (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    user_id TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    dietary_preferences TEXT,           -- JSON array of strings
+    target_calories INTEGER,
+    status TEXT NOT NULL,
+    created_at TEXT,
+    updated_at TEXT,
+    synced INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0   -- 0 = local changes not yet sent to the server
+);
+
+CREATE TABLE plan_meal (
+    id TEXT NOT NULL PRIMARY KEY,
+    plan_id TEXT NOT NULL REFERENCES meal_plan(id) ON DELETE CASCADE,
+    recipe_id TEXT NOT NULL,
+    recipe_name TEXT NOT NULL,
+    meal_type TEXT NOT NULL,
+    scheduled_date TEXT NOT NULL,
+    portion_size REAL,
+    calories INTEGER
+);
+
+CREATE INDEX plan_meal_plan_id ON plan_meal(plan_id);
+
+selectAllPlans:
+SELECT * FROM meal_plan ORDER BY start_date DESC;
+
+selectPlanById:
+SELECT * FROM meal_plan WHERE id = ?;
+
+selectUnsyncedPlans:
+SELECT * FROM meal_plan WHERE synced = 0 ORDER BY start_date DESC;
+
+upsertPlan:
+INSERT OR REPLACE INTO meal_plan(
+    id, name, description, user_id, start_date, end_date,
+    dietary_preferences, target_calories, status, created_at, updated_at, synced
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+markPlanSynced:
+UPDATE meal_plan SET synced = 1 WHERE id = ?;
+
+deletePlan:
+DELETE FROM meal_plan WHERE id = ?;
+
+selectMealsForPlan:
+SELECT * FROM plan_meal WHERE plan_id = ? ORDER BY scheduled_date, meal_type;
+
+insertMeal:
+INSERT OR REPLACE INTO plan_meal(
+    id, plan_id, recipe_id, recipe_name, meal_type, scheduled_date, portion_size, calories
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteMealsForPlan:
+DELETE FROM plan_meal WHERE plan_id = ?;
