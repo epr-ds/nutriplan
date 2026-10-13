@@ -9,9 +9,12 @@ its transition history (COM-106). ``orders`` also records the card-charge outcom
 the OXXO voucher issued for an async payment (COM-203:
 ``payment_voucher_reference``/``…_expires_at``/``…_barcode_url``) and the SPEI bank-transfer
 instructions issued for an async payment (COM-204:
-``payment_transfer_clabe``/``…_reference``/``…_expires_at``). The
+``payment_transfer_clabe``/``…_reference``/``…_expires_at``) and the PayPal redirect-approval order
+``payment_approval_reference``/``…_url``/``…_expires_at``) and the refund captured when a paid order
+is cancelled (COM-208: ``payment_refund_id``/``refund_status``/``refunded_amount``). The
 ``idempotency_keys`` table (COM-209) de-duplicates create-order retries, unique per
-``(user_id, idempotency_key)``.
+``(user_id, idempotency_key)``, and the ``payment_methods`` table (COM-207) stores a user's
+tokenized payment instruments — a provider token plus non-sensitive display metadata, never a PAN.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -106,6 +110,27 @@ class OrderModel(Base):
     payment_transfer_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Redirect-approval order created for an async method (PayPal, COM-205): the provider's order
+    # reference, the URL the customer approves at, and when it expires. Nullable -- only PayPal
+    # populates them.
+    payment_approval_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_approval_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    payment_approval_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Refund captured when a paid order is cancelled (COM-208): the provider's refund reference,
+    # whether the whole total or only part was returned (``full``/``partial``), and the exact amount
+    # refunded. Nullable -- only a paid, cancelled order that was actually refunded populates them.
+    payment_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refund_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    refunded_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # The order placed with the grocery provider (COM-408): its own order reference -- indexed
+    # because a provider callback or reconciliation job looks an order up by it -- and the last
+    # canonical status it reported. Nullable: only a placed grocery order populates them.
+    grocery_external_order_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    grocery_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False, index=True
     )
@@ -185,6 +210,63 @@ class IdempotencyKeyModel(Base):
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     order_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class PaymentMethodModel(Base):
+    """A user's saved, tokenized payment method (COM-207).
+
+    Persists only the provider ``token`` (never a PAN or CVV) plus non-sensitive display metadata
+    (``brand``/``last4``/expiry) so the app can show "Visa ****4242" at checkout. The token is a
+    stored credential and is deliberately never projected back onto the API. ``user_id`` is indexed
+    for the per-user list; a user may save several methods, so there is no uniqueness constraint.
+    """
+
+    __tablename__ = "payment_methods"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    token: Mapped[str] = mapped_column(String(512), nullable=False)
+    brand: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    exp_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    exp_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class SlotReservationModel(Base):
+    """One dark-kitchen delivery-window booking held for an order (COM-304).
+
+    A reservation consumes one unit of a delivery window's daily capacity for a service zone
+    (identified by the delivery postcode). ``order_id`` is unique so an order holds at most one
+    reservation, and there is deliberately **no** foreign key to ``orders`` so the reservation can
+    be inserted in the same transaction *before* the order row (the capacity guard must run first).
+    ``(service_zone, delivery_date, delivery_time_slot)`` is indexed for the capacity count that
+    availability (COM-302) and the reservation guard both read. Released (row deleted) when the
+    order is cancelled.
+    """
+
+    __tablename__ = "slot_reservations"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="uq_slot_reservations_order"),
+        Index(
+            "ix_slot_reservations_zone_date_slot",
+            "service_zone",
+            "delivery_date",
+            "delivery_time_slot",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    service_zone: Mapped[str] = mapped_column(String(16), nullable=False)
+    delivery_date: Mapped[date] = mapped_column(Date, nullable=False)
+    delivery_time_slot: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

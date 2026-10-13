@@ -9,6 +9,10 @@ implemented in COM-202 (card tokenization & charge), which depends on this story
 from __future__ import annotations
 
 from app.domain.payment import (
+    PaymentApproval,
+    PaymentApprovalRequest,
+    PaymentRefund,
+    PaymentRefundRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -40,6 +44,12 @@ class StripePaymentProvider:
 
     def create_transfer(self, request: PaymentTransferRequest) -> PaymentTransfer:
         raise NotImplementedError("Live Stripe SPEI transfer issuance is implemented in COM-204.")
+
+    def create_approval(self, request: PaymentApprovalRequest) -> PaymentApproval:
+        raise NotImplementedError("Live Stripe PayPal order creation is implemented in COM-205.")
+
+    def refund(self, request: PaymentRefundRequest) -> PaymentRefund:
+        raise NotImplementedError("Live Stripe refunds land alongside live charging (COM-202).")
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:
         raise NotImplementedError("Live Stripe webhook verification is implemented in COM-206.")

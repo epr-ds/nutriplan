@@ -13,6 +13,7 @@ from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.meal_plan import MealPlanSnapshot
 from app.domain.money import Money
 from app.domain.order import Order
+from app.domain.payment_method import SavedPaymentMethod
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
 
 
@@ -143,3 +144,33 @@ class InMemoryIdempotencyStore:
                 request_fingerprint=request_fingerprint,
             ),
         )
+
+
+class InMemoryPaymentMethodRepository:
+    """In-memory ``PaymentMethodRepository`` preserving owner-scoping (COM-207)."""
+
+    def __init__(self) -> None:
+        self.methods: dict[uuid.UUID, SavedPaymentMethod] = {}
+
+    def add(self, method: SavedPaymentMethod) -> SavedPaymentMethod:
+        self.methods[method.id] = method
+        return method
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[SavedPaymentMethod]:
+        matches = [m for m in self.methods.values() if m.user_id == user_id]
+        # Newest first, ties broken by id ascending — mirrors the SQL adapter's ORDER BY.
+        matches.sort(key=lambda m: m.id)
+        matches.sort(key=lambda m: m.created_at, reverse=True)
+        return matches
+
+    def get(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> SavedPaymentMethod | None:
+        method = self.methods.get(method_id)
+        if method is None or method.user_id != user_id:
+            return None
+        return method
+
+    def delete(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> bool:
+        if self.get(method_id, user_id=user_id) is None:
+            return False
+        del self.methods[method_id]
+        return True

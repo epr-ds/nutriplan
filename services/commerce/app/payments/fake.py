@@ -6,13 +6,17 @@ with :data:`DECLINE_TOKEN_PREFIX`, which it declines, letting checkout/refund te
 failure path too. It also records each request so a test can assert exactly what was charged.
 
 For the asynchronous methods it likewise *issues* the instrument deterministically: every
-:meth:`create_voucher` mints an OXXO-style reference and a barcode URL (COM-203), and every
-:meth:`create_transfer` mints an 18-digit SPEI CLABE and reference (COM-204), both dated
-:data:`VOUCHER_TTL_DAYS` ahead and recorded (in :attr:`vouchers` / :attr:`transfers`).
+:meth:`create_voucher` mints an OXXO-style reference and a barcode URL (COM-203), every
+:meth:`create_transfer` mints an 18-digit SPEI CLABE and reference (COM-204), and every
+:meth:`create_approval` mints a PayPal-style order reference and an ``approval_url`` (COM-205), all
+dated ahead and recorded (in :attr:`vouchers` / :attr:`transfers` / :attr:`approvals`).
 
 :meth:`parse_webhook` closes the async loop (COM-206): it verifies an HMAC-SHA256 signature over
 the raw request body using the configured ``webhook_secret`` (constant-time) and normalises the
-JSON event into a :class:`PaymentWebhookEvent`, exactly as a real provider adapter would.
+JSON event into a :class:`PaymentWebhookEvent`, exactly as a real provider adapter would. Finally
+:meth:`refund` returns all or part of a captured charge deterministically (minting a synthetic
+``refund_id`` and recording the request in :attr:`refunds`) so the cancel-refund path (COM-208) is
+exercisable without a real processor.
 """
 
 from __future__ import annotations
@@ -25,7 +29,11 @@ from datetime import UTC, datetime, timedelta
 
 from app.domain.errors import WebhookVerificationError
 from app.domain.payment import (
+    PaymentApproval,
+    PaymentApprovalRequest,
     PaymentEventType,
+    PaymentRefund,
+    PaymentRefundRequest,
     PaymentRequest,
     PaymentResult,
     PaymentTransfer,
@@ -37,6 +45,9 @@ from app.domain.payment import (
 
 DECLINE_TOKEN_PREFIX = "tok_decline"
 VOUCHER_TTL_DAYS = 3
+# A redirect approval (PayPal) expires far sooner than a cash voucher / transfer -- the customer is
+# meant to approve it in-session, so the fake mints a short, realistic window (COM-205).
+APPROVAL_TTL_HOURS = 3
 
 
 class FakePaymentProvider:
@@ -49,6 +60,8 @@ class FakePaymentProvider:
         self.charges: list[PaymentRequest] = []
         self.vouchers: list[PaymentVoucherRequest] = []
         self.transfers: list[PaymentTransferRequest] = []
+        self.approvals: list[PaymentApprovalRequest] = []
+        self.refunds: list[PaymentRefundRequest] = []
 
     def charge(self, request: PaymentRequest) -> PaymentResult:
         self.charges.append(request)
@@ -79,6 +92,25 @@ class FakePaymentProvider:
             reference=f"spei_{uuid.uuid4().hex[:12]}",
             amount=request.amount,
             expires_at=datetime.now(UTC) + timedelta(days=VOUCHER_TTL_DAYS),
+        )
+
+    def create_approval(self, request: PaymentApprovalRequest) -> PaymentApproval:
+        self.approvals.append(request)
+        reference = f"paypal_{uuid.uuid4().hex[:12]}"
+        return PaymentApproval(
+            provider=self.name,
+            reference=reference,
+            approval_url=f"https://paypal.example/checkout/{reference}",
+            amount=request.amount,
+            expires_at=datetime.now(UTC) + timedelta(hours=APPROVAL_TTL_HOURS),
+        )
+
+    def refund(self, request: PaymentRefundRequest) -> PaymentRefund:
+        self.refunds.append(request)
+        return PaymentRefund(
+            provider=self.name,
+            refund_id=f"fake_re_{uuid.uuid4().hex}",
+            amount=request.amount,
         )
 
     def parse_webhook(self, payload: bytes, signature: str) -> PaymentWebhookEvent:

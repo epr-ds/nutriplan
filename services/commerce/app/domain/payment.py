@@ -11,8 +11,10 @@ to *issue* an offline cash voucher (no token to charge) and the resulting :class
 carries the reference the customer pays against at a store before it expires (OXXO, COM-203). A
 :class:`PaymentTransferRequest` likewise asks for bank-transfer instructions and the resulting
 :class:`PaymentTransfer` carries the destination ``clabe`` and reference the customer transfers to
-(SPEI, COM-204). Either way the order stays ``pending`` until a webhook confirms settlement
-(COM-206).
+(SPEI, COM-204). A :class:`PaymentApprovalRequest` instead asks the provider to *create* a
+redirect-approval order and the resulting :class:`PaymentApproval` carries the ``approval_url`` the
+customer approves the payment at (PayPal, COM-205). Either way the order stays ``pending`` until a
+webhook confirms settlement (COM-206).
 
 That settlement arrives as a :class:`PaymentWebhookEvent`: the provider posts a signed event whose
 :class:`PaymentEventType` tells us the async payment succeeded or failed, carrying the ``reference``
@@ -164,6 +166,76 @@ class PaymentTransfer:
     amount: Money
     expires_at: datetime
     status: PaymentStatus = PaymentStatus.PENDING
+
+
+@dataclass(frozen=True)
+class PaymentApprovalRequest:
+    """A request to create a redirect-approval payment order — PayPal (COM-205).
+
+    Like a voucher or transfer there is *no* provider token: the customer approves the payment on
+    the provider's own site rather than handing us anything to charge. The provider creates an order
+    for ``amount`` and returns the URL the customer is redirected to, so ``reference`` links that
+    order back to ours. ``idempotency_key`` (COM-209) lets a retried create re-use the *same*
+    provider order rather than a duplicate.
+    """
+
+    amount: Money
+    reference: str | None = None
+    description: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass(frozen=True)
+class PaymentApproval:
+    """A created redirect-approval order awaiting customer approval (PayPal, COM-205).
+
+    The customer is redirected to ``approval_url`` to approve paying ``amount`` before
+    ``expires_at``; ``reference`` is the provider's order id a later capture/refund (COM-208) acts
+    on. The order stays ``pending`` until a provider webhook confirms the captured payment
+    (COM-206), so its :attr:`status` is always :attr:`PaymentStatus.PENDING` at creation.
+    """
+
+    provider: str
+    reference: str
+    approval_url: str
+    amount: Money
+    expires_at: datetime
+    status: PaymentStatus = PaymentStatus.PENDING
+
+
+@dataclass(frozen=True)
+class PaymentRefundRequest:
+    """A request to refund all or part of a previously captured charge — cancellation (COM-208).
+
+    ``charge_id`` is the provider reference recorded when the order was paid (COM-202); ``amount``
+    is how much to return — the full order total for a full refund, or a smaller sum for a partial
+    one. ``reference`` links the refund back to its order and ``idempotency_key`` (COM-209) lets a
+    retried refund be de-duplicated by the provider rather than returning the money twice.
+    """
+
+    charge_id: str
+    amount: Money
+    reference: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass(frozen=True)
+class PaymentRefund:
+    """The outcome of a refund: the provider's ``refund_id`` and the amount returned (COM-208).
+
+    Refunds through the port are synchronous — the provider either returns the money and hands back
+    a reference or raises — so :attr:`status` is :attr:`PaymentStatus.SUCCEEDED` at creation.
+    ``amount`` echoes what was actually refunded so the caller records the exact figure.
+    """
+
+    provider: str
+    refund_id: str
+    amount: Money
+    status: PaymentStatus = PaymentStatus.SUCCEEDED
+
+    @property
+    def is_success(self) -> bool:
+        return self.status is PaymentStatus.SUCCEEDED
 
 
 @dataclass(frozen=True)

@@ -40,3 +40,38 @@ class ListOrdersQuery:
     def offset(self) -> int:
         """Zero-based row offset for the requested page."""
         return (self.page - 1) * self.limit
+
+
+@dataclass(frozen=True)
+class ListPaymentMethodsQuery:
+    """A caller-scoped request for the user's saved payment methods (COM-207).
+
+    ``user_id`` is the authenticated caller; results are always scoped to them.
+    """
+
+    user_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class SyncGroceryOrderQuery:
+    """A caller-scoped request to refresh an order's status from its grocery provider (COM-408).
+
+    ``user_id`` is the authenticated caller; the order is only synced when it belongs to them, so
+    an unknown id and another user's id are indistinguishable (no enumeration).
+    """
+
+    user_id: uuid.UUID
+    order_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class DarkKitchenAvailabilityQuery:
+    """A request to check whether a dark kitchen serves a delivery area (COM-301).
+
+    ``zip_code`` is the delivery postcode (validated at the HTTP edge); ``delivery_date`` is an
+    optional target date. The check is not user-scoped — availability is a property of the area, not
+    the caller — so no ``user_id`` is carried, though the endpoint still requires authentication.
+    """
+
+    zip_code: str
+    delivery_date: date | None = None

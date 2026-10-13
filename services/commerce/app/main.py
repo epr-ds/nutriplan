@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
+from app.api.fulfillment import router as fulfillment_router
 from app.api.health import router as health_router
 from app.api.orders import router as orders_router
+from app.api.payment_methods import router as payment_methods_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 
@@ -12,7 +14,9 @@ register_exception_handlers(app)
 
 app.include_router(health_router)
 app.include_router(orders_router)
+app.include_router(payment_methods_router)
 app.include_router(webhooks_router)
+app.include_router(fulfillment_router)
 
 
 @app.get("/")
