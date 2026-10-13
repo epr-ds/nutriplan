@@ -28,7 +28,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
       - name: Build shared + Android app & run tests
-        run: ./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug --stacktrace
+        run: ./gradlew :shared:testAndroidHostTest :androidApp:assembleDebug --stacktrace
       - name: Static analysis (detekt)
         run: ./gradlew detekt --stacktrace
 
