@@ -16,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nutriplan.android.screen.auth.LoginScreen
 import com.nutriplan.android.screen.checkout.CheckoutScreen
@@ -55,8 +57,13 @@ class MainActivity : ComponentActivity() {
                         pendingDeepLink.takeIfAuthenticated(isAuthenticated)?.let { navController.navigate(it) }
                     }
 
-                    // Already signed in: open the link as soon as it arrives.
-                    LaunchedEffect(deepLinkVersion) { openPendingDeepLink(authRepository.isAuthenticated) }
+                    // Open a waiting link as soon as the user is signed in, but never while the splash
+                    // screen is still deciding where to go (it would pop the link off the back stack).
+                    val currentEntry by navController.currentBackStackEntryAsState()
+                    val onSplash = currentEntry?.destination?.hasRoute<Route.Splash>() != false
+                    LaunchedEffect(deepLinkVersion, onSplash) {
+                        if (!onSplash) openPendingDeepLink(authRepository.isAuthenticated)
+                    }
 
                     AppNavigationGraph(
                         navController = navController,
@@ -103,7 +110,12 @@ class MainNavigationScreens(
 
     @Composable
     override fun SplashScreen(onNavigate: (Any) -> Unit) {
-        SplashScreenContent(onNavigate)
+        val authRepository = koinInject<AuthRepository>()
+        // The session was restored from secure storage when the repository was created.
+        LaunchedEffect(Unit) {
+            onNavigate(if (authRepository.isAuthenticated) Route.Main else Route.Auth)
+        }
+        SplashScreenContent()
     }
 
     @Composable
@@ -227,12 +239,20 @@ class MainNavigationScreens(
 
     @Composable
     override fun ProfileScreen(onNavigate: (Any) -> Unit) {
+        val authRepository = koinInject<AuthRepository>()
         ProfileScreen(
             onNavigateToEditProfile = { onNavigate(Route.EditProfile) },
             onNavigateToDietaryPreferences = { onNavigate(Route.DietaryPreferences) },
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
             onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
-            onLogout = { onNavigate(Route.Auth) }
+            onLogout = {
+                // End the session (also wipes it from secure storage) and drop the whole back
+                // stack so Back cannot return to a signed-in screen.
+                authRepository.clearTokens()
+                navController.navigate(Route.Auth) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
+            }
         )
     }
 
@@ -280,12 +300,12 @@ class MainNavigationScreens(
 // --- Placeholder screen composables ---
 
 @Composable
-private fun SplashScreenContent(onNavigate: (Any) -> Unit) {
+private fun SplashScreenContent() {
     androidx.compose.foundation.layout.Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Splash", style = MaterialTheme.typography.headlineLarge)
+        androidx.compose.material3.CircularProgressIndicator()
     }
 }
 

@@ -31,7 +31,10 @@ fun AppNavigationGraph(
         // Splash screen
         composable<Route.Splash> {
             screens.SplashScreen(
-                onNavigate = { route -> navigate(navController, route) },
+                // The splash screen must not stay in the back stack, or Back would return to it.
+                onNavigate = { route ->
+                    navController.navigate(route) { popUpTo<Route.Splash> { inclusive = true } }
+                },
             )
         }
 
@@ -45,7 +48,10 @@ fun AppNavigationGraph(
         // Auth
         composable<Route.Auth> {
             screens.AuthScreen(
-                onLoginSuccess = { route -> navigate(navController, route) },
+                // After signing in, Back must not return to the login screen.
+                onLoginSuccess = { route ->
+                    navController.navigate(route) { popUpTo<Route.Auth> { inclusive = true } }
+                },
             )
         }
 
