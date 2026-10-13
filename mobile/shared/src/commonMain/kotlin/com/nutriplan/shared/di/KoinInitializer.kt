@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/di/KoinInitializer.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/di/KoinInitializer.kt
 package com.nutriplan.shared.di
 
 import org.koin.core.context.startKoin

@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Color.kt
+++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Color.kt
 package com.nutriplan.shared.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme

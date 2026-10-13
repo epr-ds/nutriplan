@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/di/DataModule.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/di/DataModule.kt
 package com.nutriplan.shared.di
 
 import com.nutriplan.shared.data.repository.AiRepository

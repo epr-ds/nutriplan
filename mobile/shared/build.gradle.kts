@@ -24,7 +24,7 @@ kotlin {
         iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = ""Shared""
+            baseName = "Shared"
             isStatic = true
         }
     }
@@ -38,22 +38,23 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.koin.core)
+            implementation(libs.koin.compose)
         }
         commonTest.dependencies {
-            implementation(kotlin(""test""))
+            implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.koin.test)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
-            implementation(""androidx.compose.ui:ui:1.7.8"")
-            implementation(""androidx.compose.material3:material3:1.3.2"")
+            implementation("androidx.compose.ui:ui:1.7.8")
+            implementation("androidx.compose.material3:material3:1.3.2")
         }
         androidUnitTest.dependencies {
-            implementation(kotlin(""test""))
-            implementation(""androidx.compose.ui:ui-test-junit4:1.7.8"")
-            implementation(""androidx.compose.ui:ui-test-manifest:1.7.8"")
+            implementation(kotlin("test"))
+            implementation("androidx.compose.ui:ui-test-junit4:1.7.8")
+            implementation("androidx.compose.ui:ui-test-manifest:1.7.8")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -63,7 +64,7 @@ kotlin {
 }
 
 android {
-    namespace = ""com.nutriplan.shared""
+    namespace = "com.nutriplan.shared"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
@@ -76,7 +77,7 @@ android {
 
 detekt {
     buildUponDefaultConfig = true
-    config.setFrom(rootProject.files(""config/detekt/detekt.yml""))
+    config.setFrom(rootProject.files("config/detekt/detekt.yml"))
     // TODO(P0): flip to false once the detekt ruleset is tuned for the team.
     ignoreFailures = true
 }

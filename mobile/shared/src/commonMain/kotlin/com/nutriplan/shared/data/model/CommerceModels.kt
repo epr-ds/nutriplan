@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/model/CommerceModels.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/model/CommerceModels.kt
 package com.nutriplan.shared.data.model
 
 import kotlinx.serialization.Serializable

@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/navigation/AppNavigation.kt
+++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/navigation/AppNavigation.kt
 package com.nutriplan.shared.navigation
 
 import androidx.compose.runtime.Composable

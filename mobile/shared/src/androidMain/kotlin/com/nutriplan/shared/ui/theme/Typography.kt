@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Typography.kt
+++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Typography.kt
 package com.nutriplan.shared.ui.theme
 
 import androidx.compose.material3.Typography

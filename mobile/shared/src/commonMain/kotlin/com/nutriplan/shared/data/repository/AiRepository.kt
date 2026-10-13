@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/repository/AiRepository.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/repository/AiRepository.kt
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.ApiConfig

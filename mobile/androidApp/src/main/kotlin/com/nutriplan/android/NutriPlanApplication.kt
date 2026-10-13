@@ -1,4 +1,4 @@
-﻿++ b/mobile/androidApp/src/main/kotlin/com/nutriplan/android/NutriPlanApplication.kt
+++ b/mobile/androidApp/src/main/kotlin/com/nutriplan/android/NutriPlanApplication.kt
 package com.nutriplan.android
 
 import android.app.Application

@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/navigation/Routes.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/navigation/Routes.kt
 package com.nutriplan.shared.navigation
 
 /**

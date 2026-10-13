@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/androidTest/kotlin/com/nutriplan/shared/ui/ThemeTest.kt
+++ b/mobile/shared/src/androidTest/kotlin/com/nutriplan/shared/ui/ThemeTest.kt
 package com.nutriplan.shared.ui.theme
 
 import kotlin.test.Test

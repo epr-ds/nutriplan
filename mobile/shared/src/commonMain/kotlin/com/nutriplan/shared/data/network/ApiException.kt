@@ -1,10 +1,10 @@
-﻿++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/network/ApiException.kt
+++ b/mobile/shared/src/commonMain/kotlin/com/nutriplan/shared/data/network/ApiException.kt
 package com.nutriplan.shared.data.network
 
 /**
  * Exception thrown by API calls to represent various failure modes.
  */
-internal sealed class ApiException(
+sealed class ApiException(
     open val body: String? = null,
     message: String,
     val code: Code,

@@ -1,4 +1,4 @@
-﻿++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Theme.kt
+++ b/mobile/shared/src/androidMain/kotlin/com/nutriplan/shared/ui/theme/Theme.kt
 package com.nutriplan.shared.ui.theme
 
 import androidx.compose.runtime.Composable
