@@ -37,6 +37,9 @@ SELECT * FROM meal_plan WHERE id = ?;
 selectUnsyncedPlans:
 SELECT * FROM meal_plan WHERE synced = 0 ORDER BY start_date DESC;
 
+selectSyncedPlanIds:
+SELECT id FROM meal_plan WHERE synced = 1;
+
 upsertPlan:
 INSERT OR REPLACE INTO meal_plan(
     id, name, description, user_id, start_date, end_date,

@@ -30,6 +30,9 @@ class MealPlanCache(private val database: NutriPlanDatabase) {
     fun getUnsyncedPlans(): List<MealPlan> =
         queries.selectUnsyncedPlans(::toPlan).executeAsList().map { it.withMeals() }
 
+    /** Ids of plans that mirror the server (no pending local changes). */
+    fun getSyncedPlanIds(): List<String> = queries.selectSyncedPlanIds().executeAsList()
+
     /** Insert or replace [plan] and all its meals atomically. */
     fun upsert(plan: MealPlan, synced: Boolean) {
         database.transaction {
