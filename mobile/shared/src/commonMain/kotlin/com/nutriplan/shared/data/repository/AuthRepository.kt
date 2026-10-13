@@ -1,5 +1,6 @@
 package com.nutriplan.shared.data.repository
 
+import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.model.AuthResponse
 import com.nutriplan.shared.data.model.LoginRequest
 import com.nutriplan.shared.data.model.RefreshRequest
@@ -17,8 +18,8 @@ import kotlinx.coroutines.withContext
 /**
  * Repository for authentication operations.
  *
- * Manages token lifecycle (access + refresh) using an in-memory store.
- * Tokens are not persisted; callers should handle persistence at a higher level.
+ * Manages token lifecycle (access + refresh). The default implementation keeps tokens in memory
+ * and, when given a [TokenStorage], persists them in the platform's secure store.
  */
 interface AuthRepository {
 
@@ -65,16 +66,26 @@ interface AuthRepository {
 }
 
 /**
- * In-memory implementation of [AuthRepository].
+ * Default implementation of [AuthRepository].
  *
- * Tokens are stored in memory and cleared on logout.
- * For production use, consider persisting tokens in secure storage
- * (e.g., Android Keystore / iOS Keychain) at the app layer.
+ * Tokens are held in memory for fast access. When a [tokenStorage] is given (the app passes the
+ * Keystore/Keychain-backed `SecureTokenStorage`), the session is restored from it on creation
+ * and every change is written through, so the user stays signed in across launches.
  */
-class InMemoryAuthRepository : AuthRepository {
+class InMemoryAuthRepository(
+    private val tokenStorage: TokenStorage? = null,
+) : AuthRepository {
 
     private var _accessToken: String? = null
     private var _refreshToken: String? = null
+
+    init {
+        // An unreadable store must never crash startup; the user simply has to log in again.
+        runCatching { tokenStorage?.load() }.getOrNull()?.let { stored ->
+            _accessToken = stored.accessToken
+            _refreshToken = stored.refreshToken
+        }
+    }
 
     override val currentAccessToken: String?
         get() = _accessToken
@@ -139,10 +150,13 @@ class InMemoryAuthRepository : AuthRepository {
     override fun updateTokens(accessToken: String, refreshToken: String) {
         _accessToken = accessToken
         _refreshToken = refreshToken
+        // If persisting fails the session still works until the app is closed.
+        runCatching { tokenStorage?.save(accessToken, refreshToken) }
     }
 
     override fun clearTokens() {
         _accessToken = null
         _refreshToken = null
+        runCatching { tokenStorage?.clear() }
     }
 }
