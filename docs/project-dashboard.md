@@ -36,9 +36,13 @@
 | [LAUNCH-RUNBOOK.md](LAUNCH-RUNBOOK.md) | GA launch runbook with phased procedure | HRD-801 |
 | [GA-GO-LIVE-CHECKLIST.md](GA-GO-LIVE-CHECKLIST.md) | Go-live checklist with sign-off | HRD-801 |
 | [PRODUCTION-CUTOVER.md](PRODUCTION-CUTOVER.md) | DNS/CDN cutover plan with rollback | HRD-802 |
-| [GA-EXIT-CRITERIA.md](GA-EXIT-CRITERIA.md) | GA exit criteria | HRD-805 |
+| [SLO-ERROR-BUDGETS.md](SLO-ERROR-BUDGETS.md) | SLOs + error budgets per service | HRD-501 |
+| [INCIDENT-RESPONSE.md](INCIDENT-RESPONSE.md) | Incident response playbooks (4 scenarios) | HRD-503 |
+| [DEVICE-MATRIX.md](DEVICE-MATRIX.md) | Cross-device / OS-version test matrix | HRD-902 |
 | [feature-flags.json](../config/feature-flags.json) | Feature flags + kill-switch config | HRD-706 |
 | [nutriplan.js](../load-tests/nutriplan.js) | k6 load testing config (100→200 RPS) | HRD-202 |
+| [synthetic.js](../monitoring/synthetic.js) | Synthetic monitoring (9 user journeys) | HRD-903 |
+| [GA-EXIT-CRITERIA.md](GA-EXIT-CRITERIA.md) | GA exit criteria | HRD-805 |
 | [regression.yml](../.github/workflows/regression.yml) | Release regression gate (expanded) | HRD-906 |
 | [release.yml](../.github/workflows/release.yml) | GA release gate workflow | HRD-906 |
 
