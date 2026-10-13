@@ -61,7 +61,7 @@ class Harness:
             self.consumer,
             registry=default_registry(),
             dead_letters=self.queue,
-            handlers={ORDER_CONFIRMED: self.handler},
+            handler_registry={ORDER_CONFIRMED: self.handler},
         )
         self.replayer = DeadLetterReplayer(self.queue, self.dispatcher)
 

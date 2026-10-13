@@ -17,6 +17,12 @@ behalf of records another process cannot see.
 
 from __future__ import annotations
 
+import logging
+
+from app.adapters.apns_adapter import APNsAdapter, APNsConfig, build_apns_adapter  # noqa: F401
+
+# Phase 5: Push notification adapters
+from app.adapters.fcm_adapter import FCMAdapter, FCMConfig, build_fcm_adapter  # noqa: F401
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
@@ -37,6 +43,8 @@ from app.domain.repositories import (
     OrderProgressStore,
     PreferencesRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def build_retention_policy(settings: Settings | None = None) -> RetentionPolicy:
@@ -117,4 +125,63 @@ def build_notification_recorder(settings: Settings | None = None) -> Notificatio
         build_notification_repository(settings),
         build_deduplication_store(settings),
         build_preferences_repository(settings),
+    )
+
+
+# Phase 5: Push adapter builders
+
+
+def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapter | APNsAdapter]:
+    """Build configured push notification adapters (NTF-301/302).
+
+    Returns a dict of adapter name to adapter instance.
+    Only adapters with valid configuration are included.
+    """
+    settings = settings or default_settings
+    adapters: dict[str, FCMAdapter | APNsAdapter] = {}
+
+    # Build FCM adapter if configured
+    if hasattr(settings, "fcm_project_id") and settings.fcm_project_id:
+        try:
+            adapters["fcm"] = build_fcm_adapter(settings)
+        except Exception as exc:
+            logger.warning("fcm.adapter_build_failed error=%s", exc)
+
+    # Build APNs adapter if configured
+    if hasattr(settings, "apns_key_id") and settings.apns_key_id:
+        try:
+            adapters["apns"] = build_apns_adapter(settings)
+        except Exception as exc:
+            logger.warning("apns.adapter_build_failed error=%s", exc)
+
+    return adapters
+
+
+# Phase 5: Meal reminder consumer builder
+
+
+def build_meal_reminder_consumer(
+    settings: Settings | None = None,
+) -> "MealReminderConsumer":  # noqa: F821
+    """Assemble the meal reminder handler (NTF-401)."""
+    from app.application.meal_reminder_consumer import MealReminderConsumer
+
+    settings = settings or default_settings
+    return MealReminderConsumer(
+        build_notification_recorder(settings),
+    )
+
+
+# Phase 5: Plan ending consumer builder
+
+
+def build_plan_ending_consumer(
+    settings: Settings | None = None,
+) -> "PlanEndingConsumer":  # noqa: F821
+    """Assemble the plan ending handler (NTF-402)."""
+    from app.application.plan_ending_consumer import PlanEndingConsumer
+
+    settings = settings or default_settings
+    return PlanEndingConsumer(
+        build_notification_recorder(settings),
     )
