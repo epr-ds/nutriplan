@@ -1,5 +1,6 @@
 package com.nutriplan.android
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,7 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -18,6 +23,9 @@ import com.nutriplan.android.screen.home.HomeScreen
 import com.nutriplan.android.screen.onboarding.OnboardingScreen
 import com.nutriplan.android.screen.profile.ProfileScreen
 import com.nutriplan.android.navigation.AppNavigationGraph
+import com.nutriplan.android.di.koinInject
+import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.navigation.PendingDeepLink
 import com.nutriplan.shared.navigation.Route
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 
@@ -28,20 +36,58 @@ import com.nutriplan.android.ui.theme.NutriPlanTheme
  */
 class MainActivity : ComponentActivity() {
 
+    /** Link from outside the app (notification tap, browser) waiting for an authenticated user. */
+    private val pendingDeepLink = PendingDeepLink()
+
+    /** Bumped whenever a new link is accepted so the UI re-checks whether it can be opened. */
+    private var deepLinkVersion by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        offerDeepLink(intent)
         setContent {
             NutriPlanTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
+                    val authRepository = koinInject<AuthRepository>()
+
+                    fun openPendingDeepLink(isAuthenticated: Boolean) {
+                        pendingDeepLink.takeIfAuthenticated(isAuthenticated)?.let { navController.navigate(it) }
+                    }
+
+                    // Already signed in: open the link as soon as it arrives.
+                    LaunchedEffect(deepLinkVersion) { openPendingDeepLink(authRepository.isAuthenticated) }
+
                     AppNavigationGraph(
                         navController = navController,
                         startDestination = Route.Splash,
-                        screens = remember(navController) { MainNavigationScreens(navController) },
+                        screens = remember(navController) {
+                            // Not signed in: the link waits and opens right after a successful login.
+                            MainNavigationScreens(navController, onAuthenticated = { openPendingDeepLink(true) })
+                        },
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        offerDeepLink(intent)
+    }
+
+    /**
+     * A VIEW intent carries the link in its data; a tapped push notification delivered by the
+     * system tray carries the payload as extras, with the target under `deepLink`.
+     */
+    private fun offerDeepLink(intent: Intent?) {
+        val link = intent?.data?.toString() ?: intent?.getStringExtra(NOTIFICATION_DEEP_LINK_EXTRA)
+        if (pendingDeepLink.offer(link)) deepLinkVersion++
+    }
+
+    private companion object {
+        const val NOTIFICATION_DEEP_LINK_EXTRA = "deepLink"
     }
 }
 
@@ -50,8 +96,10 @@ class MainActivity : ComponentActivity() {
  *
  * Each screen composable is implemented with actual UI components.
  */
-class MainNavigationScreens(private val navController: androidx.navigation.NavHostController) :
-    com.nutriplan.android.navigation.AppNavigationScreens {
+class MainNavigationScreens(
+    private val navController: androidx.navigation.NavHostController,
+    private val onAuthenticated: () -> Unit = {},
+) : com.nutriplan.android.navigation.AppNavigationScreens {
 
     @Composable
     override fun SplashScreen(onNavigate: (Any) -> Unit) {
@@ -66,7 +114,10 @@ class MainNavigationScreens(private val navController: androidx.navigation.NavHo
     @Composable
     override fun AuthScreen(onLoginSuccess: (Any) -> Unit) {
         LoginScreen(
-            onLoginSuccess = { onLoginSuccess(Route.Main) },
+            onLoginSuccess = {
+                onLoginSuccess(Route.Main)
+                onAuthenticated()
+            },
             onNavigateToRegister = { /* TODO: Navigate to register */ },
             onNavigateToForgotPassword = { /* TODO: Navigate to forgot password */ }
         )
