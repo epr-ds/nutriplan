@@ -5,8 +5,8 @@ import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.network.HttpClientProvider
 import com.nutriplan.shared.data.repository.AuthRepository
 import io.ktor.client.engine.darwin.Darwin
-import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
+import org.koin.mp.KoinPlatform
 
 /**
  * Entry points called from `NutriPlanApp.swift`.
@@ -23,5 +23,5 @@ fun bootstrapKoin() {
 
 /** Create the shared HTTP client with the Darwin engine; call after [bootstrapKoin]. */
 fun bootstrapHttpClient() {
-    HttpClientProvider.create(Darwin, GlobalContext.get().get<AuthRepository>())
+    HttpClientProvider.create(Darwin, KoinPlatform.getKoin().get<AuthRepository>())
 }
