@@ -103,7 +103,7 @@ class InMemoryAuthRepository(
                 setBody(request)
             }
             if (response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK) {
-                response.body()
+                response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
             } else {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
@@ -120,7 +120,7 @@ class InMemoryAuthRepository(
                 setBody(request)
             }
             if (response.status == HttpStatusCode.OK) {
-                response.body()
+                response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
             } else {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
