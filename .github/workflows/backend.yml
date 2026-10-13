@@ -171,7 +171,7 @@ jobs:
       NOTIFICATION_TEST_REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
