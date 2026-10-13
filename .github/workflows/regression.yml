@@ -5,20 +5,16 @@ name: Safety Regression
 # through, a lost allergen-family expansion, an over-eager filter dropping a safe recipe -- fails the
 # PR. The same suite also runs inside the normal "AI service" job; this dedicated, path-filtered gate
 # makes the guarantee explicit and named.
+#
+# HRD-906: the regression suite runs on every PR to main and on the release branch, and its
+# outcome blocks the GA pipeline.  A path-filtered fast-path still runs on AI-safety changes.
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths: &regression_paths
-      - 'services/ai/app/recommendations/safety.py'
-      - 'services/ai/app/recommendations/recipes.py'
-      - 'services/ai/app/regression/**'
-      - 'services/ai/tests/test_safety_regression.py'
-      - 'services/ai/pyproject.toml'
-      - '.github/workflows/regression.yml'
+    branches: [main, "release/**"]
   pull_request:
-    paths: *regression_paths
+    branches: [main]
 
 concurrency:
   group: regression-${{ github.ref }}
@@ -26,7 +22,7 @@ concurrency:
 
 jobs:
   no-allergen:
-    name: No-allergen regression set
+    name: No-allergen regression set (release gate)
     runs-on: ubuntu-latest
     defaults:
       run:
