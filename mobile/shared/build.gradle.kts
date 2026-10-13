@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation("androidx.compose.ui:ui:1.7.8")
             implementation("androidx.compose.material3:material3:1.3.2")
+            implementation(libs.androidx.navigation.compose)
         }
         androidUnitTest.dependencies {
             implementation(kotlin("test"))
