@@ -606,6 +606,9 @@ components:
           type: string
         nutritionalAlignment:
           $ref: '#/components/schemas/NutritionalAlignment'
+        disclaimer:
+          type: string
+          description: Medical disclaimer attached to every AI response (AIA-505)
 
     NutritionalAlignment:
       type: object
@@ -638,6 +641,9 @@ components:
           type: array
           items:
             type: string
+        disclaimer:
+          type: string
+          description: Medical disclaimer attached to every AI response (AIA-505)
 
     OptimizePlanRequest:
       type: object

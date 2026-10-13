@@ -1,0 +1,176 @@
+"""In-memory test doubles for the commerce use cases (no DB, no network)."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, date, datetime, time
+from decimal import Decimal
+
+from app.application.idempotency import IdempotencyRecord
+from app.core.principal import Principal
+from app.core.security import InvalidTokenError
+from app.domain.enums import FulfillmentType, OrderStatus
+from app.domain.meal_plan import MealPlanSnapshot
+from app.domain.money import Money
+from app.domain.order import Order
+from app.domain.payment_method import SavedPaymentMethod
+from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
+
+
+def make_test_pricer() -> OrderPricer:
+    """A real :class:`OrderPricer` with small, fixed rates for deterministic assertions.
+
+    Rates (MXN per serving): breakfast 10, lunch 20, dinner 30, snack 5, default 15.
+    Delivery fees: dark_kitchen 35, grocery_delivery 49, pickup 0. No free-delivery threshold
+    (so the small subtotals in service/API tests never trip free delivery unexpectedly).
+    """
+    price_book = MealTypePriceBook(
+        rates={
+            "breakfast": Money(Decimal("10.00")),
+            "lunch": Money(Decimal("20.00")),
+            "dinner": Money(Decimal("30.00")),
+            "snack": Money(Decimal("5.00")),
+        },
+        default_rate=Money(Decimal("15.00")),
+    )
+    delivery_fees = DeliveryFeeSchedule(
+        fees={
+            FulfillmentType.DARK_KITCHEN: Money(Decimal("35.00")),
+            FulfillmentType.GROCERY_DELIVERY: Money(Decimal("49.00")),
+            FulfillmentType.PICKUP: Money(Decimal("0.00")),
+        },
+    )
+    return OrderPricer(price_book, delivery_fees)
+
+
+class InMemoryOrderRepository:
+    """Satisfies the ``OrderRepository`` port with a dict, preserving owner-scoping semantics."""
+
+    def __init__(self) -> None:
+        self.orders: dict[uuid.UUID, Order] = {}
+
+    def add(self, order: Order) -> Order:
+        self.orders[order.id] = order
+        return order
+
+    def get(self, order_id: uuid.UUID, *, user_id: uuid.UUID) -> Order | None:
+        order = self.orders.get(order_id)
+        if order is None or order.user_id != user_id:
+            return None
+        return order
+
+    def get_by_id(self, order_id: uuid.UUID) -> Order | None:
+        # Not owner-scoped — mirrors the SQL adapter's signature-scoped webhook loader (COM-206).
+        return self.orders.get(order_id)
+
+    def update(self, order: Order) -> Order:
+        # The aggregate is stored by reference, so its mutated status/history are already visible;
+        # re-key defensively to mirror the SQL adapter's "persist the passed-in order" contract.
+        self.orders[order.id] = order
+        return order
+
+    def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        status: OrderStatus | None = None,
+        from_date: date | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Order]:
+        matches = [o for o in self.orders.values() if o.user_id == user_id]
+        if status is not None:
+            matches = [o for o in matches if o.status is status]
+        if from_date is not None:
+            start = datetime.combine(from_date, time.min, tzinfo=UTC)
+            matches = [o for o in matches if o.created_at >= start]
+        # Newest first, ties broken by id ascending — mirrors the SQL adapter's ORDER BY.
+        matches.sort(key=lambda o: o.id)
+        matches.sort(key=lambda o: o.created_at, reverse=True)
+        if offset:
+            matches = matches[offset:]
+        if limit is not None:
+            matches = matches[:limit]
+        return matches
+
+
+class FakeMealPlanProvider:
+    """Returns a preset snapshot (or ``None``) and records how it was called."""
+
+    def __init__(self, snapshot: MealPlanSnapshot | None) -> None:
+        self._snapshot = snapshot
+        self.calls: list[tuple[str, str]] = []
+
+    def fetch(self, plan_id: str, *, bearer_token: str) -> MealPlanSnapshot | None:
+        self.calls.append((plan_id, bearer_token))
+        return self._snapshot
+
+
+class StubVerifier:
+    """Maps known tokens to principals; anything else is an invalid token."""
+
+    def __init__(self, principals: dict[str, Principal]) -> None:
+        self._principals = principals
+
+    def verify(self, token: str) -> Principal:
+        try:
+            return self._principals[token]
+        except KeyError as exc:
+            raise InvalidTokenError("unknown token") from exc
+
+
+class InMemoryIdempotencyStore:
+    """Satisfies the ``IdempotencyStore`` port with a dict keyed by ``(user_id, key)``.
+
+    ``save`` uses ``setdefault`` so the first write for a key wins and a later duplicate is a no-op,
+    mirroring the SQL adapter's unique-constraint semantics (a concurrent duplicate is benign).
+    """
+
+    def __init__(self) -> None:
+        self.records: dict[tuple[uuid.UUID, str], IdempotencyRecord] = {}
+
+    def find(self, key: str, *, user_id: uuid.UUID) -> IdempotencyRecord | None:
+        return self.records.get((user_id, key))
+
+    def save(
+        self, key: str, *, user_id: uuid.UUID, order_id: uuid.UUID, request_fingerprint: str
+    ) -> None:
+        self.records.setdefault(
+            (user_id, key),
+            IdempotencyRecord(
+                key=key,
+                user_id=user_id,
+                order_id=order_id,
+                request_fingerprint=request_fingerprint,
+            ),
+        )
+
+
+class InMemoryPaymentMethodRepository:
+    """In-memory ``PaymentMethodRepository`` preserving owner-scoping (COM-207)."""
+
+    def __init__(self) -> None:
+        self.methods: dict[uuid.UUID, SavedPaymentMethod] = {}
+
+    def add(self, method: SavedPaymentMethod) -> SavedPaymentMethod:
+        self.methods[method.id] = method
+        return method
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[SavedPaymentMethod]:
+        matches = [m for m in self.methods.values() if m.user_id == user_id]
+        # Newest first, ties broken by id ascending — mirrors the SQL adapter's ORDER BY.
+        matches.sort(key=lambda m: m.id)
+        matches.sort(key=lambda m: m.created_at, reverse=True)
+        return matches
+
+    def get(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> SavedPaymentMethod | None:
+        method = self.methods.get(method_id)
+        if method is None or method.user_id != user_id:
+            return None
+        return method
+
+    def delete(self, method_id: uuid.UUID, *, user_id: uuid.UUID) -> bool:
+        if self.get(method_id, user_id=user_id) is None:
+            return False
+        del self.methods[method_id]
+        return True

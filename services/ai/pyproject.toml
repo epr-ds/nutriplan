@@ -7,4 +7,8 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --strict-markers"
+markers = [
+    "guardrail: adversarial guardrail suite that gates CI on prompts/guardrails changes (AIA-506)",
+    "regression: golden no-allergen safety regression set that gates release (AIA-704)",
+]
