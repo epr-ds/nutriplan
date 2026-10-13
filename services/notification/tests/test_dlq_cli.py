@@ -67,7 +67,7 @@ def cli(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]):
     """
     settings = Settings()
     handler = RecordingHandler()
-    dispatcher = build_event_dispatcher(settings, handlers={ORDER_CONFIRMED: handler})
+    dispatcher = build_event_dispatcher(settings, handler_registry={ORDER_CONFIRMED: handler})
     console = Console(dispatcher.dead_letters, handler)
 
     monkeypatch.setattr(dlq, "build_event_dispatcher", lambda *a, **k: dispatcher)
