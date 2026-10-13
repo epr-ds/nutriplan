@@ -12,7 +12,7 @@ CREATE TABLE meal_plan (
     status TEXT NOT NULL,
     created_at TEXT,
     updated_at TEXT,
-    synced INTEGER AS Boolean NOT NULL DEFAULT 0   -- 0 = local changes not yet sent to the server
+    synced INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0   -- 0 = local changes not yet sent to the server
 );
 
 CREATE TABLE plan_meal (
