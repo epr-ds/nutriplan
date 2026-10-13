@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.account import router as account_router
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.jwks import router as jwks_router
@@ -16,6 +17,7 @@ app.include_router(health_router)
 app.include_router(jwks_router)
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(account_router)
 
 
 @app.get("/")
