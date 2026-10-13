@@ -87,7 +87,7 @@ class TestTheAssembledDispatcher:
 
     def test_a_handler_set_can_be_substituted(self) -> None:
         """So a test can drive the dispatcher without the production consumer attached."""
-        assert build_event_dispatcher(Settings(), handlers={}).handled_types == ()
+        assert build_event_dispatcher(Settings(), handler_registry={}).handled_types == ()
 
     def test_a_collaborator_can_be_substituted(self) -> None:
         """The seam NTF-202's tests will use to drive the dispatcher off a fake consumer."""
