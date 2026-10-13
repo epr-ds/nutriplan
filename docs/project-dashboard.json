@@ -1,0 +1,2543 @@
+﻿{
+    "value":  [
+                  {
+                      "createdAt":  "2026-10-13T20:02:55Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  505,
+                      "state":  "OPEN",
+                      "title":  "HRD-905 — Bug bash + triage before GA",
+                      "updatedAt":  "2026-10-13T20:02:55Z"
+                  },
+                  {
+                      "createdAt":  "2026-10-13T20:02:55Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  504,
+                      "state":  "OPEN",
+                      "title":  "HRD-805 — GA sign-off — SLOs/dashboards green, exit criteria met",
+                      "updatedAt":  "2026-10-13T20:02:55Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:32Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  351,
+                      "state":  "OPEN",
+                      "title":  "HRD-906 — Release regression gate in CI (block GA on red)",
+                      "updatedAt":  "2026-06-23T02:42:07Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:30Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  350,
+                      "state":  "OPEN",
+                      "title":  "HRD-905 — Bug bash + triage before GA",
+                      "updatedAt":  "2026-06-23T02:42:06Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:27Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  349,
+                      "state":  "OPEN",
+                      "title":  "HRD-903 — End-to-end synthetic monitoring (staging + prod)",
+                      "updatedAt":  "2026-06-23T02:42:05Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:25Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  348,
+                      "state":  "OPEN",
+                      "title":  "HRD-902 — Cross-device / OS-version matrix (device farm)",
+                      "updatedAt":  "2026-06-23T02:42:04Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:23Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  347,
+                      "state":  "OPEN",
+                      "title":  "HRD-805 — GA sign-off — SLOs/dashboards green, exit criteria met",
+                      "updatedAt":  "2026-06-23T02:42:03Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:20Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  346,
+                      "state":  "OPEN",
+                      "title":  "HRD-804 — Legal sign-off — ToS, privacy policy, data processing",
+                      "updatedAt":  "2026-06-23T02:42:02Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:18Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  345,
+                      "state":  "OPEN",
+                      "title":  "HRD-803 — Support readiness — help center, FAQ, support routing",
+                      "updatedAt":  "2026-06-23T02:42:01Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:16Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  344,
+                      "state":  "OPEN",
+                      "title":  "HRD-802 — Production cutover + scaling + DNS/CDN readiness",
+                      "updatedAt":  "2026-06-23T02:42:00Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:13Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  343,
+                      "state":  "OPEN",
+                      "title":  "HRD-706 — Staged production rollout + kill-switch/feature flags",
+                      "updatedAt":  "2026-06-23T02:41:59Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:10Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  342,
+                      "state":  "OPEN",
+                      "title":  "HRD-705 — App Store + Play submission + review responses",
+                      "updatedAt":  "2026-06-23T02:41:58Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:08Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  341,
+                      "state":  "OPEN",
+                      "title":  "HRD-605 — Crash-free ≥ 99.5% — stabilize top crashes",
+                      "updatedAt":  "2026-06-23T02:41:57Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:05Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXMw",
+                                         "name":  "stretch",
+                                         "description":  "Stretch / fast-follow — cut first if over capacity",
+                                         "color":  "fbca04"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  340,
+                      "state":  "OPEN",
+                      "title":  "HRD-505 — Failover / resilience (chaos) test on critical paths",
+                      "updatedAt":  "2026-06-23T02:41:56Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:03Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONPQ",
+                                         "name":  "epic:localization",
+                                         "description":  "E4 · Localization \u0026 Content (es/en)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  339,
+                      "state":  "OPEN",
+                      "title":  "HRD-404 — In-app legal/content (ToS, privacy) localized + linked",
+                      "updatedAt":  "2026-06-23T02:41:55Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:33:00Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONEw",
+                                         "name":  "epic:accessibility",
+                                         "description":  "E3 · Accessibility (WCAG 2.1 AA)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  338,
+                      "state":  "OPEN",
+                      "title":  "HRD-305 — Accessibility regression checks in CI/E2E",
+                      "updatedAt":  "2026-06-23T02:41:54Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:58Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONEw",
+                                         "name":  "epic:accessibility",
+                                         "description":  "E3 · Accessibility (WCAG 2.1 AA)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  337,
+                      "state":  "OPEN",
+                      "title":  "HRD-304 — Dynamic type / large-font + contrast pass (both)",
+                      "updatedAt":  "2026-06-23T02:41:53Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:56Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMsw",
+                                         "name":  "epic:security-compliance",
+                                         "description":  "E1 · Security \u0026 Compliance",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  336,
+                      "state":  "OPEN",
+                      "title":  "HRD-106 — Pentest remediation + re-test sign-off",
+                      "updatedAt":  "2026-06-23T02:41:52Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:53Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMsw",
+                                         "name":  "epic:security-compliance",
+                                         "description":  "E1 · Security \u0026 Compliance",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  335,
+                      "state":  "OPEN",
+                      "title":  "HRD-105 — PCI scope final review + attestation (payments)",
+                      "updatedAt":  "2026-06-23T02:41:51Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:51Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMsw",
+                                         "name":  "epic:security-compliance",
+                                         "description":  "E1 · Security \u0026 Compliance",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  334,
+                      "state":  "OPEN",
+                      "title":  "HRD-104 — Account deletion + data export (user data rights)",
+                      "updatedAt":  "2026-06-23T02:41:50Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:49Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYqg",
+                                         "name":  "epic:design",
+                                         "description":  "E10 · Design — Final Polish \u0026 Store Creative",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORVA",
+                                         "name":  "sprint-21",
+                                         "description":  "Sprint 21",
+                                         "color":  "d4c5f9"
+                                     }
+                                 ],
+                      "number":  333,
+                      "state":  "OPEN",
+                      "title":  "HRD-1003 — Store creative — screenshots, preview video, feature graphic",
+                      "updatedAt":  "2026-06-23T02:41:49Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:46Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXMw",
+                                         "name":  "stretch",
+                                         "description":  "Stretch / fast-follow — cut first if over capacity",
+                                         "color":  "fbca04"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  332,
+                      "state":  "OPEN",
+                      "title":  "HRD-904 — Soak / endurance test (long sessions, leaks)",
+                      "updatedAt":  "2026-06-23T02:41:48Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:44Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOog",
+                                         "name":  "epic:launch",
+                                         "description":  "E8 · Launch Readiness \u0026 GA",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  331,
+                      "state":  "OPEN",
+                      "title":  "HRD-801 — GA go-live checklist + launch runbook",
+                      "updatedAt":  "2026-06-23T02:41:47Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:42Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  330,
+                      "state":  "OPEN",
+                      "title":  "HRD-704 — Store listings — copy, categories, age rating, creative",
+                      "updatedAt":  "2026-06-23T02:41:46Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:39Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  329,
+                      "state":  "OPEN",
+                      "title":  "HRD-703 — Play Data Safety + App Store privacy nutrition labels",
+                      "updatedAt":  "2026-06-23T02:41:45Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:37Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  328,
+                      "state":  "OPEN",
+                      "title":  "HRD-702 — Release pipelines — versioned, staged rollout (both)",
+                      "updatedAt":  "2026-06-23T02:41:44Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:35Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXQw",
+                                         "name":  "phase:P1",
+                                         "description":  "Phase P1 — Identity \u0026 Onboarding",
+                                         "color":  "6f42c1"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRvneQ",
+                                         "name":  "phase:P2",
+                                         "description":  "Phase P2 — Dietary Planning Core",
+                                         "color":  "a371f7"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoR2l4g",
+                                         "name":  "phase:P3",
+                                         "description":  "Phase P3 — AI Advisor",
+                                         "color":  "bf3989"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  327,
+                      "state":  "OPEN",
+                      "title":  "HRD-606 — Beta analytics + funnel/retention instrumentation",
+                      "updatedAt":  "2026-06-23T02:41:43Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:32Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  326,
+                      "state":  "OPEN",
+                      "title":  "HRD-604 — Beta fix loop — triage + prioritize + burn down",
+                      "updatedAt":  "2026-06-21T06:32:32Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:30Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  325,
+                      "state":  "OPEN",
+                      "title":  "HRD-603 — Closed beta launch + feedback intake",
+                      "updatedAt":  "2026-06-21T06:32:30Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:28Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  324,
+                      "state":  "OPEN",
+                      "title":  "HRD-504 — Backup/restore + disaster-recovery drill",
+                      "updatedAt":  "2026-06-21T06:32:28Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:25Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  323,
+                      "state":  "OPEN",
+                      "title":  "HRD-503 — Runbooks + incident-response playbooks",
+                      "updatedAt":  "2026-06-21T06:32:25Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:22Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONPQ",
+                                         "name":  "epic:localization",
+                                         "description":  "E4 · Localization \u0026 Content (es/en)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  322,
+                      "state":  "OPEN",
+                      "title":  "HRD-403 — Store metadata + screenshots localized (es/en)",
+                      "updatedAt":  "2026-06-21T06:32:22Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:20Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONPQ",
+                                         "name":  "epic:localization",
+                                         "description":  "E4 · Localization \u0026 Content (es/en)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  321,
+                      "state":  "OPEN",
+                      "title":  "HRD-402 — Formatting pass — MXN currency, dates, numbers, units (both)",
+                      "updatedAt":  "2026-06-21T06:32:20Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:17Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONEw",
+                                         "name":  "epic:accessibility",
+                                         "description":  "E3 · Accessibility (WCAG 2.1 AA)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  320,
+                      "state":  "OPEN",
+                      "title":  "HRD-303 — Accessibility fixes — iOS/SwiftUI",
+                      "updatedAt":  "2026-06-21T06:32:17Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:15Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONEw",
+                                         "name":  "epic:accessibility",
+                                         "description":  "E3 · Accessibility (WCAG 2.1 AA)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  319,
+                      "state":  "OPEN",
+                      "title":  "HRD-302 — Accessibility fixes — Android/Compose",
+                      "updatedAt":  "2026-06-21T06:32:15Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:12Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOM8A",
+                                         "name":  "epic:performance",
+                                         "description":  "E2 · Performance \u0026 Load",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  318,
+                      "state":  "OPEN",
+                      "title":  "HRD-206 — Scalability/capacity plan + autoscaling validation",
+                      "updatedAt":  "2026-06-21T06:32:12Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:10Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYxA",
+                                         "name":  "track:android",
+                                         "description":  "Android track",
+                                         "color":  "1f883d"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY4A",
+                                         "name":  "track:ios",
+                                         "description":  "iOS track",
+                                         "color":  "8250df"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOM8A",
+                                         "name":  "epic:performance",
+                                         "description":  "E2 · Performance \u0026 Load",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  317,
+                      "state":  "OPEN",
+                      "title":  "HRD-205 — Mobile performance — startup, scroll/jank, memory (both)",
+                      "updatedAt":  "2026-06-21T06:32:10Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:07Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOM8A",
+                                         "name":  "epic:performance",
+                                         "description":  "E2 · Performance \u0026 Load",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  316,
+                      "state":  "OPEN",
+                      "title":  "HRD-203 — Backend perf tuning (indexes, N+1, pooling, caching)",
+                      "updatedAt":  "2026-06-21T06:32:07Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:05Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYqg",
+                                         "name":  "epic:design",
+                                         "description":  "E10 · Design — Final Polish \u0026 Store Creative",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSORIg",
+                                         "name":  "sprint-20",
+                                         "description":  "Sprint 20",
+                                         "color":  "bfdadc"
+                                     }
+                                 ],
+                      "number":  315,
+                      "state":  "OPEN",
+                      "title":  "HRD-1002 — Empty / error / loading state audit + fixes",
+                      "updatedAt":  "2026-06-21T06:32:05Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:02Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYiQ",
+                                         "name":  "epic:quality",
+                                         "description":  "E9 · Quality — Regression \u0026 E2E Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  314,
+                      "state":  "OPEN",
+                      "title":  "HRD-901 — Full regression suite across P1–P5 journeys",
+                      "updatedAt":  "2026-06-21T06:32:03Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:32:00Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOOYA",
+                                         "name":  "epic:release-eng",
+                                         "description":  "E7 · Release Engineering \u0026 Store Submission",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  313,
+                      "state":  "OPEN",
+                      "title":  "HRD-701 — App signing + release config (Play App Signing, ASC)",
+                      "updatedAt":  "2026-06-21T06:32:00Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:57Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  312,
+                      "state":  "OPEN",
+                      "title":  "HRD-602 — Crash/ANR monitoring (Crashlytics/Sentry) + dashboards",
+                      "updatedAt":  "2026-06-21T06:31:58Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:55Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONzw",
+                                         "name":  "epic:beta",
+                                         "description":  "E6 · Closed Beta \u0026 Crash Hardening",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  311,
+                      "state":  "OPEN",
+                      "title":  "HRD-601 — TestFlight + Play internal beta pipeline + tester groups",
+                      "updatedAt":  "2026-06-21T06:31:55Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:52Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  310,
+                      "state":  "OPEN",
+                      "title":  "HRD-506 — Production observability — traces/logs/metrics completeness",
+                      "updatedAt":  "2026-06-21T06:31:52Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:48Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  309,
+                      "state":  "OPEN",
+                      "title":  "HRD-502 — Alerting + on-call rotation (paging)",
+                      "updatedAt":  "2026-06-21T06:31:48Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:46Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONUg",
+                                         "name":  "epic:reliability",
+                                         "description":  "E5 · Reliability, SRE \u0026 Observability",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  308,
+                      "state":  "OPEN",
+                      "title":  "HRD-501 — SLOs + error budgets per service + dashboards",
+                      "updatedAt":  "2026-06-21T06:31:46Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:43Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYwg",
+                                         "name":  "track:kmp",
+                                         "description":  "KMP shared track",
+                                         "color":  "0e8a16"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONPQ",
+                                         "name":  "epic:localization",
+                                         "description":  "E4 · Localization \u0026 Content (es/en)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  307,
+                      "state":  "OPEN",
+                      "title":  "HRD-401 — Localization audit — extract, complete es/en, pseudo-loc",
+                      "updatedAt":  "2026-06-21T06:31:43Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:41Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZTA",
+                                         "name":  "track:ux",
+                                         "description":  "Design track",
+                                         "color":  "cf222e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSONEw",
+                                         "name":  "epic:accessibility",
+                                         "description":  "E3 · Accessibility (WCAG 2.1 AA)",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  306,
+                      "state":  "OPEN",
+                      "title":  "HRD-301 — WCAG 2.1 AA audit across all flows (both apps)",
+                      "updatedAt":  "2026-06-21T06:31:41Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:39Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmYtQ",
+                                         "name":  "track:backend",
+                                         "description":  "Backend track",
+                                         "color":  "d73a4a"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaJw",
+                                         "name":  "pts:3",
+                                         "description":  "Estimate: 3 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOM8A",
+                                         "name":  "epic:performance",
+                                         "description":  "E2 · Performance \u0026 Load",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  305,
+                      "state":  "OPEN",
+                      "title":  "HRD-204 — API latency SLOs + p95/p99 budgets per endpoint",
+                      "updatedAt":  "2026-06-21T06:31:39Z"
+                  },
+                  {
+                      "createdAt":  "2026-06-21T06:31:36Z",
+                      "labels":  [
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmXGg",
+                                         "name":  "story",
+                                         "description":  "A user story / work item",
+                                         "color":  "2da44e"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmY9Q",
+                                         "name":  "track:qa",
+                                         "description":  "QA track",
+                                         "color":  "bf8700"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmZGA",
+                                         "name":  "track:devops",
+                                         "description":  "DevOps track",
+                                         "color":  "0969da"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoRmaew",
+                                         "name":  "pts:5",
+                                         "description":  "Estimate: 5 story points",
+                                         "color":  "ededed"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOMfQ",
+                                         "name":  "phase:P6",
+                                         "description":  "Phase P6 — Hardening, Beta \u0026 Launch",
+                                         "color":  "0a3069"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOM8A",
+                                         "name":  "epic:performance",
+                                         "description":  "E2 · Performance \u0026 Load",
+                                         "color":  "0052cc"
+                                     },
+                                     {
+                                         "id":  "LA_kwDOTAnEi88AAAACoSOQ5g",
+                                         "name":  "sprint-19",
+                                         "description":  "Sprint 19",
+                                         "color":  "c5def5"
+                                     }
+                                 ],
+                      "number":  304,
+                      "state":  "OPEN",
+                      "title":  "HRD-202 — Load + soak test all services to target RPS; find breakpoints",
+                      "updatedAt":  "2026-06-21T06:31:36Z"
+                  }
+              ],
+    "Count":  50
+}
