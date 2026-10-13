@@ -45,6 +45,13 @@
 | [GA-EXIT-CRITERIA.md](GA-EXIT-CRITERIA.md) | GA exit criteria | HRD-805 |
 | [regression.yml](../.github/workflows/regression.yml) | Release regression gate (expanded) | HRD-906 |
 | [release.yml](../.github/workflows/release.yml) | GA release gate workflow | HRD-906 |
+| [ALERTING.md](ALERTING.md) | Alert rules, on-call rotation, escalation policy | HRD-502 |
+| [OBSERVABILITY.md](OBSERVABILITY.md) | OpenTelemetry architecture, dashboards, log standards | HRD-506 |
+| [API-LATENCY-SLOS.md](API-LATENCY-SLOS.md) | Per-endpoint latency budgets (5 services, 35+ endpoints) | HRD-204 |
+| [RELEASE-PIPELINE.md](RELEASE-PIPELINE.md) | Staged rollout config, gates, rollback procedure | HRD-702 |
+| [soak.js](../load-tests/soak.js) | 24h soak/endurance test config | HRD-904 |
+| [regression/run.py](../regression/run.py) | Regression suite runner (cross-service) | HRD-901 |
+| [regression/README.md](../regression/README.md) | Regression corpus format + 42 test cases | HRD-901 |
 
 ### epic:release-eng (GA blockers)
 | # | Title | Track |
