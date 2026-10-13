@@ -94,9 +94,12 @@ sealed class Route {
     @Serializable
     data class DeepLinkMeal(val mealId: String) : Route()
 
-    /** Deep link to a plan. */
+    /**
+     * Deep link to a plan, optionally with an action sub-path such as `manage`, `summary` or
+     * `renew` (`nutriplan://plan/<id>/<action>`, as sent by plan-ending notifications).
+     */
     @Serializable
-    data class DeepLinkPlan(val planId: String) : Route()
+    data class DeepLinkPlan(val planId: String, val action: String? = null) : Route()
 
     /** Deep link to an order. */
     @Serializable
@@ -123,7 +126,7 @@ sealed class Route {
         is EditProfile -> "nutriplan://profile/edit"
         is DietaryPreferences -> "nutriplan://profile/dietary"
         is DeepLinkMeal -> "nutriplan://meal/$mealId"
-        is DeepLinkPlan -> "nutriplan://plan/$planId"
+        is DeepLinkPlan -> "nutriplan://plan/$planId" + (action?.let { "/$it" } ?: "")
         is DeepLinkOrder -> "nutriplan://order/$orderId"
     }
 
@@ -151,8 +154,31 @@ sealed class Route {
             deepLink == "nutriplan://profile/edit" -> EditProfile
             deepLink == "nutriplan://profile/dietary" -> DietaryPreferences
             deepLink.startsWith("nutriplan://meal/") -> DeepLinkMeal(deepLink.substringAfter("nutriplan://meal/"))
-            deepLink.startsWith("nutriplan://plan/") -> DeepLinkPlan(deepLink.substringAfter("nutriplan://plan/"))
+            deepLink.startsWith("nutriplan://plan/") -> parsePlanLink(deepLink.substringAfter("nutriplan://plan/"))
             else -> null
+        }
+
+        /**
+         * Resolve the route a push notification should open from its data payload.
+         *
+         * The notification service puts the target in the `deepLink` field
+         * (for example `nutriplan://meal/<id>` or `nutriplan://plan/<id>/manage`).
+         */
+        fun fromNotificationData(data: Map<String, String>): Route? =
+            data[NOTIFICATION_DEEP_LINK_KEY]?.let(::fromDeepLink)
+
+        private const val NOTIFICATION_DEEP_LINK_KEY = "deepLink"
+
+        /** Parse `<planId>` or `<planId>/<action>`; anything else (blank id, extra segments) is rejected. */
+        private fun parsePlanLink(path: String): Route? {
+            val segments = path.split("/")
+            val planId = segments.first()
+            return when {
+                planId.isBlank() -> null
+                segments.size == 1 -> DeepLinkPlan(planId)
+                segments.size == 2 && segments[1].isNotBlank() -> DeepLinkPlan(planId, segments[1])
+                else -> null
+            }
         }
     }
 }

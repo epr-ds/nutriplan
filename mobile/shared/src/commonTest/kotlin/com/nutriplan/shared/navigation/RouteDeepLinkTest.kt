@@ -259,4 +259,60 @@ class RouteDeepLinkTest {
         val deepLink = route.toDeepLink()
         assertEquals(route, Route.fromDeepLink(deepLink))
     }
+
+    // Plan links with an action sub-path (sent by plan-ending notifications)
+
+    @Test
+    fun `fromDeepLink parses plan link with manage action`() {
+        assertEquals(
+            Route.DeepLinkPlan("plan-def", "manage"),
+            Route.fromDeepLink("nutriplan://plan/plan-def/manage"),
+        )
+    }
+
+    @Test
+    fun `fromDeepLink parses plan summary and renew actions`() {
+        assertEquals(Route.DeepLinkPlan("p1", "summary"), Route.fromDeepLink("nutriplan://plan/p1/summary"))
+        assertEquals(Route.DeepLinkPlan("p1", "renew"), Route.fromDeepLink("nutriplan://plan/p1/renew"))
+    }
+
+    @Test
+    fun `fromDeepLink rejects malformed plan links`() {
+        assertNull(Route.fromDeepLink("nutriplan://plan/"))
+        assertNull(Route.fromDeepLink("nutriplan://plan//manage"))
+        assertNull(Route.fromDeepLink("nutriplan://plan/p1/"))
+        assertNull(Route.fromDeepLink("nutriplan://plan/p1/manage/extra"))
+    }
+
+    @Test
+    fun `toDeepLink includes plan action`() {
+        assertEquals("nutriplan://plan/p1/renew", Route.DeepLinkPlan("p1", "renew").toDeepLink())
+    }
+
+    @Test
+    fun `roundTrip preserves DeepLinkPlan with action`() {
+        val route = Route.DeepLinkPlan("p1", "manage")
+        assertEquals(route, Route.fromDeepLink(route.toDeepLink()))
+    }
+
+    // Notification payloads
+
+    @Test
+    fun `fromNotificationData resolves a meal reminder`() {
+        val data = mapOf("mealId" to "m1", "deepLink" to "nutriplan://meal/m1")
+        assertEquals(Route.DeepLinkMeal("m1"), Route.fromNotificationData(data))
+    }
+
+    @Test
+    fun `fromNotificationData resolves a plan ending reminder`() {
+        val data = mapOf("planId" to "p1", "deepLink" to "nutriplan://plan/p1/manage")
+        assertEquals(Route.DeepLinkPlan("p1", "manage"), Route.fromNotificationData(data))
+    }
+
+    @Test
+    fun `fromNotificationData returns null without a usable deepLink`() {
+        assertNull(Route.fromNotificationData(emptyMap()))
+        assertNull(Route.fromNotificationData(mapOf("deepLink" to "https://example.com")))
+        assertNull(Route.fromNotificationData(mapOf("deepLink" to "nutriplan://unknown")))
+    }
 }
