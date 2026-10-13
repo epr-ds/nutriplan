@@ -1,0 +1,104 @@
+{
+  "version": "1.0",
+  "description": "NutriPlan feature flags for staged rollout and kill-switch (HRD-706)",
+  "flags": {
+    "meal-plan-offline": {
+      "description": "Enable offline meal plan cache",
+      "enabled": true,
+      "rollout": 1.0,
+      "targets": [],
+      "rules": []
+    },
+    "deep-link-navigation": {
+      "description": "Enable deep link navigation for notifications",
+      "enabled": true,
+      "rollout": 1.0,
+      "targets": [],
+      "rules": []
+    },
+    "ai-advisor": {
+      "description": "Enable AI nutrition advisor",
+      "enabled": false,
+      "rollout": 0.0,
+      "targets": [],
+      "rules": []
+    },
+    "payment-subscriptions": {
+      "description": "Enable payment and subscription features",
+      "enabled": false,
+      "rollout": 0.0,
+      "targets": [],
+      "rules": []
+    },
+    "social-sharing": {
+      "description": "Enable social sharing of meal plans",
+      "enabled": false,
+      "rollout": 0.0,
+      "targets": [],
+      "rules": []
+    },
+    "dark-mode": {
+      "description": "Enable dark mode theme",
+      "enabled": true,
+      "rollout": 1.0,
+      "targets": [],
+      "rules": []
+    },
+    "accessibility-enhancements": {
+      "description": "Enable WCAG 2.1 AA accessibility improvements",
+      "enabled": true,
+      "rollout": 1.0,
+      "targets": [],
+      "rules": []
+    },
+    "canary-release": {
+      "description": "Kill-switch for canary release rollback",
+      "enabled": true,
+      "rollout": 0.1,
+      "targets": [],
+      "rules": [
+        {
+          "rollout": 0.1,
+          "segment": "canary"
+        },
+        {
+          "rollout": 0.5,
+          "segment": "expanded"
+        },
+        {
+          "rollout": 1.0,
+          "segment": "full"
+        }
+      ]
+    }
+  },
+  "rollout_stages": {
+    "canary": {
+      "description": "10% of users - initial canary",
+      "rollout": 0.1,
+      "min_duration_hours": 24,
+      "kill_switch": true
+    },
+    "expanded": {
+      "description": "50% of users - expanded rollout",
+      "rollout": 0.5,
+      "min_duration_hours": 12,
+      "kill_switch": true
+    },
+    "full": {
+      "description": "100% of users - full GA release",
+      "rollout": 1.0,
+      "min_duration_hours": 0,
+      "kill_switch": true
+    }
+  },
+  "kill_switch": {
+    "enabled": true,
+    "description": "Global kill-switch to disable all new features",
+    "trigger_conditions": [
+      "crash_free_rate < 0.99",
+      "error_rate > 0.01",
+      "p99_latency > 2000"
+    ]
+  }
+}
