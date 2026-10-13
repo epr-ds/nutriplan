@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.nutriplan.android.screen.checkout
 
 import androidx.compose.foundation.layout.*
@@ -12,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
-import org.koin.androidx.compose.koinInject
+import com.nutriplan.android.ui.theme.NutriPlanTheme
+import com.nutriplan.android.di.koinInject
 
 /**
  * Checkout screen for ordering meal plans.
@@ -24,10 +26,10 @@ fun CheckoutScreen(
     onCheckoutSuccess: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    val commerceRepository = koinInject<com.nutriplan.shared.repository.CommerceRepository>()
+    val commerceRepository = koinInject<com.nutriplan.shared.data.repository.CommerceRepository>()
     
-    var mealPlan by remember { mutableStateOf<com.nutriplan.shared.model.MealPlan?>(null) }
-    var cartItems by remember { mutableStateOf<List<com.nutriplan.shared.model.CartItem>>(emptyList()) }
+    var mealPlan by remember { mutableStateOf<com.nutriplan.shared.data.model.MealPlan?>(null) }
+    var cartItems by remember { mutableStateOf<List<com.nutriplan.shared.data.model.OrderItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -76,14 +78,14 @@ fun CheckoutScreen(
                     Text(
                         text = "Order Summary",
                         style = MaterialTheme.typography.titleLarge,
-                        color = NutriPlanTheme.colors.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 
                 // Cart items
-                items(cartItems, key = { it.id }) { item ->
+                items(cartItems, key = { it.recipeId }) { item ->
                     CartItemRow(cartItem = item)
                 }
                 
@@ -111,7 +113,7 @@ fun CheckoutScreen(
                     Text(
                         text = "Payment Method",
                         style = MaterialTheme.typography.titleMedium,
-                        color = NutriPlanTheme.colors.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -133,10 +135,10 @@ fun CheckoutScreen(
                                 Icon(
                                     Icons.Default.CreditCard,
                                     contentDescription = "Credit Card",
-                                    tint = NutriPlanTheme.colors.primary
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "•••• •••• •••• 4242",
+                                    text = "â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ 4242",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -185,7 +187,7 @@ fun CheckoutScreen(
  */
 @Composable
 fun CartItemRow(
-    cartItem: com.nutriplan.shared.model.CartItem
+    cartItem: com.nutriplan.shared.data.model.OrderItem
 ) {
     Row(
         modifier = Modifier
@@ -196,9 +198,9 @@ fun CartItemRow(
     ) {
         Column {
             Text(
-                text = cartItem.name,
+                text = cartItem.recipeName,
                 style = MaterialTheme.typography.bodyMedium,
-                color = NutriPlanTheme.colors.onSurface
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "${cartItem.quantity}x $${cartItem.unitPrice}",
@@ -208,7 +210,7 @@ fun CartItemRow(
         }
         
         Text(
-            text = "$${String.format("%.2f", cartItem.subtotal)}",
+            text = "$${String.format("%.2f", cartItem.quantity * cartItem.unitPrice)}",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
         )
@@ -234,14 +236,14 @@ fun PriceRow(
             text = label,
             style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
             fontWeight = if (isTotal) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-            color = if (isTotal) NutriPlanTheme.colors.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            color = if (isTotal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
         
         Text(
             text = price,
             style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
             fontWeight = if (isTotal) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-            color = if (isTotal) NutriPlanTheme.colors.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
     }
 }

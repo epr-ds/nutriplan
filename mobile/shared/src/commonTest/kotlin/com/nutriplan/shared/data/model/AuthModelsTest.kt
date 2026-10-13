@@ -2,7 +2,7 @@ package com.nutriplan.shared.data.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class AuthModelsTest {
 
@@ -15,10 +15,17 @@ class AuthModelsTest {
 
     @Test
     fun `RegisterRequest creates correctly`() {
-        val request = RegisterRequest("John Doe", "john@example.com", "password123")
-        assertEquals("John Doe", request.name)
+        val request = RegisterRequest(
+            email = "john@example.com",
+            password = "password123",
+            firstName = "John",
+            lastName = "Doe",
+        )
         assertEquals("john@example.com", request.email)
         assertEquals("password123", request.password)
+        assertEquals("John", request.firstName)
+        assertEquals("Doe", request.lastName)
+        assertNull(request.dietaryPreferences)
     }
 
     @Test
@@ -32,12 +39,23 @@ class AuthModelsTest {
         val response = AuthResponse(
             accessToken = "access-token-xyz",
             refreshToken = "refresh-token-xyz",
-            expiresIn = 3600,
-            tokenType = "Bearer"
+            expiresIn = 3600L,
         )
         assertEquals("access-token-xyz", response.accessToken)
         assertEquals("refresh-token-xyz", response.refreshToken)
-        assertEquals(3600, response.expiresIn)
-        assertEquals("Bearer", response.tokenType)
+        assertEquals(3600L, response.expiresIn)
+    }
+
+    @Test
+    fun `UserProfile optional fields default to null`() {
+        val profile = UserProfile(
+            id = "user-1",
+            email = "john@example.com",
+            firstName = "John",
+            lastName = "Doe",
+        )
+        assertEquals("user-1", profile.id)
+        assertNull(profile.avatarUrl)
+        assertNull(profile.dietaryPreferences)
     }
 }

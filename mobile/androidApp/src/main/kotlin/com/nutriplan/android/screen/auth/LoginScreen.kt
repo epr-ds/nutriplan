@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
-import org.koin.androidx.compose.koinInject
+import com.nutriplan.android.di.koinInject
 
 @Composable
 fun LoginScreen(
@@ -16,7 +16,7 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
-    val authRepository = koinInject<com.nutriplan.shared.repository.AuthRepository>()
+    val authRepository = koinInject<com.nutriplan.shared.data.repository.AuthRepository>()
     
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -25,7 +25,7 @@ fun LoginScreen(
 
     LaunchedEffect(Unit) {
         // Check if user is already logged in
-        if (authRepository.isAuthenticated()) {
+        if (authRepository.isAuthenticated) {
             onLoginSuccess()
         }
     }
@@ -136,7 +136,7 @@ fun LoginScreen(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🍎")
+                Text("ðŸŽ")
             }
         }
     }

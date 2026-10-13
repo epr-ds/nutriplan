@@ -12,7 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
+import com.nutriplan.android.ui.theme.NutriPlanTheme
 
 /**
  * Onboarding screen with multi-step flow.
@@ -58,7 +58,7 @@ fun OnboardingScreen(
                         .clip(CircleShape)
                         .background(
                             if (index == pagerState.currentPage) 
-                                NutriPlanTheme.colors.primary 
+                                MaterialTheme.colorScheme.primary 
                             else 
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                         )
@@ -111,7 +111,7 @@ private fun WelcomeContent() {
         modifier = Modifier.fillMaxSize()
     ) {
         Text(
-            text = "🥗",
+            text = "ðŸ¥—",
             modifier = Modifier.size(120.dp),
             textAlign = TextAlign.Center
         )
@@ -122,7 +122,7 @@ private fun WelcomeContent() {
             text = "Welcome to NutriPlan",
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
-            color = NutriPlanTheme.colors.onSurface
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -147,7 +147,7 @@ private fun MealPlansContent() {
         modifier = Modifier.fillMaxSize()
     ) {
         Text(
-            text = "📋",
+            text = "ðŸ“‹",
             modifier = Modifier.size(120.dp),
             textAlign = TextAlign.Center
         )
@@ -158,7 +158,7 @@ private fun MealPlansContent() {
             text = "Personalized Meal Plans",
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
-            color = NutriPlanTheme.colors.onSurface
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -183,7 +183,7 @@ private fun TrackingContent() {
         modifier = Modifier.fillMaxSize()
     ) {
         Text(
-            text = "📊",
+            text = "ðŸ“Š",
             modifier = Modifier.size(120.dp),
             textAlign = TextAlign.Center
         )
@@ -194,7 +194,7 @@ private fun TrackingContent() {
             text = "Track Your Progress",
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
-            color = NutriPlanTheme.colors.onSurface
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Spacer(modifier = Modifier.height(16.dp))

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.nutriplan.android.screen.home
 
 import androidx.compose.foundation.layout.*
@@ -11,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.EmptyState
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
-import org.koin.androidx.compose.koinInject
+import com.nutriplan.android.ui.theme.NutriPlanTheme
+import com.nutriplan.android.di.koinInject
 
 /**
  * Home screen displaying the user's meal plans.
@@ -24,10 +26,10 @@ fun HomeScreen(
     onNavigateToRecipeSearch: () -> Unit,
     onNavigateToAiRecommendations: () -> Unit
 ) {
-    val dietaryRepository = koinInject<com.nutriplan.shared.repository.DietaryRepository>()
+    val dietaryRepository = koinInject<com.nutriplan.shared.data.repository.DietaryRepository>()
     
     var isLoading by remember { mutableStateOf(true) }
-    var mealPlans by remember { mutableStateOf<List<com.nutriplan.shared.model.MealPlan>>(emptyList()) }
+    var mealPlans by remember { mutableStateOf<List<com.nutriplan.shared.data.model.MealPlan>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -42,23 +44,23 @@ fun HomeScreen(
                 title = { 
                     Text(
                         "NutriPlan",
-                        color = NutriPlanTheme.colors.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary
                     ) 
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NutriPlanTheme.colors.primary
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToCreateMealPlan,
-                containerColor = NutriPlanTheme.colors.primary
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Create Meal Plan",
-                    tint = NutriPlanTheme.colors.onPrimary
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -111,7 +113,7 @@ fun HomeScreen(
                     Text(
                         text = "Quick Actions",
                         style = MaterialTheme.typography.titleMedium,
-                        color = NutriPlanTheme.colors.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -142,7 +144,7 @@ fun HomeScreen(
  */
 @Composable
 fun MealPlanCard(
-    mealPlan: com.nutriplan.shared.model.MealPlan,
+    mealPlan: com.nutriplan.shared.data.model.MealPlan,
     onClick: () -> Unit
 ) {
     Card(
@@ -157,23 +159,23 @@ fun MealPlanCard(
             Text(
                 text = mealPlan.name,
                 style = MaterialTheme.typography.titleLarge,
-                color = NutriPlanTheme.colors.onSurface
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Duration: ${mealPlan.durationDays} days",
+                text = "${mealPlan.startDate} - ${mealPlan.endDate}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = NutriPlanTheme.colors.onSurface.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Calories: ${mealPlan.dailyCalories} kcal/day",
+                text = "Calories: ${mealPlan.targetCalories ?: "-"} kcal/day",
                 style = MaterialTheme.typography.bodyMedium,
-                color = NutriPlanTheme.colors.onSurface.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
     }
@@ -206,14 +208,14 @@ fun QuickActionCard(
             Icon(
                 icon,
                 contentDescription = label,
-                tint = NutriPlanTheme.colors.primary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = NutriPlanTheme.colors.onSurface
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

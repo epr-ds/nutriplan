@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.nutriplan.android.screen.profile
 
 import androidx.compose.foundation.layout.*
@@ -10,8 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
-import org.koin.androidx.compose.koinInject
+import com.nutriplan.android.ui.theme.NutriPlanTheme
+import com.nutriplan.android.di.koinInject
 
 /**
  * Profile screen displaying user information and settings.
@@ -24,9 +26,9 @@ fun ProfileScreen(
     onNavigateToNotificationSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val authRepository = koinInject<com.nutriplan.shared.repository.AuthRepository>()
+    val authRepository = koinInject<com.nutriplan.shared.data.repository.AuthRepository>()
     
-    var user by remember { mutableStateOf<com.nutriplan.shared.model.User?>(null) }
+    var user by remember { mutableStateOf<com.nutriplan.shared.data.model.UserProfile?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -85,7 +87,7 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .size(64.dp)
                                         .background(
-                                            NutriPlanTheme.colors.primary.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                             MaterialTheme.shapes.large
                                         ),
                                     contentAlignment = Alignment.Center
@@ -93,16 +95,16 @@ fun ProfileScreen(
                                     Icon(
                                         Icons.Default.Person,
                                         contentDescription = "Avatar",
-                                        tint = NutriPlanTheme.colors.primary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }
                                 
                                 Column {
                                     Text(
-                                        text = user?.name ?: "User",
+                                        text = user?.let { "${it.firstName} ${it.lastName}" } ?: "User",
                                         style = MaterialTheme.typography.titleLarge,
-                                        color = NutriPlanTheme.colors.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -139,7 +141,7 @@ fun ProfileScreen(
                     Text(
                         text = "Settings",
                         style = MaterialTheme.typography.titleMedium,
-                        color = NutriPlanTheme.colors.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 
@@ -194,7 +196,7 @@ private fun StatItem(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleLarge,
-            color = NutriPlanTheme.colors.primary
+            color = MaterialTheme.colorScheme.primary
         )
         Text(
             text = label,
@@ -239,13 +241,13 @@ private fun MenuItemCard(item: MenuItem) {
                 Icon(
                     item.icon,
                     contentDescription = item.label,
-                    tint = NutriPlanTheme.colors.primary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = item.label,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = NutriPlanTheme.colors.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             

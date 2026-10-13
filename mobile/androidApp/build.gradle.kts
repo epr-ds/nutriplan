@@ -39,6 +39,7 @@ kotlin {
 
 dependencies {
     implementation(projects.shared)
+    implementation(libs.ktor.client.okhttp)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -50,6 +51,8 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
 
     // Koin for Android

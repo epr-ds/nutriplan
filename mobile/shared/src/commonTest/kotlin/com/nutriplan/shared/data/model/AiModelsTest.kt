@@ -2,60 +2,56 @@ package com.nutriplan.shared.data.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class AiModelsTest {
 
     @Test
-    fun `AiMealAnalysisRequest creates correctly`() {
-        val request = AiMealAnalysisRequest(
-            mealPhotoUrl = "https://example.com/photo.jpg",
-            manualInput = "Grilled chicken with rice"
+    fun `AnalyzeMealRequest creates correctly`() {
+        val request = AnalyzeMealRequest(
+            mealDescription = "Grilled chicken with rice",
+            imageUrl = "https://example.com/photo.jpg",
         )
-        assertEquals("https://example.com/photo.jpg", request.mealPhotoUrl)
-        assertEquals("Grilled chicken with rice", request.manualInput)
+        assertEquals("Grilled chicken with rice", request.mealDescription)
+        assertEquals("https://example.com/photo.jpg", request.imageUrl)
     }
 
     @Test
-    fun `AiMealAnalysisResponse creates correctly`() {
-        val response = AiMealAnalysisResponse(
-            mealName = "Grilled Chicken Salad",
-            calories = 450,
-            macros = AiMacros(protein = 35, carbs = 20, fat = 15),
+    fun `AnalyzeMealResponse creates correctly`() {
+        val response = AnalyzeMealResponse(
+            detectedFoods = listOf(DetectedFood(name = "Chicken", estimatedAmount = "150 g", calories = 250)),
+            nutritionEstimate = NutritionInfo(calories = 450, protein = 35.0, carbohydrates = 20.0, fat = 15.0),
             confidence = 0.95,
-            suggestions = listOf("Add more protein", "Consider adding healthy fats")
         )
-        assertEquals("Grilled Chicken Salad", response.mealName)
-        assertEquals(450, response.calories)
-        assertEquals(35, response.macros.protein)
-        assertEquals(20, response.macros.carbs)
-        assertEquals(15, response.macros.fat)
+        assertEquals(1, response.detectedFoods?.size)
+        assertEquals("Chicken", response.detectedFoods?.first()?.name)
+        assertEquals(450, response.nutritionEstimate?.calories)
         assertEquals(0.95, response.confidence)
-        assertEquals(2, response.suggestions.size)
     }
 
     @Test
-    fun `AiRecommendationsRequest creates correctly`() {
-        val request = AiRecommendationsRequest(
-            dietaryPreference = "keto",
+    fun `RecommendationsRequest optional fields default to null`() {
+        val request = RecommendationsRequest(
+            dietaryPreferences = listOf("keto"),
             calorieTarget = 2000,
-            allergies = listOf("nuts", "shellfish")
         )
-        assertEquals("keto", request.dietaryPreference)
+        assertEquals(listOf("keto"), request.dietaryPreferences)
         assertEquals(2000, request.calorieTarget)
-        assertEquals(2, request.allergies.size)
+        assertNull(request.mealType)
+        assertNull(request.maxResults)
     }
 
     @Test
-    fun `AiRecommendation creates correctly`() {
-        val recommendation = AiRecommendation(
+    fun `RecommendationResult creates correctly`() {
+        val result = RecommendationResult(
             recipeId = "recipe-123",
             recipeName = "Keto Avocado Bowl",
             reason = "High in healthy fats, low in carbs",
-            matchScore = 0.92
+            matchScore = 0.92,
         )
-        assertEquals("recipe-123", recommendation.recipeId)
-        assertEquals("Keto Avocado Bowl", recommendation.recipeName)
-        assertEquals("High in healthy fats, low in carbs", recommendation.reason)
-        assertEquals(0.92, recommendation.matchScore)
+        assertEquals("recipe-123", result.recipeId)
+        assertEquals("Keto Avocado Bowl", result.recipeName)
+        assertEquals("High in healthy fats, low in carbs", result.reason)
+        assertEquals(0.92, result.matchScore)
     }
 }

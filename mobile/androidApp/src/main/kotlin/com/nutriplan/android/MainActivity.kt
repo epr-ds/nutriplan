@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
@@ -16,9 +17,9 @@ import com.nutriplan.android.screen.checkout.CheckoutScreen
 import com.nutriplan.android.screen.home.HomeScreen
 import com.nutriplan.android.screen.onboarding.OnboardingScreen
 import com.nutriplan.android.screen.profile.ProfileScreen
-import com.nutriplan.shared.navigation.AppNavigationGraph
+import com.nutriplan.android.navigation.AppNavigationGraph
 import com.nutriplan.shared.navigation.Route
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
+import com.nutriplan.android.ui.theme.NutriPlanTheme
 
 /**
  * Main activity entry point for the NutriPlan Android app.
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
  * Each screen composable is implemented with actual UI components.
  */
 class MainNavigationScreens(private val navController: androidx.navigation.NavHostController) :
-    com.nutriplan.shared.navigation.AppNavigationScreens {
+    com.nutriplan.android.navigation.AppNavigationScreens {
 
     @Composable
     override fun SplashScreen(onNavigate: (Any) -> Unit) {
@@ -59,7 +60,7 @@ class MainNavigationScreens(private val navController: androidx.navigation.NavHo
 
     @Composable
     override fun OnboardingScreen(onComplete: (Any) -> Unit) {
-        OnboardingScreen(onComplete)
+        com.nutriplan.android.screen.onboarding.OnboardingScreen(onGetStarted = { onComplete(Route.Auth) })
     }
 
     @Composable
@@ -228,42 +229,42 @@ class MainNavigationScreens(private val navController: androidx.navigation.NavHo
 // --- Placeholder screen composables ---
 
 @Composable
-private fun SplashScreen(onNavigate: (Any) -> Unit) {
+private fun SplashScreenContent(onNavigate: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Splash", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Splash", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun OnboardingScreenContent(onComplete: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Onboarding", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Onboarding", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun AuthScreenContent(onLoginSuccess: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Auth", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Auth", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun MainScreenContent(onNavigate: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Main", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -273,10 +274,10 @@ private fun MealPlanListScreenContent(
     onPlanClick: (String) -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Meal Plans", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Meal Plans", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -287,10 +288,10 @@ private fun CreateMealPlanScreenContent(
     onCancel: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Create Plan", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Create Plan", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -301,10 +302,10 @@ private fun MealPlanDetailScreenContent(
     onBack: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Plan Detail: $planId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Plan Detail: $planId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -314,20 +315,20 @@ private fun RecipeSearchScreenContent(
     onRecipeClick: (String) -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Recipes", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Recipes", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun RecipeDetailScreenContent(recipeId: String, onBack: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Recipe: $recipeId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Recipe: $recipeId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -337,20 +338,20 @@ private fun AiMealAnalysisScreenContent(
     onResult: (com.nutriplan.shared.domain.Resource<*>) -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("AI Analysis", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("AI Analysis", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun AiRecommendationsScreenContent(onNavigate: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("AI Recommendations", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("AI Recommendations", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -360,20 +361,20 @@ private fun OrderListScreenContent(
     onOrderClick: (String) -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Orders", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Orders", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun OrderDetailScreenContent(orderId: String, onBack: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Order: $orderId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Order: $orderId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -384,10 +385,10 @@ private fun CheckoutScreenContent(
     onCancel: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Checkout", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Checkout", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -397,20 +398,20 @@ private fun NotificationCenterScreenContent(
     onNotificationClick: (String) -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Notifications", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Notifications", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun ProfileScreenContent(onNavigate: (Any) -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Profile", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Profile", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -420,10 +421,10 @@ private fun EditProfileScreenContent(
     onBack: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Edit Profile", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Edit Profile", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
@@ -433,39 +434,39 @@ private fun DietaryPreferencesScreenContent(
     onBack: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Dietary Preferences", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Dietary Preferences", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun DeepLinkMealScreenContent(mealId: String, onBack: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Meal: $mealId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Meal: $mealId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun DeepLinkPlanScreenContent(planId: String, onBack: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Plan: $planId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Plan: $planId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
 @Composable
 private fun DeepLinkOrderScreenContent(orderId: String, onBack: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.foundation.layout.fillMaxSize(),
-        contentAlignment = androidx.compose.foundation.layout.Alignment.Center,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text("Order: $orderId", style = androidx.compose.material3.Typography.headlineLarge)
+        androidx.compose.material3.Text("Order: $orderId", style = MaterialTheme.typography.headlineLarge)
     }
 }

@@ -1,4 +1,4 @@
-package com.nutriplan.shared.ui.theme
+package com.nutriplan.android.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalInspectionMode

@@ -10,7 +10,7 @@ class ApiExceptionTest {
     fun `HttpError 400 maps to CONFLICT`() {
         val error = ApiException.HttpError(400, "Bad Request")
         assertEquals(ApiException.Code.CONFLICT, error.code)
-        assertTrue(error.message.contains("400"))
+        assertTrue(error.message.orEmpty().contains("400"))
     }
 
     @Test
@@ -46,7 +46,7 @@ class ApiExceptionTest {
     @Test
     fun `HttpError with null body shows Unknown error`() {
         val error = ApiException.HttpError(500, null)
-        assertTrue(error.message.contains("Unknown error"))
+        assertTrue(error.message.orEmpty().contains("Unknown error"))
     }
 
     @Test
@@ -55,7 +55,7 @@ class ApiExceptionTest {
         val error = ApiException.NetworkError(cause)
         assertEquals(ApiException.Code.NETWORK_ERROR, error.code)
         assertEquals(cause, error.cause)
-        assertTrue(error.message.contains("Connection refused"))
+        assertTrue(error.message.orEmpty().contains("Connection refused"))
     }
 
     @Test

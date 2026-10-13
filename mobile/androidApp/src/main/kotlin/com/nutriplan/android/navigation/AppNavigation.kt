@@ -1,4 +1,4 @@
-﻿package com.nutriplan.shared.navigation
+package com.nutriplan.android.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.nutriplan.shared.domain.Resource
+import com.nutriplan.shared.navigation.Route
 
 /**
  * Top-level navigation graph for the NutriPlan app.

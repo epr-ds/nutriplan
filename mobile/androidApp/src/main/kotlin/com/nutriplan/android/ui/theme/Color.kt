@@ -1,4 +1,4 @@
-package com.nutriplan.shared.ui.theme
+package com.nutriplan.android.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

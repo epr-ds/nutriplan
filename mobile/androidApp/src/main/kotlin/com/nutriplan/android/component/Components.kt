@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.nutriplan.shared.ui.theme.NutriPlanTheme
+import com.nutriplan.android.ui.theme.NutriPlanTheme
 
 /**
  * Primary button component for the app.
@@ -27,8 +27,8 @@ fun NutriPlanButton(
         enabled = isEnabled && !isLoading,
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = NutriPlanTheme.colors.primary,
-            disabledContainerColor = NutriPlanTheme.colors.primary.copy(alpha = 0.38f)
+            containerColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
         )
     ) {
         if (isLoading) {
