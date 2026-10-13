@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.4.20"
-agp = "8.9.3"
+agp = "9.4.1"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 ktor = "2.3.12"
@@ -18,7 +18,7 @@ composeBom = "2026.09.00"
 
 androidMinSdk = "24"
 androidTargetSdk = "34"
-androidCompileSdk = "36"
+androidCompileSdk = "37"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -66,5 +66,5 @@ kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
-androidLibrary = { id = "com.android.library", version.ref = "agp" }
+androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
