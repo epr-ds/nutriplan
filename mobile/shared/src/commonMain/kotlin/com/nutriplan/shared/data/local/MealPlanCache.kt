@@ -81,6 +81,14 @@ class MealPlanCache(private val database: NutriPlanDatabase) {
         }
     }
 
+    /** Remove every cached plan and meal (for example on logout). */
+    fun clear() {
+        database.transaction {
+            queries.deleteAllMeals()
+            queries.deleteAllPlans()
+        }
+    }
+
     private fun MealPlan.withMeals(): MealPlan = copy(meals = mealsFor(id))
 
     private fun mealsFor(planId: String): List<PlanMeal> =

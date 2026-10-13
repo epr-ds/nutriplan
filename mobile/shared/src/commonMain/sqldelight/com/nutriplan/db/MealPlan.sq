@@ -62,3 +62,9 @@ INSERT OR REPLACE INTO plan_meal(
 
 deleteMealsForPlan:
 DELETE FROM plan_meal WHERE plan_id = ?;
+
+deleteAllMeals:
+DELETE FROM plan_meal;
+
+deleteAllPlans:
+DELETE FROM meal_plan;
