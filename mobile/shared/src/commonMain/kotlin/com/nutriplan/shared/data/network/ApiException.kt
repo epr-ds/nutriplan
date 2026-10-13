@@ -3,7 +3,7 @@ package com.nutriplan.shared.data.network
 /**
  * Exception thrown by API calls to represent various failure modes.
  */
-sealed class ApiException(
+internal sealed class ApiException(
     open val body: String? = null,
     message: String,
     val code: Code,
