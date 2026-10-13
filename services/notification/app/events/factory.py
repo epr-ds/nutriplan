@@ -17,9 +17,11 @@ from collections.abc import Mapping
 from app.adapters.factory import build_notification_recorder, build_order_progress_store
 from app.adapters.keys import NotificationKeys
 from app.application.dead_letter_replay import DeadLetterReplayer
-from app.application.order_status_consumer import HANDLED_EVENT_TYPES, OrderStatusConsumer
+from app.application.order_status_consumer import OrderStatusConsumer
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.domain.event_router import EventRouter
+from app.domain.event_router_config import build_router
 from app.events.backoff import RetrySchedule
 from app.events.consumer import EventConsumer, EventHandler
 from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
@@ -96,7 +98,8 @@ def build_event_dispatcher(
     consumer: EventConsumer | None = None,
     registry: EventSchemaRegistry | None = None,
     dead_letters: DeadLetterQueue | None = None,
-    handlers: Mapping[str, EventHandler] | None = None,
+    router: EventRouter | None = None,
+    handler_registry: Mapping[str, EventHandler] | None = None,
     schedule: RetrySchedule | None = None,
     metrics: EventMetrics | None = None,
 ) -> EventDispatcher:
@@ -107,19 +110,26 @@ def build_event_dispatcher(
     ``pending -> confirmed`` move and ``order.status_changed`` for every other -- because
     COM-109 publishes one *or* the other, never both.
 
+    The dispatcher uses a router to map event types to handler names, then resolves those
+    names through the handler registry. This separates routing configuration (which handlers)
+    from handler wiring (how instances are created).
+
     ``order.created`` is deliberately left unregistered rather than handled-and-ignored. The
     dispatcher acks an event nothing is registered for, so the absence *is* the decision, and
     it is visible here in one place instead of being a ``return`` buried in a handler.
     """
     settings = settings or default_settings
-    if handlers is None:
+    if handler_registry is None:
         order_status = build_order_status_consumer(settings)
-        handlers = dict.fromkeys(HANDLED_EVENT_TYPES, order_status)
+        handler_registry = {
+            "app.application.order_status_consumer.OrderStatusConsumer": order_status
+        }
     return EventDispatcher(
         consumer or build_event_consumer(settings),
+        router=router or build_router(),
+        handler_registry=handler_registry or {},
         registry=registry or default_registry(),
         dead_letters=dead_letters or build_dead_letter_queue(settings),
-        handlers=handlers,
         max_attempts=settings.event_max_delivery_attempts,
         schedule=schedule or build_retry_schedule(settings),
         metrics=metrics,
