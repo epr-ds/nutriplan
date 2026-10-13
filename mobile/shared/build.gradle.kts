@@ -2,20 +2,25 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.detekt)
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_17)
-                }
-            }
+    // AGP 9 no longer allows com.android.library together with Kotlin Multiplatform;
+    // the KMP library plugin replaces androidTarget {} and the android {} block.
+    androidLibrary {
+        namespace = "com.nutriplan.shared"
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
+
+        // Runs commonTest on the JVM (replaces :shared:testDebugUnitTest).
+        withHostTestBuilder {}
     }
 
     listOf(
@@ -48,25 +53,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
         }
-        androidUnitTest.dependencies {
-            implementation(kotlin("test"))
-        }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
             implementation(libs.ktor.client.auth)
         }
-    }
-}
-
-android {
-    namespace = "com.nutriplan.shared"
-    compileSdk = libs.versions.androidCompileSdk.get().toInt()
-    defaultConfig {
-        minSdk = libs.versions.androidMinSdk.get().toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
