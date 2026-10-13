@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import BearerToken, PlanOptimizationServiceDep
+from app.api.deps import CurrentPrincipal, PlanOptimizationServiceDep, RawBearerToken
 from app.api.schemas import MealPlanResponse, OptimizePlanRequest
 from app.optimization.commands import OptimizationGoal, OptimizePlanCommand
 from app.optimization.draft import PlanDraft
@@ -25,11 +25,12 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 @router.post("/optimize-plan", response_model=MealPlanResponse)
 def optimize_plan(
     request: OptimizePlanRequest,
-    token: BearerToken,
+    _principal: CurrentPrincipal,
     service: PlanOptimizationServiceDep,
+    raw_token: RawBearerToken,
 ) -> MealPlanResponse:
     """Optimize the caller's plan into a reviewable draft, or ``404`` if absent/not theirs."""
-    outcome = service.optimize(_to_command(request), token=token)
+    outcome = service.optimize(_to_command(request), token=raw_token)
     if outcome is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Meal plan not found")
     draft = PlanDraft.from_outcome(outcome)
