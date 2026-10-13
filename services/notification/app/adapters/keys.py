@@ -10,6 +10,11 @@ and a fourth carries the idempotency claims (NTF-103)::
 
     {ns}:v1:d:{type}:{digest}    -> the notification id that handled this event (string, EX)
 
+and the dead-letter queue is a fifth pair (NTF-204)::
+
+    {ns}:v1:dlq                  -> every parked delivery id, newest first (sorted set)
+    {ns}:v1:dlq:e:{delivery_id}  -> the parked entry's JSON record   (string, EX retention)
+
 The two per-user sorted sets are the "indexed for feed queries" half of AC3: listing a
 page is a ``ZREVRANGE`` slice plus an ``MGET``, and the unread badge is a ``ZCOUNT`` --
 both O(log N + page) rather than a scan over the user's history.
@@ -68,3 +73,41 @@ class NotificationKeys:
         them too, or a replay would be suppressed on behalf of a record no longer readable.
         """
         return f"{self.prefix}:d:{key}"
+
+    def preferences(self, user_id: uuid.UUID | str) -> str:
+        """The key holding one user's notification preferences (NTF-104).
+
+        Deliberately *not* under the ``u:{user_id}:`` prefix the feed indexes use. Those keys
+        all carry the feed's retention TTL and are swept together; preferences must outlive
+        every notification they govern, so they are kept clearly apart from anything a
+        retention sweep touches.
+        """
+        return f"{self.prefix}:p:{user_id}"
+
+    def order_progress(self, order_id: str) -> str:
+        """The key holding how far along one order has been announced (NTF-202).
+
+        Keyed by *order*, not by user, because the question it answers is about the order's
+        lifecycle. Commerce puts exactly one user on an order, so nothing is lost, and a
+        key that named both would be unreachable from an event that carried only one of them.
+        """
+        return f"{self.prefix}:o:{order_id}"
+
+    @property
+    def dead_letters(self) -> str:
+        """The sorted set indexing every parked event by when it failed (NTF-204).
+
+        A single global index rather than one per user or per type: a dead letter may be a
+        payload so broken that neither could be determined, and an index keyed on something
+        the entry might not have would silently fail to record exactly the worst failures.
+        """
+        return f"{self.prefix}:dlq"
+
+    def dead_letter(self, delivery_id: str) -> str:
+        """The key holding one parked event's JSON record (NTF-204).
+
+        Keyed by *delivery* id, not event id: two different stream entries can carry the same
+        envelope after a replay, and an operator acting on the queue is acting on the entry
+        the broker actually failed to settle.
+        """
+        return f"{self.prefix}:dlq:e:{delivery_id}"

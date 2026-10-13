@@ -132,3 +132,14 @@ class Notification:
         if status is self.status:
             return self
         return replace(self, status=status)
+
+    def with_channels(self, channels: Iterable[NotificationChannel]) -> Notification:
+        """Return a copy addressed to ``channels`` -- how NTF-104 applies a user's opt-outs.
+
+        Narrowing rather than annotating is deliberate: once the preference gate has decided
+        a channel is not to be used, the stored record says so, and nothing downstream has to
+        re-derive the decision against a different clock reading and risk disagreeing with it.
+        Passing an empty selection raises, because "a notification addressed to nowhere" is
+        not a thing the domain models -- a fully suppressed notification is simply not written.
+        """
+        return replace(self, channels=tuple(channels))

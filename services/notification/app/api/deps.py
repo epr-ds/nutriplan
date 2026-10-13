@@ -24,12 +24,13 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.adapters.factory import build_notification_repository
+from app.adapters.factory import build_notification_repository, build_preferences_repository
 from app.application.feed import NotificationFeed
+from app.application.preferences import NotificationPreferenceService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
-from app.domain.repositories import NotificationRepository
+from app.domain.repositories import NotificationRepository, PreferencesRepository
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -49,6 +50,24 @@ def get_token_verifier() -> TokenVerifier:
 def get_notification_repository() -> NotificationRepository:
     """Build the (cached) configured notification store. See the module docstring."""
     return build_notification_repository()
+
+
+@lru_cache(maxsize=1)
+def get_preferences_repository() -> PreferencesRepository:
+    """Build the (cached) configured preferences store.
+
+    Cached for the same reason as the notification store, and more sharply so: the in-process
+    default holds every saved preference in the object, and rebuilding it per request would
+    make a ``PUT`` appear to succeed and the following ``GET`` return the defaults.
+    """
+    return build_preferences_repository()
+
+
+def get_preference_service(
+    repository: Annotated[PreferencesRepository, Depends(get_preferences_repository)],
+) -> NotificationPreferenceService:
+    """Build the preference use cases over the configured store."""
+    return NotificationPreferenceService(repository)
 
 
 def get_notification_feed(
@@ -106,3 +125,4 @@ def get_current_user_id(
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 CurrentUserId = Annotated[uuid.UUID, Depends(get_current_user_id)]
 NotificationFeedDep = Annotated[NotificationFeed, Depends(get_notification_feed)]
+PreferenceServiceDep = Annotated[NotificationPreferenceService, Depends(get_preference_service)]

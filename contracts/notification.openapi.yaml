@@ -137,6 +137,69 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: Get the current user's notification preferences
+      description: >-
+        Returns the caller's **complete** preference matrix: every notification type this API
+        knows about, in a stable order, with a switch per channel. A user who has never saved
+        anything gets the defaults -- everything enabled, no quiet hours -- rather than a
+        `404`; they do have preferences, they simply have not changed any.
+
+
+        The full matrix is returned rather than only the exceptions so a client can render a
+        settings screen without knowing the catalogue in advance, and so a type added after
+        the client shipped is visibly present and on.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: The caller's notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [Notifications]
+      operationId: replaceNotificationPreferences
+      summary: Replace the current user's notification preferences
+      description: >-
+        Replaces the caller's preferences wholesale. This is deliberately **not** a patch: a
+        partial update of a matrix whose rows the client may not know about is ambiguous in a
+        way the request cannot resolve, since an omitted row could equally mean "leave it
+        alone" or "reset it". So a type absent from `types` returns to its default (enabled on
+        every channel), and a `quietHours` of `null` clears the window.
+
+
+        Listing the same type twice is rejected with `422` rather than resolved last-wins: two
+        rows for one type carry two different answers to the same question, and honouring
+        either one silently would leave the user looking at a screen that disagrees with what
+        was saved.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: The preferences as they are now stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /health:
     get:
       tags: [health]
@@ -315,6 +378,103 @@ components:
         unreadCount:
           type: integer
           minimum: 0
+
+    QuietHours:
+      type: object
+      description: >-
+        A recurring nightly window, in the user's own local time, during which **push is
+        withheld**. In-app entries are unaffected: the feed is pull-based and silent, so
+        holding one back overnight would spare the user nothing and would either surface it
+        out of order in the morning or lose it outright.
+
+
+        The window is half-open, `[start, end)`, and wrapping past midnight is the normal
+        case: `22:00`-`07:00` is one window, not two. `start` equal to `end` is rejected,
+        since it reads equally well as "no window" and "all day".
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: '22:00'
+          description: >-
+            Local wall-clock time, `HH:MM`, 24-hour. Deliberately not `format: time`, which is
+            RFC 3339 `full-time` and requires an offset -- the one thing this field must not
+            carry.
+        end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: '07:00'
+          description: Local wall-clock time, `HH:MM`, 24-hour. Exclusive.
+        timeZone:
+          type: string
+          default: America/Mexico_City
+          example: America/Mexico_City
+          description: >-
+            IANA zone **name**, never a fixed offset. The name is what keeps the window
+            meaning "ten at night" across a daylight-saving change; an offset would quietly
+            shift it by an hour twice a year. An unknown zone is a `422`.
+
+    TypePreference:
+      type: object
+      description: One row of the preference matrix -- a notification type and its channel switches.
+      required: [type]
+      properties:
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        inApp:
+          type: boolean
+          default: true
+          description: Whether this type appears in the in-app feed.
+        push:
+          type: boolean
+          default: true
+          description: >-
+            Whether this type may be pushed. A push still requires the moment to fall outside
+            `quietHours`.
+
+    NotificationPreferences:
+      type: object
+      description: >-
+        A user's complete preference matrix. `types` is an **array of rows**, not an object
+        keyed by type: a map could only be described as free-form `additionalProperties`, so
+        no generated client would get a typed accessor or an exhaustive switch, and key order
+        would not be guaranteed. Rows arrive in `NotificationType` declaration order.
+      required: [types, updatedAt]
+      properties:
+        types:
+          type: array
+          description: >-
+            Every notification type this API knows about, whether or not the user has ever
+            changed it -- so a client can render the settings screen without knowing the
+            catalogue in advance.
+          items:
+            $ref: '#/components/schemas/TypePreference'
+        quietHours:
+          allOf:
+            - $ref: '#/components/schemas/QuietHours'
+          nullable: true
+          description: The nightly push-suppression window, or `null` when none is set.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When these preferences were last replaced.
+
+    UpdateNotificationPreferencesRequest:
+      type: object
+      description: >-
+        A full replacement of the caller's preferences. A type omitted from `types` returns to
+        its default (enabled on every channel); a `quietHours` of `null` clears the window.
+      required: [types]
+      properties:
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TypePreference'
+        quietHours:
+          allOf:
+            - $ref: '#/components/schemas/QuietHours'
+          nullable: true
 
     Readiness:
       type: object

@@ -42,3 +42,13 @@ class InvalidFeedQuery(NotificationError, ValueError):
     materialize a user's entire retained feed, and the cost of that lands on the shared Redis
     every other request depends on.
     """
+
+
+class InvalidPreferences(NotificationError, ValueError):
+    """Notification preferences were given in a state the domain will not store (NTF-104).
+
+    Preferences are the one part of this service a *user* writes directly, so the invariants
+    are enforced here rather than trusted from the edge: an unknown IANA zone, a quiet-hours
+    window whose ends coincide, or a duplicated per-type row would each otherwise be stored
+    and then silently mis-evaluated on every notification for as long as the user kept them.
+    """
