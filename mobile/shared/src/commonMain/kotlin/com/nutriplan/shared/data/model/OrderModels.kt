@@ -2,19 +2,6 @@ package com.nutriplan.shared.data.model
 
 import kotlinx.serialization.Serializable
 
-/** Create order request. */
-@Serializable
-data class CreateOrderRequest(
-    val mealPlanId: String,
-    val fulfillmentType: String,
-    val deliveryAddress: DeliveryAddress?,
-    val deliveryDate: String?,
-    val deliveryTimeSlot: String?,
-    val providerId: String?,
-    val notes: String?,
-    val paymentMethod: PaymentMethodInput?,
-)
-
 /** Delivery address for an order. */
 @Serializable
 data class DeliveryAddress(
@@ -61,16 +48,6 @@ data class GroceryOrderInfo(
     val total: Double,
 )
 
-/** Single grocery item. */
-@Serializable
-data class GroceryItem(
-    val productId: String,
-    val name: String,
-    val quantity: Double,
-    val unit: String,
-    val price: Double,
-)
-
 /** Payment info for an order. */
 @Serializable
 data class PaymentInfo(
@@ -97,12 +74,6 @@ data class OrderTotal(
     val tax: Double,
     val discount: Double,
     val total: Double,
-)
-
-/** Cancel order request. */
-@Serializable
-data class CancelOrderRequest(
-    val refundAmount: Double? = null,
 )
 
 /** Order list query parameters. */

@@ -71,9 +71,8 @@ object HttpClientFactory {
                                 refreshToken = authRepository.currentRefreshToken ?: "",
                             )
                         }
-                        refreshTokens {
+                        refreshTokens { refreshToken ->
                             try {
-                                val refreshToken = this.refreshToken
                                 val response = authRepository.refreshToken(refreshToken)
                                 authRepository.updateTokens(response.accessToken, response.refreshToken)
                                 BearerTokens(response.accessToken, response.refreshToken)

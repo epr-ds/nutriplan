@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
-import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinInject
 
 @Composable
 fun LoginScreen(

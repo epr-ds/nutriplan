@@ -13,7 +13,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.shared.ui.theme.NutriPlanTheme
-import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinInject
 
 /**
  * Checkout screen for ordering meal plans.

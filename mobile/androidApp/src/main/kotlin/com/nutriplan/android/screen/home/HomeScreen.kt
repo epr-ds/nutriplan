@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.EmptyState
 import com.nutriplan.shared.ui.theme.NutriPlanTheme
-import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinInject
 
 /**
  * Home screen displaying the user's meal plans.

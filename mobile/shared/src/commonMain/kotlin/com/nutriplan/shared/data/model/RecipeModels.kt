@@ -121,13 +121,6 @@ data class NutritionalAlignment(
     val sugarAlignment: Double,
 )
 
-/** AI meal analysis request. */
-@Serializable
-data class AnalyzeMealRequest(
-    val description: String,
-    val ingredients: List<MealIngredient> = emptyList(),
-)
-
 /** Single ingredient for meal analysis. */
 @Serializable
 data class MealIngredient(
@@ -151,9 +144,3 @@ data class NutritionalAnalysisResponse(
     val confidence: Double,
 )
 
-/** AI plan optimization request. */
-@Serializable
-data class OptimizePlanRequest(
-    val planId: String,
-    val goal: String? = null,
-)
