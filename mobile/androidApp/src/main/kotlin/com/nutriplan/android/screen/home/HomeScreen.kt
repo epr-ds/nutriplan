@@ -3,18 +3,31 @@
 package com.nutriplan.android.screen.home
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
 import com.nutriplan.android.component.EmptyState
+import androidx.compose.foundation.clickable
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import androidx.compose.foundation.clickable
 import com.nutriplan.android.di.koinInject
+import androidx.compose.foundation.clickable
 
 /**
  * Home screen displaying the user's meal plans.
@@ -124,13 +137,15 @@ fun HomeScreen(
                         QuickActionCard(
                             icon = Icons.Default.Search,
                             label = "Recipes",
-                            onClick = onNavigateToRecipeSearch
+                            onClick = onNavigateToRecipeSearch,
+                            modifier = Modifier.weight(1f)
                         )
                         
                         QuickActionCard(
                             icon = Icons.Default.AutoAwesome,
                             label = "AI Tips",
-                            onClick = onNavigateToAiRecommendations
+                            onClick = onNavigateToAiRecommendations,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -193,7 +208,6 @@ fun QuickActionCard(
 ) {
     Card(
         modifier = modifier
-            .weight(1f)
             .height(80.dp)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium

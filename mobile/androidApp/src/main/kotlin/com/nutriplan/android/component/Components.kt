@@ -1,14 +1,41 @@
 package com.nutriplan.android.component
 
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 /**
  * Primary button component for the app.
@@ -62,7 +89,7 @@ fun NutriPlanTextField(
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = { Text(placeholder) },
-        visualTransformation = if (isPassword) VisualTransformation.Password else VisualTransformation.None,
+        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         isError = isError,

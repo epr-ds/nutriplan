@@ -1,18 +1,57 @@
 package com.nutriplan.android.screen.onboarding
 
 import androidx.compose.foundation.layout.*
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.HorizontalPager
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.material3.*
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import com.nutriplan.android.component.NutriPlanButton
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 
 /**
  * Onboarding screen with multi-step flow.
@@ -22,6 +61,7 @@ fun OnboardingScreen(
     onGetStarted: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { OnboardingPage.entries.size })
+    val scope = rememberCoroutineScope()
     
     Column(
         modifier = Modifier
@@ -72,7 +112,7 @@ fun OnboardingScreen(
                 if (pagerState.currentPage == OnboardingPage.entries.size - 1) {
                     onGetStarted()
                 } else {
-                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -92,6 +132,7 @@ fun OnboardingScreen(
 /**
  * Onboarding page content.
  */
+@Composable
 private fun OnboardingPage.Content() {
     when (this) {
         OnboardingPage.WELCOME -> WelcomeContent()

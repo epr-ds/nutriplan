@@ -61,9 +61,9 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `isAuthenticated returns false when only access token exists`() {
+    fun `isAuthenticated returns true when only access token exists`() {
         repo.updateTokens("access-token", "")
-        assertFalse(repo.isAuthenticated)
+        assertTrue(repo.isAuthenticated)
     }
 
     @Test

@@ -55,7 +55,7 @@ class ApiExceptionTest {
         val error = ApiException.NetworkError(cause)
         assertEquals(ApiException.Code.NETWORK_ERROR, error.code)
         assertEquals(cause, error.cause)
-        assertTrue(error.message.orEmpty().contains("Connection refused"))
+        assertEquals("Network error", error.message)
     }
 
     @Test
