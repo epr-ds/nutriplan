@@ -7,6 +7,7 @@ dependencies. Tests swap any layer via ``app.dependency_overrides``.
 
 from __future__ import annotations
 
+import uuid
 from functools import lru_cache
 from typing import Annotated
 
@@ -16,27 +17,55 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.adapters.http_meal_plan_provider import HttpMealPlanProvider
+from app.adapters.in_memory_kitchen_queue import InMemoryKitchenQueue
+from app.adapters.kitchen_webhook_verifier import KitchenWebhookVerifier
 from app.application.cancel_order import CancelOrderService
 from app.application.create_order import CreateOrderService
+from app.application.dark_kitchen_availability import CheckDarkKitchenAvailabilityService
 from app.application.get_order import GetOrderService
 from app.application.idempotency import IdempotencyStore
+from app.application.list_grocery_providers import ListGroceryProvidersService
 from app.application.list_orders import ListOrdersService
-from app.application.ports import MealPlanProvider
+from app.application.payment_methods import PaymentMethodService
+from app.application.place_grocery_order import GroceryOrderPlacer
+from app.application.ports import (
+    KitchenQueue,
+    MealPlanProvider,
+    SlotInventory,
+    SlotReservationStore,
+)
+from app.application.process_kitchen_webhook import ProcessKitchenWebhookService
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
+from app.application.reserve_slot import ReserveDeliverySlotService
+from app.application.route_to_kitchen import KitchenRouter
+from app.application.search_grocery_products import SearchGroceryProductsService
+from app.application.sync_grocery_order import SyncGroceryOrderStatusService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.db.base import get_db
 from app.domain.enums import FulfillmentType
+from app.domain.fulfillment import DarkKitchenServiceArea
+from app.domain.grocery import GroceryProvider, GroceryProviderRegistry
 from app.domain.money import Money
 from app.domain.pricing import DeliveryFeeSchedule, MealTypePriceBook, OrderPricer
-from app.domain.repositories import OrderRepository
+from app.domain.repositories import OrderRepository, PaymentMethodRepository
 from app.events.factory import build_event_publisher
 from app.events.publisher import EventPublisher
+from app.grocery.adapter import GroceryProviderAdapter
+from app.grocery.circuit_breaker import (
+    BreakerPolicy,
+    CircuitBreakerRegistry,
+    LoggingBreakerTelemetry,
+)
+from app.grocery.factory import build_grocery_adapter
+from app.grocery.resilient import CircuitBreakingGroceryAdapter
 from app.payments.factory import build_payment_provider
 from app.payments.provider import PaymentProvider
 from app.repositories.sql_idempotency_store import SqlIdempotencyStore
 from app.repositories.sql_order_repository import SqlOrderRepository
+from app.repositories.sql_payment_method_repository import SqlPaymentMethodRepository
+from app.repositories.sql_slot_reservation_store import SqlSlotReservationStore
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -94,6 +123,11 @@ def get_order_repository(db: DbSession) -> OrderRepository:
     return SqlOrderRepository(db)
 
 
+def get_payment_method_repository(db: DbSession) -> PaymentMethodRepository:
+    """Provide the SQL-backed saved-payment-method repository bound to the request session."""
+    return SqlPaymentMethodRepository(db)
+
+
 def get_idempotency_store(db: DbSession) -> IdempotencyStore:
     """Provide the SQL-backed idempotency store bound to the request session (COM-209)."""
     return SqlIdempotencyStore(db)
@@ -141,6 +175,159 @@ def get_payment_provider() -> PaymentProvider:
     return build_payment_provider(settings)
 
 
+@lru_cache(maxsize=1)
+def get_kitchen_queue() -> KitchenQueue:
+    """Build the (cached) kitchen queue: an in-process recorder for dev/CI (COM-303).
+
+    A durable kitchen integration (an HTTP call, or a stream a kitchen consumes) replaces this
+    behind the ``KitchenQueue`` port without touching the routing use case.
+    """
+    return InMemoryKitchenQueue()
+
+
+def get_kitchen_router(
+    queue: Annotated[KitchenQueue, Depends(get_kitchen_queue)],
+) -> KitchenRouter:
+    """Build the router that hands confirmed dark-kitchen orders to the queue (COM-303)."""
+    return KitchenRouter(queue)
+
+
+@lru_cache(maxsize=1)
+def get_kitchen_webhook_verifier() -> KitchenWebhookVerifier:
+    """Build the (cached) verifier for inbound kitchen status webhooks (COM-303)."""
+    return KitchenWebhookVerifier(settings.kitchen_webhook_secret.get_secret_value())
+
+
+def _split_csv(raw: str) -> tuple[str, ...]:
+    """Split a comma-separated config value into a tuple of trimmed, non-empty entries."""
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+@lru_cache(maxsize=1)
+def get_dark_kitchen_service_area() -> DarkKitchenServiceArea:
+    """Build the (cached) dark-kitchen coverage/schedule/capacity policy from config (COM-302)."""
+    return DarkKitchenServiceArea(
+        served_zip_prefixes=_split_csv(settings.dark_kitchen_service_zip_prefixes),
+        time_slots=_split_csv(settings.dark_kitchen_time_slots),
+        slot_capacity=settings.dark_kitchen_slot_capacity,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_grocery_provider_registry() -> GroceryProviderRegistry:
+    """Build the (cached) grocery-provider registry from configured providers (COM-401)."""
+    return GroceryProviderRegistry(
+        providers=tuple(
+            GroceryProvider(
+                id=provider.id,
+                name=provider.name,
+                enabled=provider.enabled,
+                logo_url=provider.logo_url,
+                estimated_delivery=provider.estimated_delivery,
+            )
+            for provider in settings.grocery_providers
+        )
+    )
+
+
+def get_list_grocery_providers_service(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+) -> ListGroceryProvidersService:
+    """Build the use case that lists the environment's enabled grocery providers (COM-401)."""
+    return ListGroceryProvidersService(registry)
+
+
+@lru_cache(maxsize=1)
+def get_grocery_breakers() -> CircuitBreakerRegistry:
+    """Build the (cached) per-provider circuit-breaker registry (COM-407).
+
+    Deliberately cached for the life of the process: the adapters below are rebuilt per request, so
+    the breakers must outlive them -- a failure streak that reset on every call could never reach
+    the threshold and the circuit would never open. Transitions are logged as they happen and the
+    registry's snapshot is surfaced by the readiness probe.
+    """
+    return CircuitBreakerRegistry(
+        policy=BreakerPolicy(
+            failure_threshold=settings.grocery_breaker_failure_threshold,
+            reset_timeout_seconds=settings.grocery_breaker_reset_seconds,
+        ),
+        telemetry=LoggingBreakerTelemetry(),
+    )
+
+
+def get_grocery_adapters(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+    breakers: Annotated[CircuitBreakerRegistry, Depends(get_grocery_breakers)],
+) -> dict[str, GroceryProviderAdapter]:
+    """Build a provider-id -> adapter map for the enabled providers (COM-403, COM-407).
+
+    Not cached: the adapters back the fan-out search and (in later stories) hold per-request state,
+    so each request gets a fresh set. A disabled provider is never queried, so it gets no adapter.
+    Each adapter is wrapped in its provider's circuit breaker, which comes from the cached registry
+    and therefore remembers that provider's health across requests.
+    """
+    return {
+        provider.id: CircuitBreakingGroceryAdapter(
+            build_grocery_adapter(provider.id), breakers.for_provider(provider.id)
+        )
+        for provider in registry.available()
+    }
+
+
+def get_search_grocery_products_service(
+    registry: Annotated[GroceryProviderRegistry, Depends(get_grocery_provider_registry)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+) -> SearchGroceryProductsService:
+    """Build the cross-provider grocery search use case (COM-403)."""
+    return SearchGroceryProductsService(registry, adapters)
+
+
+def get_grocery_order_placer(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> GroceryOrderPlacer:
+    """Build the use case that places a confirmed grocery order with its provider (COM-408)."""
+    return GroceryOrderPlacer(orders, adapters, publisher)
+
+
+def get_sync_grocery_order_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    adapters: Annotated[dict[str, GroceryProviderAdapter], Depends(get_grocery_adapters)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> SyncGroceryOrderStatusService:
+    """Build the use case that refreshes an order's status from its provider (COM-408)."""
+    return SyncGroceryOrderStatusService(orders, adapters, publisher)
+
+
+def get_slot_reservation_store(db: DbSession) -> SlotReservationStore:
+    """Provide the SQL-backed dark-kitchen slot reservation store, request-scoped (COM-304).
+
+    Not cached: it holds the per-request :class:`Session`, so reserving/releasing commits atomically
+    with the order it accompanies (create) or the cancellation that frees it.
+    """
+    return SqlSlotReservationStore(db)
+
+
+def get_slot_inventory(
+    store: Annotated[SlotReservationStore, Depends(get_slot_reservation_store)],
+) -> SlotInventory:
+    """Provide dark-kitchen slot booking counts, now reflecting real reservations (COM-304).
+
+    The reservation store doubles as the read-side inventory, so availability (COM-302) subtracts
+    genuine bookings from each window's capacity rather than always showing it fully open.
+    """
+    return store
+
+
+def get_reserve_slot_service(
+    service_area: Annotated[DarkKitchenServiceArea, Depends(get_dark_kitchen_service_area)],
+    store: Annotated[SlotReservationStore, Depends(get_slot_reservation_store)],
+) -> ReserveDeliverySlotService:
+    """Build the dark-kitchen slot reserve/release use case for create and cancel (COM-304)."""
+    return ReserveDeliverySlotService(service_area, store)
+
+
 def get_create_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
@@ -148,8 +335,21 @@ def get_create_order_service(
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     idempotency: Annotated[IdempotencyStore, Depends(get_idempotency_store)],
+    kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
+    grocery_placer: Annotated[GroceryOrderPlacer, Depends(get_grocery_order_placer)],
 ) -> CreateOrderService:
-    return CreateOrderService(orders, meal_plans, pricer, publisher, payments, idempotency)
+    return CreateOrderService(
+        orders,
+        meal_plans,
+        pricer,
+        publisher,
+        payments,
+        idempotency,
+        kitchen_router,
+        slot_reservations,
+        grocery_placer,
+    )
 
 
 def get_list_orders_service(
@@ -166,26 +366,84 @@ def get_get_order_service(
 
 def get_cancel_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
 ) -> CancelOrderService:
-    return CancelOrderService(orders, publisher)
+    return CancelOrderService(orders, payments, publisher, slot_reservations)
 
 
 def get_process_payment_webhook_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
     publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+    kitchen_router: Annotated[KitchenRouter, Depends(get_kitchen_router)],
+    slot_reservations: Annotated[ReserveDeliverySlotService, Depends(get_reserve_slot_service)],
+    grocery_placer: Annotated[GroceryOrderPlacer, Depends(get_grocery_order_placer)],
 ) -> ProcessPaymentWebhookService:
-    return ProcessPaymentWebhookService(orders, payments, publisher)
+    return ProcessPaymentWebhookService(
+        orders, payments, publisher, kitchen_router, slot_reservations, grocery_placer
+    )
+
+
+def get_process_kitchen_webhook_service(
+    orders: Annotated[OrderRepository, Depends(get_order_repository)],
+    verifier: Annotated[KitchenWebhookVerifier, Depends(get_kitchen_webhook_verifier)],
+    publisher: Annotated[EventPublisher, Depends(get_event_publisher)],
+) -> ProcessKitchenWebhookService:
+    return ProcessKitchenWebhookService(orders, verifier, publisher)
+
+
+def get_payment_method_service(
+    methods: Annotated[PaymentMethodRepository, Depends(get_payment_method_repository)],
+) -> PaymentMethodService:
+    return PaymentMethodService(methods)
+
+
+def get_check_dark_kitchen_availability_service(
+    service_area: Annotated[DarkKitchenServiceArea, Depends(get_dark_kitchen_service_area)],
+    inventory: Annotated[SlotInventory, Depends(get_slot_inventory)],
+) -> CheckDarkKitchenAvailabilityService:
+    return CheckDarkKitchenAvailabilityService(service_area, inventory=inventory)
+
+
+def get_current_user_id(
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> uuid.UUID:
+    """Resolve the caller's id from the verified token subject, or ``401`` if it is not a UUID."""
+    try:
+        return uuid.UUID(principal.user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Token subject is not a valid user id"
+        ) from exc
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+CurrentUserId = Annotated[uuid.UUID, Depends(get_current_user_id)]
 BearerToken = Annotated[str, Depends(get_bearer_token)]
 OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
 CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_service)]
 ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
 CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
+PaymentMethodServiceDep = Annotated[PaymentMethodService, Depends(get_payment_method_service)]
+DarkKitchenAvailabilityServiceDep = Annotated[
+    CheckDarkKitchenAvailabilityService, Depends(get_check_dark_kitchen_availability_service)
+]
+GroceryProvidersServiceDep = Annotated[
+    ListGroceryProvidersService, Depends(get_list_grocery_providers_service)
+]
+GrocerySearchServiceDep = Annotated[
+    SearchGroceryProductsService, Depends(get_search_grocery_products_service)
+]
+SyncGroceryOrderServiceDep = Annotated[
+    SyncGroceryOrderStatusService, Depends(get_sync_grocery_order_service)
+]
+GroceryBreakersDep = Annotated[CircuitBreakerRegistry, Depends(get_grocery_breakers)]
 PaymentWebhookServiceDep = Annotated[
     ProcessPaymentWebhookService, Depends(get_process_payment_webhook_service)
+]
+KitchenWebhookServiceDep = Annotated[
+    ProcessKitchenWebhookService, Depends(get_process_kitchen_webhook_service)
 ]

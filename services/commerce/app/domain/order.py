@@ -17,9 +17,11 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from app.domain.address import Address
-from app.domain.enums import FulfillmentType, OrderStatus
-from app.domain.errors import IllegalOrderTransitionError
+from app.domain.enums import FulfillmentType, OrderStatus, RefundStatus
+from app.domain.errors import IllegalOrderTransitionError, OrderValidationError
 from app.domain.events import DomainEvent, OrderCreated, OrderStatusChanged
+from app.domain.grocery_catalog import GroceryOrderStatus
+from app.domain.grocery_fulfillment import order_status_for, steps_between
 from app.domain.money import Money
 from app.domain.payment import PaymentStatus
 
@@ -97,6 +99,24 @@ class Order:
     payment_transfer_clabe: str | None = None
     payment_transfer_reference: str | None = None
     payment_transfer_expires_at: datetime | None = None
+    # Redirect-approval order created for an asynchronous method (PayPal, COM-205): the provider's
+    # order reference, the URL the customer approves the payment at, and when it expires. Set
+    # together with a ``pending`` ``payment_status``; the order stays ``pending`` until a webhook
+    # confirms the captured payment (COM-206).
+    payment_approval_reference: str | None = None
+    payment_approval_url: str | None = None
+    payment_approval_expires_at: datetime | None = None
+    # Refund captured against a paid order when it is cancelled (COM-208): the provider's refund
+    # reference, whether the whole total or only part was returned, and the exact amount refunded.
+    # All nullable -- only a paid, cancelled order that was actually refunded populates them.
+    payment_refund_id: str | None = None
+    refund_status: RefundStatus | None = None
+    refunded_amount: Money | None = None
+    # The order placed with the grocery provider on our behalf (COM-408): the provider's own order
+    # reference (what a status poll asks about) and the last canonical status it reported. Both
+    # nullable -- only a grocery order that was actually placed with a provider populates them.
+    grocery_external_order_id: str | None = None
+    grocery_status: GroceryOrderStatus | None = None
     items: list[OrderItem] = field(default_factory=list)
     status_history: list[OrderStatusChange] = field(default_factory=list)
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -155,9 +175,89 @@ class Order:
         """Transition ``preparing → in_transit`` (dispatch)."""
         self.transition_to(OrderStatus.IN_TRANSIT, occurred_at=occurred_at)
 
+    def report_preparing(self, *, occurred_at: datetime | None = None) -> None:
+        """Apply a kitchen ``preparing`` report, advancing ``confirmed → preparing`` (COM-303).
+
+        Idempotent: a redelivered report for an order already ``preparing`` (or further along --
+        ``in_transit``/``delivered``) is a no-op that records nothing. Otherwise the order must be
+        ``confirmed``; a report for one still ``pending`` or already ``cancelled`` conflicts and
+        raises :class:`IllegalOrderTransitionError`.
+        """
+        if self.status in (OrderStatus.PREPARING, OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED):
+            return
+        self.start_preparing(occurred_at=occurred_at)
+
+    def report_dispatched(self, *, occurred_at: datetime | None = None) -> None:
+        """Apply a kitchen ``dispatched`` report, advancing ``preparing → in_transit`` (COM-303).
+
+        Idempotent: a redelivered report for an order already ``in_transit`` (or ``delivered``) is a
+        no-op that records nothing. Otherwise the order must be ``preparing``; a dispatch report for
+        one not yet preparing (still ``confirmed``/``pending``) or ``cancelled`` conflicts and
+        raises :class:`IllegalOrderTransitionError` -- the kitchen skipped or contradicted a step.
+        """
+        if self.status in (OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED):
+            return
+        self.mark_in_transit(occurred_at=occurred_at)
+
     def mark_delivered(self, *, occurred_at: datetime | None = None) -> None:
         """Transition ``in_transit → delivered``."""
         self.transition_to(OrderStatus.DELIVERED, occurred_at=occurred_at)
+
+    @property
+    def is_placed_with_provider(self) -> bool:
+        """True once a grocery provider has accepted this order and given us its id (COM-408)."""
+        return self.grocery_external_order_id is not None
+
+    def record_grocery_placement(
+        self,
+        *,
+        external_order_id: str,
+        status: GroceryOrderStatus,
+        occurred_at: datetime | None = None,
+    ) -> None:
+        """Record that the order was placed with its grocery provider (COM-408).
+
+        Captures the provider's own ``external_order_id`` -- the handle a later status poll acts on
+        -- and the status the placement settled at, then applies that status to the lifecycle (a
+        provider that accepts immediately can move the order on the spot). Placement itself is not
+        a lifecycle transition, so a provider that merely acknowledges the order (``pending``)
+        changes no state and records no event.
+        """
+        if not external_order_id:
+            raise OrderValidationError("a grocery placement requires the provider's order id")
+        when = occurred_at or _utcnow()
+        self.grocery_external_order_id = external_order_id
+        self.grocery_status = status
+        self.updated_at = when
+        self.apply_grocery_status(status, occurred_at=when)
+
+    def apply_grocery_status(
+        self, status: GroceryOrderStatus, *, occurred_at: datetime | None = None
+    ) -> None:
+        """Apply a grocery provider's reported status to the order's lifecycle (COM-408).
+
+        The provider's canonical status is mapped onto our own states by
+        :mod:`app.domain.grocery_fulfillment` and then *walked* forward: because status sync is a
+        poll, a provider may report a state several steps ahead of the last one we saw, and each
+        intervening transition is recorded and timestamped rather than skipped.
+
+        Idempotent and monotonic: a status that maps to nothing (``pending``/``unknown``), or to a
+        state the order has already reached or passed, is a no-op that records nothing -- an order
+        never moves backwards on a stale report. A provider cancellation cancels the order, which
+        the state machine refuses once it is in transit or terminal
+        (:class:`~app.domain.errors.IllegalOrderTransitionError`).
+        """
+        self.grocery_status = status
+        target = order_status_for(status)
+        if target is None or target is self.status:
+            return
+        if target is OrderStatus.CANCELLED:
+            if self.status is OrderStatus.CANCELLED:
+                return
+            self.cancel(occurred_at=occurred_at)
+            return
+        for step in steps_between(self.status, target):
+            self.transition_to(step, occurred_at=occurred_at)
 
     def cancel(self, *, occurred_at: datetime | None = None) -> None:
         """Cancel the order (allowed only before it is dispatched)."""
@@ -231,6 +331,32 @@ class Order:
         self.payment_transfer_reference = reference
         self.payment_transfer_expires_at = expires_at
 
+    def attach_approval(
+        self,
+        *,
+        provider: str,
+        reference: str,
+        approval_url: str,
+        expires_at: datetime,
+    ) -> None:
+        """Attach a created PayPal approval order, leaving the order ``pending`` (COM-205).
+
+        Records the provider, its order ``reference`` and the ``approval_url`` the customer is
+        redirected to approve the payment at, and when it ``expires_at``, and marks
+        ``payment_status`` :attr:`~PaymentStatus.PENDING` — the order is *not* confirmed here. It
+        stays ``pending`` until the provider webhook reports the captured payment (COM-206).
+        Approvals are only created for an unsettled ``pending`` order; attaching one to an order
+        that has already left ``pending`` (or been paid) raises
+        :class:`IllegalOrderTransitionError`.
+        """
+        if self.status is not OrderStatus.PENDING or self.payment_status is not None:
+            raise IllegalOrderTransitionError(self.status, OrderStatus.PENDING)
+        self.payment_status = PaymentStatus.PENDING
+        self.payment_provider = provider
+        self.payment_approval_reference = reference
+        self.payment_approval_url = approval_url
+        self.payment_approval_expires_at = expires_at
+
     def confirm_payment(
         self, *, charge_id: str | None = None, occurred_at: datetime | None = None
     ) -> None:
@@ -238,12 +364,12 @@ class Order:
 
         Idempotent: a duplicate confirmation for an already-succeeded order is a no-op, since a
         provider may deliver the same event more than once. Otherwise the order must still be
-        ``pending`` -- the state an OXXO voucher (COM-203) or SPEI transfer (COM-204) leaves it in
-        -- and this records the settlement (``payment_status`` -> :attr:`~PaymentStatus.SUCCEEDED`,
-        capturing ``charge_id`` when the provider supplies one) and drives ``pending -> confirmed``,
-        recording the accompanying :class:`OrderStatusChanged`. A confirmation for an order that has
-        already left ``pending`` by any other route (cancelled or failed) conflicts and raises
-        :class:`IllegalOrderTransitionError`.
+        ``pending`` -- the state an OXXO voucher (COM-203), SPEI transfer (COM-204) or PayPal
+        approval (COM-205) leaves it in -- and this records the settlement (``payment_status`` ->
+        :attr:`~PaymentStatus.SUCCEEDED`, capturing ``charge_id`` when the provider supplies one)
+        and drives ``pending -> confirmed``, recording the accompanying :class:`OrderStatusChanged`.
+        A confirmation for an order that has already left ``pending`` by any other route (cancelled
+        or failed) conflicts and raises :class:`IllegalOrderTransitionError`.
         """
         if self.payment_status is PaymentStatus.SUCCEEDED:
             return
@@ -269,6 +395,61 @@ class Order:
             raise IllegalOrderTransitionError(self.status, OrderStatus.CANCELLED)
         self.payment_status = PaymentStatus.FAILED
         self.cancel(occurred_at=occurred_at)
+
+    @property
+    def can_refund(self) -> bool:
+        """Whether this order has a captured payment that has not yet been refunded (COM-208).
+
+        True only once a card charge (COM-202) or an async settlement (COM-206) has succeeded and
+        left a ``payment_charge_id`` to act on, and no refund has been recorded yet. Unpaid orders
+        (cash/async still pending, or a failed charge) and already-refunded ones are not refundable.
+        """
+        return (
+            self.payment_status is PaymentStatus.SUCCEEDED
+            and self.payment_charge_id is not None
+            and self.refund_status is None
+        )
+
+    def validate_refund(self, requested_amount: Money | None) -> Money:
+        """Resolve and validate the amount to refund, defaulting to a full refund (COM-208).
+
+        ``requested_amount`` of ``None`` means refund the whole order total; a supplied amount makes
+        it a partial refund. The order must have a captured, not-yet-refunded payment
+        (:attr:`can_refund`), else this raises :class:`IllegalOrderTransitionError` -- there is
+        nothing to return. The amount must be in the order's currency, positive, and no greater than
+        the total, else :class:`OrderValidationError` (a ``422``). Returns the effective amount to
+        hand the provider; it records nothing.
+        """
+        if not self.can_refund:
+            raise IllegalOrderTransitionError(self.payment_status, PaymentStatus.SUCCEEDED)
+        amount = requested_amount if requested_amount is not None else self.total
+        if amount.currency != self.total.currency:
+            raise OrderValidationError("refund amount must be in the order's currency")
+        if amount.amount <= 0:
+            raise OrderValidationError("refund amount must be positive")
+        if amount.amount > self.total.amount:
+            raise OrderValidationError("refund amount cannot exceed the order total")
+        return amount
+
+    def record_refund(
+        self, *, refund_id: str, amount: Money, occurred_at: datetime | None = None
+    ) -> None:
+        """Record a completed (full or partial) refund against the order (COM-208).
+
+        Called by the cancel use case after the provider has returned the money: captures the
+        provider's ``refund_id`` and the ``amount`` refunded, and sets :attr:`refund_status` to
+        :attr:`RefundStatus.FULL` when the whole total was returned or :attr:`RefundStatus.PARTIAL`
+        otherwise. Re-validates the amount (via :meth:`validate_refund`) so a bad figure can never
+        be persisted and a second refund is refused with :class:`IllegalOrderTransitionError`. Does
+        not move the lifecycle state -- the caller cancels the order separately.
+        """
+        resolved = self.validate_refund(amount)
+        self.payment_refund_id = refund_id
+        self.refunded_amount = resolved
+        self.refund_status = (
+            RefundStatus.FULL if resolved.amount == self.total.amount else RefundStatus.PARTIAL
+        )
+        self.updated_at = occurred_at or _utcnow()
 
     def record_created(self, *, occurred_at: datetime | None = None) -> None:
         """Record that this order was placed, for the domain-event bus (COM-109).

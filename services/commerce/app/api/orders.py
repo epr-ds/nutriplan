@@ -1,9 +1,10 @@
-"""Orders API router (COM-102 create, COM-104 list, COM-105 get, COM-107 cancel)."""
+"""Orders API router (COM-102 create, COM-104 list, COM-105 get, COM-107 cancel, COM-408 sync)."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Query, status
@@ -15,10 +16,11 @@ from app.api.deps import (
     CurrentPrincipal,
     GetOrderServiceDep,
     ListOrdersServiceDep,
+    SyncGroceryOrderServiceDep,
 )
-from app.api.schemas import CreateOrderRequest, OrderResponse
+from app.api.schemas import CancelOrderRequest, CreateOrderRequest, OrderResponse
 from app.application.commands import CancelOrderCommand, CreateOrderCommand
-from app.application.queries import GetOrderQuery, ListOrdersQuery
+from app.application.queries import GetOrderQuery, ListOrdersQuery, SyncGroceryOrderQuery
 from app.domain.enums import OrderStatus
 
 router = APIRouter(tags=["Orders"])
@@ -53,9 +55,10 @@ def create_order(
     or not-owned plan is ``404``, a ``grocery_delivery`` without ``providerId`` is ``422``, and an
     unreachable Dietary is ``503``. When ``paymentMethod`` is a card the order total is charged
     inline via the payment provider (COM-202): success confirms the order, a decline is ``402`` and
-    no order is created. An ``oxxo`` method instead issues a cash voucher (COM-203) and a ``spei``
-    method issues bank-transfer instructions (COM-204); both leave the order ``pending`` and return
-    the voucher/transfer block. Other async methods (or none) also stay ``pending``.
+    no order is created. An ``oxxo`` method instead issues a cash voucher (COM-203), a ``spei``
+    method issues bank-transfer instructions (COM-204), and a ``paypal`` method creates a
+    redirect-approval order (COM-205); each leaves the order ``pending`` and returns its
+    voucher/transfer/approval block. Any other method (or none) also stays ``pending``.
     On success the order is returned with ``201``.
 
     Supplying an ``Idempotency-Key`` header makes the create safe to retry (COM-209): a repeat with
@@ -136,14 +139,51 @@ def cancel_order(
     order_id: uuid.UUID,
     principal: CurrentPrincipal,
     service: CancelOrderServiceDep,
+    body: CancelOrderRequest | None = None,
 ) -> OrderResponse:
-    """Cancel the caller's order identified by ``orderId`` (COM-107).
+    """Cancel the caller's order identified by ``orderId``, refunding it if paid (COM-107/208).
 
     Cancellation is owner-scoped: an unknown id and another user's order both yield ``404`` (no
     enumeration, as with reads). An order may only be cancelled before dispatch; once it is
     ``in_transit`` or in a terminal state the lifecycle state machine refuses and this returns
-    ``409``. On success the updated order is returned with ``200``.
+    ``409``. When the cancelled order carried a captured payment it is refunded through the provider
+    (COM-208): in full by default, or partially when ``refundAmount`` is supplied (a positive value
+    no greater than the order total, else ``422``). On success the updated order is returned with
+    ``200``, carrying a ``refund`` block when money was returned.
     """
-    command = CancelOrderCommand(user_id=_principal_user_id(principal), order_id=order_id)
+    refund_amount = (
+        Decimal(str(body.refund_amount))
+        if body is not None and body.refund_amount is not None
+        else None
+    )
+    command = CancelOrderCommand(
+        user_id=_principal_user_id(principal),
+        order_id=order_id,
+        refund_amount=refund_amount,
+    )
     order = service.cancel(command)
+    return OrderResponse.from_order(order)
+
+
+@router.post(
+    "/orders/{order_id}/grocery/sync",
+    response_model=OrderResponse,
+    summary="Sync an order's grocery provider status",
+)
+def sync_grocery_order(
+    order_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    service: SyncGroceryOrderServiceDep,
+) -> OrderResponse:
+    """Refresh the caller's grocery order from its provider (COM-408).
+
+    Grocery providers do not call us back, so fulfilment progress is pulled: the provider is polled
+    through the anti-corruption layer and the canonical status it reports is applied to the order's
+    lifecycle, recording every intervening transition. Owner-scoped: an unknown id and another
+    user's order both yield ``404`` (no enumeration). An order that was never placed with a provider
+    yields ``409``, and a provider that cannot answer right now yields ``503``. On success the
+    updated order is returned with ``200``, carrying its ``groceryOrder`` block.
+    """
+    query = SyncGroceryOrderQuery(user_id=_principal_user_id(principal), order_id=order_id)
+    order = service.sync(query)
     return OrderResponse.from_order(order)

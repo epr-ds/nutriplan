@@ -120,7 +120,9 @@ def _build(*orders: Order) -> tuple[TestClient, InMemoryOrderRepository]:
     )
     app.dependency_overrides[get_list_orders_service] = lambda: ListOrdersService(repo)
     app.dependency_overrides[get_get_order_service] = lambda: GetOrderService(repo)
-    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(repo, publisher)
+    app.dependency_overrides[get_cancel_order_service] = lambda: CancelOrderService(
+        repo, FakePaymentProvider(), publisher
+    )
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     return TestClient(app), repo
 

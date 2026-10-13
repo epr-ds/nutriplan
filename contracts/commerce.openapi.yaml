@@ -20,6 +20,7 @@ servers:
 tags:
   - name: Orders
   - name: Fulfillment
+  - name: Payments
 
 paths:
   /orders:
@@ -120,10 +121,20 @@ paths:
       tags: [Orders]
       operationId: cancelOrder
       summary: Cancel an order
+      description: >-
+        Cancels the caller's order (COM-107). When the order carried a captured payment it is
+        refunded through the provider (COM-208): in full by default, or partially when the optional
+        body supplies `refundAmount`. Refunds are ignored for orders that were never paid.
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
       responses:
         '200':
           description: Order cancelled
@@ -137,6 +148,39 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /orders/{orderId}/grocery/sync:
+    post:
+      tags: [Orders]
+      operationId: syncGroceryOrder
+      summary: Sync an order's grocery provider status
+      description: >-
+        Refreshes the caller's grocery order from the provider it was placed with (COM-408). Grocery
+        providers do not call back, so fulfilment progress is pulled: the provider is polled through
+        the anti-corruption layer and the canonical status it reports is applied to the order's
+        lifecycle. Repeating the call is safe -- an unchanged or stale status leaves the order as it
+        is. An order that was never placed with a provider yields `409`.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order status synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /webhooks/payments:
     post:
@@ -176,6 +220,109 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /webhooks/kitchen:
+    post:
+      tags: [Webhooks]
+      operationId: kitchenWebhook
+      summary: Kitchen status webhook (fulfilment sync)
+      description: >-
+        Advances an order's fulfilment state from a dark kitchen's asynchronous status webhook
+        (COM-303). Authenticated by the kitchen's signature over the raw request body
+        (`X-Webhook-Signature`), not a bearer token, so no `BearerAuth` applies here. A verified
+        `kitchen.preparing` event advances the referenced order (`confirmed` -> `preparing`) and a
+        `kitchen.dispatched` event advances it (`preparing` -> `in_transit`); both are idempotent, so
+        a redelivered event is a safe no-op, while an out-of-order report is a `409`.
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: >-
+            Hex-encoded HMAC-SHA256 of the raw request body, keyed by the shared webhook secret.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KitchenWebhookEvent'
+      responses:
+        '200':
+          description: Webhook accepted (or idempotently re-accepted); the order was advanced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KitchenWebhookAck'
+        '400':
+          $ref: '#/components/responses/InvalidSignature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /payment-methods:
+    get:
+      tags: [Payments]
+      operationId: listPaymentMethods
+      summary: List the current user's saved payment methods
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: The caller's saved payment methods, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Payments]
+      operationId: savePaymentMethod
+      summary: Save a tokenized payment method
+      description: >-
+        Stores a tokenized payment instrument for reuse at checkout (COM-207). The request carries a
+        provider `token` produced by on-device tokenization; a PAN/CVV is never sent or stored. The
+        stored token is never returned — the response holds only the id and display metadata.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavePaymentMethodRequest'
+      responses:
+        '201':
+          description: Payment method saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /payment-methods/{paymentMethodId}:
+    delete:
+      tags: [Payments]
+      operationId: deletePaymentMethod
+      summary: Delete a saved payment method
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentMethodId'
+      responses:
+        '204':
+          description: Payment method deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /fulfillment/dark-kitchen/availability:
     get:
@@ -290,6 +437,14 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: >-
+        A downstream provider could not be reached or returned an unusable response. The request
+        itself was valid, so retrying later is appropriate.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
 
   parameters:
     OrderId:
@@ -310,6 +465,13 @@ components:
       schema:
         type: string
         maxLength: 255
+    PaymentMethodId:
+      name: paymentMethodId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     CreateOrderRequest:
@@ -366,6 +528,18 @@ components:
         token:
           type: string
 
+    CancelOrderRequest:
+      type: object
+      description: >
+        Optional options for cancelling an order (COM-208). Supply `refundAmount` to request a
+        *partial* refund of a paid order; omit it (or send an empty body) to refund the order in
+        full. The value must be positive and no greater than the order total. Ignored when the
+        order was never paid.
+      properties:
+        refundAmount:
+          type: number
+          description: Amount to refund; defaults to the full order total when omitted.
+
     OrderResponse:
       type: object
       properties:
@@ -400,6 +574,12 @@ components:
           $ref: '#/components/schemas/VoucherResponse'
         transfer:
           $ref: '#/components/schemas/TransferResponse'
+        approval:
+          $ref: '#/components/schemas/ApprovalResponse'
+        refund:
+          $ref: '#/components/schemas/RefundResponse'
+        groceryOrder:
+          $ref: '#/components/schemas/GroceryOrderResponse'
 
     VoucherResponse:
       type: object
@@ -441,6 +621,116 @@ components:
         provider:
           type: string
 
+    ApprovalResponse:
+      type: object
+      description: >
+        Redirect-approval order (PayPal) created for an asynchronous payment. Present only for a
+        `paypal` method; the order stays `pending` until the provider confirms the captured payment
+        via a webhook. The customer is redirected to `approvalUrl` to approve paying `amount`
+        before `expiresAt`; `reference` is the provider's order id.
+      properties:
+        approvalUrl:
+          type: string
+          format: uri
+        reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
+        expiresAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
+
+    RefundResponse:
+      type: object
+      description: >
+        A refund captured when a paid order was cancelled (COM-208). Present on an order only once a
+        captured payment has actually been refunded. `status` is `full` when the whole total was
+        returned or `partial` otherwise, and `amount` is the exact sum refunded.
+      properties:
+        refundId:
+          type: string
+        status:
+          type: string
+          enum: [full, partial]
+        amount:
+          $ref: '#/components/schemas/MoneyResponse'
+        provider:
+          type: string
+
+    GroceryOrderResponse:
+      type: object
+      description: >
+        The order placed with a grocery provider on the user's behalf (COM-408). Present on an order
+        only once it has actually been placed. `externalOrderId` is the provider's own order
+        reference and `status` is the last fulfilment status it reported, mapped onto our canonical
+        vocabulary by the anti-corruption layer -- a raw provider status is never returned.
+      properties:
+        providerId:
+          type: string
+        externalOrderId:
+          type: string
+        status:
+          type: string
+          enum:
+            [
+              pending,
+              confirmed,
+              preparing,
+              out_for_delivery,
+              delivered,
+              cancelled,
+              failed,
+              unknown,
+            ]
+
+    SavePaymentMethodRequest:
+      type: object
+      description: >
+        A tokenized payment instrument to save for reuse (COM-207). `token` is the durable handle
+        produced by on-device tokenization; a PAN/CVV is never sent. `brand`/`last4`/`expMonth`/
+        `expYear` are optional non-sensitive display metadata (cards carry it, wallets do not).
+      required: [type, token]
+      properties:
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, oxxo, spei]
+        token:
+          type: string
+        brand:
+          type: string
+        last4:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+
+    PaymentMethodResponse:
+      type: object
+      description: >
+        A saved payment method projected for display (COM-207). The stored provider token is
+        deliberately never returned — only the id and non-sensitive display metadata.
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, oxxo, spei]
+        brand:
+          type: string
+        last4:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
     PaymentWebhookEvent:
       type: object
       description: >
@@ -467,6 +757,41 @@ components:
       type: object
       description: >
         Terse acknowledgement of a processed payment webhook (COM-206): confirms receipt and echoes
+        the referenced order's id and resulting status, without leaking any other order detail.
+      required: [received, orderId, status]
+      properties:
+        received:
+          type: boolean
+        orderId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+
+    KitchenWebhookEvent:
+      type: object
+      description: >
+        A dark kitchen's asynchronous status webhook (COM-303). `data.reference` is the order id
+        handed to the kitchen on the routing ticket when the order was confirmed, so the handler can
+        find the order and advance its fulfilment state.
+      required: [type, data]
+      properties:
+        type:
+          type: string
+          enum: [kitchen.preparing, kitchen.dispatched]
+        data:
+          type: object
+          required: [reference]
+          properties:
+            reference:
+              type: string
+              format: uuid
+
+    KitchenWebhookAck:
+      type: object
+      description: >
+        Terse acknowledgement of a processed kitchen webhook (COM-303): confirms receipt and echoes
         the referenced order's id and resulting status, without leaking any other order detail.
       required: [received, orderId, status]
       properties:

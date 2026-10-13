@@ -21,6 +21,7 @@ from app.domain.enums import FulfillmentType, OrderStatus
 from app.domain.errors import IllegalOrderTransitionError, OrderNotFoundError
 from app.domain.order import Order
 from app.events.memory import InMemoryEventPublisher
+from app.payments.fake import FakePaymentProvider
 from tests.fakes import InMemoryOrderRepository
 
 USER = uuid.uuid4()
@@ -41,7 +42,7 @@ def _service(*orders: Order) -> tuple[CancelOrderService, InMemoryOrderRepositor
     repo = InMemoryOrderRepository()
     for order in orders:
         repo.add(order)
-    return CancelOrderService(repo, InMemoryEventPublisher()), repo
+    return CancelOrderService(repo, FakePaymentProvider(), InMemoryEventPublisher()), repo
 
 
 @pytest.mark.parametrize(

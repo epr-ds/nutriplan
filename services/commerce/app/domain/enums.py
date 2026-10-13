@@ -45,3 +45,15 @@ class PaymentMethodType(StrEnum):
     def is_card(self) -> bool:
         """True for the card methods charged inline at checkout (COM-202)."""
         return self in {PaymentMethodType.CREDIT_CARD, PaymentMethodType.DEBIT_CARD}
+
+
+class RefundStatus(StrEnum):
+    """The extent to which a paid order has been refunded on cancellation (COM-208).
+
+    ``FULL`` means the whole captured amount was returned, ``PARTIAL`` means only some of it. An
+    order that was never refunded carries no status at all (``None`` on the aggregate), so these two
+    values describe only orders that *have* been refunded.
+    """
+
+    FULL = "full"
+    PARTIAL = "partial"
