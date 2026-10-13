@@ -1,20 +1,19 @@
-﻿package com.nutriplan.shared.data.network
+package com.nutriplan.shared.data.network
 
 import com.nutriplan.shared.data.repository.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
-import io.ktor.client.plugins.install
 
 /**
- * Configure the auth plugin on the given client with the current token source.
+ * Return a copy of [client] with the auth plugin configured for the current token source.
  */
 fun configureAuth(
     client: HttpClient,
     authRepository: AuthRepository,
-) {
-    client.install(Auth) {
+): HttpClient = client.config {
+    install(Auth) {
         bearer {
             loadTokens {
                 BearerTokens(
@@ -22,9 +21,10 @@ fun configureAuth(
                     refreshToken = authRepository.currentRefreshToken ?: "",
                 )
             }
-            refreshTokens { refreshToken ->
+            refreshTokens {
+                val currentRefreshToken = oldTokens?.refreshToken ?: return@refreshTokens null
                 try {
-                    val response = authRepository.refreshToken(refreshToken)
+                    val response = authRepository.refreshToken(currentRefreshToken)
                     authRepository.updateTokens(response.accessToken, response.refreshToken)
                     BearerTokens(response.accessToken, response.refreshToken)
                 } catch (e: Exception) {

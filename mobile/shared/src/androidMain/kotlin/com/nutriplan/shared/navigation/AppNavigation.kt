@@ -1,12 +1,11 @@
-package com.nutriplan.shared.navigation
+﻿package com.nutriplan.shared.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.nutriplan.shared.domain.Resource
 
 /**
@@ -65,17 +64,8 @@ fun AppNavigationGraph(
         }
 
         // Create/edit meal plan
-        composable(
-            route = Route.CreateMealPlan::class.qualifiedName!!,
-            arguments = listOf(
-                navArgument("planId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                },
-            ),
-        ) { backStackEntry ->
-            val planId = backStackEntry.arguments?.getString("planId")
+        composable<Route.CreateMealPlan> { backStackEntry ->
+            val planId = backStackEntry.toRoute<Route.CreateMealPlan>().planId
             screens.CreateMealPlanScreen(
                 planId = planId,
                 onSave = { route -> navigate(navController, route) },
@@ -84,12 +74,8 @@ fun AppNavigationGraph(
         }
 
         // Meal plan detail
-        composable<Route.MealPlanDetail>(
-            arguments = listOf(
-                navArgument("planId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+        composable<Route.MealPlanDetail> { backStackEntry ->
+            val planId = backStackEntry.toRoute<Route.MealPlanDetail>().planId
             screens.MealPlanDetailScreen(
                 planId = planId,
                 onNavigate = { route -> navigate(navController, route) },
@@ -106,12 +92,8 @@ fun AppNavigationGraph(
         }
 
         // Recipe detail
-        composable<Route.RecipeDetail>(
-            arguments = listOf(
-                navArgument("recipeId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
+        composable<Route.RecipeDetail> { backStackEntry ->
+            val recipeId = backStackEntry.toRoute<Route.RecipeDetail>().recipeId
             screens.RecipeDetailScreen(
                 recipeId = recipeId,
                 onBack = { navController.popBackStack() },
@@ -142,12 +124,8 @@ fun AppNavigationGraph(
         }
 
         // Order detail
-        composable<Route.OrderDetail>(
-            arguments = listOf(
-                navArgument("orderId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+        composable<Route.OrderDetail> { backStackEntry ->
+            val orderId = backStackEntry.toRoute<Route.OrderDetail>().orderId
             screens.OrderDetailScreen(
                 orderId = orderId,
                 onBack = { navController.popBackStack() },
@@ -195,36 +173,24 @@ fun AppNavigationGraph(
         }
 
         // Deep link handler
-        composable<Route.DeepLinkMeal>(
-            arguments = listOf(
-                navArgument("mealId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val mealId = backStackEntry.arguments?.getString("mealId") ?: ""
+        composable<Route.DeepLinkMeal> { backStackEntry ->
+            val mealId = backStackEntry.toRoute<Route.DeepLinkMeal>().mealId
             screens.DeepLinkMealScreen(
                 mealId = mealId,
                 onBack = { navController.popBackStack() },
             )
         }
 
-        composable<Route.DeepLinkPlan>(
-            arguments = listOf(
-                navArgument("planId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+        composable<Route.DeepLinkPlan> { backStackEntry ->
+            val planId = backStackEntry.toRoute<Route.DeepLinkPlan>().planId
             screens.DeepLinkPlanScreen(
                 planId = planId,
                 onBack = { navController.popBackStack() },
             )
         }
 
-        composable<Route.DeepLinkOrder>(
-            arguments = listOf(
-                navArgument("orderId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+        composable<Route.DeepLinkOrder> { backStackEntry ->
+            val orderId = backStackEntry.toRoute<Route.DeepLinkOrder>().orderId
             screens.DeepLinkOrderScreen(
                 orderId = orderId,
                 onBack = { navController.popBackStack() },
@@ -238,13 +204,10 @@ private fun navigate(
     navController: NavHostController,
     route: Any,
 ) {
-    val routeClass = route::class.qualifiedName
-    if (routeClass != null) {
-        navController.navigate(routeClass) {
-            popUpTo(navController.graph.startDestinationId) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+    navController.navigate(route) {
+        popUpTo(navController.graph.startDestinationId) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 

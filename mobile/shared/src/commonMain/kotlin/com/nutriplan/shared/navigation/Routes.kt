@@ -1,80 +1,105 @@
 package com.nutriplan.shared.navigation
 
+import kotlinx.serialization.Serializable
+
 /**
  * Typed navigation routes for the app.
  *
  * All routes are defined here to ensure type safety across the navigation graph.
+ * Routes are [Serializable] so navigation-compose can build type-safe destinations from them.
  */
+@Serializable
 sealed class Route {
 
     /** Splash screen. */
+    @Serializable
     object Splash : Route()
 
     /** Onboarding flow (first-time user). */
+    @Serializable
     object Onboarding : Route()
 
     /** Auth flow (login/register). */
+    @Serializable
     object Auth : Route()
 
     /** Main app bottom nav. */
+    @Serializable
     object Main : Route()
 
     // --- Meal Plan screens ---
     /** Meal plan list. */
+    @Serializable
     object MealPlanList : Route()
 
     /** Create/edit meal plan. */
+    @Serializable
     data class CreateMealPlan(val planId: String? = null) : Route()
 
     /** View meal plan detail. */
+    @Serializable
     data class MealPlanDetail(val planId: String) : Route()
 
     // --- Recipe screens ---
     /** Recipe search. */
+    @Serializable
     object RecipeSearch : Route()
 
     /** Recipe detail. */
+    @Serializable
     data class RecipeDetail(val recipeId: String) : Route()
 
     // --- AI screens ---
     /** AI meal analysis. */
+    @Serializable
     object AiMealAnalysis : Route()
 
     /** AI recommendations. */
+    @Serializable
     object AiRecommendations : Route()
 
     // --- Commerce screens ---
     /** Order list. */
+    @Serializable
     object OrderList : Route()
 
     /** Order detail. */
+    @Serializable
     data class OrderDetail(val orderId: String) : Route()
 
     /** Checkout flow. */
+    @Serializable
     object Checkout : Route()
 
     // --- Notification screens ---
     /** Notification center. */
+    @Serializable
     object NotificationCenter : Route()
 
     // --- Profile screens ---
     /** User profile. */
+    @Serializable
     object Profile : Route()
 
     /** Edit profile. */
+    @Serializable
     object EditProfile : Route()
 
     /** Dietary preferences. */
+    @Serializable
     object DietaryPreferences : Route()
 
     // --- Deep links ---
     /** Deep link to a meal. */
+    @Serializable
     data class DeepLinkMeal(val mealId: String) : Route()
 
     /** Deep link to a plan. */
+    @Serializable
     data class DeepLinkPlan(val planId: String) : Route()
 
     /** Deep link to an order. */
+    @Serializable
     data class DeepLinkOrder(val orderId: String) : Route()
 
     /** Convert route to a string for deep linking. */
