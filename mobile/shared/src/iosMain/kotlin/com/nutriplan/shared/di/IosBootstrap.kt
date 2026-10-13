@@ -1,5 +1,6 @@
 package com.nutriplan.shared.di
 
+import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.network.HttpClientProvider
@@ -17,6 +18,7 @@ import org.koin.mp.KoinPlatform
 fun bootstrapKoin() {
     KoinInitializer.addModule(
         module { single<TokenStorage> { SecureTokenStorage() } },
+        cacheModule(DatabaseDriverFactory()),
     )
     KoinInitializer.initialize()
 }

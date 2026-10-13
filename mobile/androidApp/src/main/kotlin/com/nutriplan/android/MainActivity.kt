@@ -28,6 +28,7 @@ import com.nutriplan.android.navigation.AppNavigationGraph
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.navigation.PendingDeepLink
+import com.nutriplan.shared.session.SignOut
 import com.nutriplan.shared.navigation.Route
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 
@@ -239,16 +240,16 @@ class MainNavigationScreens(
 
     @Composable
     override fun ProfileScreen(onNavigate: (Any) -> Unit) {
-        val authRepository = koinInject<AuthRepository>()
+        val signOut = koinInject<SignOut>()
         ProfileScreen(
             onNavigateToEditProfile = { onNavigate(Route.EditProfile) },
             onNavigateToDietaryPreferences = { onNavigate(Route.DietaryPreferences) },
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
             onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
             onLogout = {
-                // End the session (also wipes it from secure storage) and drop the whole back
-                // stack so Back cannot return to a signed-in screen.
-                authRepository.clearTokens()
+                // End the session (secure storage and cached personal data included) and drop the
+                // whole back stack so Back cannot return to a signed-in screen.
+                signOut()
                 navController.navigate(Route.Auth) {
                     popUpTo(navController.graph.id) { inclusive = true }
                 }
