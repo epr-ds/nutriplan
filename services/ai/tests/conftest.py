@@ -22,4 +22,3 @@ def _mock_jwks_url():
     """
     with patch.dict(os.environ, {"AI_IDENTITY_JWKS_URL": "http://localhost/.well-known/jwks.json"}):
         yield
-
