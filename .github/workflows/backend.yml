@@ -20,6 +20,8 @@ jobs:
     defaults:
       run:
         working-directory: services/ai
+    env:
+      AI_IDENTITY_JWKS_URL: http://localhost/.well-known/jwks.json
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
