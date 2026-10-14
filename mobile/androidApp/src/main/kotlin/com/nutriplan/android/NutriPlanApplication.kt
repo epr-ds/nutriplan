@@ -1,6 +1,7 @@
 package com.nutriplan.android
 
 import android.app.Application
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
@@ -15,12 +16,15 @@ import org.koin.dsl.module
 /**
  * NutriPlan Android application entry point.
  *
- * Initializes Koin DI and the Ktor HTTP client with the OkHttp engine.
+ * Initializes Koin DI, the Ktor HTTP client, and Firebase Crashlytics for crash/ANR monitoring.
  */
 class NutriPlanApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // HRD-602: Initialize Firebase Crashlytics for crash/ANR monitoring.
+        FirebaseCrashlytics.getInstance().setCrashLoggingEnabled(true)
 
         // Initialize Koin DI; the session is stored in the Android Keystore and meal plans are
         // cached on the device (cacheModule overrides the plain DietaryRepository).

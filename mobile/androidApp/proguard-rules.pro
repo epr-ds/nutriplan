@@ -33,3 +33,9 @@
 # Keep R class references
 -dontnote android.R.class
 -dontnote androidx.**
+
+# HRD-602: Firebase Crashlytics — keep required classes for symbolication.
+-keep class com.google.firebase.crashlytics.** { *; }
+-keepclassmembers class * {
+    @com.google.firebase.crashlytics.ndk.* <methods>;
+}
