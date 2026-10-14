@@ -10,16 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -76,8 +73,7 @@ fun NutriPlanTextField(
     placeholder: String = "",
     isPassword: Boolean = false,
     isError: Boolean = false,
-    errorMessage: String = "",
-    keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text
+    errorMessage: String = ""
 ) {
     OutlinedTextField(
         value = value,
@@ -88,7 +84,6 @@ fun NutriPlanTextField(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         isError = isError,
-        keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = keyboardType),
         singleLine = true
     )
     

@@ -6,11 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
@@ -59,9 +55,7 @@ fun LoginScreen(
             value = email,
             onValueChange = { email = it },
             label = "Email",
-            placeholder = "Enter your email",
-            // F29: Add keyboard type hint for correct mobile keyboard (WCAG 3.3.2)
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
+            placeholder = "Enter your email"
         )
 
         Spacer(modifier = Modifier.height(16.dp))
