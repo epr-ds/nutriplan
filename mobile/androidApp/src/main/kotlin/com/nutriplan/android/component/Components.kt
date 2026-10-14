@@ -1,6 +1,11 @@
 package com.nutriplan.android.component
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -89,7 +94,7 @@ fun NutriPlanTextField(
             text = errorMessage,
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(start = 16.dp, top = 4.dp).semantics { role = Role.Status; contentDescription = "Error: $errorMessage" }
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegion.Assertive; contentDescription = "Error: $errorMessage" }
         )
     }
 }
