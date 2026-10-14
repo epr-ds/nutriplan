@@ -41,4 +41,4 @@ class _GlobalFakeVerifier:
 
 
 # Apply override at import time — before any test module creates its TestClient.
-app.dependency_overrides[get_token_verifier] = _GlobalFakeVerifier()
+app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
