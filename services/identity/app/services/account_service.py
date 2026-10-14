@@ -7,7 +7,6 @@ Also aggregates machine-readable data exports per service for the user-export en
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any

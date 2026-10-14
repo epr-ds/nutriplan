@@ -1,4 +1,4 @@
-﻿"""API-layer dependency wiring.
+"""API-layer dependency wiring.
 
 The AI service sits behind the gateway and also verifies access tokens directly (AIA-804).
 Verification uses Identity's JWKS endpoint to validate the RS256 signature plus ``aud``/``iss``/
