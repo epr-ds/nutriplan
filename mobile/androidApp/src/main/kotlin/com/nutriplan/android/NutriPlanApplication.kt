@@ -1,7 +1,6 @@
 package com.nutriplan.android
 
 import android.app.Application
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
@@ -23,8 +22,8 @@ class NutriPlanApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // HRD-602: Initialize Firebase Crashlytics for crash/ANR monitoring.
-        FirebaseCrashlytics.getInstance().setCrashLoggingEnabled(true)
+        // HRD-602: Firebase Crashlytics auto-initializes via Gradle plugin (crash logging enabled by default in v19+).
+        // Custom log messages can be added at key app events via FirebaseCrashlytics.getInstance().log("...")
 
         // Initialize Koin DI; the session is stored in the Android Keystore and meal plans are
         // cached on the device (cacheModule overrides the plain DietaryRepository).
