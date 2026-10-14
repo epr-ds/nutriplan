@@ -4,6 +4,12 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
+// HRD-701: App signing — secrets from environment, never in repo.
+val keystorePath: String? = providers.environmentVariable("KEYSTORE_PATH").orNull
+val keystorePassword: String? = providers.environmentVariable("KEYSTORE_PASSWORD").orNull
+val keyAlias: String? = providers.environmentVariable("KEY_ALIAS").orNull
+val keyPassword: String? = providers.environmentVariable("KEY_PASSWORD").orNull
+
 android {
     namespace = "com.nutriplan.android"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
@@ -14,10 +20,15 @@ android {
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+
+        // HRD-701: Versioning strategy — bump versionCode per release tag.
+        // Format: YYYYMMDDNN where NN is build number within the day.
+        buildConfigField("String", "BUILD_DATE", "\"${java.time.LocalDate.now()}\"")
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -25,9 +36,32 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        create("release") {
+            keystorePath?.let { kp ->
+                storeFile = file(kp)
+                storePassword = keystorePassword ?: ""
+                keyAlias = keyAlias ?: ""
+                keyPassword = keyPassword ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            signingConfig = if (keystorePath != null) {
+                signingConfigs.findByName("release")
+            } else {
+                // CI uses Play App Signing — upload key provided at submit time.
+                // Without a local keystore, fall back to debug config for testing.
+                signingConfigs.getByName("debug")
+            }
+
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
