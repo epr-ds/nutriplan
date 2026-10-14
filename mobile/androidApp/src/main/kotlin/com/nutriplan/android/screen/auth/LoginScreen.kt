@@ -89,7 +89,7 @@ fun LoginScreen(
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegion.Assertive; contentDescription = "Error: $it" }
+                modifier = Modifier.semantics { contentDescription = "Error: $it" }
             )
         }
 
