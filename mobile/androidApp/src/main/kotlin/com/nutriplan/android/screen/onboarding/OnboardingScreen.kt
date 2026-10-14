@@ -51,7 +51,6 @@ fun OnboardingScreen(
                 .weight(1f)
                 // F13: Add accessibility role and page count for screen readers (WCAG 1.3.1, 4.1.2)
                 .semantics {
-                    role = Role.Pager
                     contentDescription = "Onboarding pages, ${pagerState.currentPage + 1} of ${pagerState.pageCount}"
                 }
         ) { page ->

@@ -148,7 +148,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
-                    .minimumWidth(48.dp)
+                    .widthIn(min = 48.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium
@@ -162,7 +162,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
-                    .minimumWidth(48.dp)
+                    .widthIn(min = 48.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium
