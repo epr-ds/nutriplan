@@ -1,0 +1,110 @@
+name: Mobile Beta Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to distribute'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - both
+      track:
+        description: 'Distribution track'
+        required: false
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - firebase
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_HOME: ${{ github.workspace }}/gradle
+
+jobs:
+  android-beta:
+    name: Android Beta (Play Internal)
+    runs-on: ubuntu-latest
+    if: inputs.platform == 'android' || inputs.platform == 'both'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build debug APK
+        working-directory: mobile
+        run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+      - name: Upload to Play Internal Testing
+        if: inputs.track == 'internal'
+        working-directory: mobile
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+        run: |
+          gem install fastlane -q
+          cd fastlane
+          bundle install --quiet 2>/dev/null || true
+          fastlane beta \
+            play_store_json_key_content:"$PLAY_STORE_JSON_KEY"
+
+      - name: Upload to Firebase App Distribution
+        if: inputs.track == 'firebase'
+        working-directory: mobile
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          gem install fastlane -q
+          cd fastlane
+          bundle install --quiet 2>/dev/null || true
+          fastlane firebase_beta
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nutriplan-debug-apk
+          path: mobile/build/outputs/apk/debug/*.apk
+          retention-days: 7
+
+  ios-beta:
+    name: iOS Beta (TestFlight)
+    runs-on: macos-latest
+    if: inputs.platform == 'ios' || inputs.platform == 'both'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest'
+
+      - name: Install fastlane
+        run: gem install fastlane -q
+
+      - name: Build and upload to TestFlight
+        working-directory: mobile/fastlane
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_USERNAME: ${{ secrets.APPLE_USERNAME }}
+          APP_PASSWORD: ${{ secrets.APP_APPLE_PASSWORD }}
+          FASTLANE_ITUNES_CONNECT_IN_APP_PURCHASE_MANAGEMENT_APP_ID: ${{ secrets.FASTLANE_ITC_APP_ID }}
+        run: |
+          bundle install --quiet 2>/dev/null || true
+          fastlane beta
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nutriplan-debug-ipa
+          path: mobile/build/outputs/ipa/*.ipa
+          retention-days: 7
