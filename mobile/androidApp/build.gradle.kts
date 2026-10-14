@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.detekt)
+    id("com.google.firebase.crashlytics") version "3.0.5"
 }
 
 // HRD-701: App signing — secrets from environment, never in repo.
@@ -92,6 +93,10 @@ dependencies {
     // Koin for Android
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
+
+    // HRD-602: Firebase Crashlytics for crash/ANR monitoring
+    implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
 }
 
 detekt {

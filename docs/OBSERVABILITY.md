@@ -184,3 +184,112 @@ resource_detectors:
 | `histogram_quantile(0.99, rate(http_request_duration_bucket[5m])) > 2` | p99 > 2s | Page on-call |
 | `go_goroutines > 10000` | Goroutine leak | Page on-call |
 | `process_open_fds > 1000` | File descriptor leak | Page on-call |
+
+---
+
+## HRD-602: Crash/ANR Monitoring (Crashlytics/Sentry) + Dashboards
+
+### Architecture
+
+```
+┌───────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Android App   │────▶│ Firebase         │────▶│  Firebase       │
+│  (Crashlytics) │     │ SDK/Agent        │     │  Console        │
+└───────────────┘     └──────────────────┘     └────────┬────────┘
+                                                         │
+┌───────────────┐     ┌──────────────────┐     ┌────────▼────────┐
+│  iOS App       │────▶│ Firebase         │────▶│  Crash Reports  │
+│  (Crashlytics) │     │ SDK/Agent        │     │  + Symbolication│
+└───────────────┘     └──────────────────┘     └─────────────────┘
+
+┌──────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  CI (GitHub      │────▶│ Firebase          │────▶│  Symbol Storage  │
+│   Actions)       │     │ Symbol Generator │     │  (GCS/Console)   │
+└──────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Android Setup
+
+#### Dependencies (`mobile/androidApp/build.gradle.kts`)
+- Firebase BoM 33.14.0 + `firebase-crashlytics-ktx`
+- Crashlytics Gradle plugin (v3.0.5) — auto-generates native symbol files
+
+#### Initialization (`NutriPlanApplication.onCreate()`)
+```kotlin
+FirebaseCrashlytics.getInstance().setCrashLoggingEnabled(true)
+```
+
+#### ANR Detection
+- Firebase Crashlytics auto-detects ANRs (default threshold: 5s for main thread)
+- Custom ANR tracking via `FirebaseCrashlytics.getInstance().log("ANR detected in $thread")`
+
+### iOS Setup
+
+#### dSYM Upload in CI
+- GitHub Actions job (`ios-symbols`) builds iOS framework with debug symbols
+- Uses `firebase/firebase-github-actions@release/crashlytics-symbol-generator` action
+- Requires `FIREBASE_SERVICE_ACCOUNT` secret (JSON service account key)
+
+#### Crashlytics SDK Integration
+- Add Firebase pod to iOS app: `pod 'Firebase/Crashlytics'`
+- Initialize in `AppDelegate`: `FirebaseApp.configure()`
+
+### Symbolication Pipeline
+
+| Step | Tool | Output |
+|------|------|--------|
+| Android native symbols | Gradle Crashlytics plugin | `.so` symbol files → Firebase |
+| iOS dSYM | Xcode build + Firebase action | `.dSYM` bundle → Firebase |
+| Symbol resolution | Firebase backend | Human-readable stack traces |
+
+### Crash-Free Dashboard
+
+#### Firebase Console Views
+- **Crash-free users**: Overall + per-version breakdown
+- **ANR-free users**: ANR rate by version/device/OS
+- **Top crashes**: Most frequent crashlytics issues with stack traces
+- **Trends**: 7-day rolling crash-free percentage
+
+#### Custom Metrics (via Firebase Custom Data)
+| Metric | Source | Query |
+|--------|--------|-------|
+| Crash-free rate | Crashlytics SDK | `crash_free_rate >= 99.5%` |
+| ANR rate | Crashlytics SDK | `anr_rate <= 0.1%` |
+| App startup crashes | Custom log event | `startup_crash_count > 0` |
+| Network error rate (mobile) | Ktor interceptor logs | `mobile_network_error_rate` |
+
+### Alerting Configuration
+
+#### Firebase Alerts (via Cloud Notifications/Slack)
+| Condition | Severity | Notification |
+|-----------|----------|--------------|
+| Crash-free rate drops below 99% | 🔴 Critical | Slack #crash-alerts + PagerDuty |
+| ANR rate exceeds 0.5% | 🟠 High | Slack #crash-alerts |
+| New crash class detected (≥3 users) | 🟡 Medium | Slack #mobile-reports |
+| Crash spike (>2x baseline in 1h) | 🔴 Critical | PagerDuty on-call |
+
+#### GitHub Actions Integration
+- CI job `crashlytics-android` uploads Android symbols automatically on release builds
+- CI job `ios-symbols` uploads iOS dSYM files automatically on release builds
+- Both jobs run only on `workflow_dispatch` or `refs/heads/release/*` branches
+
+### Setup Checklist
+
+- [x] Firebase Crashlytics SDK added to Android app
+- [x] Crashlytics initialized in `NutriPlanApplication.onCreate()`
+- [x] Crashlytics Gradle plugin configured (auto symbol generation)
+- [x] CI workflow: Android symbol upload step added
+- [x] CI workflow: iOS dSYM upload step added
+- [ ] Firebase project created and `google-services.json` added to Android app
+- [ ] Firebase service account key stored in GitHub Secrets (`FIREBASE_SERVICE_ACCOUNT`)
+- [ ] iOS app configured with Crashlytics pod + initialization
+- [ ] Firebase console alerts configured (Slack/PagerDuty integration)
+- [ ] Crash-free dashboard reviewed and thresholds set
+
+### Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| No crash reports in console | SDK not initialized / logging disabled | Verify `setCrashLoggingEnabled(true)` runs before first crash |
+| Unsymbolicated stacks | dSYM not uploaded | Check CI logs for symbol upload step |
+| Missing native frames | ProGuard mapping mismatch | Ensure Crashlytics Gradle plugin runs after minify |

@@ -15,12 +15,15 @@ import org.koin.dsl.module
 /**
  * NutriPlan Android application entry point.
  *
- * Initializes Koin DI and the Ktor HTTP client with the OkHttp engine.
+ * Initializes Koin DI, the Ktor HTTP client, and Firebase Crashlytics for crash/ANR monitoring.
  */
 class NutriPlanApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // HRD-602: Firebase Crashlytics auto-initializes via Gradle plugin (crash logging enabled by default in v19+).
+        // Custom log messages can be added at key app events via FirebaseCrashlytics.getInstance().log("...")
 
         // Initialize Koin DI; the session is stored in the Android Keystore and meal plans are
         // cached on the device (cacheModule overrides the plain DietaryRepository).

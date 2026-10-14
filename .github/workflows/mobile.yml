@@ -63,6 +63,37 @@ jobs:
           name: android-release-apk
           path: mobile/androidApp/build/outputs/apk/release/*.apk
 
+  # HRD-602: Upload Crashlytics symbols for Android.
+  crashlytics-android:
+    name: Crashlytics symbol upload (Android)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/release/')
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build release APK (with symbol generation)
+        run: ./gradlew :androidApp:assembleRelease --stacktrace
+        env:
+          KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      # HRD-602: Upload symbols to Firebase Crashlytics.
+      - name: Upload symbols to Crashlytics
+        uses: firebase/firebase-github-actions@release/crashlytics-symbol-generator
+        with:
+          # Service account key is stored in GitHub Secrets as JSON.
+          service_env_var: FIREBASE_SERVICE_ACCOUNT
+
   ios-framework:
     name: iOS shared framework
     runs-on: macos-latest
@@ -79,3 +110,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Link shared iOS framework
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+
+  # HRD-602: Upload dSYM symbols for iOS crash reporting.
+  ios-symbols:
+    name: iOS symbol upload (dSYM)
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/release/')
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Build iOS framework to generate dSYM files.
+      - name: Build iOS framework (with debug symbols)
+        run: ./gradlew :shared:linkDebugFrameworkIosArm64 --stacktrace
+
+      # HRD-602: Upload dSYM to Firebase Crashlytics for symbolication.
+      - name: Upload iOS dSYM to Crashlytics
+        uses: firebase/firebase-github-actions@release/crashlytics-symbol-generator
+        with:
+          service_env_var: FIREBASE_SERVICE_ACCOUNT
