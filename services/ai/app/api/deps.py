@@ -104,7 +104,7 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 RawBearerToken = Annotated[str, Depends(get_raw_bearer_token)]
 RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
 MealAnalysisServiceDep = Annotated[MealAnalysisService, Depends(get_meal_analysis_service)]
-PlanOptimizationServiceDep: Annotated[
+PlanOptimizationServiceDep = Annotated[
     PlanOptimizationService,
     Depends(get_plan_optimization_service),
 ]  # noqa: E501
