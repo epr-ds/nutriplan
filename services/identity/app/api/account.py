@@ -10,10 +10,7 @@ import logging
 import uuid as _uuid
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import JSONResponse
-
 from app.api.deps import CurrentUser, DbSession
-from app.core.config import settings
 from app.schemas.account import (
     AccountDeletionConfirm,
     DataExportResponse,
@@ -81,7 +78,7 @@ async def delete_current_account(
         report.commerce,
         report.notification,
         len(report.errors),
-    )
+    )  # noqa: E501 — long message string (intentional)
 
 
 @router.get(
