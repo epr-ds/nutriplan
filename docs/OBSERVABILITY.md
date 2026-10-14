@@ -293,3 +293,112 @@ FirebaseCrashlytics.getInstance().setCrashLoggingEnabled(true)
 | No crash reports in console | SDK not initialized / logging disabled | Verify `setCrashLoggingEnabled(true)` runs before first crash |
 | Unsymbolicated stacks | dSYM not uploaded | Check CI logs for symbol upload step |
 | Missing native frames | ProGuard mapping mismatch | Ensure Crashlytics Gradle plugin runs after minify |
+
+---
+
+## HRD-606: Beta Analytics + Funnel/Retention Instrumentation
+
+### Architecture
+
+```
+┌───────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Android App   │────▶│ Firebase         │────▶│  Firebase       │
+│  (Analytics)   │     │ SDK              │     │  Console        │
+└───────────────┘     └──────────────────┘     └────────┬────────┘
+                                                         │
+┌───────────────┐     ┌──────────────────┐     ┌────────▼────────┐
+│  iOS App       │────▶│ Firebase         │────▶│  Dashboards:    │
+│  (Analytics)   │     │ SDK              │     │  Activation,    │
+└───────────────┘     └──────────────────┘     │  D1/D7 Retention│
+                                                 └─────────────────┘
+```
+
+### Android Setup
+
+#### Dependencies (`mobile/androidApp/build.gradle.kts`)
+- Firebase BoM 33.14.0 + `firebase-analytics-ktx`
+
+#### Interface (`shared/src/commonMain/kotlin/.../analytics/AnalyticsTracker.kt`)
+- Platform-agnostic `AnalyticsTracker` interface for KMP
+- Consent-gated: all events skipped when `isConsentGiven == false`
+
+#### Implementation (`androidApp/.../analytics/FirebaseAnalyticsTracker.kt`)
+- Wraps `FirebaseAnalytics.getInstance(context)`
+- `initialize()` — sets consent defaults
+- `logScreenView()` — logs `screen_name` + `screen_class` params
+- `logEvent()` — custom event with string params
+- `setUserProperty()` — user properties (auth status, activation)
+- `setConsent()` — enables/disables all tracking
+
+#### Wiring
+- `NutriPlanApplication` creates and exposes `FirebaseAnalyticsTracker`
+- `MainActivity` passes tracker to `AppNavigationGraph`
+- `AppNavigationGraph` logs screen views + funnel events per route
+
+### Key Events Instrumented
+
+| Event | When Logged | Params |
+|-------|-------------|--------|
+| `screen_view` | Every route entry | `screen_name`, `screen_class` |
+| `onboarding_complete` | User taps "Get Started" | — |
+| `login_success` | User signs in | — |
+| `auth_status` (property) | After login | `"authenticated"` |
+| `meal_plan_created` | User saves a meal plan | `plan_id` |
+| `checkout_complete` | User completes checkout | — |
+| `activated` (property) | After checkout | `"true"` |
+
+### Activation + Retention Tracking
+
+| Metric | How Tracked | Dashboard |
+|--------|-------------|-----------|
+| **Activation** | `activated` user property set on checkout_complete | Firebase Console → User Properties |
+| **D1 Retention** | Firebase auto-tracks `first_open` + `last_active`; compare against `activated` cohort | Firebase → Retention → Day 1 |
+| **D7 Retention** | Same as D1; compare against `activated` cohort | Firebase → Retention → Day 7 |
+| **Funnel** | Screen view counts per route → onboarding → auth → main → meal_plan → checkout | Firebase → Funnels |
+
+### Privacy / Consent
+
+- All analytics events are **opt-in** by default (`consentGiven = false`)
+- `AnalyticsTracker.isConsentGiven` gates every `logEvent` / `setUserProperty` call
+- In production, integrate with a Consent Management Platform (CMP) to read user consent preferences
+- Compliant with MX LFPDPPP: no data collected until explicit consent
+
+### Dashboard Definitions
+
+#### Beta Funnel Dashboard (Firebase Console)
+
+| Funnel Step | Event | Expected Drop-off |
+|-------------|-------|-------------------|
+| App open | `screen_view` (splash) | — |
+| Onboarding started | `screen_view` (onboarding) | ~10% |
+| Onboarding completed | `onboarding_complete` | ~30% |
+| Auth started | `screen_view` (auth) | ~5% |
+| Auth completed | `login_success` | ~20% |
+| Main screen viewed | `screen_view` (main) | ~5% |
+| Meal plan created | `meal_plan_created` | ~40% |
+| Checkout started | `screen_view` (checkout) | ~30% |
+| Checkout completed | `checkout_complete` | ~20% |
+
+#### Retention Cohort Dashboard
+
+| Cohort | Metric | Target |
+|--------|--------|--------|
+| Activated users (checkout) | D1 retention | ≥ 40% |
+| Activated users (checkout) | D7 retention | ≥ 25% |
+| Onboarding completers | Activation rate | ≥ 15% |
+| Login completers | Meal plan creation rate | ≥ 30% |
+
+### Setup Checklist
+
+- [x] Firebase Analytics dependency added to Android app
+- [x] `AnalyticsTracker` interface in shared module (KMP)
+- [x] `FirebaseAnalyticsTracker` implementation for Android
+- [x] Tracker wired into `NutriPlanApplication` + `MainActivity`
+- [x] Screen views logged for all routes
+- [x] Funnel events: onboarding, login, meal plan creation, checkout
+- [x] Activation property (`activated`) set on checkout
+- [x] Consent-gated (opt-in by default)
+- [ ] Firebase project configured with `google-services.json`
+- [ ] iOS analytics implementation (FirebaseAnalytics pod)
+- [ ] Firebase console funnels + retention dashboards configured
+- [ ] CMP integration for production consent management

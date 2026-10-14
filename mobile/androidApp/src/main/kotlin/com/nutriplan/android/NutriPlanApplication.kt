@@ -1,6 +1,7 @@
 package com.nutriplan.android
 
 import android.app.Application
+import com.nutriplan.android.analytics.FirebaseAnalyticsTracker
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
@@ -15,9 +16,15 @@ import org.koin.dsl.module
 /**
  * NutriPlan Android application entry point.
  *
- * Initializes Koin DI, the Ktor HTTP client, and Firebase Crashlytics for crash/ANR monitoring.
+ * Initializes Koin DI, the Ktor HTTP client, Firebase Crashlytics for crash/ANR monitoring,
+ * and Firebase Analytics for beta funnel/retention instrumentation (HRD-606).
  */
 class NutriPlanApplication : Application() {
+
+    /** Analytics tracker instance — initialized in [onCreate]. */
+    val analyticsTracker: FirebaseAnalyticsTracker by lazy {
+        FirebaseAnalyticsTracker(applicationContext).also(FirebaseAnalyticsTracker::initialize)
+    }
 
     override fun onCreate() {
         super.onCreate()

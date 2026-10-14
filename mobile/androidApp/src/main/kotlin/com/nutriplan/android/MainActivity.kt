@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
                     val authRepository = koinInject<AuthRepository>()
+                    val analyticsTracker = (application as NutriPlanApplication).analyticsTracker
 
                     fun openPendingDeepLink(isAuthenticated: Boolean) {
                         pendingDeepLink.takeIfAuthenticated(isAuthenticated)?.let { navController.navigate(it) }
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
                     AppNavigationGraph(
                         navController = navController,
                         startDestination = Route.Splash,
+                        analyticsTracker = analyticsTracker,
                         screens = remember(navController) {
                             // Not signed in: the link waits and opens right after a successful login.
                             MainNavigationScreens(navController, onAuthenticated = { openPendingDeepLink(true) })
