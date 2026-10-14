@@ -151,9 +151,7 @@ class AccountService:
         try:
             dietary_data = await self._dietary.export_user_data(user_id)
             if dietary_data is not None:
-                export.services.append(
-                    ServiceExport(service="dietary", data=dietary_data)
-                )
+                export.services.append(ServiceExport(service="dietary", data=dietary_data))
         except Exception as exc:  # noqa: BLE001
             logger.warning("Dietary export failed for user %s: %s", user_id, exc)
 
@@ -161,9 +159,7 @@ class AccountService:
         try:
             commerce_data = await self._commerce.export_user_data(user_id)
             if commerce_data is not None:
-                export.services.append(
-                    ServiceExport(service="commerce", data=commerce_data)
-                )
+                export.services.append(ServiceExport(service="commerce", data=commerce_data))
         except Exception as exc:  # noqa: BLE001
             logger.warning("Commerce export failed for user %s: %s", user_id, exc)
 
@@ -171,9 +167,7 @@ class AccountService:
         try:
             notif_data = await self._notification.export_user_data(user_id)
             if notif_data is not None:
-                export.services.append(
-                    ServiceExport(service="notification", data=notif_data)
-                )
+                export.services.append(ServiceExport(service="notification", data=notif_data))
         except Exception as exc:  # noqa: BLE001
             logger.warning("Notification export failed for user %s: %s", user_id, exc)
 
