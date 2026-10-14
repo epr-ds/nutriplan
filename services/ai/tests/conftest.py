@@ -21,3 +21,24 @@ class _FakeTokenVerifier:
 def _fake_token_verifier() -> _FakeTokenVerifier:
     """Factory for the fake token verifier."""
     return _FakeTokenVerifier()
+
+
+# ── Global JWT patch (applied at import time, before any TestClient is created) ──
+# Many test files create `client = TestClient(app)` at module level, so fixture-based
+# dependency overrides won't help. We patch app.dependency_overrides directly here.
+
+from app.api.deps import get_token_verifier  # noqa: E402
+from app.main import app  # noqa: E402
+
+
+class _GlobalFakeVerifier:
+    """Global fake verifier that works for all tests."""
+
+    def verify(self, token: str) -> object:  # type: ignore[no-untyped-def]
+        from app.core.principal import Principal
+
+        return Principal(user_id="test-user", email="test@nutriplan.local")
+
+
+# Apply override at import time — before any test module creates its TestClient.
+app.dependency_overrides[get_token_verifier] = _GlobalFakeVerifier()
