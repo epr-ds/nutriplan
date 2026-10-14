@@ -11,11 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.PagerConfig
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.pager
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,9 +51,8 @@ fun OnboardingScreen(
                 .weight(1f)
                 // F13: Add accessibility role and page count for screen readers (WCAG 1.3.1, 4.1.2)
                 .semantics {
-                    pager(PagerConfig(pagerState.pageCount)) {
-                        contentDescription = "Onboarding pages, ${pagerState.currentPage + 1} of ${pagerState.pageCount}"
-                    }
+                    role = Role.Pager
+                    contentDescription = "Onboarding pages, ${pagerState.currentPage + 1} of ${pagerState.pageCount}"
                 }
         ) { page ->
             OnboardingPage.entries[page].Content()
