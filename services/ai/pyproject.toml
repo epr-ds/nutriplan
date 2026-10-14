@@ -1,6 +1,7 @@
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["app/api/deps.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

@@ -33,6 +33,7 @@ from app.api.deps import (
     get_meal_analysis_service,
     get_plan_optimization_service,
     get_recommendation_service,
+    get_token_verifier,
 )
 from app.llm.client import LLMClient
 from app.llm.fake import FakeLLMProvider
@@ -225,6 +226,10 @@ def _optimization_service(plan: OptimizationPlan | None = None) -> PlanOptimizat
 
 @pytest.fixture
 def client():
+    # Import from conftest to avoid pytest picking up _FakeTokenVerifier as a fixture candidate.
+    from tests.conftest import _fake_token_verifier  # noqa: PLC0415
+
+    app.dependency_overrides[get_token_verifier] = _fake_token_verifier
     app.dependency_overrides[get_recommendation_service] = _recommendation_service
     app.dependency_overrides[get_meal_analysis_service] = _analysis_service
     app.dependency_overrides[get_plan_optimization_service] = lambda: _optimization_service()

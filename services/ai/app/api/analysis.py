@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.analysis.commands import MealAnalysisCommand, MealIngredient
-from app.api.deps import BearerToken, MealAnalysisServiceDep
+from app.api.deps import CurrentPrincipal, MealAnalysisServiceDep
 from app.api.schemas import AnalyzeMealRequest, NutritionalAnalysisResponse
 
 router = APIRouter(prefix="/ai", tags=["AI"])
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 @router.post("/analyze-meal", response_model=NutritionalAnalysisResponse)
 def analyze_meal(
     request: AnalyzeMealRequest,
-    _token: BearerToken,
+    _principal: CurrentPrincipal,
     service: MealAnalysisServiceDep,
 ) -> NutritionalAnalysisResponse:
     """Analyze the described meal's nutrition for the validated request."""

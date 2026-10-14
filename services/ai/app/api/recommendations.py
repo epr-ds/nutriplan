@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.deps import BearerToken, RecommendationServiceDep
+from app.api.deps import CurrentPrincipal, RecommendationServiceDep
 from app.api.schemas import (
     AIRecommendationRequest,
     AIRecommendationResponse,
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 @router.post("/recommendations", response_model=AIRecommendationResponse)
 def get_recommendations(
     request: AIRecommendationRequest,
-    _token: BearerToken,
+    _principal: CurrentPrincipal,
     service: RecommendationServiceDep,
 ) -> AIRecommendationResponse:
     """Recommend recipes for the validated request, localized to the requested language."""

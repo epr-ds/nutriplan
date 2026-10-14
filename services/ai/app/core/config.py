@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # contract (the request schema is contract-locked).
     variety_strength: str = "medium"
 
+    # Identity / JWT verification (AIA-804). The AI service verifies access tokens against
+    # Identity's JWKS endpoint; these values must match what other resource servers use.
+    identity_jwks_url: str = ""
+    jwt_issuer: str = "nutriplan"
+    jwt_audience: str = "nutriplan-api"
+
     @property
     def is_production(self) -> bool:
         """True in production-like environments, where missing deps are fatal."""

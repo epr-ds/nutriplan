@@ -1,9 +1,9 @@
 """API-layer dependency wiring.
 
-The AI service sits behind the gateway, which performs full JWT verification at the edge
-(JWKS, reused from P1 — AIA-804). This slice (AIA-201) only enforces that a Bearer token is
-*present*: a request without one is rejected with ``401`` before any work is done. Verifying the
-token's signature/claims here is intentionally out of scope and tracked by AIA-804.
+The AI service sits behind the gateway and also verifies access tokens directly (AIA-804).
+Verification uses Identity's JWKS endpoint to validate the RS256 signature plus ``aud``/``iss``/
+``exp`` claims, then projects the token onto a :class:`Principal`. This defense-in-depth ensures
+that even if the gateway misroutes an unauthenticated request, the service rejects it.
 """
 
 from __future__ import annotations
@@ -11,20 +11,56 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.analysis.service import MealAnalysisService, build_meal_analysis_service
+from app.core.config import settings
+from app.core.principal import Principal
+from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.optimization.service import PlanOptimizationService, build_plan_optimization_service
 from app.recommendations.service import RecommendationService, build_recommendation_service
 
 _bearer = HTTPBearer(auto_error=False)
 
 
-def require_bearer(
+@lru_cache(maxsize=1)
+def get_token_verifier() -> TokenVerifier:
+    """Build the (cached) access-token verifier backed by Identity's JWKS endpoint."""
+    jwks_client = jwt.PyJWKClient(settings.identity_jwks_url)
+    return JwtTokenVerifier(
+        key_resolver=jwks_client,
+        issuer=settings.jwt_issuer,
+        audience=settings.jwt_audience,
+    )
+
+
+def get_current_principal(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
+) -> Principal:
+    """Resolve the authenticated caller from a Bearer token or raise ``401``."""
+    if credentials is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        return verifier.verify(credentials.credentials)
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+
+def get_raw_bearer_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> str:
-    """Require a Bearer credential, returning the raw token or raising ``401``."""
+    """Require a Bearer token, returning the raw string or raising ``401``."""
     if credentials is None or not credentials.credentials:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
@@ -64,9 +100,11 @@ def get_plan_optimization_service() -> PlanOptimizationService:
     return build_plan_optimization_service()
 
 
-BearerToken = Annotated[str, Depends(require_bearer)]
+CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+RawBearerToken = Annotated[str, Depends(get_raw_bearer_token)]
 RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
 MealAnalysisServiceDep = Annotated[MealAnalysisService, Depends(get_meal_analysis_service)]
 PlanOptimizationServiceDep = Annotated[
-    PlanOptimizationService, Depends(get_plan_optimization_service)
-]
+    PlanOptimizationService,
+    Depends(get_plan_optimization_service),
+]  # noqa: E501
