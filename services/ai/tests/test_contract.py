@@ -33,7 +33,9 @@ from app.api.deps import (
     get_meal_analysis_service,
     get_plan_optimization_service,
     get_recommendation_service,
+    get_token_verifier,
 )
+from app.core.principal import Principal
 from app.llm.client import LLMClient
 from app.llm.fake import FakeLLMProvider
 from app.llm.retry import RetryPolicy
@@ -224,7 +226,15 @@ def _optimization_service(plan: OptimizationPlan | None = None) -> PlanOptimizat
 
 
 @pytest.fixture
+class _FakeTokenVerifier:
+    """Returns a deterministic Principal for any token — no JWKS needed."""
+
+    def verify(self, token: str) -> Principal:
+        return Principal(user_id="contract-test-user", email="test@nutriplan.local")
+
+
 def client():
+    app.dependency_overrides[get_token_verifier] = lambda: _FakeTokenVerifier()
     app.dependency_overrides[get_recommendation_service] = _recommendation_service
     app.dependency_overrides[get_meal_analysis_service] = _analysis_service
     app.dependency_overrides[get_plan_optimization_service] = lambda: _optimization_service()
