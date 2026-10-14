@@ -1,0 +1,98 @@
+# fastlane/Fastfile
+# Beta distribution pipeline for Android (Play Internal) and iOS (TestFlight).
+# Secrets are read from environment variables set by GitHub Actions.
+
+default_platform(:android)
+
+platform :android do
+  desc "Build debug APK and upload to Play Internal Testing"
+  lane :beta do
+    gradle(
+      task: "assembleDebug",
+      project_dir: "..",
+      print_command: false
+    )
+
+    # Upload to Play Internal Testing track
+    upload_to_play_internal(
+      package_path: "../build/outputs/apk/debug/",
+      track: "internal",
+      release_name: "Beta #{Time.now.strftime("%Y-%m-%d")}",
+      skip_upload_apk_analysis: true,
+      skip_upload_images: true,
+      skip_upload_app_descriptions: true,
+      skip_upload_screenshots: true,
+      json_key_content: ENV["PLAY_STORE_JSON_KEY"],
+      package_name: "com.nutriplan.android"
+    )
+
+    puts "✅ Android beta uploaded to Play Internal Testing (track: internal)"
+  end
+
+  desc "Build debug APK and upload to Firebase App Distribution"
+  lane :firebase_beta do
+    gradle(
+      task: "assembleDebug",
+      project_dir: "..",
+      print_command: false
+    )
+
+    firebase_app_distribution(
+      app: "1:223556219:android:a1b2c3d4e5f6g7h8",
+      groups: "beta-testers",
+      release_notes: "Beta #{Time.now.strftime("%Y-%m-%d")}",
+      android_artifact_type: "APK"
+    )
+
+    puts "✅ Android beta uploaded to Firebase App Distribution"
+  end
+end
+
+platform :ios do
+  desc "Build and upload to TestFlight (requires Xcode workspace)"
+  lane :beta do
+    # NOTE: iOS requires an Xcode workspace. Create one with:
+    #   cd mobile/iosApp && xcodebuild -create-xcworkspace -name NutriPlan
+    build_app(
+      workspace: "../iosApp/NutriPlan.xcworkspace",
+      scheme: "NutriPlan",
+      configuration: "Debug",
+      export_method: "app-store",
+      skip_package_ipa: true,
+      skip_bitcode: false
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      apple_id: ENV["APPLE_ID"],
+      username: ENV["APPLE_USERNAME"],
+      password: ENV["APP_PASSWORD"],
+      skip_metadata: true,
+      skip_screenshots: true,
+      skip_images: true,
+      overwrite_metadata: false,
+      overwrite_screenshots: false
+    )
+
+    puts "✅ iOS beta uploaded to TestFlight"
+  end
+
+  desc "Build and upload to Firebase App Distribution (iOS)"
+  lane :firebase_beta_ios do
+    build_app(
+      workspace: "../iosApp/NutriPlan.xcworkspace",
+      scheme: "NutriPlan",
+      configuration: "Debug",
+      export_method: "ad-hoc"
+    )
+
+    firebase_app_distribution(
+      app: "1:223556219:ios:a1b2c3d4e5f6g7h8",
+      groups: "beta-testers",
+      release_notes: "Beta #{Time.now.strftime("%Y-%m-%d")}",
+      ios_app_build_dir: "../build/outputs/ipa/"
+    )
+
+    puts "✅ iOS beta uploaded to Firebase App Distribution"
+  end
+end
