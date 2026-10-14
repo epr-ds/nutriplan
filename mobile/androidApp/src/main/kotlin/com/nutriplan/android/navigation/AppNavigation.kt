@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.nutriplan.shared.analytics.AnalyticsTracker
 import com.nutriplan.shared.domain.Resource
 import com.nutriplan.shared.navigation.Route
 
@@ -15,6 +16,8 @@ import com.nutriplan.shared.navigation.Route
  * Routes are typed via [Route] objects for compile-time safety.
  * Screen composable functions are passed in as parameters to keep
  * this file focused on navigation wiring.
+ *
+ * HRD-606: Logs screen views and key funnel events to Firebase Analytics.
  */
 @Composable
 fun AppNavigationGraph(
@@ -22,6 +25,7 @@ fun AppNavigationGraph(
     startDestination: Any = Route.Splash,
     onAuthStateChanged: (Boolean) -> Unit = {},
     onDeepLink: (String) -> Unit = {},
+    analyticsTracker: AnalyticsTracker? = null,
     screens: AppNavigationScreens,
 ) {
     NavHost(
@@ -30,6 +34,7 @@ fun AppNavigationGraph(
     ) {
         // Splash screen
         composable<Route.Splash> {
+            analyticsTracker?.logScreenView("splash", "SplashScreen")
             screens.SplashScreen(
                 // The splash screen must not stay in the back stack, or Back would return to it.
                 onNavigate = { route ->
@@ -40,16 +45,23 @@ fun AppNavigationGraph(
 
         // Onboarding
         composable<Route.Onboarding> {
+            analyticsTracker?.logScreenView("onboarding", "OnboardingScreen")
             screens.OnboardingScreen(
-                onComplete = { route -> navigate(navController, route) },
+                onComplete = { route ->
+                    analyticsTracker?.logEvent("onboarding_complete", emptyMap())
+                    navigate(navController, route)
+                },
             )
         }
 
         // Auth
         composable<Route.Auth> {
+            analyticsTracker?.logScreenView("auth", "AuthScreen")
             screens.AuthScreen(
                 // After signing in, Back must not return to the login screen.
                 onLoginSuccess = { route ->
+                    analyticsTracker?.logEvent("login_success", emptyMap())
+                    analyticsTracker?.setUserProperty("auth_status", "authenticated")
                     navController.navigate(route) { popUpTo<Route.Auth> { inclusive = true } }
                 },
             )
@@ -57,6 +69,7 @@ fun AppNavigationGraph(
 
         // Main app
         composable<Route.Main> {
+            analyticsTracker?.logScreenView("main", "MainScreen")
             screens.MainScreen(
                 onNavigate = { route -> navigate(navController, route) },
             )
@@ -64,6 +77,7 @@ fun AppNavigationGraph(
 
         // Meal plan list
         composable<Route.MealPlanList> {
+            analyticsTracker?.logScreenView("meal_plan_list", "MealPlanListScreen")
             screens.MealPlanListScreen(
                 onNavigate = { route -> navigate(navController, route) },
                 onPlanClick = { planId -> navigate(navController, Route.MealPlanDetail(planId)) },
@@ -73,9 +87,13 @@ fun AppNavigationGraph(
         // Create/edit meal plan
         composable<Route.CreateMealPlan> { backStackEntry ->
             val planId = backStackEntry.toRoute<Route.CreateMealPlan>().planId
+            analyticsTracker?.logScreenView("create_meal_plan", "CreateMealPlanScreen")
             screens.CreateMealPlanScreen(
                 planId = planId,
-                onSave = { route -> navigate(navController, route) },
+                onSave = { route ->
+                    analyticsTracker?.logEvent("meal_plan_created", mapOf("plan_id" to (planId ?: "new")))
+                    navigate(navController, route)
+                },
                 onCancel = { navController.popBackStack() },
             )
         }
@@ -83,6 +101,7 @@ fun AppNavigationGraph(
         // Meal plan detail
         composable<Route.MealPlanDetail> { backStackEntry ->
             val planId = backStackEntry.toRoute<Route.MealPlanDetail>().planId
+            analyticsTracker?.logScreenView("meal_plan_detail", "MealPlanDetailScreen")
             screens.MealPlanDetailScreen(
                 planId = planId,
                 onNavigate = { route -> navigate(navController, route) },
@@ -92,6 +111,7 @@ fun AppNavigationGraph(
 
         // Recipe search
         composable<Route.RecipeSearch> {
+            analyticsTracker?.logScreenView("recipe_search", "RecipeSearchScreen")
             screens.RecipeSearchScreen(
                 onNavigate = { route -> navigate(navController, route) },
                 onRecipeClick = { recipeId -> navigate(navController, Route.RecipeDetail(recipeId)) },
@@ -101,6 +121,7 @@ fun AppNavigationGraph(
         // Recipe detail
         composable<Route.RecipeDetail> { backStackEntry ->
             val recipeId = backStackEntry.toRoute<Route.RecipeDetail>().recipeId
+            analyticsTracker?.logScreenView("recipe_detail", "RecipeDetailScreen")
             screens.RecipeDetailScreen(
                 recipeId = recipeId,
                 onBack = { navController.popBackStack() },
@@ -109,6 +130,7 @@ fun AppNavigationGraph(
 
         // AI meal analysis
         composable<Route.AiMealAnalysis> {
+            analyticsTracker?.logScreenView("ai_meal_analysis", "AiMealAnalysisScreen")
             screens.AiMealAnalysisScreen(
                 onNavigate = { route -> navigate(navController, route) },
                 onResult = { /* handle analysis result */ },
@@ -117,6 +139,7 @@ fun AppNavigationGraph(
 
         // AI recommendations
         composable<Route.AiRecommendations> {
+            analyticsTracker?.logScreenView("ai_recommendations", "AiRecommendationsScreen")
             screens.AiRecommendationsScreen(
                 onNavigate = { route -> navigate(navController, route) },
             )
@@ -124,6 +147,7 @@ fun AppNavigationGraph(
 
         // Order list
         composable<Route.OrderList> {
+            analyticsTracker?.logScreenView("order_list", "OrderListScreen")
             screens.OrderListScreen(
                 onNavigate = { route -> navigate(navController, route) },
                 onOrderClick = { orderId -> navigate(navController, Route.OrderDetail(orderId)) },
@@ -133,6 +157,7 @@ fun AppNavigationGraph(
         // Order detail
         composable<Route.OrderDetail> { backStackEntry ->
             val orderId = backStackEntry.toRoute<Route.OrderDetail>().orderId
+            analyticsTracker?.logScreenView("order_detail", "OrderDetailScreen")
             screens.OrderDetailScreen(
                 orderId = orderId,
                 onBack = { navController.popBackStack() },
@@ -141,15 +166,21 @@ fun AppNavigationGraph(
 
         // Checkout
         composable<Route.Checkout> {
+            analyticsTracker?.logScreenView("checkout", "CheckoutScreen")
             screens.CheckoutScreen(
                 onNavigate = { route -> navigate(navController, route) },
-                onComplete = { route -> navigate(navController, route) },
+                onComplete = { route ->
+                    analyticsTracker?.logEvent("checkout_complete", emptyMap())
+                    analyticsTracker?.setUserProperty("activated", "true")
+                    navigate(navController, route)
+                },
                 onCancel = { navController.popBackStack() },
             )
         }
 
         // Notification center
         composable<Route.NotificationCenter> {
+            analyticsTracker?.logScreenView("notification_center", "NotificationCenterScreen")
             screens.NotificationCenterScreen(
                 onNavigate = { route -> navigate(navController, route) },
                 onNotificationClick = { /* handle notification click */ },
@@ -158,6 +189,7 @@ fun AppNavigationGraph(
 
         // Profile
         composable<Route.Profile> {
+            analyticsTracker?.logScreenView("profile", "ProfileScreen")
             screens.ProfileScreen(
                 onNavigate = { route -> navigate(navController, route) },
             )
@@ -165,6 +197,7 @@ fun AppNavigationGraph(
 
         // Edit profile
         composable<Route.EditProfile> {
+            analyticsTracker?.logScreenView("edit_profile", "EditProfileScreen")
             screens.EditProfileScreen(
                 onSave = { route -> navigate(navController, route) },
                 onBack = { navController.popBackStack() },
@@ -173,6 +206,7 @@ fun AppNavigationGraph(
 
         // Dietary preferences
         composable<Route.DietaryPreferences> {
+            analyticsTracker?.logScreenView("dietary_preferences", "DietaryPreferencesScreen")
             screens.DietaryPreferencesScreen(
                 onSave = { route -> navigate(navController, route) },
                 onBack = { navController.popBackStack() },
@@ -182,6 +216,7 @@ fun AppNavigationGraph(
         // Deep link handler
         composable<Route.DeepLinkMeal> { backStackEntry ->
             val mealId = backStackEntry.toRoute<Route.DeepLinkMeal>().mealId
+            analyticsTracker?.logScreenView("deep_link_meal", "DeepLinkMealScreen")
             screens.DeepLinkMealScreen(
                 mealId = mealId,
                 onBack = { navController.popBackStack() },
@@ -190,6 +225,7 @@ fun AppNavigationGraph(
 
         composable<Route.DeepLinkPlan> { backStackEntry ->
             val planId = backStackEntry.toRoute<Route.DeepLinkPlan>().planId
+            analyticsTracker?.logScreenView("deep_link_plan", "DeepLinkPlanScreen")
             screens.DeepLinkPlanScreen(
                 planId = planId,
                 onBack = { navController.popBackStack() },
@@ -198,6 +234,7 @@ fun AppNavigationGraph(
 
         composable<Route.DeepLinkOrder> { backStackEntry ->
             val orderId = backStackEntry.toRoute<Route.DeepLinkOrder>().orderId
+            analyticsTracker?.logScreenView("deep_link_order", "DeepLinkOrderScreen")
             screens.DeepLinkOrderScreen(
                 orderId = orderId,
                 onBack = { navController.popBackStack() },

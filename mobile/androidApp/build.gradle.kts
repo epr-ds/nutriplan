@@ -97,6 +97,9 @@ dependencies {
     // HRD-602: Firebase Crashlytics for crash/ANR monitoring
     implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
     implementation("com.google.firebase:firebase-crashlytics-ktx")
+
+    // HRD-606: Firebase Analytics for beta funnel/retention instrumentation
+    implementation("com.google.firebase:firebase-analytics-ktx")
 }
 
 detekt {
