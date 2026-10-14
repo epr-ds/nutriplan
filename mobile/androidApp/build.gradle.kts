@@ -23,7 +23,9 @@ android {
 
         // HRD-701: Versioning strategy — bump versionCode per release tag.
         // Format: YYYYMMDDNN where NN is build number within the day.
-        val buildDate = System.getenv("BUILD_DATE") ?: java.time.LocalDate.now().toString()
+        val buildDate = System.getenv("BUILD_DATE") ?: java.text.SimpleDateFormat(
+            "yyyy-MM-dd",
+        ).format(java.util.Date())
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
