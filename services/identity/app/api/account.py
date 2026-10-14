@@ -72,14 +72,14 @@ async def delete_current_account(
 
     # 3. Audit log (written to a separate audit table in production).
     logger.info(
-        "Account deleted by user %s; erasure report: identity=%s dietary=%s commerce=%s notification=%s errors=%d",
+        "Account deleted by user %s; erasure report: identity=%s dietary=%s commerce=%s notification=%s errors=%d",  # noqa: E501
         user_uuid,
         report.identity,
         report.dietary,
         report.commerce,
         report.notification,
         len(report.errors),
-    )  # noqa: E501
+    )
 
 
 @router.get(
