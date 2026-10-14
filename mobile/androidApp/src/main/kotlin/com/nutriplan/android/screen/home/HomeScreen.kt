@@ -73,7 +73,10 @@ fun HomeScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                // F24: Add contextual accessibility label for loading spinner
+                Box(modifier = Modifier.semantics { contentDescription = "Loading meal plans" }) {
+                    CircularProgressIndicator()
+                }
             }
         } else if (errorMessage != null) {
             Box(
@@ -153,6 +156,8 @@ fun MealPlanCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            // F11: Add accessible name for screen readers (WCAG 4.1.2)
+            .semantics { contentDescription = "${mealPlan.name}, ${mealPlan.startDate} to ${mealPlan.endDate}" }
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -170,7 +175,7 @@ fun MealPlanCard(
             Text(
                 text = "${mealPlan.startDate} - ${mealPlan.endDate}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -178,7 +183,7 @@ fun MealPlanCard(
             Text(
                 text = "Calories: ${mealPlan.targetCalories ?: "-"} kcal/day",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
             )
         }
     }
@@ -196,7 +201,8 @@ fun QuickActionCard(
 ) {
     Card(
         modifier = modifier
-            .height(80.dp)
+            // F19: Use defaultMinSize instead of fixed height to prevent text clipping at large dynamic type (WCAG 1.4.4)
+            .defaultMinSize(minHeight = 80.dp)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium
     ) {

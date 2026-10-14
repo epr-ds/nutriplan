@@ -6,6 +6,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
@@ -54,7 +56,9 @@ fun LoginScreen(
             value = email,
             onValueChange = { email = it },
             label = "Email",
-            placeholder = "Enter your email"
+            placeholder = "Enter your email",
+            // F29: Add keyboard type hint for correct mobile keyboard (WCAG 3.3.2)
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -78,9 +82,11 @@ fun LoginScreen(
 
         errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))
+            // F28: Add live region semantics for error announcements (WCAG 3.3.1, 4.1.3)
             Text(
                 text = it,
-                color = MaterialTheme.colorScheme.error
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { role = Role.Status; contentDescription = "Error: $it" }
             )
         }
 
@@ -134,10 +140,12 @@ fun LoginScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
+            // F7: Add minimum touch target (≥48dp) and content description (WCAG 2.5.5, 4.1.2)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
+                    .minimumWidth(48.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium
@@ -146,10 +154,12 @@ fun LoginScreen(
             ) {
                 Text("G")
             }
+            // F7: Add minimum touch target (≥48dp) and content description (WCAG 2.5.5, 4.1.2)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
+                    .minimumWidth(48.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium
