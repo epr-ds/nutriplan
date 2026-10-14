@@ -35,7 +35,6 @@ from app.api.deps import (
     get_recommendation_service,
     get_token_verifier,
 )
-from app.core.principal import Principal
 from app.llm.client import LLMClient
 from app.llm.fake import FakeLLMProvider
 from app.llm.retry import RetryPolicy
@@ -226,18 +225,11 @@ def _optimization_service(plan: OptimizationPlan | None = None) -> PlanOptimizat
 
 
 @pytest.fixture
-class _FakeTokenVerifier:
-    """Returns a deterministic Principal for any token — no JWKS needed."""
-
-    def verify(self, token: str) -> Principal:
-        return Principal(user_id="contract-test-user", email="test@nutriplan.local")
-
-
-def _fake_token_verifier() -> _FakeTokenVerifier:
-    return _FakeTokenVerifier()
-
 
 def client():
+    # Import from conftest to avoid pytest picking up _FakeTokenVerifier as a fixture candidate.
+    from tests.conftest import _fake_token_verifier  # noqa: PLC0415
+
     app.dependency_overrides[get_token_verifier] = _fake_token_verifier
     app.dependency_overrides[get_recommendation_service] = _recommendation_service
     app.dependency_overrides[get_meal_analysis_service] = _analysis_service

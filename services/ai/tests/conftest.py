@@ -12,13 +12,15 @@ os.environ.setdefault("AI_LLM_PROVIDER", "fake")
 os.environ.setdefault("AI_OPENAI_API_KEY", "test-key")
 
 
-@pytest.fixture(autouse=True, scope="session")
-def _mock_jwks_url():
-    """Prevent PyJWKClient from failing on empty JWKS URL in tests.
+class _FakeTokenVerifier:
+    """Returns a deterministic Principal for any token — no JWKS needed."""
 
-    The AI service config is a module-level singleton that reads env vars at import time.
-    We set ``AI_IDENTITY_JWKS_URL`` here so the Settings instance (created when app.core.config
-    is imported) picks up a valid URL instead of the empty default.
-    """
-    with patch.dict(os.environ, {"AI_IDENTITY_JWKS_URL": "http://localhost/.well-known/jwks.json"}):
-        yield
+    def verify(self, token: str) -> object:  # type: ignore[no-untyped-def]
+        from app.core.principal import Principal
+
+        return Principal(user_id="contract-test-user", email="test@nutriplan.local")
+
+
+def _fake_token_verifier() -> _FakeTokenVerifier:
+    """Factory for the fake token verifier."""
+    return _FakeTokenVerifier()
