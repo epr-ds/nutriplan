@@ -233,8 +233,12 @@ class _FakeTokenVerifier:
         return Principal(user_id="contract-test-user", email="test@nutriplan.local")
 
 
+def _fake_token_verifier() -> _FakeTokenVerifier:
+    return _FakeTokenVerifier()
+
+
 def client():
-    app.dependency_overrides[get_token_verifier] = lambda: _FakeTokenVerifier()
+    app.dependency_overrides[get_token_verifier] = _fake_token_verifier
     app.dependency_overrides[get_recommendation_service] = _recommendation_service
     app.dependency_overrides[get_meal_analysis_service] = _analysis_service
     app.dependency_overrides[get_plan_optimization_service] = lambda: _optimization_service()
