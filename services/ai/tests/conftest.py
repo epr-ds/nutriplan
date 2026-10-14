@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
-
-import pytest
 
 # Ensure deterministic settings before any app module is imported.
 os.environ.setdefault("AI_LLM_PROVIDER", "fake")
