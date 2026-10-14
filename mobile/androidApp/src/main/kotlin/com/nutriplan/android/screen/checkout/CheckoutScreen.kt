@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
+import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.android.di.koinInject
 
@@ -41,6 +42,14 @@ fun CheckoutScreen(
         // TODO: Load meal plan and cart items
         // mealPlan = commerceRepository.getMealPlan(planId)
         // cartItems = commerceRepository.getCartItems()
+        isLoading = false
+        // TODO: Set errorMessage on failure
+    }
+
+    val retryAction = {
+        isLoading = true
+        errorMessage = null
+        // TODO: Retry loading checkout data
         isLoading = false
     }
 
@@ -71,8 +80,24 @@ fun CheckoutScreen(
                     CircularProgressIndicator()
                 }
             }
+        } else if (errorMessage != null) {
+                ErrorState(
+                    message = errorMessage!!,
+                    onRetry = retryAction,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
+        } else if (cartItems.isEmpty()) {
+                com.nutriplan.android.component.EmptyState(
+                    title = "Your cart is empty",
+                    description = "Add recipes from a meal plan to checkout.",
+                    actionLabel = "Browse Meal Plans",
+                    onAction = onNavigateBack,
+                    modifier = Modifier.padding(paddingValues)
+                )
         } else {
-            LazyColumn(
+                LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),

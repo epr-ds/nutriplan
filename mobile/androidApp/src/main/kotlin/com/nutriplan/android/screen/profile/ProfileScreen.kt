@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.component.ErrorState
 
 /**
  * Profile screen displaying user information and settings.
@@ -35,10 +36,19 @@ fun ProfileScreen(
     
     var user by remember { mutableStateOf<com.nutriplan.shared.data.model.UserProfile?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         // TODO: Load user profile
         // user = authRepository.getCurrentUser()
+        isLoading = false
+        // TODO: Set errorMessage on failure
+    }
+
+    val retryAction = {
+        isLoading = true
+        errorMessage = null
+        // TODO: Retry loading profile
         isLoading = false
     }
 
@@ -69,8 +79,16 @@ fun ProfileScreen(
                     CircularProgressIndicator()
                 }
             }
+        } else if (errorMessage != null) {
+                ErrorState(
+                    message = errorMessage!!,
+                    onRetry = retryAction,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
         } else {
-            LazyColumn(
+                LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
