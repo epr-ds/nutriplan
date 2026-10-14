@@ -225,7 +225,6 @@ def _optimization_service(plan: OptimizationPlan | None = None) -> PlanOptimizat
 
 
 @pytest.fixture
-
 def client():
     # Import from conftest to avoid pytest picking up _FakeTokenVerifier as a fixture candidate.
     from tests.conftest import _fake_token_verifier  # noqa: PLC0415
