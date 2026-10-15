@@ -402,3 +402,65 @@ FirebaseCrashlytics.getInstance().setCrashLoggingEnabled(true)
 - [ ] iOS analytics implementation (FirebaseAnalytics pod)
 - [ ] Firebase console funnels + retention dashboards configured
 - [ ] CMP integration for production consent management
+
+---
+
+## HRD-305: Accessibility Regression Checks in CI/E2E
+
+### Automated Checks
+
+#### Compose UI Accessibility Checks
+- **Location**: `mobile/androidApp/src/androidTest/kotlin/com/nutriplan/android/a11y/AccessibilityChecksTest.kt`
+- **Run**: `./gradlew :androidApp:lintDebug`
+- **CI Job**: `android-a11y` in `.github/workflows/mobile.yml`
+- **Critical checks**:
+  1. Missing content description on interactive elements
+  2. Touch target < 48x48dp (WCAG 2.5.5)
+  3. Unreachable semantics node (orphaned element)
+  4. Empty text without alternative
+
+#### Detekt A11y Rules
+- **Location**: `mobile/config/detekt/detekt.yml`
+- **Run**: `./gradlew detekt`
+- **CI Job**: `android` in `.github/workflows/mobile.yml`
+
+### Manual Testing Checklist
+
+- **Location**: `docs/ACCESSIBILITY-CHECKLIST.md`
+- **Covers**:
+  - TalkBack (screen reader) testing on all screens
+  - Large font / dynamic type testing
+  - Color contrast verification (WCAG AA)
+  - Touch target size verification
+  - Keyboard navigation testing
+  - Gesture navigation testing
+
+### CI Integration
+
+```yaml
+android-a11y:
+  name: Android accessibility checks
+  runs-on: ubuntu-latest
+  defaults:
+    run:
+      working-directory: mobile
+  steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: gradle/actions/setup-gradle@v6
+    - name: Run Compose UI a11y checks
+      run: ./gradlew :androidApp:lintDebug --stacktrace
+```
+
+### Setup Checklist
+
+- [x] Compose UI test dependency added to `androidApp/build.gradle.kts`
+- [x] `AccessibilityChecksTest.kt` created with critical a11y check definitions
+- [x] `android-a11y` CI job added to `.github/workflows/mobile.yml`
+- [x] `docs/ACCESSIBILITY-CHECKLIST.md` created with manual testing steps
+- [x] OBSERVABILITY.md updated with HRD-305 documentation
+- [ ] Lint a11y rules tuned (reduce false positives)
+- [ ] Compose UI tests added for each screen (requires Koin test module)
