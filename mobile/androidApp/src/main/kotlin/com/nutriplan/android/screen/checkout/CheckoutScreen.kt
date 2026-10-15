@@ -209,7 +209,7 @@ fun CheckoutScreen(
                     Text(
                         text = "By placing your order, you agree to our Terms and Conditions.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textDecoration = TextDecoration.Underline
                     )
                 }
@@ -241,7 +241,7 @@ fun CartItemRow(
             Text(
                 text = "${cartItem.quantity}x $${cartItem.unitPrice}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // F6: Raised from 0.7f to 0.64f for WCAG AA compliance in dark mode
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
             )
         }
         
@@ -272,14 +272,14 @@ fun PriceRow(
             text = label,
             style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
             fontWeight = if (isTotal) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-            color = if (isTotal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // F6: Raised from 0.7f to 0.64f for WCAG AA compliance in dark mode
+            color = if (isTotal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
         )
         
         Text(
             text = price,
             style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
             fontWeight = if (isTotal) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-            color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // F6: Raised from 0.7f to 0.64f for WCAG AA compliance in dark mode
+            color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

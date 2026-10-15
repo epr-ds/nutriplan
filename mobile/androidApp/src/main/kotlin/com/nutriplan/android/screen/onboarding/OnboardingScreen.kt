@@ -155,7 +155,7 @@ private fun WelcomeContent() {
             text = "Your personal nutrition assistant. Get personalized meal plans, track your progress, and eat healthier.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -198,7 +198,7 @@ private fun MealPlansContent() {
             text = "Get meal plans tailored to your dietary preferences, health goals, and taste.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -241,7 +241,7 @@ private fun TrackingContent() {
             text = "Monitor your nutrition intake, track your meals, and achieve your health goals.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

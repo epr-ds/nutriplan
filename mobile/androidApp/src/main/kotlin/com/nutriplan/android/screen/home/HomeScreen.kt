@@ -186,7 +186,7 @@ fun MealPlanCard(
             Text(
                 text = "${mealPlan.startDate} - ${mealPlan.endDate}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -194,7 +194,7 @@ fun MealPlanCard(
             Text(
                 text = "Calories: ${mealPlan.targetCalories ?: "-"} kcal/day",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f) // WCAG AA: ≥0.54 for normal text (F2)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

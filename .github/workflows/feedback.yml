@@ -1,0 +1,71 @@
+name: Beta Feedback Intake
+
+on:
+  repository_dispatch:
+    types: [beta_feedback]
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Feedback category'
+        required: true
+        default: 'Bug'
+        type: choice
+        options:
+          - Bug
+          - Feature Request
+          - Performance
+          - UI/UX
+          - Other
+      title:
+        description: 'Issue title'
+        required: true
+      body:
+        description: 'Feedback details'
+        required: false
+        default: ''
+
+permissions:
+  issues: write
+
+jobs:
+  intake-feedback:
+    name: Create feedback issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create GitHub Issue from feedback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const category = context.payload.inputs?.category || 'Bug';
+            const title = context.payload.inputs?.title || 'Beta Feedback';
+            const body = context.payload.inputs?.body || 'Feedback submitted via beta channel.';
+
+            // Add labels based on category
+            const labels = ['beta-feedback', category.toLowerCase().replace(' ', '-')];
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Beta] ${title}`,
+              body: `---\n**Source:** Beta Feedback Channel\n**Category:** ${category}\n**Submitted:** ${new Date().toISOString()}\n---\n\n${body}`,
+              labels: labels
+            });
+
+      - name: Notify beta channel (Slack/Discord)
+        if: always()
+        env:
+          WEBHOOK_URL: ${{ secrets.BETA_FEEDBACK_WEBHOOK }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "No webhook configured — feedback issue created but no notification sent."
+            exit 0
+          fi
+
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "📋 New beta feedback received!\nCategory: '${{ github.event.inputs.category }}'\nTitle: \'${{ github.event.inputs.title }}\'",
+              "username": "Beta Feedback Bot"
+            }'
