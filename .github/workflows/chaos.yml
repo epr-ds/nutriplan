@@ -86,8 +86,14 @@ jobs:
 
       - name: Run all chaos tests
         run: |
-          # Add repo root for 'services' package, plus each service dir for intra-service imports
-          PYTHONPATH="$(pwd):$(python -c "import os; print(':'.join(f'services/{s}' for s in ['ai','commerce','notification','dietary','identity'] if os.path.isdir(f'services/{s}')))")" pytest chaos-tests/ -v --tb=short
+          # Add repo root for 'services' package, each service dir for intra-service imports,
+          # and each service's app dir so 'from app.domain...' resolves when repo root is on path
+          PYTHONPATH="$(pwd):$(python -c "
+import os
+parts = [f'services/{s}' for s in ['ai','commerce','notification','dietary','identity'] if os.path.isdir(f'services/{s}')]
+parts += [f'services/{s}/app' for s in ['ai','commerce','notification','dietary','identity'] if os.path.isdir(f'services/{s}/app')]
+print(':'.join(parts))
+")" pytest chaos-tests/ -v --tb=short
 
   chaos-summary:
     name: Chaos test summary
