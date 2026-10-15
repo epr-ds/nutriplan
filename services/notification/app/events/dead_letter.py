@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol, runtime_checkable
 
-from app.events.consumer import DeliveredEvent
+from .consumer import DeliveredEvent
 
 logger = logging.getLogger(__name__)
 
