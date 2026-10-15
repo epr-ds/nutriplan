@@ -142,3 +142,56 @@ fun EmptyState(
         }
     }
 }
+
+/**
+ * Error state component for screens with a recoverable error.
+ *
+ * Provides a consistent error display with a retry action across all screens.
+ */
+@Composable
+fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    actionLabel: String = "Retry"
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "⚠️",
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Something went wrong",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        TextButton(
+            onClick = onRetry,
+            modifier = Modifier.semantics { contentDescription = "$actionLabel — tap to retry" }
+        ) {
+            Text(actionLabel)
+        }
+    }
+}

@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.EmptyState
+import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.android.di.koinInject
 
@@ -37,6 +38,15 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         // TODO: Load meal plans from repository
+        // mealPlans = dietaryRepository.getMealPlans()
+        isLoading = false
+        // TODO: Set errorMessage on failure
+    }
+
+    val retryAction = {
+        isLoading = true
+        errorMessage = null
+        // TODO: Retry loading meal plans
         // mealPlans = dietaryRepository.getMealPlans()
         isLoading = false
     }
@@ -81,14 +91,13 @@ fun HomeScreen(
                 }
             }
         } else if (errorMessage != null) {
-            Box(
+            ErrorState(
+                message = errorMessage!!,
+                onRetry = retryAction,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Error: $errorMessage")
-            }
+                    .padding(paddingValues)
+            )
         } else if (mealPlans.isEmpty()) {
             EmptyState(
                 title = "No Meal Plans",
