@@ -100,6 +100,11 @@ dependencies {
 
     // HRD-606: Firebase Analytics for beta funnel/retention instrumentation
     implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // HRD-305: Compose UI testing for accessibility regression checks
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 detekt {

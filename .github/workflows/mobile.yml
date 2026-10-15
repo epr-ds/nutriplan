@@ -32,6 +32,26 @@ jobs:
       - name: Static analysis (detekt)
         run: ./gradlew detekt --stacktrace
 
+  # HRD-305: Accessibility regression checks
+  android-a11y:
+    name: Android accessibility checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Run Compose UI a11y checks
+        run: ./gradlew :androidApp:lintDebug --stacktrace
+        env:
+          # Lint includes AccessibilityCheck rules (ContentDescriptionCheck, ViewConfigurationCheck)
+          ANDROID_LINT_COMPLETE: '1'
+
   android-release:
     name: Android release build (Play App Signing)
     runs-on: ubuntu-latest
