@@ -43,7 +43,8 @@ fun NutriPlanButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             // F5: Raised from 0.38f to 0.48f for WCAG AA non-text contrast ≥3:1
-            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)
+            // Updated to 0.6 to meet 3:1 on light backgrounds (0.48 = ~2.6:1 fails)
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         )
     ) {
         if (isLoading) {
@@ -119,7 +120,7 @@ fun EmptyState(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.54f)
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -127,7 +128,7 @@ fun EmptyState(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         
@@ -181,7 +182,7 @@ fun ErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         
