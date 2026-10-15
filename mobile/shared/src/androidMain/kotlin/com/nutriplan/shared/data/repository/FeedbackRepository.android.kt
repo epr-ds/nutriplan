@@ -3,6 +3,7 @@ package com.nutriplan.shared.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import kotlin.time.Instant
+import kotlinx.datetime.Clock
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -57,7 +58,7 @@ class FeedbackRepositoryAndroid(
         apiClient?.submitFeedback(unsynced)?.onSuccess {
             // Mark as synced
             for (submission in unsynced) {
-                val updated = submission.copy(synced = true, submittedAt = Instant.now())
+                val updated = submission.copy(synced = true, submittedAt = Clock.System.now())
                 save(updated)
             }
         }

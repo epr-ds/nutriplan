@@ -1,6 +1,7 @@
 package com.nutriplan.shared.data.repository
 
 import kotlin.time.Instant
+import kotlinx.datetime.Clock
 
 /**
  * Beta feedback submission model.
@@ -34,7 +35,7 @@ data class FeedbackSubmission(
             deviceModel = deviceModel,
             osVersion = osVersion,
             userEmail = userEmail,
-            submittedAt = Instant.now(),
+            submittedAt = Clock.System.now(),
             synced = false
         )
     }
