@@ -48,10 +48,10 @@ jobs:
 
       - name: Run chaos tests for ${{ matrix.service }}
         run: |
-          pytest chaos-tests/ \
+          PYTHONPATH=services pytest chaos-tests/ \
             -v \
             --tb=short \
-            --coast-service=${{ matrix.service }} \
+            -k "${{ matrix.service }}" \
             2>&1 || true
         working-directory: .
 
@@ -85,7 +85,7 @@ jobs:
 
       - name: Run all chaos tests
         run: |
-          pytest chaos-tests/ -v --tb=short
+          PYTHONPATH=services pytest chaos-tests/ -v --tb=short
 
   chaos-summary:
     name: Chaos test summary
