@@ -11,7 +11,6 @@ coroutinesTest = "1.11.0"
 ktorMock = "2.3.12"
 koinTest = "3.5.6"
 sqldelight = "2.4.1"
-kotlinxDatetime = "0.7.0"
 
 androidxCoreKtx = "1.19.1"
 androidxActivityCompose = "1.13.0"
@@ -58,9 +57,6 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktorMoc
 
 # Coroutines test
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
-
-# Kotlinx datetime
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
 # SQLDelight (local database)
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
