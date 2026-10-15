@@ -464,3 +464,66 @@ android-a11y:
 - [x] OBSERVABILITY.md updated with HRD-305 documentation
 - [ ] Lint a11y rules tuned (reduce false positives)
 - [ ] Compose UI tests added for each screen (requires Koin test module)
+
+---
+
+## HRD-1003: Store Creative — Screenshots, Preview Video, Feature Graphic
+
+### Specification Document
+
+- **Location**: `docs/STORE-CREATIVE-SPEC.md`
+- **Covers**:
+  - Google Play screenshot specs (phone, tablet, foldable, desktop)
+  - App Store screenshot specs (iPhone, iPad)
+  - Screenshot content plan (5 phone + 2 tablet per language)
+  - Preview video specs (30s, 1920×1080, 16:9)
+  - Feature graphic specs (1024×500, safe area 830×500)
+  - App icon specs (512×512, solid background)
+  - Store listing copy (short + full description, en/es)
+  - Pre-submission validation checklist
+
+### CI Validation Script
+
+- **Location**: `scripts/validate-store-creative.py`
+- **Validates**:
+  - Screenshot dimensions against store specs (±5% tolerance)
+  - Feature graphic resolution and safe area
+  - App icon resolution and transparency
+- **Usage**: `python scripts/validate-store-creative.py --assets-dir store-creative/ --store google_play`
+
+### Asset Directory Structure (expected)
+
+```
+store-creative/
+├── screenshots/
+│   ├── en/
+│   │   ├── phone/
+│   │   │   ├── screenshot-1.png  (1600×3200)
+│   │   │   ├── screenshot-2.png
+│   │   │   ├── screenshot-3.png
+│   │   │   ├── screenshot-4.png
+│   │   │   └── screenshot-5.png
+│   │   └── tablet/
+│   │       ├── screenshot-1.png  (1920×1200)
+│   │       └── screenshot-2.png
+│   └── es/
+│       └── ... (same structure)
+├── preview-video.mp4  (1920×1080, ≤30s)
+├── feature-graphic.png  (1024×500)
+└── icon.png  (512×512, solid background)
+```
+
+### Setup Checklist
+
+- [x] `docs/STORE-CREATIVE-SPEC.md` created with store specs and content plan
+- [x] `scripts/validate-store-creative.py` created for CI validation
+- [ ] Screenshots designed and captured (en + es)
+- [ ] Preview video produced
+- [ ] Feature graphic designed
+- [ ] App icon finalized
+- [ ] Store listing copy written (en + es)
+- [ ] Legal review of store listing copy
+- [ ] Design review of store creative
+- [ ] Assets validated with `validate-store-creative.py`
+- [ ] Assets submitted to Google Play Console
+- [ ] Assets submitted to App Store Connect
