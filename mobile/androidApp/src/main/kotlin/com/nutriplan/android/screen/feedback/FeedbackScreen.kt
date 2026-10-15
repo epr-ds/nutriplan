@@ -29,7 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.semantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -111,13 +111,13 @@ fun FeedbackScreen(
 
             // Submit button
             com.nutriplan.android.component.NutriPlanButton(
-                text = "Submit Feedback",
                 onClick = {
                     if (description.isNotBlank()) {
                         onSubmitFeedback(category, description, stepsToReproduce)
                     }
                 },
-                enabled = description.isNotBlank()
+                isEnabled = description.isNotBlank(),
+                content = { Text("Submit Feedback") }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -148,7 +148,7 @@ private fun FeedbackCategorySelector(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier
                         .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
-                        .align(Alignment.CenterVertically)
+                        .align(Alignment.CenterHorizontally)
                 )
             }
         }
