@@ -1,6 +1,6 @@
 package com.nutriplan.shared.data.repository
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Beta feedback submission model.

@@ -2,7 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.json.JSONArray
 import org.json.JSONObject
 
