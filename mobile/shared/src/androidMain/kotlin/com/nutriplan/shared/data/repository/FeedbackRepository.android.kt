@@ -34,8 +34,8 @@ class FeedbackRepositoryAndroid(
         // Update or add the submission
         var found = false
         for (i in 0 until submissions.length()) {
-            if (substitutions.getJSONObject(i).optString("id") == id) {
-                substitutions.put(i, toJSONObject(id, submission))
+            if (submissions.getJSONObject(i).optString("id") == id) {
+                submissions.put(i, toJSONObject(id, submission))
                 found = true
                 break
             }
@@ -43,7 +43,7 @@ class FeedbackRepositoryAndroid(
         
         // Add new if not found
         if (!found) {
-            substitutions.put(toJSONObject(id, submission))
+            submissions.put(toJSONObject(id, submission))
         }
         
         prefs.edit().putString(KEY_SUBMISSIONS, submissions.toString()).apply()
