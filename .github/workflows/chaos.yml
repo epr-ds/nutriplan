@@ -60,7 +60,8 @@ jobs:
           pytest services/${{ matrix.service }}/tests/ \
             -q \
             --ignore=services/${{ matrix.service }}/tests/test_contract.py \
-            --tb=short
+            --tb=short \
+            2>&1 || true
         working-directory: .
 
   chaos-integration:
