@@ -13,16 +13,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.nutriplan.android.ui.theme.NutriPlanTheme
-import com.nutriplan.android.di.koinInject
+import coil.compose.AsyncImage
 import com.nutriplan.android.component.ErrorState
+import com.nutriplan.android.di.koinInject
+import com.nutriplan.shared.profile.ProfileViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Profile screen displaying user information and settings.
+ * Profile screen displaying the signed-in user's information and settings (IDN-606).
+ *
+ * Reads the shared [ProfileViewModel] so an edit made on the edit/preferences screens is reflected
+ * here immediately.
  */
 @Composable
 fun ProfileScreen(
@@ -32,24 +38,12 @@ fun ProfileScreen(
     onNavigateToNotificationSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val authRepository = koinInject<com.nutriplan.shared.data.repository.AuthRepository>()
-    
-    var user by remember { mutableStateOf<com.nutriplan.shared.data.model.UserProfile?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val viewModel = koinInject<ProfileViewModel>()
+    val state by viewModel.state.collectAsState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        // TODO: Load user profile
-        // user = authRepository.getCurrentUser()
-        isLoading = false
-        // TODO: Set errorMessage on failure
-    }
-
-    val retryAction = {
-        isLoading = true
-        errorMessage = null
-        // TODO: Retry loading profile
-        isLoading = false
+        if (!state.hasProfile) viewModel.load()
     }
 
     Scaffold(
@@ -67,148 +61,172 @@ fun ProfileScreen(
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                // F24: Add contextual accessibility label for loading spinner
-                Box(modifier = Modifier.semantics { contentDescription = "Loading profile" }) {
-                    CircularProgressIndicator()
+        when {
+            state.isLoading && !state.hasProfile -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // F24: Add contextual accessibility label for loading spinner
+                    Box(modifier = Modifier.semantics { contentDescription = "Loading profile" }) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
-        } else if (errorMessage != null) {
+
+            state.loadError != null && !state.hasProfile -> {
                 ErrorState(
-                    message = errorMessage!!,
-                    onRetry = retryAction,
+                    message = state.loadError.orEmpty(),
+                    onRetry = { scope.launch { viewModel.load() } },
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                 )
-        } else {
+            }
+
+            else -> {
                 LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // User profile card
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // User profile card
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(16.dp)
                             ) {
-                                // Avatar (decorative placeholder)
-                                Box(
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                            MaterialTheme.shapes.large
-                                        ),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(32.dp)
-                                    )
+                                    ProfileAvatar(avatarUrl = state.profile?.avatarUrl)
+
+                                    Column {
+                                        Text(
+                                            text = state.profile?.name ?: "User",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = state.profile?.email ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
-                                
-                                Column {
-                                    Text(
-                                        text = user?.name ?: "User",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    
-                                    Text(
-                                        text = user?.email ?: "user@example.com",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Divider()
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Stats
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceAround,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    StatItem(label = "Meal Plans", value = "5")
+                                    StatItem(label = "Orders", value = "12")
+                                    StatItem(label = "Streak", value = "7d")
                                 }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Divider()
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Stats
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceAround,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                StatItem(label = "Meal Plans", value = "5")
-                                StatItem(label = "Orders", value = "12")
-                                StatItem(label = "Streak", value = "7d")
                             }
                         }
                     }
-                }
-                
-                // Menu items
-                item {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                
-                val menuItems = listOf(
-                    MenuItem("Edit Profile", Icons.Default.Person, onNavigateToEditProfile),
-                    MenuItem("Dietary Preferences", Icons.Default.Restaurant, onNavigateToDietaryPreferences),
-                    MenuItem("Order History", Icons.Default.ShoppingBag, onNavigateToOrderHistory),
-                    MenuItem("Notifications", Icons.Default.Notifications, onNavigateToNotificationSettings)
-                )
-                
-                items(menuItems, key = { it.label }) { item ->
-                    MenuItemCard(item = item)
-                }
-                
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    // Logout button
-                    Button(
-                        onClick = onLogout,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
+
+                    // Menu items
+                    item {
+                        Text(
+                            text = "Settings",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    ) {
-                        // F25: Decorative icon — mark as non-accessible; button text provides meaning
-                        Icon(
-                            Icons.Default.Logout,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Logout")
                     }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
+
+                    val menuItems = listOf(
+                        MenuItem("Edit Profile", Icons.Default.Person, onNavigateToEditProfile),
+                        MenuItem("Dietary Preferences", Icons.Default.Restaurant, onNavigateToDietaryPreferences),
+                        MenuItem("Order History", Icons.Default.ShoppingBag, onNavigateToOrderHistory),
+                        MenuItem("Notifications", Icons.Default.Notifications, onNavigateToNotificationSettings)
+                    )
+
+                    items(menuItems, key = { it.label }) { item ->
+                        MenuItemCard(item = item)
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Logout button
+                        Button(
+                            onClick = onLogout,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            // F25: Decorative icon — mark as non-accessible; button text provides meaning
+                            Icon(
+                                Icons.Default.Logout,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Logout")
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Shows the remote avatar when one is set, falling back to a person icon placeholder.
+ */
+@Composable
+private fun ProfileAvatar(avatarUrl: String?) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .background(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                MaterialTheme.shapes.large
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (avatarUrl.isNullOrBlank()) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+        } else {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = "Profile photo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.large)
+            )
         }
     }
 }
@@ -280,7 +298,7 @@ private fun MenuItemCard(item: MenuItem) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             // F8: Decorative chevron — mark as non-accessible; parent Card provides accessible name
             Icon(
                 Icons.Default.ChevronRight,

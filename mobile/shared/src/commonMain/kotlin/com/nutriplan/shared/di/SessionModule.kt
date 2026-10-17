@@ -8,6 +8,7 @@ import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
 import com.nutriplan.shared.onboarding.OnboardingDraftStorage
 import com.nutriplan.shared.onboarding.OnboardingViewModel
+import com.nutriplan.shared.profile.ProfileViewModel
 import com.nutriplan.shared.session.CompleteOnboarding
 import com.nutriplan.shared.session.DefaultSessionManager
 import com.nutriplan.shared.session.Login
@@ -44,6 +45,8 @@ val sessionModule = module {
     factory { RegisterViewModel(register = get()) }
     // A fresh OAuth flow per screen; the token provider is supplied by the app modules.
     factory { OAuthViewModel(oauthLogin = get(), tokenProvider = get<OAuthTokenProvider>()) }
+    // One shared profile state so an edit reflects immediately on the profile screen.
+    single { ProfileViewModel(identityRepository = get(), sessionManager = get()) }
     single {
         CompleteOnboarding(
             identityRepository = get<IdentityRepository>(),

@@ -1,6 +1,7 @@
 package com.nutriplan.shared.onboarding
 
 import com.nutriplan.shared.data.model.DietaryMacroTargets
+import com.nutriplan.shared.data.model.DietaryPreferences
 import com.nutriplan.shared.data.model.UpdateDietaryPreferencesRequest
 import kotlinx.serialization.Serializable
 
@@ -47,6 +48,19 @@ data class OnboardingAnswers(
         cuisinePreferences = cuisinePreferences.ifEmpty { null },
         appetiteSatisfactionLevel = appetiteSatisfactionLevel,
     )
+
+    companion object {
+        /** Seed the editor from an existing profile's preferences (used when editing later). */
+        fun from(preferences: DietaryPreferences?): OnboardingAnswers = OnboardingAnswers(
+            dietType = preferences?.dietType,
+            cuisinePreferences = preferences?.cuisinePreferences.orEmpty(),
+            allergies = preferences?.allergies.orEmpty(),
+            excludedIngredients = preferences?.excludedIngredients.orEmpty(),
+            dailyCalorieTarget = preferences?.dailyCalorieTarget,
+            macroTargets = preferences?.macroTargets,
+            appetiteSatisfactionLevel = preferences?.appetiteSatisfactionLevel,
+        )
+    }
 }
 
 /** The persisted draft: where the user was and what they had entered. */
