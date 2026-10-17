@@ -15,8 +15,8 @@ class TestAIProviderFailover:
 
     def test_primary_provider_fails(self) -> None:
         """When the primary LLM provider fails, the error is raised."""
-        from services.ai.app.llm.factory import build_client
-        from services.ai.app.llm.provider import LLMProvider
+        from app.llm.factory import build_client
+        from app.llm.provider import LLMProvider
 
         with patch("services.ai.app.llm.factory.os.environ") as mock_env:
             mock_env.get.side_effect = lambda key, default=None: {
@@ -68,7 +68,7 @@ class TestAIChaosScenario:
 
     def test_llm_timeout_with_retry(self) -> None:
         """LLM timeouts are retried with exponential backoff."""
-        from services.ai.app.llm.retry import RetryPolicy, compute_backoff
+        from app.llm.retry import RetryPolicy, compute_backoff
 
         policy = RetryPolicy(max_retries=3, base_delay=0.5, max_delay=8.0)
 
