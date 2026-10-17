@@ -305,7 +305,10 @@ class MainNavigationScreens(
         onSave: (Any) -> Unit,
         onBack: () -> Unit,
     ) {
-        EditProfileScreenContent(onSave, onBack)
+        com.nutriplan.android.screen.profile.EditProfileScreen(
+            onDone = { navController.popBackStack() },
+            onBack = onBack,
+        )
     }
 
     @Composable
@@ -313,7 +316,10 @@ class MainNavigationScreens(
         onSave: (Any) -> Unit,
         onBack: () -> Unit,
     ) {
-        DietaryPreferencesScreenContent(onSave, onBack)
+        com.nutriplan.android.screen.profile.DietaryPreferencesScreen(
+            onDone = { navController.popBackStack() },
+            onBack = onBack,
+        )
     }
 
     @Composable
@@ -527,32 +533,6 @@ private fun ProfileScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Profile", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun EditProfileScreenContent(
-    onSave: (Any) -> Unit,
-    onBack: () -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Edit Profile", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun DietaryPreferencesScreenContent(
-    onSave: (Any) -> Unit,
-    onBack: () -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Dietary Preferences", style = MaterialTheme.typography.headlineLarge)
     }
 }
 

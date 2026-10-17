@@ -104,10 +104,12 @@ fun OnboardingWizardScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Box(modifier = Modifier.weight(1f)) {
-            when (state.step) {
-                OnboardingStep.DIET -> DietStep(state.answers, viewModel::updateAnswers)
-                OnboardingStep.ALLERGIES -> AllergiesStep(state.answers, viewModel::updateAnswers)
-                OnboardingStep.TARGETS -> TargetsStep(state.answers, viewModel::updateAnswers)
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                when (state.step) {
+                    OnboardingStep.DIET -> DietStep(state.answers, viewModel::updateAnswers)
+                    OnboardingStep.ALLERGIES -> AllergiesStep(state.answers, viewModel::updateAnswers)
+                    OnboardingStep.TARGETS -> TargetsStep(state.answers, viewModel::updateAnswers)
+                }
             }
         }
 
@@ -150,8 +152,8 @@ fun OnboardingWizardScreen(
 }
 
 @Composable
-private fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
+    Column {
         Text("What's your diet?", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -184,8 +186,8 @@ private fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -
 }
 
 @Composable
-private fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+internal fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
+    Column {
         Text("Any allergies?", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         OptionChips(
@@ -208,11 +210,11 @@ private fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnswe
 }
 
 @Composable
-private fun TargetsStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
+internal fun TargetsStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
     val calories = answers.dailyCalorieTarget ?: MacroCalculator.DEFAULT_CALORIES
     val macros = answers.macroTargets ?: MacroCalculator.defaultMacroTargets(calories)
 
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column {
         Text("Daily calorie target", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         Text(

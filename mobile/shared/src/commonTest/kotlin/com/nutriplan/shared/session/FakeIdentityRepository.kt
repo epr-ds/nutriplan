@@ -37,4 +37,6 @@ internal class FakeIdentityRepository(
     ): AvatarUploadUrlResponse = error("not used")
 
     override suspend fun setAvatar(key: String) = error("not used")
+
+    override suspend fun updateAvatar(contentType: String, bytes: ByteArray): UserProfile = error("not used")
 }
