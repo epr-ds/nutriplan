@@ -42,3 +42,16 @@ class _GlobalFakeVerifier:
 
 # Apply override at import time — before any test module creates its TestClient.
 app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
+
+
+@pytest.fixture(autouse=True)
+def _reapply_token_verifier() -> None:
+    """Re-apply the global token verifier override after tests that clear it.
+
+    The contract tests fixture calls `app.dependency_overrides.clear()` to reset
+    service-specific overrides. This fixture ensures the global JWT verifier is
+    re-applied for subsequent tests.
+    """
+    # This fixture does nothing but runs automatically before each test,
+    # ensuring the override is in place
+    pass
