@@ -212,6 +212,7 @@ class TestNotificationDeadLetterQueue:
             payload="not json at all {{{",
             attempt=1,
         )
+        queue.park(delivery, reason="test delivery")
         queue.park(delivery_bad, reason="malformed payload")
 
         assert queue.depth() == 2
