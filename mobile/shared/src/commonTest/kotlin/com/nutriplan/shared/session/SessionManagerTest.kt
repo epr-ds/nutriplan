@@ -1,6 +1,10 @@
 package com.nutriplan.shared.session
 
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,6 +12,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SessionManagerTest {
 
     @Test
@@ -73,14 +78,15 @@ class SessionManagerTest {
     @Test
     fun `a global signed-out event ends the session`() = runTest {
         val repository = FakeAuthRepository()
-        val manager = DefaultSessionManager(repository, backgroundScope)
+        // Unconfined so the manager's collector subscribes as soon as it is constructed.
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + SupervisorJob())
+        val manager = DefaultSessionManager(repository, scope)
         manager.onAuthenticated(authResponse(onboardingComplete = true).user)
-        advanceUntilIdle()
 
         SessionEvents.emitSignedOut()
-        advanceUntilIdle()
 
         assertEquals(SessionState.SignedOut, manager.state.value)
         assertNull(repository.currentAccessToken)
+        scope.cancel()
     }
 }
