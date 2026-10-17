@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # Ensure deterministic settings before any app module is imported.
@@ -57,4 +58,3 @@ def _reapply_token_verifier() -> None:
         yield
     finally:
         app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
-
