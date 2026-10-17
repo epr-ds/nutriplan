@@ -88,9 +88,8 @@ jobs:
         run: |
           # Run chaos tests for each service with the correct PYTHONPATH
           for service in ai commerce notification; do
-            PYTHONPATH="$(pwd):services/$service" pytest chaos-tests/ \
+            PYTHONPATH="$(pwd):services/$service" pytest chaos-tests/test_${service}*.py chaos-tests/conftest.py \
               -v \
-              -k "$service" \
               --tb=short || exit 1
           done
 
