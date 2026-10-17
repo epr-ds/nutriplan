@@ -48,11 +48,9 @@ jobs:
 
       - name: Run chaos tests for ${{ matrix.service }}
         run: |
-          PYTHONPATH=services pytest chaos-tests/ \
+          PYTHONPATH="$(pwd):services/${{ matrix.service }}" pytest chaos-tests/test_${{ matrix.service }}*.py chaos-tests/conftest.py \
             -v \
-            --tb=short \
-            -k "${{ matrix.service }}" \
-            2>&1 || true
+            --tb=short || true
         working-directory: .
 
       - name: Run service-specific resilience tests
