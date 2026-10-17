@@ -6,7 +6,6 @@ Verify retry policy and backoff behavior when LLM providers fail.
 from __future__ import annotations
 
 import random
-from unittest.mock import MagicMock, patch
 
 import pytest
 

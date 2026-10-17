@@ -6,7 +6,7 @@ Verify that event publishing survives bus outages without failing the originatin
 from __future__ import annotations
 
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -112,7 +112,6 @@ class TestResilientPublisherChaosScenario:
             call_count[0] += 1
             if call_count[0] <= 3:
                 raise Exception("Redis connection refused")
-            return None
 
         inner = MagicMock()
         inner.publish.side_effect = publish_side_effect

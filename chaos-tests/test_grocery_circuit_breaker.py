@@ -9,11 +9,11 @@ Inject failures into grocery provider calls and verify:
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 import pytest
 
+from services.commerce.app.domain.errors import GroceryProviderUnavailableError
 from services.commerce.app.grocery.circuit_breaker import (
     BreakerState,
     CircuitBreaker,
@@ -21,7 +21,6 @@ from services.commerce.app.grocery.circuit_breaker import (
     InMemoryBreakerTelemetry,
 )
 from services.commerce.app.grocery.resilient import CircuitBreakingGroceryAdapter
-from services.commerce.app.domain.errors import GroceryProviderUnavailableError
 
 
 class FailingGroceryAdapter:

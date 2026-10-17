@@ -1,0 +1,10 @@
+[lint]
+extend-ignore = [
+    "F821",  # Undefined name (fixtures from conftest)
+    "F841",  # Unused variables
+    "TRY002",  # Create your own exception (tests use generic Exception)
+    "B017",  # Assert blinding exception
+    "B023",  # Loop variable shadowing
+    "RET501",  # Return None explicitly
+    "PLR1711",  # Useless return statement
+]

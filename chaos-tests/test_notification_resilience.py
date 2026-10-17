@@ -5,21 +5,13 @@ Verify exponential backoff and dead-letter queue behavior under failure.
 
 from __future__ import annotations
 
-import pytest
-
 from services.notification.app.events.backoff import (
-    DEFAULT_CAP_MS,
-    DEFAULT_MULTIPLIER,
-    DEFAULT_JITTER,
-    DEFAULT_MULTIPLIER,
     RetrySchedule,
 )
+from services.notification.app.events.consumer import DeliveredEvent
 from services.notification.app.events.dead_letter import (
-    DEFAULT_CAPACITY,
-    DeadLetter,
     InMemoryDeadLetterQueue,
 )
-from services.notification.app.events.consumer import DeliveredEvent
 
 
 class TestNotificationBackoff:

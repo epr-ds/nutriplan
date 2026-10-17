@@ -15,7 +15,7 @@ class TestAIProviderFailover:
 
     def test_primary_provider_fails(self) -> None:
         """When the primary LLM provider fails, the error is raised."""
-        from services.ai.app.llm.factory import create_llm_client
+        from services.ai.app.llm.factory import build_client
         from services.ai.app.llm.provider import LLMProvider
 
         with patch("services.ai.app.llm.factory.os.environ") as mock_env:
@@ -30,7 +30,7 @@ class TestAIProviderFailover:
                     "API error"
                 )
 
-                client = create_llm_client()
+                client = build_client()
                 assert isinstance(client, LLMProvider)
 
                 with pytest.raises(Exception, match="API error"):
@@ -48,7 +48,7 @@ class TestAIProviderFailover:
                 mock_instance = MagicMock()
                 mock_anthropic.return_value = mock_instance
 
-                client = create_llm_client()
+                client = build_client()
                 assert client is not None
 
     def test_missing_api_key_handled(self) -> None:
@@ -88,7 +88,7 @@ class TestAIChaosScenario:
                 break
             except TimeoutError:
                 if attempt < policy.max_retries:
-                    delay = compute_backoff(attempt, policy, rand=lambda: 1.0)
+                    compute_backoff(attempt, policy, rand=lambda: 1.0)
                     # In real code: time.sleep(min(delay, policy.max_delay))
                 else:
                     raise
@@ -120,9 +120,7 @@ class TestAIChaosScenario:
         anthropic_available = True
 
         # The failover should route to Anthropic
-        if openai_down and anthropic_available:
-            active_provider = "anthropic"
-        elif anthropic_available:
+        if openai_down and anthropic_available or anthropic_available:
             active_provider = "anthropic"
         else:
             active_provider = None
