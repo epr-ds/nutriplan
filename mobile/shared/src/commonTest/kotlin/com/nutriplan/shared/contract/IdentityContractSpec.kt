@@ -18,7 +18,7 @@ internal object IdentityContract {
         val method: String,
         val path: String,
         val requestSchema: String?,
-        val responseSchema: String,
+        val responseSchema: String?,
         val successStatus: Int,
     )
 
@@ -33,6 +33,7 @@ internal object IdentityContract {
         Operation("POST", "/auth/login", "LoginRequest", "AuthResponse", 200),
         Operation("POST", "/auth/oauth/{provider}", "OAuthRequest", "AuthResponse", 200),
         Operation("POST", "/auth/refresh", "RefreshRequest", "AuthResponse", 200),
+        Operation("POST", "/auth/logout", "RefreshRequest", null, 204),
         Operation("GET", "/users/me", null, "UserProfileResponse", 200),
         Operation("PUT", "/users/me", "UpdateProfileRequest", "UserProfileResponse", 200),
         Operation(

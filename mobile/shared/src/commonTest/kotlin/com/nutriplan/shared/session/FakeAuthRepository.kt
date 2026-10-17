@@ -45,6 +45,8 @@ internal class FakeAuthRepository(
         private set
     var lastOAuthRequest: OAuthRequest? = null
         private set
+    val revokedTokens: MutableList<String> = mutableListOf()
+    var revokeError: Throwable? = null
 
     override val currentAccessToken: String? get() = accessToken
     override val currentRefreshToken: String? get() = refreshToken
@@ -61,6 +63,11 @@ internal class FakeAuthRepository(
     }
 
     override suspend fun refreshToken(refreshToken: String): AuthResponse = respond()
+
+    override suspend fun revokeSession(refreshToken: String) {
+        revokedTokens += refreshToken
+        revokeError?.let { throw it }
+    }
 
     override fun updateTokens(accessToken: String, refreshToken: String) {
         this.accessToken = accessToken

@@ -57,6 +57,8 @@ class BearerTokenRefresherTest {
             refresh = refreshToken
         }
 
+        override suspend fun revokeSession(refreshToken: String) = Unit
+
         override fun clearTokens() {
             access = null
             refresh = null

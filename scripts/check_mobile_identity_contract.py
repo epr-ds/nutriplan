@@ -73,7 +73,7 @@ SCHEMA_TO_CLASSES: dict[str, list[str]] = {
 }
 
 _OPERATION_RE = re.compile(
-    r'Operation\(\s*"([A-Z]+)",\s*"([^"]+)",\s*(?:"([^"]+)"|null),\s*"([^"]+)",\s*(\d+)',
+    r'Operation\(\s*"([A-Z]+)",\s*"([^"]+)",\s*(?:"([^"]+)"|null),\s*(?:"([^"]+)"|null),\s*(\d+)',
     re.DOTALL,
 )
 _CLASS_RE = re.compile(r"data class\s+(\w+)\s*\((.*?)\n\)", re.DOTALL)
@@ -108,7 +108,8 @@ def load_contract_spec() -> tuple[set[tuple[str, str]], set[str]]:
     referenced_schemas: set[str] = set()
     for method, path, request_schema, response_schema, _ in _OPERATION_RE.findall(text):
         operations.add((method, path))
-        referenced_schemas.add(response_schema)
+        if response_schema:
+            referenced_schemas.add(response_schema)
         if request_schema:
             referenced_schemas.add(request_schema)
     return operations, referenced_schemas

@@ -118,6 +118,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
 
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke a refresh token and its rotation family
+      description: >
+        Revokes the refresh-token family that issued the supplied token. Idempotent: an
+        unknown or already-revoked token still returns 204, so the endpoint cannot be used
+        to probe token validity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Session revoked (idempotent)
+
   /users/me:
     get:
       tags: [Users]

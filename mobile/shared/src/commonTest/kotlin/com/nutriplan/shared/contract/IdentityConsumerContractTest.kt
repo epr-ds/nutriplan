@@ -72,6 +72,13 @@ class IdentityConsumerContractTest {
     }
 
     @Test
+    fun `logout revokes the refresh token via a documented operation`() = runTest {
+        auth.revokeSession("refresh-token")
+
+        assertNoViolations()
+    }
+
+    @Test
     fun `getMe deserializes the profile response`() = runTest {
         val profile = identity.getMe()
 

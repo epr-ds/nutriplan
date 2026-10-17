@@ -54,6 +54,14 @@ interface AuthRepository {
     suspend fun refreshToken(refreshToken: String): AuthResponse
 
     /**
+     * Revoke the session server-side (`POST /auth/logout`), killing the refresh-token family.
+     *
+     * Callers treat this as best-effort: even if it fails (e.g. offline) the local tokens are
+     * still cleared, so the device is logged out regardless.
+     */
+    suspend fun revokeSession(refreshToken: String)
+
+    /**
      * Update stored tokens after a refresh or login.
      */
     fun updateTokens(accessToken: String, refreshToken: String)
@@ -162,6 +170,21 @@ class InMemoryAuthRepository(
             if (response.status == HttpStatusCode.OK) {
                 response.body()
             } else {
+                throw ApiException.HttpError(
+                    statusCode = response.status.value,
+                    body = response.body<String>(),
+                )
+            }
+        }
+    }
+
+    override suspend fun revokeSession(refreshToken: String) {
+        withContext(Dispatchers.IO) {
+            val client = HttpClientProvider.client
+            val response = client.post("/identity/v1/auth/logout") {
+                setBody(RefreshRequest(refreshToken))
+            }
+            if (response.status != HttpStatusCode.NoContent && response.status != HttpStatusCode.OK) {
                 throw ApiException.HttpError(
                     statusCode = response.status.value,
                     body = response.body<String>(),
