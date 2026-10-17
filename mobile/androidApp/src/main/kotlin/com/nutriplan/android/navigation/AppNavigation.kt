@@ -43,13 +43,26 @@ fun AppNavigationGraph(
             )
         }
 
-        // Onboarding
+        // Onboarding (first-run intro)
         composable<Route.Onboarding> {
             analyticsTracker?.logScreenView("onboarding", "OnboardingScreen")
             screens.OnboardingScreen(
                 onComplete = { route ->
                     analyticsTracker?.logEvent("onboarding_complete", emptyMap())
                     navigate(navController, route)
+                },
+            )
+        }
+
+        // Onboarding wizard (post-signup: diet, allergies, targets)
+        composable<Route.OnboardingWizard> {
+            analyticsTracker?.logScreenView("onboarding_wizard", "OnboardingWizardScreen")
+            screens.OnboardingWizardScreen(
+                onComplete = { route ->
+                    analyticsTracker?.logEvent("onboarding_complete", emptyMap())
+                    analyticsTracker?.setUserProperty("activated", "true")
+                    // The wizard is the last step of signup; Back must not return to it.
+                    navController.navigate(route) { popUpTo<Route.OnboardingWizard> { inclusive = true } }
                 },
             )
         }
@@ -263,6 +276,7 @@ private fun navigate(
 interface AppNavigationScreens {
     @Composable fun SplashScreen(onNavigate: (Any) -> Unit)
     @Composable fun OnboardingScreen(onComplete: (Any) -> Unit)
+    @Composable fun OnboardingWizardScreen(onComplete: (Any) -> Unit)
     @Composable fun AuthScreen(onLoginSuccess: (Any) -> Unit)
     @Composable fun MainScreen(onNavigate: (Any) -> Unit)
     @Composable fun MealPlanListScreen(

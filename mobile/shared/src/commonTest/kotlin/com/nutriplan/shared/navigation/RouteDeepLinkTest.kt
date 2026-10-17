@@ -17,6 +17,11 @@ class RouteDeepLinkTest {
     }
 
     @Test
+    fun `toDeepLink returns correct URI for OnboardingWizard`() {
+        assertEquals("nutriplan://onboarding/wizard", Route.OnboardingWizard.toDeepLink())
+    }
+
+    @Test
     fun `toDeepLink returns correct URI for Auth`() {
         assertEquals("nutriplan://auth", Route.Auth.toDeepLink())
     }
@@ -127,6 +132,11 @@ class RouteDeepLinkTest {
     @Test
     fun `fromDeepLink parses Onboarding correctly`() {
         assertEquals(Route.Onboarding, Route.fromDeepLink("nutriplan://onboarding"))
+    }
+
+    @Test
+    fun `fromDeepLink parses OnboardingWizard correctly`() {
+        assertEquals(Route.OnboardingWizard, Route.fromDeepLink("nutriplan://onboarding/wizard"))
     }
 
     @Test
