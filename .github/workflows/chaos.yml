@@ -86,8 +86,8 @@ jobs:
 
       - name: Run all chaos tests
         run: |
-          # Add repo root for 'services' package to work with conftest.py
-          PYTHONPATH="$(pwd):services" pytest chaos-tests/ -v --tb=short
+          # Add service dirs so 'from app.*' imports work from service app directories
+          PYTHONPATH="$(pwd):services/ai:services/commerce:services/notification:services/dietary:services/identity" pytest chaos-tests/ -v --tb=short
 
   chaos-summary:
     name: Chaos test summary
