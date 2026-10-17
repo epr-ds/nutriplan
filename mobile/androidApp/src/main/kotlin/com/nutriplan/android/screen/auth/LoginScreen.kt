@@ -1,6 +1,8 @@
 package com.nutriplan.android.screen.auth
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,9 +75,10 @@ internal fun LoginScreenContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // F30: scroll so the form stays usable with large font sizes / dynamic type (WCAG 1.4.4)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = "Welcome Back",
