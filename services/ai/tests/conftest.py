@@ -45,12 +45,16 @@ class _GlobalFakeVerifier:
 app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def _reapply_token_verifier() -> None:
     """Re-apply the global token verifier override.
     
-    The contract tests fixture calls `app.dependency_overrides.clear()`
-    in a finally block. We need to re-apply the override after each test.
+    The contract tests fixture calls `app.dependency_overrides.clear()` in a finally block.
+    We use yield to ensure the override is re-applied after each test runs.
     """
     app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
 
