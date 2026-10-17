@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from .enums import OrderStatus
+from app.domain.enums import OrderStatus
 
 
 @dataclass(frozen=True)

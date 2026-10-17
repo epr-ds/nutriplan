@@ -20,16 +20,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ..domain.errors import GroceryProviderUnavailableError
-from ..domain.grocery_catalog import (
+from app.domain.errors import GroceryProviderUnavailableError
+from app.domain.grocery_catalog import (
     GroceryOrderPlacement,
     GroceryOrderRequest,
     GroceryOrderStatus,
     GrocerySearchQuery,
     GrocerySearchResult,
 )
-from .adapter import GroceryProviderAdapter
-from .circuit_breaker import CircuitBreaker
+from app.grocery.adapter import GroceryProviderAdapter
+from app.grocery.circuit_breaker import CircuitBreaker
 
 
 class CircuitBreakingGroceryAdapter:

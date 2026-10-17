@@ -40,7 +40,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from .backoff import RetrySchedule
+from app.events.backoff import RetrySchedule
 from app.events.envelope import EventEnvelope
 
 

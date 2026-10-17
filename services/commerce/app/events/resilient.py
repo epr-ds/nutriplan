@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import logging
 
-from ..domain.events import DomainEvent
-from .publisher import EventPublisher
+from app.domain.events import DomainEvent
+from app.events.publisher import EventPublisher
 
 logger = logging.getLogger(__name__)
 
