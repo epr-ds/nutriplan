@@ -25,4 +25,8 @@ interface OnboardingDraftStorage {
  *
  * The password-free draft is non-sensitive, so it does not need the secure stores used for tokens.
  */
-expect class DeviceOnboardingDraftStorage : OnboardingDraftStorage
+expect class DeviceOnboardingDraftStorage : OnboardingDraftStorage {
+    override fun loadDraft(): String?
+    override fun saveDraft(draft: String)
+    override fun clearDraft()
+}
