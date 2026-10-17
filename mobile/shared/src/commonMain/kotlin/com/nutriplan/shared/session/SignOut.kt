@@ -15,5 +15,6 @@ class SignOut(
         // Tokens first: if wiping the cache fails the session is still over.
         authRepository.clearTokens()
         runCatching { mealPlanCache.clear() }
+        SessionEvents.emitSignedOut()
     }
 }

@@ -12,24 +12,19 @@ import io.ktor.client.plugins.auth.providers.bearer
 fun configureAuth(
     client: HttpClient,
     authRepository: AuthRepository,
-): HttpClient = client.config {
-    install(Auth) {
-        bearer {
-            loadTokens {
-                BearerTokens(
-                    accessToken = authRepository.currentAccessToken ?: "",
-                    refreshToken = authRepository.currentRefreshToken ?: "",
-                )
-            }
-            refreshTokens {
-                val currentRefreshToken = oldTokens?.refreshToken ?: return@refreshTokens null
-                try {
-                    val response = authRepository.refreshToken(currentRefreshToken)
-                    authRepository.updateTokens(response.accessToken, response.refreshToken)
-                    BearerTokens(response.accessToken, response.refreshToken)
-                } catch (e: Exception) {
-                    authRepository.clearTokens()
-                    throw e
+): HttpClient {
+    val refresher = BearerTokenRefresher(authRepository)
+    return client.config {
+        install(Auth) {
+            bearer {
+                loadTokens {
+                    BearerTokens(
+                        accessToken = authRepository.currentAccessToken ?: "",
+                        refreshToken = authRepository.currentRefreshToken ?: "",
+                    )
+                }
+                refreshTokens {
+                    oldTokens?.refreshToken?.let { refresher.refresh(it) }
                 }
             }
         }

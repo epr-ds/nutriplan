@@ -83,6 +83,7 @@ object HttpClientFactory {
             }
 
             if (authRepository != null) {
+                val refresher = BearerTokenRefresher(authRepository)
                 install(Auth) {
                     bearer {
                         loadTokens {
@@ -92,15 +93,7 @@ object HttpClientFactory {
                             )
                         }
                         refreshTokens {
-                            val currentRefreshToken = oldTokens?.refreshToken ?: return@refreshTokens null
-                            try {
-                                val response = authRepository.refreshToken(currentRefreshToken)
-                                authRepository.updateTokens(response.accessToken, response.refreshToken)
-                                BearerTokens(response.accessToken, response.refreshToken)
-                            } catch (e: Exception) {
-                                authRepository.clearTokens()
-                                throw e
-                            }
+                            oldTokens?.refreshToken?.let { refresher.refresh(it) }
                         }
                     }
                 }
