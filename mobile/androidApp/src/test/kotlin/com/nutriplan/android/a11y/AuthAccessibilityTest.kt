@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config
  * Guards the labels, headings, live-region errors, and 48dp touch targets that assistive tech needs.
  */
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
+@Config(sdk = [34], application = TestApplication::class)
 class AuthAccessibilityTest {
 
     @get:Rule

@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  * IDN-705: accessibility checks for the onboarding screens (intro + post-signup wizard).
  */
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [34])
+@Config(sdk = [34], application = TestApplication::class)
 class OnboardingAccessibilityTest {
 
     @get:Rule
