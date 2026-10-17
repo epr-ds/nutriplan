@@ -1,6 +1,7 @@
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.ApiConfig
+import com.nutriplan.shared.data.model.AvatarConfirmRequest
 import com.nutriplan.shared.data.model.AvatarUploadUrlRequest
 import com.nutriplan.shared.data.model.AvatarUploadUrlResponse
 import com.nutriplan.shared.data.model.UpdateDietaryPreferencesRequest
@@ -38,7 +39,7 @@ interface IdentityRepository {
     suspend fun getAvatarUploadUrl(request: AvatarUploadUrlRequest): AvatarUploadUrlResponse
 
     /** Confirm avatar upload by setting the avatar URL. */
-    suspend fun setAvatar(avatarUrl: String)
+    suspend fun setAvatar(key: String)
 }
 
 /**
@@ -87,10 +88,10 @@ class IdentityRepositoryImpl : IdentityRepository {
         }
     }
 
-    override suspend fun setAvatar(avatarUrl: String) {
+    override suspend fun setAvatar(key: String) {
         withContext(Dispatchers.IO) {
             val response = client.put("${ApiConfig.IDENTITY}/users/me/avatar") {
-                setBody(mapOf("avatarUrl" to avatarUrl))
+                setBody(AvatarConfirmRequest(key))
             }
             if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Accepted) {
                 throw ApiException.HttpError(

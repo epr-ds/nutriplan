@@ -128,7 +128,7 @@ fun ProfileScreen(
                                 
                                 Column {
                                     Text(
-                                        text = user?.let { "${it.firstName} ${it.lastName}" } ?: "User",
+                                        text = user?.name ?: "User",
                                         style = MaterialTheme.typography.titleLarge,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
