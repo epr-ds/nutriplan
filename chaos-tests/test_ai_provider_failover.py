@@ -68,7 +68,7 @@ class TestAIChaosScenario:
 
     def test_llm_timeout_with_retry(self) -> None:
         """LLM timeouts are retried with exponential backoff."""
-        from app.llm.retry import RetryPolicy, compute_backoff
+        from services.ai.app.llm.retry import RetryPolicy, compute_backoff
 
         policy = RetryPolicy(max_retries=3, base_delay=0.5, max_delay=8.0)
 
