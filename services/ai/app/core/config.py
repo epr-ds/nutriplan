@@ -51,10 +51,23 @@ class Settings(BaseSettings):
     jwt_issuer: str = "nutriplan"
     jwt_audience: str = "nutriplan-api"
 
+    # Edge hardening (AIA-804). The gateway applies the same policies at the edge; enforcing
+    # them here too keeps a misrouted request from spending LLM tokens. The limit is per
+    # authenticated user, per route, per minute; 0 disables it. ``cors_allow_origins`` is a
+    # comma-separated allow-list; blank means no browser origin is allowed.
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 30
+    cors_allow_origins: str = ""
+
     @property
     def is_production(self) -> bool:
         """True in production-like environments, where missing deps are fatal."""
         return self.environment.strip().lower() in {"production", "prod"}
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """The browser origins allowed to call the service, parsed from the allow-list."""
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
     @property
     def llm_configured(self) -> bool:

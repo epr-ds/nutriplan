@@ -21,7 +21,7 @@ from functools import lru_cache
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.adapters.factory import build_notification_repository, build_preferences_repository
@@ -29,6 +29,7 @@ from app.application.feed import NotificationFeed
 from app.application.preferences import NotificationPreferenceService
 from app.core.config import settings
 from app.core.principal import Principal
+from app.core.ratelimit import RateLimitExceeded, check_rate_limit
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.domain.repositories import NotificationRepository, PreferencesRepository
 
@@ -119,6 +120,32 @@ def get_current_user_id(
     except ValueError as exc:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Token subject is not a valid user id"
+        ) from exc
+
+
+def enforce_rate_limit(
+    request: Request,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> None:
+    """Throttle the authenticated caller per route, raising ``429`` when exhausted (NTF-702).
+
+    Applied to the feed and preferences routers so a single account cannot hammer the API. The
+    response is a ``problem+json`` body with a ``Retry-After`` header, matching the platform
+    error standard.
+    """
+    if not settings.rate_limit_enabled:
+        return
+    try:
+        check_rate_limit(
+            principal.user_id,
+            request.url.path,
+            limit=settings.rate_limit_per_minute,
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Rate limit exceeded; please slow down.",
+            headers={"Retry-After": str(exc.retry_after)},
         ) from exc
 
 

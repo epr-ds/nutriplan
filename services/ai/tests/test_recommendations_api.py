@@ -12,6 +12,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_recommendation_service
+from app.core import ratelimit
+from app.core.config import settings
 from app.llm.client import LLMClient
 from app.llm.fake import FakeLLMProvider
 from app.llm.retry import RetryPolicy
@@ -163,3 +165,32 @@ def test_rejects_out_of_range_calorie_target() -> None:
     )
 
     assert response.status_code == 422
+
+
+# -- per-user rate limiting (AIA-804) ------------------------------------------------
+
+
+def test_it_returns_429_once_the_allowance_is_spent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_enabled", True)
+    monkeypatch.setattr(settings, "rate_limit_per_minute", 2)
+    ratelimit.reset_rate_limit()
+
+    for _ in range(2):
+        allowed = client.post("/ai/recommendations", json=_minimal_body(), headers=_AUTH)
+        assert allowed.status_code == 200
+
+    blocked = client.post("/ai/recommendations", json=_minimal_body(), headers=_AUTH)
+
+    assert blocked.status_code == 429
+    assert blocked.headers["content-type"].startswith(_PROBLEM_JSON)
+    assert blocked.headers.get("Retry-After")
+
+
+def test_the_limit_can_be_switched_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
+    monkeypatch.setattr(settings, "rate_limit_per_minute", 1)
+    ratelimit.reset_rate_limit()
+
+    for _ in range(3):
+        allowed = client.post("/ai/recommendations", json=_minimal_body(), headers=_AUTH)
+        assert allowed.status_code == 200

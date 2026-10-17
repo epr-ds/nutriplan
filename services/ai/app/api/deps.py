@@ -12,12 +12,13 @@ from functools import lru_cache
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.analysis.service import MealAnalysisService, build_meal_analysis_service
 from app.core.config import settings
 from app.core.principal import Principal
+from app.core.ratelimit import RateLimitExceeded, check_rate_limit
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
 from app.optimization.service import PlanOptimizationService, build_plan_optimization_service
 from app.recommendations.service import RecommendationService, build_recommendation_service
@@ -68,6 +69,32 @@ def get_raw_bearer_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return credentials.credentials
+
+
+def enforce_rate_limit(
+    request: Request,
+    principal: CurrentPrincipal,
+) -> None:
+    """Throttle the authenticated caller per route, raising ``429`` when exhausted (AIA-804).
+
+    Applied to every AI router so a single account cannot loop over a route and spend the
+    service's token budget. The response is a ``problem+json`` body with a ``Retry-After``
+    header, matching the platform error standard.
+    """
+    if not settings.rate_limit_enabled:
+        return
+    try:
+        check_rate_limit(
+            principal.user_id,
+            request.url.path,
+            limit=settings.rate_limit_per_minute,
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Rate limit exceeded; please slow down.",
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from exc
 
 
 @lru_cache(maxsize=1)

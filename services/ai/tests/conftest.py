@@ -4,9 +4,23 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
 # Ensure deterministic settings before any app module is imported.
 os.environ.setdefault("AI_LLM_PROVIDER", "fake")
 os.environ.setdefault("AI_OPENAI_API_KEY", "test-key")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit() -> None:
+    """Clear the per-user rate-limit window before each test.
+
+    The limiter is process-global, so without this a test would inherit the hits recorded by
+    earlier tests sharing the fake verifier's user id.
+    """
+    from app.core.ratelimit import reset_rate_limit
+
+    reset_rate_limit()
 
 
 class _FakeTokenVerifier:
