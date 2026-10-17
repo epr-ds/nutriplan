@@ -9,15 +9,19 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock
-
-import pytest
 
 # Add repo root to sys.path so 'services' package is importable
 _REPO_ROOT = Path(__file__).parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+
+import time
+from collections.abc import Callable
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 
 # ---------------------------------------------------------------------------
 # Clock helpers
@@ -63,7 +67,9 @@ class FailureInjector:
         """Return True if the next call to ``key`` should fail."""
         self._call_counts[key] = self._call_counts.get(key, 0) + 1
         remaining = self._failures.get(key, 0)
-        return bool(remaining > 0 and self._call_counts[key] <= remaining)
+        if remaining > 0 and self._call_counts[key] <= remaining:
+            return True
+        return False
 
     def reset(self, key: str) -> None:
         self._failures.pop(key, None)

@@ -5,7 +5,7 @@ Verify services handle DB connection failures gracefully.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,6 +15,8 @@ class TestCommerceDBConnectionLoss:
 
     def test_order_creation_fails_gracefully(self) -> None:
         """When Postgres is down, order creation returns 503."""
+        from services.commerce.app.db.models import Order
+        from services.commerce.app.domain.errors import ServiceUnavailableError
 
         # Simulate DB connection error during order creation
         with patch("services.commerce.app.db.base.SessionLocal") as mock_session:
