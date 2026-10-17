@@ -18,6 +18,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
+/** Sends Ktor's HTTP logs to stdout so each platform's log pipeline can capture them. */
+private val httpLogger = object : Logger {
+    override fun log(message: String) {
+        println("[nutriplan-http] $message")
+    }
+}
+
 /**
  * Factory for creating a configured Ktor [HttpClient] instance.
  *
@@ -64,7 +71,7 @@ object HttpClientFactory {
             // bodies, which can carry credentials), with bearer tokens, cookies, and API keys
             // masked by isSensitiveHeader.
             install(Logging) {
-                logger = Logger.DEFAULT
+                logger = httpLogger
                 level = LogLevel.HEADERS
                 sanitizeHeader { header -> isSensitiveHeader(header) }
             }
