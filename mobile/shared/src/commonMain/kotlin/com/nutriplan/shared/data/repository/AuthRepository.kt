@@ -3,6 +3,7 @@ package com.nutriplan.shared.data.repository
 import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.model.AuthResponse
 import com.nutriplan.shared.data.model.LoginRequest
+import com.nutriplan.shared.data.model.OAuthRequest
 import com.nutriplan.shared.data.model.RefreshRequest
 import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.network.ApiException
@@ -41,6 +42,11 @@ interface AuthRepository {
      * Login with email/password and store the returned tokens.
      */
     suspend fun login(request: LoginRequest): AuthResponse
+
+    /**
+     * Login with a third-party identity token (`POST /auth/oauth/{provider}`) and store the tokens.
+     */
+    suspend fun oauthLogin(provider: String, request: OAuthRequest): AuthResponse
 
     /**
      * Refresh the access token using the current refresh token.
@@ -117,6 +123,23 @@ class InMemoryAuthRepository(
         return withContext(Dispatchers.IO) {
             val client = HttpClientProvider.client
             val response = client.post("/identity/v1/auth/login") {
+                setBody(request)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
+            } else {
+                throw ApiException.HttpError(
+                    statusCode = response.status.value,
+                    body = response.body<String>(),
+                )
+            }
+        }
+    }
+
+    override suspend fun oauthLogin(provider: String, request: OAuthRequest): AuthResponse {
+        return withContext(Dispatchers.IO) {
+            val client = HttpClientProvider.client
+            val response = client.post("/identity/v1/auth/oauth/$provider") {
                 setBody(request)
             }
             if (response.status == HttpStatusCode.OK) {

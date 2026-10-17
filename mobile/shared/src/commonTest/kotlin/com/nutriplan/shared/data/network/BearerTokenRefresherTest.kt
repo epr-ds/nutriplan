@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.network
 
 import com.nutriplan.shared.data.model.AuthResponse
 import com.nutriplan.shared.data.model.LoginRequest
+import com.nutriplan.shared.data.model.OAuthRequest
 import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.model.UserProfile
 import com.nutriplan.shared.data.repository.AuthRepository
@@ -35,6 +36,9 @@ class BearerTokenRefresherTest {
         override suspend fun register(request: RegisterRequest): AuthResponse = error("not used")
 
         override suspend fun login(request: LoginRequest): AuthResponse = error("not used")
+
+        override suspend fun oauthLogin(provider: String, request: OAuthRequest): AuthResponse =
+            error("not used")
 
         override suspend fun refreshToken(refreshToken: String): AuthResponse {
             refreshCalls++
