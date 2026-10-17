@@ -12,9 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
-import com.nutriplan.shared.data.model.LoginRequest
-import com.nutriplan.shared.data.repository.toAuthErrorMessage
-import kotlinx.coroutines.CancellationException
+import com.nutriplan.shared.auth.LoginViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -23,19 +21,13 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
-    val authRepository = koinInject<com.nutriplan.shared.data.repository.AuthRepository>()
+    val viewModel = koinInject<LoginViewModel>()
+    val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        // Check if user is already logged in
-        if (authRepository.isAuthenticated) {
-            onLoginSuccess()
-        }
+    // Route per session state: a successful sign-in advances the session (onboarding or main).
+    LaunchedEffect(state.isSuccess) {
+        if (state.isSuccess) onLoginSuccess()
     }
 
     Column(
@@ -53,20 +45,24 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         NutriPlanTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = state.email,
+            onValueChange = viewModel::onEmailChange,
             label = "Email",
-            placeholder = "Enter your email"
+            placeholder = "Enter your email",
+            isError = state.emailError != null,
+            errorMessage = state.emailError.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         NutriPlanTextField(
-            value = password,
-            onValueChange = { password = it },
+            value = state.password,
+            onValueChange = viewModel::onPasswordChange,
             label = "Password",
             placeholder = "Enter your password",
-            isPassword = true
+            isPassword = true,
+            isError = state.passwordError != null,
+            errorMessage = state.passwordError.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -78,7 +74,7 @@ fun LoginScreen(
             Text("Forgot Password?")
         }
 
-        errorMessage?.let {
+        state.errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))
             // F28: Add live region semantics for error announcements (WCAG 3.3.1, 4.1.3)
             Text(
@@ -92,28 +88,12 @@ fun LoginScreen(
 
         NutriPlanButton(
             onClick = {
-                if (!isLoading) {
-                    if (email.isBlank() || password.isBlank()) {
-                        errorMessage = "Enter your email and password."
-                    } else {
-                        isLoading = true
-                        errorMessage = null
-                        scope.launch {
-                            try {
-                                authRepository.login(LoginRequest(email.trim(), password))
-                                onLoginSuccess()
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                                errorMessage = e.toAuthErrorMessage()
-                            } finally {
-                                isLoading = false
-                            }
-                        }
-                    }
+                if (state.canSubmit) {
+                    scope.launch { viewModel.submit() }
                 }
             },
-            isLoading = isLoading,
+            isLoading = state.isLoading,
+            isEnabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")
