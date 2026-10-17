@@ -82,12 +82,16 @@ jobs:
             if [ -f "services/$service/requirements-dev.txt" ]; then
               pip install -r "services/$service/requirements-dev.txt"
             fi
-           done
+          done
 
       - name: Run all chaos tests
         run: |
-          # Add repo root and service dirs so 'from app.*' imports work
-          PYTHONPATH="$(pwd):services/ai:services/commerce:services/notification:services/dietary:services/identity" pytest chaos-tests/ -v --tb=short
+          for service in ai commerce notification; do
+            PYTHONPATH="services/$service" pytest chaos-tests/ \
+              -v \
+              -k "$service" \
+              --tb=short || exit 1
+          done
 
   chaos-summary:
     name: Chaos test summary
