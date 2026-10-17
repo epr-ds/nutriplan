@@ -134,3 +134,17 @@ Covers pre-launch checks, launch day procedures, and post-launch monitoring.
 - [HRD-802: Production cutover](https://github.com/epr-ds/nutriplan/issues/344)
 - [HRD-706: Staged rollout](https://github.com/epr-ds/nutriplan/issues/343)
 - [HRD-903: Synthetic monitoring](https://github.com/epr-ds/nutriplan/issues/349)
+
+## Delivery traceability
+
+The launch-readiness deliverables were implemented in the launch-readiness PR. This table maps each
+tracked issue to the PR that delivered it so the work is traceable from the issue tracker.
+
+| Issue | Deliverable | Delivered by |
+|-------|-------------|--------------|
+| [HRD-801 (#331)](https://github.com/epr-ds/nutriplan/issues/331) | GA go-live checklist + launch runbook | PR #507 |
+| [HRD-705 (#342)](https://github.com/epr-ds/nutriplan/issues/342) | App Store + Play submission + review responses | PR #507 |
+| [HRD-706 (#343)](https://github.com/epr-ds/nutriplan/issues/343) | Staged production rollout + kill-switch/feature flags | PR #507 |
+| [HRD-802 (#344)](https://github.com/epr-ds/nutriplan/issues/344) | Production cutover + scaling + DNS/CDN readiness | PR #507 |
+| [HRD-803 (#345)](https://github.com/epr-ds/nutriplan/issues/345) | Support readiness — help center, FAQ, support routing | PR #507 |
+| [HRD-804 (#346)](https://github.com/epr-ds/nutriplan/issues/346) | Legal sign-off — ToS, privacy policy, data processing | PR #507 |
