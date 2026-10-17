@@ -82,12 +82,12 @@ jobs:
             if [ -f "services/$service/requirements-dev.txt" ]; then
               pip install -r "services/$service/requirements-dev.txt"
             fi
-          done
+           done
 
-       - name: Run all chaos tests
-         run: |
-           # Add repo root for 'services' package so 'from services.*.app.*' resolves
-           PYTHONPATH="$(pwd):services" pytest chaos-tests/ -v --tb=short
+      - name: Run all chaos tests
+        run: |
+          # Add repo root for 'services' package so 'from services.*.app.*' resolves
+          PYTHONPATH="$(pwd):services" pytest chaos-tests/ -v --tb=short
 
   chaos-summary:
     name: Chaos test summary
