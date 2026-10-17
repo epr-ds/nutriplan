@@ -25,6 +25,7 @@ import com.nutriplan.android.screen.auth.RegisterScreen
 import com.nutriplan.android.screen.checkout.CheckoutScreen
 import com.nutriplan.android.screen.home.HomeScreen
 import com.nutriplan.android.screen.onboarding.OnboardingScreen
+import com.nutriplan.android.screen.onboarding.OnboardingWizardScreen
 import com.nutriplan.android.screen.profile.ProfileScreen
 import com.nutriplan.android.navigation.AppNavigationGraph
 import com.nutriplan.android.di.koinInject
@@ -32,6 +33,8 @@ import com.nutriplan.android.auth.CurrentActivity
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.navigation.PendingDeepLink
 import com.nutriplan.shared.session.SignOut
+import com.nutriplan.shared.session.SessionManager
+import com.nutriplan.shared.session.SessionState
 import com.nutriplan.shared.navigation.Route
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 
@@ -118,10 +121,17 @@ class MainNavigationScreens(
 
     @Composable
     override fun SplashScreen(onNavigate: (Any) -> Unit) {
-        val authRepository = koinInject<AuthRepository>()
-        // The session was restored from secure storage when the repository was created.
+        val sessionManager = koinInject<SessionManager>()
+        // Route per session state: fully onboarded users go to the main graph, authenticated but
+        // not-yet-onboarded users into the wizard, and everyone else to auth.
         LaunchedEffect(Unit) {
-            onNavigate(if (authRepository.isAuthenticated) Route.Main else Route.Auth)
+            onNavigate(
+                when (sessionManager.state.value) {
+                    is SessionState.SignedIn -> Route.Main
+                    SessionState.Onboarding -> Route.OnboardingWizard
+                    SessionState.SignedOut -> Route.Auth
+                },
+            )
         }
         SplashScreenContent()
     }
@@ -132,11 +142,27 @@ class MainNavigationScreens(
     }
 
     @Composable
+    override fun OnboardingWizardScreen(onComplete: (Any) -> Unit) {
+        com.nutriplan.android.screen.onboarding.OnboardingWizardScreen(
+            onComplete = {
+                onComplete(Route.Main)
+                onAuthenticated()
+            },
+        )
+    }
+
+    @Composable
     override fun AuthScreen(onLoginSuccess: (Any) -> Unit) {
         // A lightweight toggle keeps login and registration on one destination without a new route.
         var showRegister by remember { mutableStateOf(false) }
+        val sessionManager = koinInject<SessionManager>()
         val onSuccess: () -> Unit = {
-            onLoginSuccess(Route.Main)
+            // New users have no dietary preferences yet and must go through the wizard.
+            val route: Any = when (sessionManager.state.value) {
+                is SessionState.SignedIn -> Route.Main
+                else -> Route.OnboardingWizard
+            }
+            onLoginSuccess(route)
             onAuthenticated()
         }
         if (showRegister) {

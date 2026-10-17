@@ -19,6 +19,10 @@ sealed class Route {
     @Serializable
     object Onboarding : Route()
 
+    /** Post-signup onboarding wizard (diet, allergies, targets). */
+    @Serializable
+    object OnboardingWizard : Route()
+
     /** Auth flow (login/register). */
     @Serializable
     object Auth : Route()
@@ -109,6 +113,7 @@ sealed class Route {
     fun toDeepLink(): String = when (this) {
         is Splash -> "nutriplan://splash"
         is Onboarding -> "nutriplan://onboarding"
+        is OnboardingWizard -> "nutriplan://onboarding/wizard"
         is Auth -> "nutriplan://auth"
         is Main -> "nutriplan://main"
         is MealPlanList -> "nutriplan://meal-plans"
@@ -135,6 +140,7 @@ sealed class Route {
         fun fromDeepLink(deepLink: String): Route? = when {
             deepLink == "nutriplan://splash" -> Splash
             deepLink == "nutriplan://onboarding" -> Onboarding
+            deepLink == "nutriplan://onboarding/wizard" -> OnboardingWizard
             deepLink == "nutriplan://auth" -> Auth
             deepLink == "nutriplan://main" -> Main
             deepLink == "nutriplan://meal-plans" -> MealPlanList
