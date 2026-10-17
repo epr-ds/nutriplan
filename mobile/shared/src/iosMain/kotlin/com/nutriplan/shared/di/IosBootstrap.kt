@@ -5,6 +5,8 @@ import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.network.HttpClientProvider
 import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.onboarding.DeviceOnboardingDraftStorage
+import com.nutriplan.shared.onboarding.OnboardingDraftStorage
 import io.ktor.client.engine.darwin.Darwin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
@@ -17,7 +19,10 @@ import org.koin.mp.KoinPlatform
  */
 fun bootstrapKoin() {
     KoinInitializer.addModule(
-        module { single<TokenStorage> { SecureTokenStorage() } },
+        module {
+            single<TokenStorage> { SecureTokenStorage() }
+            single<OnboardingDraftStorage> { DeviceOnboardingDraftStorage() }
+        },
         cacheModule(DatabaseDriverFactory()),
     )
     KoinInitializer.initialize()
