@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nutriplan.android.screen.auth.LoginScreen
+import com.nutriplan.android.screen.auth.RegisterScreen
 import com.nutriplan.android.screen.checkout.CheckoutScreen
 import com.nutriplan.android.screen.home.HomeScreen
 import com.nutriplan.android.screen.onboarding.OnboardingScreen
@@ -128,14 +130,24 @@ class MainNavigationScreens(
 
     @Composable
     override fun AuthScreen(onLoginSuccess: (Any) -> Unit) {
-        LoginScreen(
-            onLoginSuccess = {
-                onLoginSuccess(Route.Main)
-                onAuthenticated()
-            },
-            onNavigateToRegister = { /* TODO: Navigate to register */ },
-            onNavigateToForgotPassword = { /* TODO: Navigate to forgot password */ }
-        )
+        // A lightweight toggle keeps login and registration on one destination without a new route.
+        var showRegister by remember { mutableStateOf(false) }
+        val onSuccess: () -> Unit = {
+            onLoginSuccess(Route.Main)
+            onAuthenticated()
+        }
+        if (showRegister) {
+            RegisterScreen(
+                onRegisterSuccess = onSuccess,
+                onNavigateToLogin = { showRegister = false },
+            )
+        } else {
+            LoginScreen(
+                onLoginSuccess = onSuccess,
+                onNavigateToRegister = { showRegister = true },
+                onNavigateToForgotPassword = { /* TODO: Navigate to forgot password */ },
+            )
+        }
     }
 
     @Composable
