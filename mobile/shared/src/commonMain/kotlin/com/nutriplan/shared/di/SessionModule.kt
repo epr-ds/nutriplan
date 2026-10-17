@@ -1,6 +1,8 @@
 package com.nutriplan.shared.di
 
 import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.data.repository.IdentityRepository
+import com.nutriplan.shared.session.CompleteOnboarding
 import com.nutriplan.shared.session.DefaultSessionManager
 import com.nutriplan.shared.session.Login
 import com.nutriplan.shared.session.Logout
@@ -30,4 +32,10 @@ val sessionModule = module {
     single { Register(authRepository = get(), sessionManager = get()) }
     single { OAuthLogin(authRepository = get(), sessionManager = get()) }
     single { Logout(authRepository = get(), sessionManager = get()) }
+    single {
+        CompleteOnboarding(
+            identityRepository = get<IdentityRepository>(),
+            sessionManager = get(),
+        )
+    }
 }
