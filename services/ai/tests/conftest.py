@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import pytest
 
 # Ensure deterministic settings before any app module is imported.
 os.environ.setdefault("AI_LLM_PROVIDER", "fake")
@@ -46,12 +47,10 @@ app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # 
 
 @pytest.fixture(autouse=True)
 def _reapply_token_verifier() -> None:
-    """Re-apply the global token verifier override after tests that clear it.
-
-    The contract tests fixture calls `app.dependency_overrides.clear()` to reset
-    service-specific overrides. This fixture ensures the global JWT verifier is
-    re-applied for subsequent tests.
+    """Re-apply the global token verifier override.
+    
+    The contract tests fixture calls `app.dependency_overrides.clear()`
+    in a finally block. We need to re-apply the override after each test.
     """
-    # This fixture does nothing but runs automatically before each test,
-    # ensuring the override is in place
-    pass
+    app.dependency_overrides[get_token_verifier] = lambda: _GlobalFakeVerifier()  # type: ignore[assignment]
+
