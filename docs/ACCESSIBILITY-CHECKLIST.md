@@ -4,15 +4,24 @@
 
 ## Automated Checks (CI)
 
-### Compose UI Accessibility Checks
-- **Location**: `mobile/androidApp/src/androidTest/kotlin/com/nutriplan/android/a11y/AccessibilityChecksTest.kt`
-- **Run**: `./gradlew connectedAndroidTest`
+### Compose Semantics / Accessibility Checks (JVM)
+- **Location**: `mobile/androidApp/src/test/kotlin/com/nutriplan/android/a11y/`
+  (`AuthAccessibilityTest`, `OnboardingAccessibilityTest`, `A11yMatchers`)
+- **Run**: `./gradlew :androidApp:testDebugUnitTest`
 - **CI Job**: `android-a11y` in `.github/workflows/mobile.yml`
 - **Critical checks**:
-  1. Missing content description on interactive elements
+  1. Missing content description / label on interactive elements
   2. Touch target < 48x48dp (WCAG 2.5.5)
-  3. Unreachable semantics node (orphaned element)
-  4. Empty text without alternative
+  3. Errors associated with their field and announced (live region)
+  4. Screen titles exposed as headings
+
+> These run on the JVM with Robolectric (no emulator), so they are a fast, deterministic guard.
+> Deep contrast/traversal checks from the Accessibility Test Framework (ATF) require an API 34+
+> device (`enableAccessibilityChecks`) and are not covered here.
+
+### Android Lint (accessibility rules)
+- **Run**: `./gradlew :androidApp:lintDebug`
+- **CI Job**: `android-a11y` in `.github/workflows/mobile.yml` (`ANDROID_LINT_COMPLETE=1`)
 
 ### Detekt A11y Rules
 - **Location**: `mobile/config/detekt/detekt.yml`
@@ -133,8 +142,12 @@ android-a11y:
         distribution: temurin
         java-version: '17'
     - uses: gradle/actions/setup-gradle@v6
-    - name: Run accessibility checks
-      run: ./gradlew connectedAndroidTest --stacktrace
+    - name: Compose semantics/a11y checks (JVM, Robolectric)
+      run: ./gradlew :androidApp:testDebugUnitTest --stacktrace
+    - name: Android Lint (accessibility rules)
+      run: ./gradlew :androidApp:lintDebug --stacktrace
+      env:
+        ANDROID_LINT_COMPLETE: '1'
 ```
 
 ### Failing CI on Critical Regressions

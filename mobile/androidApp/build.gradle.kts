@@ -85,6 +85,13 @@ android {
             )
         }
     }
+
+    // IDN-705: Compose semantics/a11y tests run on the JVM via Robolectric (no emulator).
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 kotlin {
@@ -132,6 +139,13 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+
+    // IDN-705: auth + onboarding accessibility checks, run on the JVM (CI job `android-a11y`).
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
 }
 
 detekt {

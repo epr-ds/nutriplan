@@ -39,7 +39,7 @@ jobs:
       - name: Static analysis (detekt)
         run: ./gradlew detekt --stacktrace
 
-  # HRD-305: Accessibility regression checks
+  # HRD-305 / IDN-705: Accessibility regression checks
   android-a11y:
     name: Android accessibility checks
     runs-on: ubuntu-latest
@@ -53,6 +53,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
+      - name: Compose semantics/a11y checks (JVM, Robolectric)
+        run: ./gradlew :androidApp:testDebugUnitTest --stacktrace
       - name: Run Compose UI a11y checks
         run: ./gradlew :androidApp:lintDebug --stacktrace
         env:

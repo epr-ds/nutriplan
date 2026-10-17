@@ -29,7 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
@@ -39,6 +42,7 @@ import com.nutriplan.shared.onboarding.OnboardingAnswers
 import com.nutriplan.shared.onboarding.OnboardingContent
 import com.nutriplan.shared.onboarding.OnboardingOption
 import com.nutriplan.shared.onboarding.OnboardingStep
+import com.nutriplan.shared.onboarding.OnboardingUiState
 import com.nutriplan.shared.onboarding.OnboardingViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -73,6 +77,29 @@ fun OnboardingWizardScreen(
         }
     }
 
+    OnboardingWizardContent(
+        state = state,
+        onUpdateAnswers = viewModel::updateAnswers,
+        onBack = viewModel::back,
+        onNext = viewModel::next,
+        onSkip = { scope.launch { viewModel.finish() } },
+        onFinish = { scope.launch { viewModel.finish() } },
+    )
+}
+
+/**
+ * Stateless onboarding wizard UI (IDN-602/603/604/705). Kept separate from
+ * [OnboardingWizardScreen] so the accessibility checks can render it directly without the DI graph.
+ */
+@Composable
+internal fun OnboardingWizardContent(
+    state: OnboardingUiState,
+    onUpdateAnswers: (OnboardingAnswers) -> Unit,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+    onFinish: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -87,7 +114,7 @@ fun OnboardingWizardScreen(
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { scope.launch { viewModel.finish() } }) {
+            TextButton(onClick = onSkip) {
                 Text("Skip")
             }
         }
@@ -106,9 +133,9 @@ fun OnboardingWizardScreen(
         Box(modifier = Modifier.weight(1f)) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 when (state.step) {
-                    OnboardingStep.DIET -> DietStep(state.answers, viewModel::updateAnswers)
-                    OnboardingStep.ALLERGIES -> AllergiesStep(state.answers, viewModel::updateAnswers)
-                    OnboardingStep.TARGETS -> TargetsStep(state.answers, viewModel::updateAnswers)
+                    OnboardingStep.DIET -> DietStep(state.answers, onUpdateAnswers)
+                    OnboardingStep.ALLERGIES -> AllergiesStep(state.answers, onUpdateAnswers)
+                    OnboardingStep.TARGETS -> TargetsStep(state.answers, onUpdateAnswers)
                 }
             }
         }
@@ -118,7 +145,7 @@ fun OnboardingWizardScreen(
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { contentDescription = "Error: $message" },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
 
@@ -129,19 +156,13 @@ fun OnboardingWizardScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (!state.isFirstStep) {
-                OutlinedButton(onClick = { viewModel.back() }) {
+                OutlinedButton(onClick = onBack) {
                     Text("Back")
                 }
                 Spacer(modifier = Modifier.width(16.dp))
             }
             NutriPlanButton(
-                onClick = {
-                    if (state.isLastStep) {
-                        scope.launch { viewModel.finish() }
-                    } else {
-                        viewModel.next()
-                    }
-                },
+                onClick = { if (state.isLastStep) onFinish() else onNext() },
                 isLoading = state.isSaving,
                 modifier = Modifier.weight(1f),
             ) {
@@ -154,7 +175,11 @@ fun OnboardingWizardScreen(
 @Composable
 internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
     Column {
-        Text("What's your diet?", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "What's your diet?",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
         OnboardingContent.dietTypes.forEach { option ->
@@ -188,7 +213,11 @@ internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) 
 @Composable
 internal fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
     Column {
-        Text("Any allergies?", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Any allergies?",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
         Spacer(modifier = Modifier.height(8.dp))
         OptionChips(
             options = OnboardingContent.commonAllergens,
@@ -215,7 +244,11 @@ internal fun TargetsStep(answers: OnboardingAnswers, onChange: (OnboardingAnswer
     val macros = answers.macroTargets ?: MacroCalculator.defaultMacroTargets(calories)
 
     Column {
-        Text("Daily calorie target", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Daily calorie target",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "$calories kcal",
