@@ -11,6 +11,12 @@ val keystorePassword: String? = providers.environmentVariable("KEYSTORE_PASSWORD
 val keyAlias: String? = providers.environmentVariable("KEY_ALIAS").orNull
 val keyPassword: String? = providers.environmentVariable("KEY_PASSWORD").orNull
 
+// IDN-402: API environment (local/dev/stage/prod) for debug builds. Override with
+// -PapiEnv=stage or the API_ENV env var; debug defaults to dev. Release pins prod (below).
+val apiEnvironment: String = providers.gradleProperty("apiEnv")
+    .orElse(providers.environmentVariable("API_ENV"))
+    .getOrElse("dev")
+
 android {
     namespace = "com.nutriplan.android"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
@@ -26,6 +32,9 @@ android {
         // Format: YYYYMMDDNN where NN is build number within the day.
         val buildDate = System.getenv("BUILD_DATE") ?: "unknown"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
+
+        // IDN-402: API environment (local/dev/stage/prod), see the top-level `apiEnvironment`.
+        buildConfigField("String", "API_ENVIRONMENT", "\"$apiEnvironment\"")
     }
 
     buildFeatures {
@@ -60,6 +69,7 @@ android {
             }
 
             isMinifyEnabled = true
+            buildConfigField("String", "API_ENVIRONMENT", "\"prod\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

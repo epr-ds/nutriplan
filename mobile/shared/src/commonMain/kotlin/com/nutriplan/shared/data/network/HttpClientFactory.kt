@@ -10,10 +10,20 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+
+/** Sends Ktor's HTTP logs to stdout so each platform's log pipeline can capture them. */
+private val httpLogger = object : Logger {
+    override fun log(message: String) {
+        println("[nutriplan-http] $message")
+    }
+}
 
 /**
  * Factory for creating a configured Ktor [HttpClient] instance.
@@ -22,6 +32,7 @@ import kotlinx.serialization.json.Json
  * - Content negotiation with kotlinx.serialization JSON
  * - Default headers (Accept, Content-Type)
  * - Timeout settings
+ * - Auth-header-redacted logging
  * - Optional auth plugin for bearer token handling
  */
 object HttpClientFactory {
@@ -54,6 +65,15 @@ object HttpClientFactory {
                 connectTimeoutMillis = timeoutMillis
                 socketTimeoutMillis = timeoutMillis
                 requestTimeoutMillis = timeoutMillis
+            }
+
+            // Auth-header-redacted logging (IDN-402): log request/response headers only (never
+            // bodies, which can carry credentials), with bearer tokens, cookies, and API keys
+            // masked by isSensitiveHeader.
+            install(Logging) {
+                logger = httpLogger
+                level = LogLevel.HEADERS
+                sanitizeHeader { header -> isSensitiveHeader(header) }
             }
 
             defaultRequest {

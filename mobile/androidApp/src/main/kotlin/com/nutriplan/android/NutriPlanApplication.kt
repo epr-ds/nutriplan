@@ -2,6 +2,8 @@ package com.nutriplan.android
 
 import android.app.Application
 import com.nutriplan.android.analytics.FirebaseAnalyticsTracker
+import com.nutriplan.shared.data.ApiConfig
+import com.nutriplan.shared.data.ApiEnvironment
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
@@ -28,6 +30,10 @@ class NutriPlanApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // IDN-402: point the data layer at the build's API environment before the HTTP client is
+        // created (debug: dev, release: prod; overridable with -PapiEnv=local|stage).
+        ApiConfig.configure(ApiEnvironment.fromName(BuildConfig.API_ENVIRONMENT))
 
         // HRD-602: Firebase Crashlytics auto-initializes via Gradle plugin (crash logging enabled by default in v19+).
         // Custom log messages can be added at key app events via FirebaseCrashlytics.getInstance().log("...")
