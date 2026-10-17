@@ -120,12 +120,25 @@ class Settings(BaseSettings):
     jwt_issuer: str = "nutriplan-identity"
     jwt_audience: str = "nutriplan"
 
+    # Edge hardening (NTF-702). The gateway applies the same policies at the edge; enforcing
+    # them here too keeps a misrouted request from reaching the feed. The limit is per
+    # authenticated user, per route, per minute; 0 disables it. ``cors_allow_origins`` is a
+    # comma-separated allow-list; blank means no browser origin is allowed.
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 120
+    cors_allow_origins: str = ""
+
     http_timeout_seconds: float = 5.0
 
     @property
     def is_production(self) -> bool:
         """True in production-like environments, where a missing dependency is fatal."""
         return self.environment.strip().lower() in {"production", "prod"}
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """The browser origins allowed to call the service, parsed from the allow-list."""
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
     @property
     def redis_configured(self) -> bool:

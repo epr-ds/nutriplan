@@ -93,6 +93,18 @@ def _isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
             monkeypatch.delenv(name, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limit() -> None:
+    """Clear the per-user rate-limit window before each test.
+
+    The limiter is process-global, so without this a test would inherit the hits recorded by
+    earlier API tests that share the same stubbed principal.
+    """
+    from app.core.ratelimit import reset_rate_limit
+
+    reset_rate_limit()
+
+
 def require_redis_url() -> str:
     """Return the harness Redis URL, skipping locally but failing under CI.
 
