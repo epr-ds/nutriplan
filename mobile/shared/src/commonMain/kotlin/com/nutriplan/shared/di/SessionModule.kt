@@ -1,6 +1,7 @@
 package com.nutriplan.shared.di
 
 import com.nutriplan.shared.auth.LoginViewModel
+import com.nutriplan.shared.auth.RegisterViewModel
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
 import com.nutriplan.shared.onboarding.OnboardingDraftStorage
@@ -37,6 +38,8 @@ val sessionModule = module {
     single { Logout(authRepository = get(), sessionManager = get()) }
     // A fresh login form per screen, driven by the shared Login use case.
     factory { LoginViewModel(login = get()) }
+    // A fresh registration form per screen, driven by the shared Register use case.
+    factory { RegisterViewModel(register = get()) }
     single {
         CompleteOnboarding(
             identityRepository = get<IdentityRepository>(),
