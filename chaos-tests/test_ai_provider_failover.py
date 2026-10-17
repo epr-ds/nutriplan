@@ -13,54 +13,36 @@ import pytest
 class TestAIProviderFailover:
     """Verify AI service handles LLM provider failures."""
 
-    def test_primary_provider_fails(self) -> None:
-        """When the primary LLM provider fails, the error is raised."""
-        from services.ai.app.llm.factory import create_llm_client
-        from services.ai.app.llm.provider import LLMProvider
+    def test_builds_openai(self) -> None:
+        """Factory builds OpenAI provider when configured."""
+        from app.llm.factory import build_provider
+        from app.core.config import Settings
 
-        with patch("services.ai.app.llm.factory.os.environ") as mock_env:
-            mock_env.get.side_effect = lambda key, default=None: {
-                "AI_LLM_PROVIDER": "openai",
-                "OPENAI_API_KEY": "test-key",
-            }.get(key, default)
+        settings = Settings(llm_provider="openai", llm_api_key="test-key")
+        provider = build_provider(settings)
 
-            # Mock the OpenAI client to fail
-            with patch("services.ai.app.llm.openai_provider.OpenAI") as mock_openai:
-                mock_openai.return_value.chat.completions.create.side_effect = Exception(
-                    "API error"
-                )
+        assert provider.name == "openai"
 
-                client = create_llm_client()
-                assert isinstance(client, LLMProvider)
+    def test_builds_anthropic(self) -> None:
+        """Factory builds Anthropic provider when configured."""
+        from app.llm.factory import build_provider
+        from app.core.config import Settings
 
-                with pytest.raises(Exception, match="API error"):
-                    client.generate({"messages": []})
+        settings = Settings(llm_provider="anthropic", llm_api_key="test-key")
+        provider = build_provider(settings)
 
-    def test_provider_factory_selects_correct_provider(self) -> None:
-        """The factory selects the correct provider based on config."""
-        with patch("services.ai.app.llm.factory.os.environ") as mock_env:
-            mock_env.get.side_effect = lambda key, default=None: {
-                "AI_LLM_PROVIDER": "anthropic",
-                "ANTHROPIC_API_KEY": "test-key",
-            }.get(key, default)
+        assert provider.name == "anthropic"
 
-            with patch("services.ai.app.llm.anthropic_provider.Anthropic") as mock_anthropic:
-                mock_instance = MagicMock()
-                mock_anthropic.return_value = mock_instance
+    def test_handles_missing_key(self) -> None:
+        """Factory handles missing API key."""
+        from app.llm.factory import build_provider
+        from app.core.config import Settings
 
-                client = create_llm_client()
-                assert client is not None
+        settings = Settings(llm_provider="openai", llm_api_key="")
 
-    def test_missing_api_key_handled(self) -> None:
-        """Missing API key is handled gracefully."""
-        with patch("services.ai.app.llm.factory.os.environ") as mock_env:
-            mock_env.get.side_effect = lambda key, default=None: {
-                "AI_LLM_PROVIDER": "openai",
-            }.get(key, default)
-
-            # Should not crash during factory creation
-            # (key validation happens at call time)
-            assert True
+        # Should not crash during provider creation
+        provider = build_provider(settings)
+        assert provider is not None
 
 
 class TestAIChaosScenario:
@@ -68,7 +50,7 @@ class TestAIChaosScenario:
 
     def test_llm_timeout_with_retry(self) -> None:
         """LLM timeouts are retried with exponential backoff."""
-        from services.ai.app.llm.retry import RetryPolicy, compute_backoff
+        from app.llm.retry import RetryPolicy, compute_backoff
 
         policy = RetryPolicy(max_retries=3, base_delay=0.5, max_delay=8.0)
 

@@ -13,14 +13,14 @@ import time
 
 import pytest
 
-from services.commerce.app.grocery.circuit_breaker import (
+from app.grocery.circuit_breaker import (
     BreakerState,
     CircuitBreaker,
     CircuitBreakerRegistry,
     InMemoryBreakerTelemetry,
 )
-from services.commerce.app.grocery.resilient import CircuitBreakingGroceryAdapter
-from services.commerce.app.domain.errors import GroceryProviderUnavailableError
+from app.grocery.resilient import CircuitBreakingGroceryAdapter
+from app.domain.errors import GroceryProviderUnavailableError
 
 
 class FailingGroceryAdapter:
