@@ -28,6 +28,7 @@ import com.nutriplan.android.screen.onboarding.OnboardingScreen
 import com.nutriplan.android.screen.profile.ProfileScreen
 import com.nutriplan.android.navigation.AppNavigationGraph
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.auth.CurrentActivity
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.navigation.PendingDeepLink
 import com.nutriplan.shared.session.SignOut
@@ -49,6 +50,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // IDN-505: let the OAuth token provider launch the native consent UI.
+        CurrentActivity.set(this)
         offerDeepLink(intent)
         setContent {
             NutriPlanTheme {
