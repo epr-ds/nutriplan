@@ -18,14 +18,11 @@ class AuthModelsTest {
         val request = RegisterRequest(
             email = "john@example.com",
             password = "password123",
-            firstName = "John",
-            lastName = "Doe",
+            name = "John Doe",
         )
         assertEquals("john@example.com", request.email)
         assertEquals("password123", request.password)
-        assertEquals("John", request.firstName)
-        assertEquals("Doe", request.lastName)
-        assertNull(request.dietaryPreferences)
+        assertEquals("John Doe", request.name)
     }
 
     @Test
@@ -35,15 +32,17 @@ class AuthModelsTest {
     }
 
     @Test
-    fun `AuthResponse creates correctly`() {
+    fun `AuthResponse carries the returned user`() {
         val response = AuthResponse(
             accessToken = "access-token-xyz",
             refreshToken = "refresh-token-xyz",
             expiresIn = 3600L,
+            user = UserProfile(id = "user-1", email = "john@example.com", name = "John Doe"),
         )
         assertEquals("access-token-xyz", response.accessToken)
         assertEquals("refresh-token-xyz", response.refreshToken)
         assertEquals(3600L, response.expiresIn)
+        assertEquals("John Doe", response.user.name)
     }
 
     @Test
@@ -51,11 +50,11 @@ class AuthModelsTest {
         val profile = UserProfile(
             id = "user-1",
             email = "john@example.com",
-            firstName = "John",
-            lastName = "Doe",
+            name = "John Doe",
         )
         assertEquals("user-1", profile.id)
         assertNull(profile.avatarUrl)
         assertNull(profile.dietaryPreferences)
+        assertNull(profile.createdAt)
     }
 }

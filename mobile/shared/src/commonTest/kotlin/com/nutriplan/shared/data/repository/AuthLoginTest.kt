@@ -45,13 +45,18 @@ class AuthLoginTest {
 
     @Test
     fun `successful login stores and persists the returned tokens`() = runTest {
-        respondWith(HttpStatusCode.OK, """{"accessToken":"a1","refreshToken":"r1","expiresIn":900}""")
+        respondWith(
+            HttpStatusCode.OK,
+            """{"accessToken":"a1","refreshToken":"r1","expiresIn":900,""" +
+                """"user":{"id":"u1","email":"ana@example.com","name":"Ana"}}""",
+        )
         val storage = RecordingStorage()
         val repo = InMemoryAuthRepository(storage)
 
         val response = repo.login(LoginRequest("ana@example.com", "secret"))
 
         assertEquals("a1", response.accessToken)
+        assertEquals("Ana", response.user.name)
         assertTrue(repo.isAuthenticated)
         assertEquals("r1", repo.currentRefreshToken)
         assertEquals(StoredTokens("a1", "r1"), storage.stored)
