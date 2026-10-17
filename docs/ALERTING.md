@@ -32,6 +32,19 @@
 | Dietary | `mongo_connection_errors` | > 0 | P1 |
 | Notification | `push_delivery_failure` | > 5% | P2 |
 
+#### Identity `auth_failure_rate` (implemented, IDN-804)
+
+Backed by `identity_auth_events_total` from `services/identity/app/core/telemetry.py`; scrape
+`GET /metrics` on the Identity service.
+
+```promql
+# Fire when >5% of auth attempts fail over 5m.
+sum(rate(identity_auth_events_total{event=~"(login|refresh|oauth)_failure"}[5m]))
+  / sum(rate(identity_auth_events_total[5m])) > 0.05
+```
+
+A companion signal, `identity_rate_limited_total` (429s), is also exported for throttling spikes.
+
 #### Infrastructure Alerts
 
 | Alert | Condition | Severity |

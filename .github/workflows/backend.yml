@@ -91,6 +91,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://localhost:8081/health
+          curl -fsS http://localhost:8081/metrics > /dev/null
           docker rm -f identity-smoke
 
   commerce-service:

@@ -46,12 +46,28 @@
 
 #### Identity Service (`services/identity/`)
 
+Implemented by **IDN-804** (`app/core/telemetry.py`): every request emits one structured JSON log
+line carrying `request_id`/`trace_id`/`span_id`, and Prometheus metrics are exposed at `GET /metrics`.
+An inbound W3C `traceparent` header is adopted so Identity spans join the caller's trace.
+
 | Component | Metrics | Traces | Logs |
 |-----------|---------|--------|------|
-| Auth | `auth_success_rate`, `auth_latency`, `auth_rate_limit_count` | ✅ | ✅ |
-| JWT | `jwt_validation_duration`, `jwt_failure_count` | ✅ | ✅ |
-| OAuth | `oauth_callback_duration`, `oauth_failure_rate` | ✅ | ✅ |
-| Profile | `profile_update_duration`, `profile_cache_hit_rate` | ✅ | ✅ |
+| HTTP | `identity_http_requests_total{method,route,status}`, `identity_http_request_duration_seconds{method,route}` | ✅ | ✅ |
+| Auth | `identity_auth_events_total{event}` — `login`/`refresh`/`register`/`oauth` × `success`/`failure` | ✅ | ✅ |
+| Auth errors | `identity_auth_errors_total{status}` (401/403), `identity_rate_limited_total` (429) | ✅ | ✅ |
+
+##### Identity dashboard (login success/fail, refresh rate, p95 latency)
+
+| Panel | Query |
+|-------|-------|
+| Login success rate | `sum(rate(identity_auth_events_total{event="login_success"}[5m])) / sum(rate(identity_auth_events_total{event=~"login_.*"}[5m]))` |
+| Login failures / min | `sum(rate(identity_auth_events_total{event="login_failure"}[5m])) * 60` |
+| Refresh rate | `sum(rate(identity_auth_events_total{event=~"refresh_.*"}[5m])) * 60` |
+| p95 latency | `histogram_quantile(0.95, sum(rate(identity_http_request_duration_seconds_bucket[5m])) by (le))` |
+| Rate-limit rejections / min | `sum(rate(identity_rate_limited_total[5m])) * 60` |
+
+The `auth_failure_rate` alert is wired to `identity_auth_events_total` — see
+[ALERTING.md](ALERTING.md#identity-auth_failure_rate).
 
 #### Dietary Service (`services/dietary/`)
 
