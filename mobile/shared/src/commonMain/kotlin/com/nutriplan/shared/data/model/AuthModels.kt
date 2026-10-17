@@ -45,15 +45,15 @@ data class DietaryPreferences(
     val dietType: String? = null,
     val allergies: List<String>? = null,
     val dailyCalorieTarget: Int? = null,
-    val macroTargets: MacroTargets? = null,
+    val macroTargets: DietaryMacroTargets? = null,
     val excludedIngredients: List<String>? = null,
     val cuisinePreferences: List<String>? = null,
     val appetiteSatisfactionLevel: Int? = null,
 )
 
-/** Macro targets embedded in [DietaryPreferences]. */
+/** Macro targets embedded in [DietaryPreferences] (`MacroTargets` in the Identity contract). */
 @Serializable
-data class MacroTargets(
+data class DietaryMacroTargets(
     val proteinGrams: Int? = null,
     val carbsGrams: Int? = null,
     val fatGrams: Int? = null,
@@ -84,7 +84,7 @@ data class UpdateDietaryPreferencesRequest(
     val dietType: String? = null,
     val allergies: List<String>? = null,
     val dailyCalorieTarget: Int? = null,
-    val macroTargets: MacroTargets? = null,
+    val macroTargets: DietaryMacroTargets? = null,
     val excludedIngredients: List<String>? = null,
     val cuisinePreferences: List<String>? = null,
     val appetiteSatisfactionLevel: Int? = null,

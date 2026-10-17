@@ -66,7 +66,7 @@ SCHEMA_TO_CLASSES: dict[str, list[str]] = {
         "DietaryPreferences",
         "UpdateDietaryPreferencesRequest",
     ],
-    "MacroTargets": ["MacroTargets"],
+    "MacroTargets": ["DietaryMacroTargets"],
     "AvatarUploadRequest": ["AvatarUploadUrlRequest"],
     "AvatarUploadResponse": ["AvatarUploadUrlResponse"],
     "AvatarConfirmRequest": ["AvatarConfirmRequest"],
