@@ -2,6 +2,8 @@ package com.nutriplan.shared.di
 
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
+import com.nutriplan.shared.onboarding.OnboardingDraftStorage
+import com.nutriplan.shared.onboarding.OnboardingViewModel
 import com.nutriplan.shared.session.CompleteOnboarding
 import com.nutriplan.shared.session.DefaultSessionManager
 import com.nutriplan.shared.session.Login
@@ -36,6 +38,13 @@ val sessionModule = module {
         CompleteOnboarding(
             identityRepository = get<IdentityRepository>(),
             sessionManager = get(),
+        )
+    }
+    // A fresh wizard per onboarding flow; the draft storage is provided by the app modules.
+    factory {
+        OnboardingViewModel(
+            draftStorage = get<OnboardingDraftStorage>(),
+            completeOnboarding = get(),
         )
     }
 }
