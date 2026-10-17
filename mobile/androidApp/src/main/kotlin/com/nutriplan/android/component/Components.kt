@@ -17,7 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
@@ -82,19 +85,24 @@ fun NutriPlanTextField(
         label = { Text(label) },
         placeholder = { Text(placeholder) },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            // F27: associate the error with the field so screen readers announce it (WCAG 3.3.1)
+            .semantics { if (isError && errorMessage.isNotEmpty()) this.error(errorMessage) },
         shape = RoundedCornerShape(12.dp),
         isError = isError,
         singleLine = true
     )
     
     if (isError && errorMessage.isNotEmpty()) {
-        // F27: Add live region semantics for error announcements (WCAG 3.3.1, 4.1.3)
+        // F27: live region so the error is announced when it appears (WCAG 3.3.1, 4.1.3)
         Text(
             text = errorMessage,
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(start = 16.dp, top = 4.dp).semantics { contentDescription = "Error: $errorMessage" }
+            modifier = Modifier
+                .padding(start = 16.dp, top = 4.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }
         )
     }
 }

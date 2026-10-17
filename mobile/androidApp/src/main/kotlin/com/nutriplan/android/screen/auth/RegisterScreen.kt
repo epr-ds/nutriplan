@@ -18,12 +18,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.shared.auth.RegisterUiState
 import com.nutriplan.shared.auth.RegisterViewModel
 import kotlinx.coroutines.launch
 
@@ -41,6 +44,31 @@ fun RegisterScreen(
         if (state.isSuccess) onRegisterSuccess()
     }
 
+    RegisterScreenContent(
+        state = state,
+        onNameChange = viewModel::onNameChange,
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
+        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
+        onSubmit = { scope.launch { viewModel.submit() } },
+        onNavigateToLogin = onNavigateToLogin,
+    )
+}
+
+/**
+ * Stateless registration UI (IDN-503/705). Kept separate from [RegisterScreen] so the accessibility
+ * checks can render it directly without the DI graph.
+ */
+@Composable
+internal fun RegisterScreenContent(
+    state: RegisterUiState,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -50,14 +78,15 @@ fun RegisterScreen(
     ) {
         Text(
             text = "Create Account",
-            style = MaterialTheme.typography.headlineLarge
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.semantics { heading() }
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         NutriPlanTextField(
             value = state.name,
-            onValueChange = viewModel::onNameChange,
+            onValueChange = onNameChange,
             label = "Name",
             placeholder = "Enter your name",
             isError = state.nameError != null,
@@ -68,7 +97,7 @@ fun RegisterScreen(
 
         NutriPlanTextField(
             value = state.email,
-            onValueChange = viewModel::onEmailChange,
+            onValueChange = onEmailChange,
             label = "Email",
             placeholder = "Enter your email",
             isError = state.emailError != null,
@@ -79,7 +108,7 @@ fun RegisterScreen(
 
         NutriPlanTextField(
             value = state.password,
-            onValueChange = viewModel::onPasswordChange,
+            onValueChange = onPasswordChange,
             label = "Password",
             placeholder = "Enter your password",
             isPassword = true,
@@ -91,7 +120,7 @@ fun RegisterScreen(
 
         NutriPlanTextField(
             value = state.confirmPassword,
-            onValueChange = viewModel::onConfirmPasswordChange,
+            onValueChange = onConfirmPasswordChange,
             label = "Confirm Password",
             placeholder = "Re-enter your password",
             isPassword = true,
@@ -104,18 +133,14 @@ fun RegisterScreen(
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { contentDescription = "Error: $it" }
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         NutriPlanButton(
-            onClick = {
-                if (state.canSubmit) {
-                    scope.launch { viewModel.submit() }
-                }
-            },
+            onClick = onSubmit,
             isLoading = state.isLoading,
             isEnabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth()

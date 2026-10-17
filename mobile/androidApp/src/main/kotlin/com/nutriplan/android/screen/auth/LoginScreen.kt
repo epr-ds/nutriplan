@@ -5,14 +5,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.shared.auth.LoginUiState
 import com.nutriplan.shared.auth.LoginViewModel
 import com.nutriplan.shared.auth.OAuthProvider
+import com.nutriplan.shared.auth.OAuthUiState
 import com.nutriplan.shared.auth.OAuthViewModel
 import kotlinx.coroutines.launch
 
@@ -36,6 +41,35 @@ fun LoginScreen(
         if (oauthState.isSuccess) onLoginSuccess()
     }
 
+    LoginScreenContent(
+        state = state,
+        oauthState = oauthState,
+        supportedProviders = oauthViewModel.supportedProviders,
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
+        onSubmit = { scope.launch { viewModel.submit() } },
+        onForgotPassword = onNavigateToForgotPassword,
+        onNavigateToRegister = onNavigateToRegister,
+        onOAuthSignIn = { provider -> scope.launch { oauthViewModel.signIn(provider) } },
+    )
+}
+
+/**
+ * Stateless login UI (IDN-501/705). Kept separate from [LoginScreen] so the accessibility checks
+ * can render it directly without the DI graph.
+ */
+@Composable
+internal fun LoginScreenContent(
+    state: LoginUiState,
+    oauthState: OAuthUiState,
+    supportedProviders: Set<OAuthProvider>,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onForgotPassword: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onOAuthSignIn: (OAuthProvider) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,14 +79,15 @@ fun LoginScreen(
     ) {
         Text(
             text = "Welcome Back",
-            style = MaterialTheme.typography.headlineLarge
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.semantics { heading() }
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         NutriPlanTextField(
             value = state.email,
-            onValueChange = viewModel::onEmailChange,
+            onValueChange = onEmailChange,
             label = "Email",
             placeholder = "Enter your email",
             isError = state.emailError != null,
@@ -63,7 +98,7 @@ fun LoginScreen(
 
         NutriPlanTextField(
             value = state.password,
-            onValueChange = viewModel::onPasswordChange,
+            onValueChange = onPasswordChange,
             label = "Password",
             placeholder = "Enter your password",
             isPassword = true,
@@ -74,7 +109,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(
-            onClick = onNavigateToForgotPassword,
+            onClick = onForgotPassword,
             modifier = Modifier.align(Alignment.End)
         ) {
             Text("Forgot Password?")
@@ -82,22 +117,18 @@ fun LoginScreen(
 
         state.errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))
-            // F28: Add live region semantics for error announcements (WCAG 3.3.1, 4.1.3)
+            // F28: live region so screen readers announce form errors (WCAG 3.3.1, 4.1.3)
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { contentDescription = "Error: $it" }
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         NutriPlanButton(
-            onClick = {
-                if (state.canSubmit) {
-                    scope.launch { viewModel.submit() }
-                }
-            },
+            onClick = onSubmit,
             isLoading = state.isLoading,
             isEnabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth()
@@ -118,21 +149,28 @@ fun LoginScreen(
         }
 
         // IDN-505: OAuth buttons, limited to the providers this platform can present.
-        if (oauthViewModel.supportedProviders.isNotEmpty()) {
+        if (supportedProviders.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            oauthViewModel.supportedProviders.forEach { provider ->
+            supportedProviders.forEach { provider ->
+                val label = oauthProviderLabel(provider)
                 OutlinedButton(
-                    onClick = { scope.launch { oauthViewModel.signIn(provider) } },
+                    onClick = { onOAuthSignIn(provider) },
                     enabled = oauthState.canSubmit,
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(min = 48.dp)
                 ) {
                     if (oauthState.isLoading && oauthState.activeProvider == provider) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp)
+                                // F29: keep the button labelled while the spinner replaces its text
+                                .semantics { contentDescription = label },
+                            strokeWidth = 2.dp
+                        )
                     } else {
-                        Text(oauthProviderLabel(provider))
+                        Text(label)
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -142,7 +180,7 @@ fun LoginScreen(
                 Text(
                     text = message,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { contentDescription = "Error: $message" }
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                 )
             }
         }
