@@ -6,11 +6,9 @@ Verify retry policy and backoff behavior when LLM providers fail.
 from __future__ import annotations
 
 import random
-from unittest.mock import MagicMock, patch
 
 import pytest
-
-from services.ai.app.llm.retry import RetryPolicy, compute_backoff
+from app.llm.retry import RetryPolicy, compute_backoff
 
 
 class TestLLMRetryPolicy:
@@ -80,7 +78,7 @@ class TestLLMBackoff:
 
         # All delays should be in [0, max_delay]
         for d in delays:
-            assert 0.0 <= d <= 2.0
+            assert 0.0 <= d <= policy.max_delay
 
         # Should have some variance (not all the same)
         assert len(set(delays)) > 1
@@ -91,12 +89,12 @@ class TestLLMBackoff:
 
         delays = [compute_backoff(i, policy, rand=lambda: 0.5) for i in range(5)]
 
-        # With rand=0.5: 0.5, 1.0, 2.0, 4.0, 8.0 (capped at 8.0)
+        # Ceiling is min(8.0, 2**i); scaled by rand=0.5: 0.5, 1.0, 2.0, 4.0, 4.0
         assert delays[0] == 0.5
         assert delays[1] == 1.0
         assert delays[2] == 2.0
         assert delays[3] == 4.0
-        assert delays[4] == 8.0
+        assert delays[4] == 4.0
 
 
 class TestLLMChaosScenario:

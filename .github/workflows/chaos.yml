@@ -28,6 +28,7 @@ jobs:
         service:
           - ai
           - commerce
+          - dietary
           - notification
     steps:
       - uses: actions/checkout@v7
@@ -85,13 +86,8 @@ jobs:
       - name: Run all chaos tests
         run: |
           # Run chaos tests for each service with the correct PYTHONPATH
-          for service in ai commerce notification; do
-            if [ "$service" = "commerce" ]; then
-              files="chaos-tests/test_grocery_circuit_breaker.py chaos-tests/test_resilient_publisher.py chaos-tests/conftest.py"
-            else
-              files="chaos-tests/test_${service}*.py chaos-tests/conftest.py"
-            fi
-            PYTHONPATH="$(pwd):services/$service" pytest $files \
+          for service in ai commerce dietary notification; do
+            PYTHONPATH="$(pwd):services/$service" pytest chaos-tests/test_${service}*.py chaos-tests/conftest.py \
               -v \
               --tb=short || exit 1
           done
