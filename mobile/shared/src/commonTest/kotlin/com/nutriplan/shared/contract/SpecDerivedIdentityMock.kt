@@ -44,7 +44,7 @@ class SpecDerivedIdentityMock {
         violations.lastOrNull()?.let { return contractError(it) }
 
         return respond(
-            content = IdentityResponses.forSchema(operation.responseSchema),
+            content = operation.responseSchema?.let { IdentityResponses.forSchema(it) } ?: "",
             status = HttpStatusCode.fromValue(operation.successStatus),
             headers = jsonHeaders,
         )

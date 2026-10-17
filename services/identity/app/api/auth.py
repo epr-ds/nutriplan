@@ -28,6 +28,11 @@ def refresh(payload: RefreshRequest, db: DbSession) -> AuthResponse:
     return auth_service.refresh(db, payload)
 
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(payload: RefreshRequest, db: DbSession) -> None:
+    auth_service.logout(db, payload)
+
+
 @router.post("/oauth/{provider}", response_model=AuthResponse)
 def oauth_login(provider: str, payload: OAuthRequest, db: DbSession) -> AuthResponse:
     return auth_service.oauth_login(db, provider, payload)

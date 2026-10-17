@@ -131,6 +131,13 @@ def test_refresh_response_conforms(openapi, client):
     assert_conforms(openapi, "post", "/auth/refresh", resp)
 
 
+def test_logout_response_conforms(openapi, client):
+    tokens = _register(client, "logout@example.com").json()
+    resp = client.post("/auth/logout", json={"refreshToken": tokens["refreshToken"]})
+    assert resp.status_code == 204
+    assert_conforms(openapi, "post", "/auth/logout", resp)
+
+
 # --- Users ------------------------------------------------------------------
 
 

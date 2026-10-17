@@ -135,6 +135,24 @@ def refresh(db: Session, payload: RefreshRequest) -> AuthResponse:
     return _auth_response(db, user, token.family_id)
 
 
+def logout(db: Session, payload: RefreshRequest) -> None:
+    """Revoke the refresh-token family that issued ``payload.refresh_token`` (IDN-607).
+
+    Logout is idempotent and deliberately says nothing about whether the token existed, so it
+    cannot be used to probe a token's validity. Revoking the whole family kills the rotation
+    chain, so an access token minted from it can no longer be renewed.
+    """
+    token = db.scalar(
+        select(RefreshToken).where(RefreshToken.token_hash == _hash_token(payload.refresh_token))
+    )
+    if token is None:
+        return
+    db.execute(
+        update(RefreshToken).where(RefreshToken.family_id == token.family_id).values(revoked=True)
+    )
+    db.commit()
+
+
 def oauth_login(db: Session, provider: str, payload: OAuthRequest) -> AuthResponse:
     """Verify a provider id-token, then provision, look up, or link the matching user.
 

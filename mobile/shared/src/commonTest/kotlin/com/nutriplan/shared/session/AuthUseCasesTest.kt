@@ -60,8 +60,24 @@ class AuthUseCasesTest {
     }
 
     @Test
-    fun `logout clears the session`() = runTest {
+    fun `logout revokes the refresh token then clears the session`() = runTest {
         val repository = FakeAuthRepository()
+        val manager = DefaultSessionManager(repository, backgroundScope)
+        Login(repository, manager)("ana@example.com", "correct-horse")
+
+        Logout(repository, manager)()
+
+        assertEquals(listOf("refresh-1"), repository.revokedTokens)
+        assertEquals(SessionState.SignedOut, manager.state.value)
+        assertNull(repository.currentAccessToken)
+        assertNull(repository.currentRefreshToken)
+    }
+
+    @Test
+    fun `logout still clears the session when server revocation fails`() = runTest {
+        val repository = FakeAuthRepository().apply {
+            revokeError = ApiException.NetworkError()
+        }
         val manager = DefaultSessionManager(repository, backgroundScope)
         Login(repository, manager)("ana@example.com", "correct-horse")
 
@@ -69,6 +85,5 @@ class AuthUseCasesTest {
 
         assertEquals(SessionState.SignedOut, manager.state.value)
         assertNull(repository.currentAccessToken)
-        assertNull(repository.currentRefreshToken)
     }
 }

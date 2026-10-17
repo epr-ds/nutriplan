@@ -34,3 +34,18 @@ def test_refresh_reuse_revokes_whole_family(client):
 def test_refresh_invalid_token_unauthorized(client):
     response = client.post("/auth/refresh", json={"refreshToken": "not-a-real-token"})
     assert response.status_code == 401
+
+
+def test_logout_revokes_the_whole_family(client):
+    tokens = _register(client)
+    response = client.post("/auth/logout", json={"refreshToken": tokens["refreshToken"]})
+    assert response.status_code == 204
+
+    # The revoked refresh token can no longer be rotated.
+    after = client.post("/auth/refresh", json={"refreshToken": tokens["refreshToken"]})
+    assert after.status_code == 401
+
+
+def test_logout_unknown_token_is_idempotent(client):
+    response = client.post("/auth/logout", json={"refreshToken": "not-a-real-token"})
+    assert response.status_code == 204

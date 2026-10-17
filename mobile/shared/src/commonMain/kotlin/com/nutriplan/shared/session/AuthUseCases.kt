@@ -55,14 +55,19 @@ class OAuthLogin(
 /**
  * End the session.
  *
- * Clears the stored tokens and flips the observed state to [SessionState.SignedOut]. Wiping the
- * on-device cache is [SignOut]'s job; navigation simply reacts to the state change.
+ * Revokes the refresh token server-side first (`POST /auth/logout`) so a stolen token can no
+ * longer be rotated, then clears the stored tokens and flips the observed state to
+ * [SessionState.SignedOut]. Revocation is best-effort: if the call fails (e.g. the device is
+ * offline) the local session is still cleared — logging out must never be blocked.
  */
 class Logout(
     private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
 ) {
-    operator fun invoke() {
+    suspend operator fun invoke() {
+        authRepository.currentRefreshToken?.let { refreshToken ->
+            runCatching { authRepository.revokeSession(refreshToken) }
+        }
         authRepository.clearTokens()
         sessionManager.onSignedOut()
     }
