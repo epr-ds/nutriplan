@@ -79,6 +79,19 @@ jobs:
         run: pytest tests/test_contract.py -q
       - name: Test (pytest)
         run: pytest --ignore=tests/test_contract.py
+      - name: Build runtime image
+        run: docker build --target runtime -t nutriplan-identity:ci .
+      - name: Smoke test the runtime image
+        run: |
+          docker run -d --name identity-smoke --network host \
+            -e IDENTITY_DATABASE_URL=postgresql+psycopg://nutriplan:nutriplan@localhost:5432/identity \
+            nutriplan-identity:ci
+          for _ in $(seq 1 20); do
+            if curl -fsS http://localhost:8081/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8081/health
+          docker rm -f identity-smoke
 
   commerce-service:
     name: Commerce service
