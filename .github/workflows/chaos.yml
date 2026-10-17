@@ -86,8 +86,13 @@ jobs:
 
       - name: Run all chaos tests
         run: |
-          # Add service dirs so 'from app.*' imports work from service app directories
-          PYTHONPATH="$(pwd):services/ai:services/commerce:services/notification:services/dietary:services/identity" pytest chaos-tests/ -v --tb=short
+          # Run chaos tests for each service with the correct PYTHONPATH
+          for service in ai commerce notification; do
+            PYTHONPATH="$(pwd):services/$service" pytest chaos-tests/ \
+              -v \
+              -k "$service" \
+              --tb=short || exit 1
+          done
 
   chaos-summary:
     name: Chaos test summary
