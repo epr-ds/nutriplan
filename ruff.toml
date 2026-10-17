@@ -1,6 +1,6 @@
 [lint]
 extend-ignore = [
-    "F821",  # Undefined name (fixtures from conftest)
+    "F821",  # Undefined name (fixtures from conftest, internal app imports)
     "F841",  # Unused variables
     "TRY002",  # Create your own exception (tests use generic Exception)
     "B017",  # Assert blinding exception
