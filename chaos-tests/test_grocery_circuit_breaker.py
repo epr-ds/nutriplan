@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from services.commerce.app.domain.errors import GroceryProviderUnavailableError
 from services.commerce.app.grocery.circuit_breaker import (
     BreakerState,

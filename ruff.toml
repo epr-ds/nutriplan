@@ -8,3 +8,6 @@ extend-ignore = [
     "RET501",  # Return None explicitly
     "PLR1711",  # Useless return statement
 ]
+
+[lint.extend-per-file-ignores]
+".github/workflows/*.yml" = ["ALL"]
