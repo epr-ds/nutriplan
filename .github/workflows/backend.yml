@@ -94,6 +94,30 @@ jobs:
           curl -fsS http://localhost:8081/metrics > /dev/null
           docker rm -f identity-smoke
 
+  # IDN-700: prove the suite runs against a throwaway Postgres brought up by Testcontainers
+  # (the QA harness), with no service container and no IDENTITY_DATABASE_URL.
+  identity-testcontainers:
+    name: Identity ephemeral Postgres (Testcontainers)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/identity
+    env:
+      IDENTITY_TEST_DB: postgres
+      # The runner is torn down after the job; skip Ryuk's privileged sidecar.
+      TESTCONTAINERS_RYUK_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/identity/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Test against an ephemeral Postgres container
+        run: pytest tests/test_harness.py tests/test_auth.py tests/test_refresh.py tests/test_profile.py -q
+
   commerce-service:
     name: Commerce service
     runs-on: ubuntu-latest

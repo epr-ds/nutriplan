@@ -81,6 +81,20 @@ docker run --rm nutriplan-identity-test
 docker compose --profile test run --rm identity-test
 ```
 
+### Ephemeral Postgres test harness (IDN-700)
+
+Set `IDENTITY_TEST_DB=postgres` to run the suite against a throwaway Postgres started by
+**Testcontainers** — no hand-managed server, image pulled on demand (Docker required):
+
+```bash
+IDENTITY_TEST_DB=postgres pytest -q
+```
+
+When the variable is unset the suite uses `IDENTITY_DATABASE_URL` if present, otherwise a
+throwaway SQLite file. The `test_account` / `auth_headers` fixtures seed a known user so tests
+that need a session don't re-implement registration. Backend CI runs this path in the
+**"Identity ephemeral Postgres (Testcontainers)"** job.
+
 ### Provider contract tests (IDN-701)
 
 `tests/test_contract.py` validates the service's **actual** responses against
