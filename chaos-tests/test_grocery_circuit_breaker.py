@@ -13,14 +13,14 @@ from typing import Any
 
 import pytest
 
-from services.commerce.app.domain.errors import GroceryProviderUnavailableError
-from services.commerce.app.grocery.circuit_breaker import (
+from commerce.app.domain.errors import GroceryProviderUnavailableError
+from commerce.app.grocery.circuit_breaker import (
     BreakerState,
     CircuitBreaker,
     CircuitBreakerRegistry,
     InMemoryBreakerTelemetry,
 )
-from services.commerce.app.grocery.resilient import CircuitBreakingGroceryAdapter
+from commerce.app.grocery.resilient import CircuitBreakingGroceryAdapter
 
 
 class FailingGroceryAdapter:
