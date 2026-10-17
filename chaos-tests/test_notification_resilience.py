@@ -5,11 +5,11 @@ Verify exponential backoff and dead-letter queue behavior under failure.
 
 from __future__ import annotations
 
-from app.events.backoff import (
+from services.notification.app.events.backoff import (
     RetrySchedule,
 )
-from app.events.consumer import DeliveredEvent
-from app.events.dead_letter import (
+from services.notification.app.events.consumer import DeliveredEvent
+from services.notification.app.events.dead_letter import (
     InMemoryDeadLetterQueue,
 )
 

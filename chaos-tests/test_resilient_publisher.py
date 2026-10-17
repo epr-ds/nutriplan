@@ -9,7 +9,7 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-from app.events.resilient import ResilientEventPublisher
+from services.commerce.app.events.resilient import ResilientEventPublisher
 
 
 class TestResilientEventPublisher:

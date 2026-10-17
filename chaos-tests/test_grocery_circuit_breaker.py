@@ -12,14 +12,14 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from app.domain.errors import GroceryProviderUnavailableError
-from app.grocery.circuit_breaker import (
+from services.commerce.app.domain.errors import GroceryProviderUnavailableError
+from services.commerce.app.grocery.circuit_breaker import (
     BreakerState,
     CircuitBreaker,
     CircuitBreakerRegistry,
     InMemoryBreakerTelemetry,
 )
-from app.grocery.resilient import CircuitBreakingGroceryAdapter
+from services.commerce.app.grocery.resilient import CircuitBreakingGroceryAdapter
 
 
 class FailingGroceryAdapter:
