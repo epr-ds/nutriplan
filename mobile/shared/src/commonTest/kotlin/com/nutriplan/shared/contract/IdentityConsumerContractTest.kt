@@ -44,7 +44,7 @@ class IdentityConsumerContractTest {
     fun tearDown() = HttpClientProvider.reset()
 
     private fun assertNoViolations() =
-        assertTrue(mock.violations.isEmpty(), () -> "contract violations: ${mock.violations}")
+        assertTrue(mock.violations.isEmpty(), "contract violations: ${mock.violations}")
 
     @Test
     fun `register posts a documented request and reads the signed-in user`() = runTest {
