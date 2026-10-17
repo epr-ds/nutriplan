@@ -86,8 +86,8 @@ jobs:
 
       - name: Run all chaos tests
         run: |
-          # Add repo root for 'services' package so 'from services.*.app.*' resolves
-          PYTHONPATH="$(pwd):services" pytest chaos-tests/ -v --tb=short
+          # Add repo root, each service app dir for 'from services.*.app.*' imports
+          PYTHONPATH="$(pwd):services/ai/app:services/commerce/app:services/notification/app:services/dietary/app:services/identity/app:services" pytest chaos-tests/ -v --tb=short
 
   chaos-summary:
     name: Chaos test summary
