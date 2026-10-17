@@ -22,3 +22,28 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # HRD-106: re-test gate for the pentest remediation findings. Each service's security
+  # regression suite is a named, gating check so a remediated class cannot silently regress.
+  # See docs/SECURITY-REMEDIATION.md.
+  retest:
+    name: Security re-test (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [identity, commerce, dietary, notification]
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/${{ matrix.service }}/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Security regression suite
+        run: pytest tests/test_security.py -q
