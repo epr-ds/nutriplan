@@ -17,6 +17,12 @@ val apiEnvironment: String = providers.gradleProperty("apiEnv")
     .orElse(providers.environmentVariable("API_ENV"))
     .getOrElse("dev")
 
+// IDN-505: Google OAuth server (web) client ID. Empty unless provided via -PgoogleServerClientId
+// or GOOGLE_SERVER_CLIENT_ID (secrets per env, IDN-803). When blank, the Google button is hidden.
+val googleServerClientId: String = providers.gradleProperty("googleServerClientId")
+    .orElse(providers.environmentVariable("GOOGLE_SERVER_CLIENT_ID"))
+    .getOrElse("")
+
 android {
     namespace = "com.nutriplan.android"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
@@ -35,6 +41,9 @@ android {
 
         // IDN-402: API environment (local/dev/stage/prod), see the top-level `apiEnvironment`.
         buildConfigField("String", "API_ENVIRONMENT", "\"$apiEnvironment\"")
+
+        // IDN-505: Google OAuth server client ID (blank ⇒ OAuth buttons hidden).
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
     }
 
     buildFeatures {
@@ -91,6 +100,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+
+    // IDN-505: Google OAuth via Credential Manager
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

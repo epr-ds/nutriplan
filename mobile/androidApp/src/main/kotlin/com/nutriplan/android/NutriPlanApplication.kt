@@ -2,6 +2,8 @@ package com.nutriplan.android
 
 import android.app.Application
 import com.nutriplan.android.analytics.FirebaseAnalyticsTracker
+import com.nutriplan.android.auth.AndroidOAuthTokenProvider
+import com.nutriplan.shared.auth.OAuthTokenProvider
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.ApiEnvironment
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
@@ -46,6 +48,10 @@ class NutriPlanApplication : Application() {
             module {
                 single<TokenStorage> { SecureTokenStorage(applicationContext) }
                 single<OnboardingDraftStorage> { DeviceOnboardingDraftStorage(applicationContext) }
+                // IDN-505: Google OAuth via Credential Manager (server client ID from the build).
+                single<OAuthTokenProvider> {
+                    AndroidOAuthTokenProvider(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID)
+                }
             },
             cacheModule(DatabaseDriverFactory(applicationContext)),
         )

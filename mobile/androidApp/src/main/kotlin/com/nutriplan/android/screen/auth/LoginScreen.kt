@@ -1,7 +1,6 @@
 package com.nutriplan.android.screen.auth
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +12,8 @@ import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.shared.auth.LoginViewModel
+import com.nutriplan.shared.auth.OAuthProvider
+import com.nutriplan.shared.auth.OAuthViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -22,12 +23,17 @@ fun LoginScreen(
     onNavigateToForgotPassword: () -> Unit
 ) {
     val viewModel = koinInject<LoginViewModel>()
+    val oauthViewModel = koinInject<OAuthViewModel>()
     val state by viewModel.state.collectAsState()
+    val oauthState by oauthViewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 
     // Route per session state: a successful sign-in advances the session (onboarding or main).
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) onLoginSuccess()
+    }
+    LaunchedEffect(oauthState.isSuccess) {
+        if (oauthState.isSuccess) onLoginSuccess()
     }
 
     Column(
@@ -111,41 +117,40 @@ fun LoginScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // IDN-505: OAuth buttons, limited to the providers this platform can present.
+        if (oauthViewModel.supportedProviders.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Social login buttons
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // F7: Add minimum touch target (≥48dp) and content description (WCAG 2.5.5, 4.1.2)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .widthIn(min = 48.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("G")
+            oauthViewModel.supportedProviders.forEach { provider ->
+                OutlinedButton(
+                    onClick = { scope.launch { oauthViewModel.signIn(provider) } },
+                    enabled = oauthState.canSubmit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(min = 48.dp)
+                ) {
+                    if (oauthState.isLoading && oauthState.activeProvider == provider) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(oauthProviderLabel(provider))
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-            // F7: Add minimum touch target (≥48dp) and content description (WCAG 2.5.5, 4.1.2)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .widthIn(min = 48.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🍎")
+
+            oauthState.errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { contentDescription = "Error: $message" }
+                )
             }
         }
     }
+}
+
+private fun oauthProviderLabel(provider: OAuthProvider): String = when (provider) {
+    OAuthProvider.GOOGLE -> "Continue with Google"
+    OAuthProvider.FACEBOOK -> "Continue with Facebook"
+    OAuthProvider.APPLE -> "Continue with Apple"
 }

@@ -1,6 +1,8 @@
 package com.nutriplan.shared.di
 
 import com.nutriplan.shared.auth.LoginViewModel
+import com.nutriplan.shared.auth.OAuthTokenProvider
+import com.nutriplan.shared.auth.OAuthViewModel
 import com.nutriplan.shared.auth.RegisterViewModel
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
@@ -40,6 +42,8 @@ val sessionModule = module {
     factory { LoginViewModel(login = get()) }
     // A fresh registration form per screen, driven by the shared Register use case.
     factory { RegisterViewModel(register = get()) }
+    // A fresh OAuth flow per screen; the token provider is supplied by the app modules.
+    factory { OAuthViewModel(oauthLogin = get(), tokenProvider = get<OAuthTokenProvider>()) }
     single {
         CompleteOnboarding(
             identityRepository = get<IdentityRepository>(),
