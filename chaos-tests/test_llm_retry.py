@@ -9,7 +9,7 @@ import random
 
 import pytest
 
-from ai.app.llm.retry import RetryPolicy, compute_backoff
+from app.llm.retry import RetryPolicy, compute_backoff
 
 
 class TestLLMRetryPolicy:
