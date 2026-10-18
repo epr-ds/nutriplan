@@ -1,0 +1,131 @@
+{
+  "_comment": "DPL-705 golden dataset. Inputs and expected outputs are hand-derived so the assertions pin the DPL-301/302/303 math independently of the implementation. Values deliberately exercise half-up rounding at the .x5/.xx5 boundaries and both nutrition sources (authored per-serving nutritionalInfo and ingredient-derived).",
+  "recipes": [
+    {
+      "id": "r-oats",
+      "name": "Golden Oats",
+      "servings": 2,
+      "nutritionalInfo": {
+        "calories": 207,
+        "protein": 11.25,
+        "carbs": 33.05,
+        "fat": 5.55,
+        "sugar": 6.65
+      }
+    },
+    {
+      "id": "r-chicken",
+      "name": "Golden Chicken",
+      "servings": 1,
+      "nutritionalInfo": {
+        "calories": 305,
+        "protein": 41.6,
+        "carbs": 4.5,
+        "fat": 13.25,
+        "sugar": 0
+      }
+    },
+    {
+      "id": "r-rice",
+      "name": "Golden Rice",
+      "servings": 4,
+      "ingredients": [
+        {
+          "name": "White rice",
+          "calories": 500,
+          "protein": 10.0,
+          "carbs": 100.0,
+          "fat": 2.0,
+          "sugar": 1.0
+        },
+        {
+          "name": "Water",
+          "calories": 360,
+          "protein": 8.0,
+          "carbs": 80.0,
+          "fat": 2.0,
+          "sugar": 1.0
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "startDate": "2026-01-01",
+    "endDate": "2026-01-03",
+    "dailyCalorieTarget": 2000,
+    "macroTargets": {
+      "proteinGrams": 150,
+      "carbsGrams": 200,
+      "fatGrams": 70,
+      "sugarGrams": 50
+    },
+    "meals": [
+      {
+        "mealType": "breakfast",
+        "recipeId": "r-oats",
+        "servings": 1.5,
+        "expected": {
+          "calories": 311,
+          "protein": 16.9,
+          "carbs": 49.6,
+          "fat": 8.3,
+          "sugar": 10.0
+        }
+      },
+      {
+        "mealType": "lunch",
+        "recipeId": "r-chicken",
+        "servings": 2.0,
+        "expected": {
+          "calories": 610,
+          "protein": 83.2,
+          "carbs": 9.0,
+          "fat": 26.5,
+          "sugar": 0.0
+        }
+      },
+      {
+        "mealType": "dinner",
+        "recipeId": "r-rice",
+        "servings": 2.5,
+        "expected": {
+          "calories": 538,
+          "protein": 11.3,
+          "carbs": 112.5,
+          "fat": 2.5,
+          "sugar": 1.3
+        }
+      }
+    ]
+  },
+  "expectedSummary": {
+    "total": {
+      "calories": 1459,
+      "protein": 111.4,
+      "carbs": 171.1,
+      "fat": 37.3,
+      "sugar": 11.3
+    },
+    "dailyAverage": {
+      "calories": 486,
+      "protein": 37.1,
+      "carbs": 57.0,
+      "fat": 12.4,
+      "sugar": 3.8
+    },
+    "targets": {
+      "calories": 2000,
+      "protein": 150,
+      "carbs": 200,
+      "fat": 70,
+      "sugar": 50
+    },
+    "progress": {
+      "calories": {"target": 2000, "actual": 486, "percentOfTarget": 24.3, "status": "under"},
+      "protein": {"target": 150, "actual": 37.1, "percentOfTarget": 24.8, "status": "under"},
+      "carbs": {"target": 200, "actual": 57.0, "percentOfTarget": 28.5, "status": "under"},
+      "fat": {"target": 70, "actual": 12.4, "percentOfTarget": 17.8, "status": "under"},
+      "sugar": {"target": 50, "actual": 3.8, "percentOfTarget": 7.5, "status": "under"}
+    }
+  }
+}
