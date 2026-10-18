@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 from app.domain.meal_plan import (
@@ -156,6 +156,7 @@ class MealResponse(_Camel):
     id: str
     meal_type: MealType
     servings: float
+    day_index: int | None = None
     recipe: RecipeResponse | None = None
     nutritional_info: NutritionalInfoSchema | None = None
 
@@ -165,6 +166,7 @@ class MealResponse(_Camel):
             id=meal.id,
             meal_type=MealType(meal.meal_type),
             servings=meal.servings,
+            day_index=meal.day_index,
             recipe=RecipeResponse.from_recipe(recipe) if recipe is not None else None,
             nutritional_info=(
                 NutritionalInfoSchema(**meal.nutritional_info.model_dump())
@@ -184,6 +186,25 @@ class AddMealRequest(_Camel):
     meal_type: MealType
     recipe_id: str
     servings: float
+
+
+class UpdateMealRequest(_Camel):
+    """Body of ``PATCH /meal-plans/{planId}/meals/{mealId}`` (UpdateMealRequest, DPL-107).
+
+    Both fields are optional, but at least one must be provided — an empty PATCH is rejected with
+    ``422``. ``servings`` must be positive and ``dayIndex`` non-negative here; whether the day falls
+    inside the plan's actual date range is checked by the aggregate (a ``422`` domain error), since
+    the range depends on the plan's dates.
+    """
+
+    servings: float | None = Field(default=None, gt=0)
+    day_index: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _require_at_least_one_change(self) -> UpdateMealRequest:
+        if self.servings is None and self.day_index is None:
+            raise ValueError("at least one of 'servings' or 'dayIndex' must be provided")
+        return self
 
 
 class UpdateMealPlanStatusRequest(_Camel):
