@@ -136,6 +136,57 @@ def test_update_meal_assigns_day_index(client, plans, principal):
     assert plans.get(principal.user_id, plan.id).find_meal(meal["id"]).day_index == 5
 
 
+def test_update_meal_records_satisfaction(client, plans, principal):
+    plan = _seed_plan(plans, principal.user_id)
+    meal = _add_meal(client, plan.id)
+
+    response = client.patch(
+        f"/meal-plans/{plan.id}/meals/{meal['id']}",
+        json={"satisfactionLevel": 4},
+        headers=_auth(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["satisfactionLevel"] == 4
+    assert plans.get(principal.user_id, plan.id).find_meal(meal["id"]).satisfaction_level == 4
+
+    detail = client.get(f"/meal-plans/{plan.id}", headers=_auth()).json()
+    assert detail["meals"][0]["satisfactionLevel"] == 4
+    assert detail["meals"][0]["dayIndex"] is None
+
+
+@pytest.mark.parametrize("level", [0, 6])
+def test_update_meal_satisfaction_out_of_range_returns_422(client, plans, principal, level):
+    plan = _seed_plan(plans, principal.user_id)
+    meal = _add_meal(client, plan.id)
+
+    response = client.patch(
+        f"/meal-plans/{plan.id}/meals/{meal['id']}",
+        json={"satisfactionLevel": level},
+        headers=_auth(),
+    )
+
+    assert response.status_code == 422
+    assert plans.get(principal.user_id, plan.id).find_meal(meal["id"]).satisfaction_level is None
+
+
+def test_update_meal_servings_and_satisfaction_together(client, plans, principal):
+    plan = _seed_plan(plans, principal.user_id)
+    meal = _add_meal(client, plan.id, servings=1.0)
+
+    response = client.patch(
+        f"/meal-plans/{plan.id}/meals/{meal['id']}",
+        json={"servings": 2.0, "satisfactionLevel": 3},
+        headers=_auth(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["servings"] == 2.0
+    assert data["satisfactionLevel"] == 3
+    assert data["nutritionalInfo"]["calories"] == 840
+
+
 def test_update_meal_day_out_of_range_returns_422(client, plans, principal):
     plan = _seed_plan(plans, principal.user_id)
     meal = _add_meal(client, plan.id)

@@ -160,10 +160,11 @@ def update_meal(
     principal: CurrentPrincipal,
     service: MealServiceDep,
 ) -> MealResponse:
-    """Edit a meal's servings and/or day within the caller's plan (DPL-107).
+    """Edit a meal's servings, day and/or satisfaction within the caller's plan (DPL-107/-304).
 
     Returns the updated meal; a missing or not-owned plan, or a meal not in the plan, is ``404``,
-    while a non-positive ``servings`` or a day outside the plan's range is ``422``.
+    while a non-positive ``servings``, a day outside the plan's range, or a satisfaction level
+    outside 1–5 is ``422``.
     """
     command = UpdateMealInPlanCommand(
         user_id=principal.user_id,
@@ -171,6 +172,7 @@ def update_meal(
         meal_id=meal_id,
         servings=body.servings,
         day_index=body.day_index,
+        satisfaction_level=body.satisfaction_level,
     )
     meal, recipe = service.update_meal(command)
     return MealResponse.from_meal(meal, recipe)

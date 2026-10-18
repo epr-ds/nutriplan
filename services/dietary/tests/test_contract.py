@@ -307,6 +307,19 @@ def test_update_meal_conforms(openapi, client):
     assert_conforms(openapi, "patch", f"/meal-plans/{plan['id']}/meals/{meal['id']}", resp)
 
 
+def test_update_meal_satisfaction_conforms(openapi, client):
+    plan = _create_plan(client)
+    meal = _add_meal(client, plan["id"]).json()
+    resp = client.patch(
+        f"/meal-plans/{plan['id']}/meals/{meal['id']}",
+        json={"satisfactionLevel": 5},
+        headers=_AUTH,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["satisfactionLevel"] == 5
+    assert_conforms(openapi, "patch", f"/meal-plans/{plan['id']}/meals/{meal['id']}", resp)
+
+
 def test_update_meal_not_found_conforms(openapi, client):
     plan = _create_plan(client)
     resp = client.patch(

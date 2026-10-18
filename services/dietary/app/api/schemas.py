@@ -157,6 +157,7 @@ class MealResponse(_Camel):
     meal_type: MealType
     servings: float
     day_index: int | None = None
+    satisfaction_level: int | None = None
     recipe: RecipeResponse | None = None
     nutritional_info: NutritionalInfoSchema | None = None
 
@@ -167,6 +168,7 @@ class MealResponse(_Camel):
             meal_type=MealType(meal.meal_type),
             servings=meal.servings,
             day_index=meal.day_index,
+            satisfaction_level=meal.satisfaction_level,
             recipe=RecipeResponse.from_recipe(recipe) if recipe is not None else None,
             nutritional_info=(
                 NutritionalInfoSchema(**meal.nutritional_info.model_dump())
@@ -191,19 +193,22 @@ class AddMealRequest(_Camel):
 class UpdateMealRequest(_Camel):
     """Body of ``PATCH /meal-plans/{planId}/meals/{mealId}`` (UpdateMealRequest, DPL-107).
 
-    Both fields are optional, but at least one must be provided — an empty PATCH is rejected with
-    ``422``. ``servings`` must be positive and ``dayIndex`` non-negative here; whether the day falls
-    inside the plan's actual date range is checked by the aggregate (a ``422`` domain error), since
-    the range depends on the plan's dates.
+    All fields are optional, but at least one must be provided — an empty PATCH is rejected with
+    ``422``. ``servings`` must be positive here; ``dayIndex``'s validity against the plan's actual
+    date range is checked by the aggregate (a ``422`` domain error), since the range depends on the
+    plan's dates. ``satisfactionLevel`` is the 1–5 post-meal rating (DPL-304).
     """
 
     servings: float | None = Field(default=None, gt=0)
     day_index: int | None = Field(default=None, ge=0)
+    satisfaction_level: int | None = Field(default=None, ge=1, le=5)
 
     @model_validator(mode="after")
     def _require_at_least_one_change(self) -> UpdateMealRequest:
-        if self.servings is None and self.day_index is None:
-            raise ValueError("at least one of 'servings' or 'dayIndex' must be provided")
+        if self.servings is None and self.day_index is None and self.satisfaction_level is None:
+            raise ValueError(
+                "at least one of 'servings', 'dayIndex' or 'satisfactionLevel' must be provided"
+            )
         return self
 
 

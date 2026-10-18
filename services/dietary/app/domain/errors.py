@@ -125,3 +125,14 @@ class InvalidServingsError(DomainError):
     def __init__(self, servings: float) -> None:
         super().__init__(f"servings must be greater than 0 (got {servings})")
         self.servings = servings
+
+
+class InvalidSatisfactionLevelError(DomainError):
+    """Raised when a planned meal's ``satisfactionLevel`` is outside 1–5 (maps to ``422``).
+
+    Satisfaction is a 1-based Likert rating recorded after eating; ``None`` means "not rated".
+    """
+
+    def __init__(self, satisfaction_level: int) -> None:
+        super().__init__(f"satisfactionLevel must be between 1 and 5 (got {satisfaction_level})")
+        self.satisfaction_level = satisfaction_level

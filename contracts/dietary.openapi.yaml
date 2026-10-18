@@ -467,8 +467,8 @@ components:
     UpdateMealRequest:
       type: object
       description: >-
-        Partial edit of a planned meal (DPL-107). At least one of `servings`/`dayIndex` is
-        required; an empty body is rejected with 422.
+        Partial edit of a planned meal (DPL-107, DPL-304). At least one of
+        `servings`/`dayIndex`/`satisfactionLevel` is required; an empty body is rejected with 422.
       properties:
         servings:
           type: number
@@ -479,6 +479,12 @@ components:
           type: integer
           minimum: 0
           description: 0-based day within the plan's inclusive date range.
+        satisfactionLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: >-
+            Post-meal satisfaction rating, 1 (low) to 5 (high). Omit to leave the rating unchanged.
 
     UpdateMealPlanStatusRequest:
       type: object
@@ -561,6 +567,12 @@ components:
           type: integer
           nullable: true
           description: 0-based day within the plan's range, or null when unassigned.
+        satisfactionLevel:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 5
+          description: Post-meal satisfaction rating (1–5), or null when unrated (DPL-304).
         nutritionalInfo:
           $ref: '#/components/schemas/NutritionalInfo'
 

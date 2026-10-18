@@ -82,6 +82,7 @@ class UpdateMealInPlanCommand:
     meal_id: str
     servings: float | None = None
     day_index: int | None = None
+    satisfaction_level: int | None = None
 
 
 @dataclass(frozen=True)
