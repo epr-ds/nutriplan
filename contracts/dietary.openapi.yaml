@@ -290,6 +290,30 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /recipes/{recipeId}:
+    get:
+      tags: [Recipes]
+      operationId: getRecipe
+      summary: Get a specific recipe
+      description: >-
+        Return the full detail of a single catalog recipe (ingredients, steps and per-serving
+        nutrition). Unknown ids return 404.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/RecipeNotFound'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -308,6 +332,12 @@ components:
       description: >-
         The meal plan does not exist, or is not visible to the caller. A plan owned by a
         different user is deliberately reported as not found (no existence/ownership leak).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RecipeNotFound:
+      description: No recipe with the given id exists in the catalog.
       content:
         application/problem+json:
           schema:
@@ -335,6 +365,12 @@ components:
       schema:
         type: string
         format: uuid
+    RecipeId:
+      name: recipeId
+      in: path
+      required: true
+      schema:
+        type: string
 
   schemas:
     CreateMealPlanRequest:

@@ -14,6 +14,14 @@ class DomainError(Exception):
     """Base class for errors raised by the domain/application layers and surfaced by the API."""
 
 
+class NotFoundError(DomainError):
+    """Base for "the requested resource does not exist" errors (maps to ``404``).
+
+    Kept separate from the default (``422``) so the API can distinguish "the resource itself is
+    missing" from "the request referenced something that doesn't exist".
+    """
+
+
 class MealPlanDateRangeError(DomainError):
     """Raised when a meal plan's ``endDate`` falls before its ``startDate``."""
 
@@ -70,6 +78,18 @@ class RecipeNotFoundError(DomainError):
 
     def __init__(self, recipe_id: str) -> None:
         super().__init__(f"Recipe {recipe_id} was not found")
+        self.recipe_id = recipe_id
+
+
+class RecipeDetailNotFoundError(NotFoundError):
+    """Raised when ``GET /recipes/{recipeId}`` targets a missing catalog id (maps to ``404``).
+
+    Here the recipe *is* the requested resource, so a miss is a genuine "not found" — unlike
+    :class:`RecipeNotFoundError`, which is a ``422`` precondition failure on a *meal* reference.
+    """
+
+    def __init__(self, recipe_id: str) -> None:
+        super().__init__(f"Recipe {recipe_id} was not found in the catalog")
         self.recipe_id = recipe_id
 
 
