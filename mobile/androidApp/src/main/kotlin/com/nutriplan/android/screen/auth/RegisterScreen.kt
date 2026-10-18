@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -96,7 +97,8 @@ internal fun RegisterScreenContent(
             label = stringResource(R.string.register_name_label),
             placeholder = stringResource(R.string.register_name_placeholder),
             isError = state.nameError != null,
-            errorMessage = state.nameError?.let { stringResource(it.messageRes()) }.orEmpty()
+            errorMessage = state.nameError?.let { stringResource(it.messageRes()) }.orEmpty(),
+            modifier = Modifier.testTag(RegisterTags.NAME),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -107,7 +109,8 @@ internal fun RegisterScreenContent(
             label = stringResource(R.string.register_email_label),
             placeholder = stringResource(R.string.register_email_placeholder),
             isError = state.emailError != null,
-            errorMessage = state.emailError?.let { stringResource(it.messageRes()) }.orEmpty()
+            errorMessage = state.emailError?.let { stringResource(it.messageRes()) }.orEmpty(),
+            modifier = Modifier.testTag(RegisterTags.EMAIL),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -119,7 +122,8 @@ internal fun RegisterScreenContent(
             placeholder = stringResource(R.string.register_password_placeholder),
             isPassword = true,
             isError = state.passwordError != null,
-            errorMessage = state.passwordError?.let { stringResource(it.messageRes()) }.orEmpty()
+            errorMessage = state.passwordError?.let { stringResource(it.messageRes()) }.orEmpty(),
+            modifier = Modifier.testTag(RegisterTags.PASSWORD),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -131,7 +135,8 @@ internal fun RegisterScreenContent(
             placeholder = stringResource(R.string.register_confirm_password_placeholder),
             isPassword = true,
             isError = state.confirmPasswordError != null,
-            errorMessage = state.confirmPasswordError?.let { stringResource(it.messageRes()) }.orEmpty()
+            errorMessage = state.confirmPasswordError?.let { stringResource(it.messageRes()) }.orEmpty(),
+            modifier = Modifier.testTag(RegisterTags.CONFIRM_PASSWORD),
         )
 
         state.error?.let { error ->
