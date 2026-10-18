@@ -303,6 +303,19 @@ def test_search_recipes_conforms(openapi, client):
     assert_conforms(openapi, "get", "/recipes", resp)
 
 
+def test_get_recipe_conforms(openapi, client):
+    resp = client.get(f"/recipes/{RECIPE_ID}", headers=_AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == RECIPE_ID
+    assert_conforms(openapi, "get", f"/recipes/{RECIPE_ID}", resp)
+
+
+def test_get_recipe_not_found_conforms(openapi, client):
+    resp = client.get(f"/recipes/{MISSING_ID}", headers=_AUTH)
+    assert resp.status_code == 404
+    assert_conforms(openapi, "get", f"/recipes/{MISSING_ID}", resp)
+
+
 # --- Auth (problem+json, DPL-108) -------------------------------------------
 
 

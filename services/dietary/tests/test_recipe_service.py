@@ -5,6 +5,7 @@ import pytest
 from app.application.commands import SearchRecipesQuery
 from app.application.recipe_service import RecipeService
 from app.domain.dietary_types import DietaryType
+from app.domain.errors import RecipeDetailNotFoundError
 from app.domain.recipe import Ingredient, NutritionalInfo, Recipe
 from tests.fakes import InMemoryRecipeRepository
 
@@ -120,3 +121,41 @@ def test_pagination_is_stable_and_non_overlapping(service):
 def test_over_broad_query_bounded_by_limit(service):
     results = service.search_recipes(SearchRecipesQuery(limit=3))
     assert len(results) == 3
+
+
+# --- DPL-203: recipe detail by id ------------------------------------------
+
+
+def _detail_service(recipe: Recipe) -> RecipeService:
+    repo = InMemoryRecipeRepository()
+    repo.add(recipe)
+    return RecipeService(repo)
+
+
+def test_get_recipe_returns_full_detail():
+    recipe = Recipe.create(
+        name="Overnight Oats",
+        servings=2,
+        description="No-cook oats.",
+        ingredients=[Ingredient(name="Rolled oats", quantity=80.0, unit="g", calories=300)],
+        instructions=["Combine.", "Chill overnight."],
+        prep_time=5,
+        cook_time=0,
+        nutritional_info=NutritionalInfo(calories=243, protein=9.9, carbs=38.1, fat=6.2, sugar=8.6),
+        dietary_types=[DietaryType.VEGETARIAN],
+    )
+
+    found = _detail_service(recipe).get_recipe(recipe.id)
+
+    assert found.id == recipe.id
+    assert found.ingredients[0].name == "Rolled oats"
+    assert found.instructions == ["Combine.", "Chill overnight."]
+    assert found.nutritional_info is not None
+    assert found.nutritional_info.calories == 243
+    assert found.dietary_types == [DietaryType.VEGETARIAN]
+
+
+def test_get_recipe_unknown_id_raises_not_found():
+    service = _detail_service(_recipe("Oats"))
+    with pytest.raises(RecipeDetailNotFoundError):
+        service.get_recipe("no-such-recipe")

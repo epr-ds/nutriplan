@@ -47,3 +47,22 @@ def search_recipes(
     )
     found = service.search_recipes(query)
     return [RecipeResponse.from_recipe(r) for r in found]
+
+
+@router.get(
+    "/{recipe_id}",
+    response_model=RecipeResponse,
+    summary="Get a specific recipe",
+)
+def get_recipe(
+    recipe_id: str,
+    principal: CurrentPrincipal,
+    service: RecipeServiceDep,
+) -> RecipeResponse:
+    """Return one recipe's full detail, or 404 if the id is not in the catalog (DPL-203).
+
+    The response carries everything the recipe detail screen needs — ingredients, steps and the
+    per-serving nutritional breakdown. Requires authentication; the catalog is global.
+    """
+    recipe = service.get_recipe(recipe_id)
+    return RecipeResponse.from_recipe(recipe)

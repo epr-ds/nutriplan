@@ -10,6 +10,7 @@ filtering + ordering to the repository, which can use its indexes. The repositor
 from __future__ import annotations
 
 from app.application.commands import SearchRecipesQuery
+from app.domain.errors import RecipeDetailNotFoundError
 from app.domain.recipe import Recipe
 from app.domain.repositories import RecipeRepository
 
@@ -19,6 +20,18 @@ class RecipeService:
 
     def __init__(self, recipe_repository: RecipeRepository) -> None:
         self._recipes = recipe_repository
+
+    def get_recipe(self, recipe_id: str) -> Recipe:
+        """Return the full catalog recipe with *recipe_id*, or raise (DPL-203).
+
+        The catalog is shared (not owner-scoped), so a miss is an unambiguous "not found": the
+        repository read is keyed by id alone and an absent id raises
+        :class:`~app.domain.errors.RecipeDetailNotFoundError` (mapped to ``404``).
+        """
+        recipe = self._recipes.get(recipe_id)
+        if recipe is None:
+            raise RecipeDetailNotFoundError(recipe_id)
+        return recipe
 
     def search_recipes(self, query: SearchRecipesQuery) -> list[Recipe]:
         """Return recipes matching the supplied filters with stable offset pagination (DPL-202).
