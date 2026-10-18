@@ -36,21 +36,16 @@ class MongoRecipeRepository(RecipeRepository):
         skip: int = 0,
         limit: int = 20,
     ) -> list[Recipe]:
-        """Translate the filters into a single Mongo query and page deterministically (DPL-202).
+        """Filter, relevance-rank, and page recipes in a single aggregation (DPL-202/206).
 
-        Each filter that is set narrows the query (AND). Ingredient matching uses anchored,
-        case-insensitive regexes via ``$all`` so the recipe must contain every requested name; the
-        macro bounds and diet membership use the indexes installed by ``ensure_recipes_collection``.
+        Diet membership and the macro bounds narrow the result set (AND) and use the indexes
+        installed by ``ensure_recipes_collection``. When ``ingredients`` is supplied a recipe is
+        eligible if it contains **any** of the requested names (case-insensitive, anchored), and
+        results are ranked by **ingredient overlap** — how many of the requested names it contains —
+        descending, then by ``name``/``_id`` for stable paging. Pagination is applied after ranking
+        so page boundaries respect the relevance order.
         """
         query: dict = {}
-        if ingredients:
-            patterns = [
-                re.compile(f"^{re.escape(name.strip())}$", re.IGNORECASE)
-                for name in ingredients
-                if name and name.strip()
-            ]
-            if patterns:
-                query["ingredients.name"] = {"$all": patterns}
         if diet_type is not None:
             query["dietaryTypes"] = (
                 diet_type.value if isinstance(diet_type, DietaryType) else diet_type
@@ -60,10 +55,46 @@ class MongoRecipeRepository(RecipeRepository):
         if min_protein is not None:
             query["nutritionalInfo.protein"] = {"$gte": min_protein}
 
-        cursor = (
-            self._coll.find(query)
-            .sort([("name", ASCENDING), ("_id", ASCENDING)])
-            .skip(skip)
-            .limit(limit)
+        wanted = (
+            [name.strip().lower() for name in ingredients if name and name.strip()]
+            if ingredients
+            else []
         )
-        return [Recipe.from_document(doc) for doc in cursor]
+
+        pipeline: list[dict] = []
+        if wanted:
+            patterns = [re.compile(f"^{re.escape(name)}$", re.IGNORECASE) for name in wanted]
+            # OR-match any requested ingredient, still index-assisted via the multikey index.
+            query["ingredients.name"] = {"$in": patterns}
+        if query:
+            pipeline.append({"$match": query})
+
+        if wanted:
+            # Rank by the number of distinct requested ingredients the recipe contains.
+            pipeline.append(
+                {
+                    "$addFields": {
+                        "_overlap": {
+                            "$size": {
+                                "$setIntersection": [
+                                    {
+                                        "$map": {
+                                            "input": "$ingredients",
+                                            "as": "i",
+                                            "in": {"$toLower": "$$i.name"},
+                                        }
+                                    },
+                                    wanted,
+                                ]
+                            }
+                        }
+                    }
+                }
+            )
+            pipeline.append({"$sort": {"_overlap": -1, "name": ASCENDING, "_id": ASCENDING}})
+        else:
+            pipeline.append({"$sort": {"name": ASCENDING, "_id": ASCENDING}})
+
+        pipeline.append({"$skip": skip})
+        pipeline.append({"$limit": limit})
+        return [Recipe.from_document(doc) for doc in self._coll.aggregate(pipeline)]

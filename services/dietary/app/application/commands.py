@@ -103,8 +103,9 @@ class SearchRecipesQuery:
 
     All filters are optional and combine with AND; the recipe catalog is global, so there is no
     owner scoping. ``ingredients`` is a tuple (kept hashable for this frozen DTO) of ingredient
-    names a recipe must *all* contain. ``page`` is 1-based and is translated to a repository
-    ``skip`` offset by the application service.
+    names a recipe must contain *at least one* of; results are ranked by how many requested names
+    they match (DPL-206). ``page`` is 1-based and is translated to a repository ``skip`` offset by
+    the application service.
     """
 
     ingredients: tuple[str, ...] = ()

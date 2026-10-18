@@ -127,10 +127,33 @@ def test_filter_by_diet_type(client):
     assert _names(payload) == ["Tofu Stir-Fry"]
 
 
-def test_filter_by_ingredients_requires_all_case_insensitive(client):
+def test_filter_by_ingredients_matches_any_case_insensitive(client):
     payload = client.get(
         "/recipes",
         params=[("ingredients", "FIRM TOFU"), ("ingredients", "broccoli")],
+        headers=_auth(),
+    ).json()
+    assert _names(payload) == ["Tofu Stir-Fry"]
+
+
+def test_filter_by_ingredients_ranks_by_overlap(client):
+    payload = client.get(
+        "/recipes",
+        params=[
+            ("ingredients", "firm tofu"),
+            ("ingredients", "broccoli"),
+            ("ingredients", "chicken breast"),
+        ],
+        headers=_auth(),
+    ).json()
+    # Tofu matches two requested ingredients; Chicken matches one -> relevance order.
+    assert _names(payload) == ["Tofu Stir-Fry", "Chicken Bowl"]
+
+
+def test_ingredient_and_macro_filters_combine(client):
+    payload = client.get(
+        "/recipes",
+        params=[("ingredients", "firm tofu"), ("ingredients", "rolled oats"), ("minProtein", 20)],
         headers=_auth(),
     ).json()
     assert _names(payload) == ["Tofu Stir-Fry"]
