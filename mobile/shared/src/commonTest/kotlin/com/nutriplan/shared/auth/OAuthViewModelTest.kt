@@ -59,7 +59,7 @@ class OAuthViewModelTest {
         assertTrue(state.isSuccess)
         assertFalse(state.isLoading)
         assertNull(state.activeProvider)
-        assertNull(state.errorMessage)
+        assertNull(state.error)
         assertEquals("google", fx.repository.lastOAuthProvider)
         assertEquals("id-token-1", fx.repository.lastOAuthRequest?.idToken)
         assertIs<SessionState.Onboarding>(fx.session.state.value)
@@ -85,7 +85,7 @@ class OAuthViewModelTest {
         val state = fx.model.state.value
         assertFalse(state.isSuccess)
         assertFalse(state.isLoading)
-        assertNull(state.errorMessage)
+        assertNull(state.error)
         assertNull(fx.repository.lastOAuthProvider)
     }
 
@@ -101,7 +101,7 @@ class OAuthViewModelTest {
         assertFalse(model.signIn(OAuthProvider.GOOGLE))
 
         val state = model.state.value
-        assertEquals("Incorrect email or password.", state.errorMessage)
+        assertEquals(AuthError.INVALID_CREDENTIALS, state.error)
         assertFalse(state.isLoading)
         assertFalse(state.isSuccess)
     }
@@ -112,7 +112,7 @@ class OAuthViewModelTest {
 
         assertFalse(fx.model.signIn(OAuthProvider.GOOGLE))
 
-        assertEquals("Something went wrong. Please try again.", fx.model.state.value.errorMessage)
+        assertEquals(AuthError.UNKNOWN, fx.model.state.value.error)
     }
 
     @Test

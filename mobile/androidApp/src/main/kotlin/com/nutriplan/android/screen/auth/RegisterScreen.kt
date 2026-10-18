@@ -23,11 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.nutriplan.android.R
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.shared.auth.RegisterUiState
 import com.nutriplan.shared.auth.RegisterViewModel
 import kotlinx.coroutines.launch
@@ -80,7 +83,7 @@ internal fun RegisterScreenContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Create Account",
+            text = stringResource(R.string.register_title),
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.semantics { heading() }
         )
@@ -90,10 +93,10 @@ internal fun RegisterScreenContent(
         NutriPlanTextField(
             value = state.name,
             onValueChange = onNameChange,
-            label = "Name",
-            placeholder = "Enter your name",
+            label = stringResource(R.string.register_name_label),
+            placeholder = stringResource(R.string.register_name_placeholder),
             isError = state.nameError != null,
-            errorMessage = state.nameError.orEmpty()
+            errorMessage = state.nameError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -101,10 +104,10 @@ internal fun RegisterScreenContent(
         NutriPlanTextField(
             value = state.email,
             onValueChange = onEmailChange,
-            label = "Email",
-            placeholder = "Enter your email",
+            label = stringResource(R.string.register_email_label),
+            placeholder = stringResource(R.string.register_email_placeholder),
             isError = state.emailError != null,
-            errorMessage = state.emailError.orEmpty()
+            errorMessage = state.emailError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -112,11 +115,11 @@ internal fun RegisterScreenContent(
         NutriPlanTextField(
             value = state.password,
             onValueChange = onPasswordChange,
-            label = "Password",
-            placeholder = "Enter your password",
+            label = stringResource(R.string.register_password_label),
+            placeholder = stringResource(R.string.register_password_placeholder),
             isPassword = true,
             isError = state.passwordError != null,
-            errorMessage = state.passwordError.orEmpty()
+            errorMessage = state.passwordError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -124,17 +127,17 @@ internal fun RegisterScreenContent(
         NutriPlanTextField(
             value = state.confirmPassword,
             onValueChange = onConfirmPasswordChange,
-            label = "Confirm Password",
-            placeholder = "Re-enter your password",
+            label = stringResource(R.string.register_confirm_password_label),
+            placeholder = stringResource(R.string.register_confirm_password_placeholder),
             isPassword = true,
             isError = state.confirmPasswordError != null,
-            errorMessage = state.confirmPasswordError.orEmpty()
+            errorMessage = state.confirmPasswordError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
-        state.errorMessage?.let {
+        state.error?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = it,
+                text = stringResource(error.messageRes()),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
@@ -148,7 +151,7 @@ internal fun RegisterScreenContent(
             isEnabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Register")
+            Text(stringResource(R.string.register_submit))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -157,9 +160,9 @@ internal fun RegisterScreenContent(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Already have an account? ")
+            Text(stringResource(R.string.register_have_account))
             TextButton(onClick = onNavigateToLogin) {
-                Text("Login")
+                Text(stringResource(R.string.register_login_link))
             }
         }
     }

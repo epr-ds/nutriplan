@@ -11,11 +11,14 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.nutriplan.android.R
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.component.NutriPlanTextField
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.shared.auth.LoginUiState
 import com.nutriplan.shared.auth.LoginViewModel
 import com.nutriplan.shared.auth.OAuthProvider
@@ -81,7 +84,7 @@ internal fun LoginScreenContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Welcome Back",
+            text = stringResource(R.string.login_title),
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.semantics { heading() }
         )
@@ -91,10 +94,10 @@ internal fun LoginScreenContent(
         NutriPlanTextField(
             value = state.email,
             onValueChange = onEmailChange,
-            label = "Email",
-            placeholder = "Enter your email",
+            label = stringResource(R.string.login_email_label),
+            placeholder = stringResource(R.string.login_email_placeholder),
             isError = state.emailError != null,
-            errorMessage = state.emailError.orEmpty()
+            errorMessage = state.emailError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -102,11 +105,11 @@ internal fun LoginScreenContent(
         NutriPlanTextField(
             value = state.password,
             onValueChange = onPasswordChange,
-            label = "Password",
-            placeholder = "Enter your password",
+            label = stringResource(R.string.login_password_label),
+            placeholder = stringResource(R.string.login_password_placeholder),
             isPassword = true,
             isError = state.passwordError != null,
-            errorMessage = state.passwordError.orEmpty()
+            errorMessage = state.passwordError?.let { stringResource(it.messageRes()) }.orEmpty()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -115,14 +118,14 @@ internal fun LoginScreenContent(
             onClick = onForgotPassword,
             modifier = Modifier.align(Alignment.End)
         ) {
-            Text("Forgot Password?")
+            Text(stringResource(R.string.login_forgot_password))
         }
 
-        state.errorMessage?.let {
+        state.error?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             // F28: live region so screen readers announce form errors (WCAG 3.3.1, 4.1.3)
             Text(
-                text = it,
+                text = stringResource(error.messageRes()),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
@@ -136,7 +139,7 @@ internal fun LoginScreenContent(
             isEnabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text(stringResource(R.string.login_submit))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -145,9 +148,9 @@ internal fun LoginScreenContent(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Don't have an account? ")
+            Text(stringResource(R.string.login_no_account))
             TextButton(onClick = onNavigateToRegister) {
-                Text("Register")
+                Text(stringResource(R.string.login_register_link))
             }
         }
 
@@ -179,9 +182,9 @@ internal fun LoginScreenContent(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            oauthState.errorMessage?.let { message ->
+            oauthState.error?.let { error ->
                 Text(
-                    text = message,
+                    text = stringResource(error.messageRes()),
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                 )
@@ -190,8 +193,9 @@ internal fun LoginScreenContent(
     }
 }
 
+@Composable
 private fun oauthProviderLabel(provider: OAuthProvider): String = when (provider) {
-    OAuthProvider.GOOGLE -> "Continue with Google"
-    OAuthProvider.FACEBOOK -> "Continue with Facebook"
-    OAuthProvider.APPLE -> "Continue with Apple"
+    OAuthProvider.GOOGLE -> stringResource(R.string.oauth_continue_with_google)
+    OAuthProvider.FACEBOOK -> stringResource(R.string.oauth_continue_with_facebook)
+    OAuthProvider.APPLE -> stringResource(R.string.oauth_continue_with_apple)
 }

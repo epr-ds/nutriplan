@@ -11,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nutriplan.android.R
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 
@@ -28,7 +30,12 @@ fun OnboardingScreen(
 ) {
     val pagerState = rememberPagerState(pageCount = { OnboardingPage.entries.size })
     val scope = rememberCoroutineScope()
-    
+    val pagesDescription = stringResource(
+        R.string.cd_intro_pages,
+        pagerState.currentPage + 1,
+        pagerState.pageCount,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -41,7 +48,7 @@ fun OnboardingScreen(
             onClick = onGetStarted,
             modifier = Modifier.align(Alignment.End)
         ) {
-            Text("Skip")
+            Text(stringResource(R.string.intro_skip))
         }
         
         // Pager content
@@ -51,7 +58,7 @@ fun OnboardingScreen(
                 .weight(1f)
                 // F13: Add accessibility role and page count for screen readers (WCAG 1.3.1, 4.1.2)
                 .semantics {
-                    contentDescription = "Onboarding pages, ${pagerState.currentPage + 1} of ${pagerState.pageCount}"
+                    contentDescription = pagesDescription
                 }
         ) { page ->
             OnboardingPage.entries[page].Content()
@@ -62,7 +69,12 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(vertical = 24.dp)
         ) {
-            OnboardingPage.entries.forEachIndexed { index, page ->
+            OnboardingPage.entries.forEachIndexed { index, _ ->
+                val pageDescription = stringResource(
+                    if (index == pagerState.currentPage) R.string.cd_intro_page_current else R.string.cd_intro_page,
+                    index + 1,
+                    pagerState.pageCount,
+                )
                 Box(
                     modifier = Modifier
                         .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
@@ -76,7 +88,7 @@ fun OnboardingScreen(
                         )
                     // F14: Add accessibility label for page dots (WCAG 4.1.2)
                     .semantics {
-                        contentDescription = "Page ${index + 1} of ${pagerState.pageCount}${if (index == pagerState.currentPage) ", current" else ""}"
+                        contentDescription = pageDescription
                     }
                 )
             }
@@ -94,10 +106,13 @@ fun OnboardingScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                if (pagerState.currentPage == OnboardingPage.entries.size - 1) 
-                    "Get Started" 
-                else 
-                    "Next"
+                stringResource(
+                    if (pagerState.currentPage == OnboardingPage.entries.size - 1) {
+                        R.string.intro_get_started
+                    } else {
+                        R.string.intro_next
+                    },
+                ),
             )
         }
         
@@ -122,6 +137,7 @@ private fun OnboardingPage.Content() {
  */
 @Composable
 private fun WelcomeContent() {
+    val illustrationDescription = stringResource(R.string.cd_intro_welcome_illustration)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -131,7 +147,7 @@ private fun WelcomeContent() {
         Box(
             modifier = Modifier
                 .defaultMinSize(minWidth = 120.dp, minHeight = 120.dp)
-                .semantics { contentDescription = "Fresh food illustration" },
+                .semantics { contentDescription = illustrationDescription },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -143,7 +159,7 @@ private fun WelcomeContent() {
         Spacer(modifier = Modifier.height(32.dp))
         
         Text(
-            text = "Welcome to NutriPlan",
+            text = stringResource(R.string.intro_welcome_title),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
@@ -152,7 +168,7 @@ private fun WelcomeContent() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Your personal nutrition assistant. Get personalized meal plans, track your progress, and eat healthier.",
+            text = stringResource(R.string.intro_welcome_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -165,6 +181,7 @@ private fun WelcomeContent() {
  */
 @Composable
 private fun MealPlansContent() {
+    val illustrationDescription = stringResource(R.string.cd_intro_meals_illustration)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -174,7 +191,7 @@ private fun MealPlansContent() {
         Box(
             modifier = Modifier
                 .defaultMinSize(minWidth = 120.dp, minHeight = 120.dp)
-                .semantics { contentDescription = "Meal plan illustration" },
+                .semantics { contentDescription = illustrationDescription },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -186,7 +203,7 @@ private fun MealPlansContent() {
         Spacer(modifier = Modifier.height(32.dp))
         
         Text(
-            text = "Personalized Meal Plans",
+            text = stringResource(R.string.intro_meals_title),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
@@ -195,7 +212,7 @@ private fun MealPlansContent() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Get meal plans tailored to your dietary preferences, health goals, and taste.",
+            text = stringResource(R.string.intro_meals_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -208,6 +225,7 @@ private fun MealPlansContent() {
  */
 @Composable
 private fun TrackingContent() {
+    val illustrationDescription = stringResource(R.string.cd_intro_tracking_illustration)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -217,7 +235,7 @@ private fun TrackingContent() {
         Box(
             modifier = Modifier
                 .defaultMinSize(minWidth = 120.dp, minHeight = 120.dp)
-                .semantics { contentDescription = "Progress tracking illustration" },
+                .semantics { contentDescription = illustrationDescription },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -229,7 +247,7 @@ private fun TrackingContent() {
         Spacer(modifier = Modifier.height(32.dp))
         
         Text(
-            text = "Track Your Progress",
+            text = stringResource(R.string.intro_tracking_title),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
@@ -238,7 +256,7 @@ private fun TrackingContent() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Monitor your nutrition intake, track your meals, and achieve your health goals.",
+            text = stringResource(R.string.intro_tracking_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant

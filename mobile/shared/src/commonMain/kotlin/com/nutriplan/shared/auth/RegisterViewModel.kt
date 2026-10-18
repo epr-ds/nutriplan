@@ -1,6 +1,5 @@
 package com.nutriplan.shared.auth
 
-import com.nutriplan.shared.data.repository.toAuthErrorMessage
 import com.nutriplan.shared.session.Register
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,19 +10,20 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Observable state of the registration form.
  *
- * Per-field errors are shown inline under the inputs; [errorMessage] carries a form-level failure
+ * Per-field errors are shown inline under the inputs; [error] carries a form-level failure code
  * (e.g. the email is already registered). [isSuccess] tells the screen to route into onboarding.
+ * The UI turns the codes into localized microcopy.
  */
 data class RegisterUiState(
     val name: String = "",
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
-    val nameError: String? = null,
-    val emailError: String? = null,
-    val passwordError: String? = null,
-    val confirmPasswordError: String? = null,
-    val errorMessage: String? = null,
+    val nameError: FieldError? = null,
+    val emailError: FieldError? = null,
+    val passwordError: FieldError? = null,
+    val confirmPasswordError: FieldError? = null,
+    val error: AuthError? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
 ) {
@@ -51,19 +51,19 @@ class RegisterViewModel(
     val state: StateFlow<RegisterUiState> = _state.asStateFlow()
 
     fun onNameChange(value: String) {
-        _state.update { it.copy(name = value, nameError = null, errorMessage = null) }
+        _state.update { it.copy(name = value, nameError = null, error = null) }
     }
 
     fun onEmailChange(value: String) {
-        _state.update { it.copy(email = value, emailError = null, errorMessage = null) }
+        _state.update { it.copy(email = value, emailError = null, error = null) }
     }
 
     fun onPasswordChange(value: String) {
-        _state.update { it.copy(password = value, passwordError = null, confirmPasswordError = null, errorMessage = null) }
+        _state.update { it.copy(password = value, passwordError = null, confirmPasswordError = null, error = null) }
     }
 
     fun onConfirmPasswordChange(value: String) {
-        _state.update { it.copy(confirmPassword = value, confirmPasswordError = null, errorMessage = null) }
+        _state.update { it.copy(confirmPassword = value, confirmPasswordError = null, error = null) }
     }
 
     /** Validates the fields, setting inline errors. Returns true when the form is valid. */
@@ -73,23 +73,23 @@ class RegisterViewModel(
         val email = current.email.trim()
 
         val nameError = when {
-            name.isEmpty() -> "Enter your name."
-            name.length < MIN_NAME_LENGTH -> "Use at least $MIN_NAME_LENGTH characters."
+            name.isEmpty() -> FieldError.NAME_REQUIRED
+            name.length < MIN_NAME_LENGTH -> FieldError.NAME_TOO_SHORT
             else -> null
         }
         val emailError = when {
-            email.isEmpty() -> "Enter your email."
-            !EMAIL_PATTERN.matches(email) -> "Enter a valid email address."
+            email.isEmpty() -> FieldError.EMAIL_REQUIRED
+            !EMAIL_PATTERN.matches(email) -> FieldError.EMAIL_INVALID
             else -> null
         }
         val passwordError = when {
-            current.password.isEmpty() -> "Enter a password."
-            current.password.length < MIN_PASSWORD_LENGTH -> "Use at least $MIN_PASSWORD_LENGTH characters."
+            current.password.isEmpty() -> FieldError.PASSWORD_REQUIRED
+            current.password.length < MIN_PASSWORD_LENGTH -> FieldError.PASSWORD_TOO_SHORT
             else -> null
         }
         val confirmPasswordError = when {
-            current.confirmPassword.isEmpty() -> "Re-enter your password."
-            current.confirmPassword != current.password -> "Passwords don't match."
+            current.confirmPassword.isEmpty() -> FieldError.CONFIRM_PASSWORD_REQUIRED
+            current.confirmPassword != current.password -> FieldError.CONFIRM_PASSWORD_MISMATCH
             else -> null
         }
 
@@ -106,13 +106,13 @@ class RegisterViewModel(
 
     /**
      * Attempts to create the account. Returns true on success; false on validation failure or a
-     * rejected request, with [RegisterUiState.errorMessage] set. [CancellationException] is
+     * rejected request, with [RegisterUiState.error] set. [CancellationException] is
      * rethrown so navigating away cancels cleanly.
      */
     suspend fun submit(): Boolean {
         if (!validate()) return false
 
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         return try {
             register(
                 email = _state.value.email.trim(),
@@ -127,7 +127,7 @@ class RegisterViewModel(
             _state.update { it.copy(isLoading = false) }
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            _state.update { it.copy(isLoading = false, errorMessage = e.toAuthErrorMessage()) }
+            _state.update { it.copy(isLoading = false, error = e.toAuthError()) }
             false
         }
     }

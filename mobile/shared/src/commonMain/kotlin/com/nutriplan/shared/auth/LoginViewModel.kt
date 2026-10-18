@@ -1,6 +1,5 @@
 package com.nutriplan.shared.auth
 
-import com.nutriplan.shared.data.repository.toAuthErrorMessage
 import com.nutriplan.shared.session.Login
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,16 +10,17 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Observable state of the login form.
  *
- * Field-level errors are shown inline under the inputs; [errorMessage] is the form-level message
- * for a rejected sign-in (wrong credentials, network, rate limit). [isSuccess] tells the screen to
- * route to the next destination for the resulting [com.nutriplan.shared.session.SessionState].
+ * Field-level errors are shown inline under the inputs; [error] is the form-level code for a
+ * rejected sign-in (wrong credentials, network, rate limit). [isSuccess] tells the screen to route
+ * to the next destination for the resulting [com.nutriplan.shared.session.SessionState]. The UI
+ * turns the codes into localized microcopy.
  */
 data class LoginUiState(
     val email: String = "",
     val password: String = "",
-    val emailError: String? = null,
-    val passwordError: String? = null,
-    val errorMessage: String? = null,
+    val emailError: FieldError? = null,
+    val passwordError: FieldError? = null,
+    val error: AuthError? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
 ) {
@@ -43,11 +43,11 @@ class LoginViewModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     fun onEmailChange(value: String) {
-        _state.update { it.copy(email = value, emailError = null, errorMessage = null) }
+        _state.update { it.copy(email = value, emailError = null, error = null) }
     }
 
     fun onPasswordChange(value: String) {
-        _state.update { it.copy(password = value, passwordError = null, errorMessage = null) }
+        _state.update { it.copy(password = value, passwordError = null, error = null) }
     }
 
     /** Validates the fields, setting inline errors. Returns true when the form is valid. */
@@ -55,24 +55,24 @@ class LoginViewModel(
         val current = _state.value
         val email = current.email.trim()
         val emailError = when {
-            email.isEmpty() -> "Enter your email."
-            !EMAIL_PATTERN.matches(email) -> "Enter a valid email address."
+            email.isEmpty() -> FieldError.EMAIL_REQUIRED
+            !EMAIL_PATTERN.matches(email) -> FieldError.EMAIL_INVALID
             else -> null
         }
-        val passwordError = if (current.password.isEmpty()) "Enter your password." else null
+        val passwordError = if (current.password.isEmpty()) FieldError.PASSWORD_REQUIRED else null
         _state.update { it.copy(emailError = emailError, passwordError = passwordError) }
         return emailError == null && passwordError == null
     }
 
     /**
      * Attempts a sign-in. Returns true on success (the caller then routes based on session state);
-     * false on validation failure or a rejected request, with [LoginUiState.errorMessage] set.
+     * false on validation failure or a rejected request, with [LoginUiState.error] set.
      * [CancellationException] is rethrown so navigating away cancels cleanly.
      */
     suspend fun submit(): Boolean {
         if (!validate()) return false
 
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         return try {
             login(email = _state.value.email.trim(), password = _state.value.password)
             _state.update { it.copy(isLoading = false, isSuccess = true, password = "") }
@@ -81,7 +81,7 @@ class LoginViewModel(
             _state.update { it.copy(isLoading = false) }
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            _state.update { it.copy(isLoading = false, errorMessage = e.toAuthErrorMessage()) }
+            _state.update { it.copy(isLoading = false, error = e.toAuthError()) }
             false
         }
     }

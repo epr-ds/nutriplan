@@ -33,10 +33,13 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.nutriplan.android.R
 import com.nutriplan.android.component.NutriPlanButton
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.shared.onboarding.MacroCalculator
 import com.nutriplan.shared.onboarding.OnboardingAnswers
 import com.nutriplan.shared.onboarding.OnboardingContent
@@ -105,17 +108,23 @@ internal fun OnboardingWizardContent(
             .fillMaxSize()
             .padding(24.dp),
     ) {
+        val progressDescription = stringResource(
+            R.string.cd_onboarding_progress,
+            state.stepNumber,
+            state.stepCount,
+        )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Step ${state.stepNumber} of ${state.stepCount}",
+                text = stringResource(R.string.onboarding_step_of, state.stepNumber, state.stepCount),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onSkip) {
-                Text("Skip")
+                Text(stringResource(R.string.onboarding_skip))
             }
         }
 
@@ -125,7 +134,7 @@ internal fun OnboardingWizardContent(
             progress = { state.progress },
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Progress: step ${state.stepNumber} of ${state.stepCount}" },
+                .semantics { contentDescription = progressDescription },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -140,10 +149,10 @@ internal fun OnboardingWizardContent(
             }
         }
 
-        state.error?.let { message ->
+        state.error?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = message,
+                text = stringResource(error.messageRes()),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
@@ -157,7 +166,7 @@ internal fun OnboardingWizardContent(
         ) {
             if (!state.isFirstStep) {
                 OutlinedButton(onClick = onBack) {
-                    Text("Back")
+                    Text(stringResource(R.string.onboarding_back))
                 }
                 Spacer(modifier = Modifier.width(16.dp))
             }
@@ -166,7 +175,11 @@ internal fun OnboardingWizardContent(
                 isLoading = state.isSaving,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(if (state.isLastStep) "Finish" else "Next")
+                Text(
+                    stringResource(
+                        if (state.isLastStep) R.string.onboarding_finish else R.string.onboarding_next,
+                    ),
+                )
             }
         }
     }
@@ -176,7 +189,7 @@ internal fun OnboardingWizardContent(
 internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
     Column {
         Text(
-            "What's your diet?",
+            stringResource(R.string.onboarding_diet_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() },
         )
@@ -198,7 +211,7 @@ internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) 
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Text("Favourite cuisines", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.onboarding_cuisines_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         OptionChips(
             options = OnboardingContent.cuisines,
@@ -214,7 +227,7 @@ internal fun DietStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) 
 internal fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnswers) -> Unit) {
     Column {
         Text(
-            "Any allergies?",
+            stringResource(R.string.onboarding_allergies_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() },
         )
@@ -226,7 +239,7 @@ internal fun AllergiesStep(answers: OnboardingAnswers, onChange: (OnboardingAnsw
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        Text("Ingredients to avoid", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.onboarding_excluded_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         OptionChips(
             options = OnboardingContent.commonExcludedIngredients,
@@ -243,17 +256,19 @@ internal fun TargetsStep(answers: OnboardingAnswers, onChange: (OnboardingAnswer
     val calories = answers.dailyCalorieTarget ?: MacroCalculator.DEFAULT_CALORIES
     val macros = answers.macroTargets ?: MacroCalculator.defaultMacroTargets(calories)
 
+    val calorieDescription = stringResource(R.string.cd_onboarding_calorie_target, calories)
+
     Column {
         Text(
-            "Daily calorie target",
+            stringResource(R.string.onboarding_calories_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "$calories kcal",
+            text = stringResource(R.string.onboarding_calories_value, calories),
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { contentDescription = "Calorie target: $calories kilocalories" },
+            modifier = Modifier.semantics { contentDescription = calorieDescription },
         )
         Slider(
             value = calories.toFloat(),
@@ -270,12 +285,19 @@ internal fun TargetsStep(answers: OnboardingAnswers, onChange: (OnboardingAnswer
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Suggested macros", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.onboarding_macros_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Protein ${macros.proteinGrams} g · Carbs ${macros.carbsGrams} g · Fat ${macros.fatGrams} g")
+        Text(
+            stringResource(
+                R.string.onboarding_macros_summary,
+                macros.proteinGrams ?: 0,
+                macros.carbsGrams ?: 0,
+                macros.fatGrams ?: 0,
+            ),
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
-        Text("How satisfying are your current meals?", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.onboarding_appetite_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         OptionChips(
             options = (1..5).map { OnboardingOption(it.toString(), it.toString(), it.toString()) },
