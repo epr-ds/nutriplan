@@ -70,6 +70,33 @@ class AddMealToPlanCommand:
 
 
 @dataclass(frozen=True)
+class UpdateMealInPlanCommand:
+    """Inputs for the *update a planned meal* use case (DPL-107).
+
+    ``user_id`` comes from the authenticated principal so a caller can only edit their own plans.
+    Only the fields that are set change; the API layer guarantees at least one is present.
+    """
+
+    user_id: str
+    plan_id: str
+    meal_id: str
+    servings: float | None = None
+    day_index: int | None = None
+
+
+@dataclass(frozen=True)
+class RemoveMealFromPlanCommand:
+    """Inputs for the *remove a planned meal* use case (DPL-107).
+
+    ``user_id`` comes from the authenticated principal so a caller can only modify their own plans.
+    """
+
+    user_id: str
+    plan_id: str
+    meal_id: str
+
+
+@dataclass(frozen=True)
 class SearchRecipesQuery:
     """Inputs for the *search recipes* use case (DPL-202).
 

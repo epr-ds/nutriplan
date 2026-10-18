@@ -293,6 +293,46 @@ def test_add_meal_unknown_recipe_conforms(openapi, client):
     assert_conforms(openapi, "post", f"/meal-plans/{plan['id']}/meals", resp)
 
 
+def test_update_meal_conforms(openapi, client):
+    plan = _create_plan(client)
+    meal = _add_meal(client, plan["id"]).json()
+    resp = client.patch(
+        f"/meal-plans/{plan['id']}/meals/{meal['id']}",
+        json={"servings": 2.0, "dayIndex": 3},
+        headers=_AUTH,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["servings"] == 2.0
+    assert resp.json()["dayIndex"] == 3
+    assert_conforms(openapi, "patch", f"/meal-plans/{plan['id']}/meals/{meal['id']}", resp)
+
+
+def test_update_meal_not_found_conforms(openapi, client):
+    plan = _create_plan(client)
+    resp = client.patch(
+        f"/meal-plans/{plan['id']}/meals/{MISSING_ID}",
+        json={"servings": 2.0},
+        headers=_AUTH,
+    )
+    assert resp.status_code == 404
+    assert_conforms(openapi, "patch", f"/meal-plans/{plan['id']}/meals/{MISSING_ID}", resp)
+
+
+def test_remove_meal_conforms(openapi, client):
+    plan = _create_plan(client)
+    meal = _add_meal(client, plan["id"]).json()
+    resp = client.delete(f"/meal-plans/{plan['id']}/meals/{meal['id']}", headers=_AUTH)
+    assert resp.status_code == 204
+    assert_conforms(openapi, "delete", f"/meal-plans/{plan['id']}/meals/{meal['id']}", resp)
+
+
+def test_remove_meal_not_found_conforms(openapi, client):
+    plan = _create_plan(client)
+    resp = client.delete(f"/meal-plans/{plan['id']}/meals/{MISSING_ID}", headers=_AUTH)
+    assert resp.status_code == 404
+    assert_conforms(openapi, "delete", f"/meal-plans/{plan['id']}/meals/{MISSING_ID}", resp)
+
+
 # --- Recipes ----------------------------------------------------------------
 
 

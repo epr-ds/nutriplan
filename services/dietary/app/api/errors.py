@@ -22,12 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.domain.errors import (
-    DomainError,
-    IllegalStateTransitionError,
-    MealPlanNotFoundError,
-    RecipeDetailNotFoundError,
-)
+from app.domain.errors import DomainError, IllegalStateTransitionError, NotFoundError
 
 PROBLEM_JSON = "application/problem+json"
 
@@ -35,8 +30,7 @@ PROBLEM_JSON = "application/problem+json"
 # here fall through to the generic 422, matching the rule that any unmapped invariant violation is
 # an Unprocessable Entity.
 _DOMAIN_STATUS: tuple[tuple[type[DomainError], int], ...] = (
-    (MealPlanNotFoundError, HTTPStatus.NOT_FOUND),
-    (RecipeDetailNotFoundError, HTTPStatus.NOT_FOUND),
+    (NotFoundError, HTTPStatus.NOT_FOUND),
     (IllegalStateTransitionError, HTTPStatus.CONFLICT),
     (DomainError, HTTPStatus.UNPROCESSABLE_ENTITY),
 )

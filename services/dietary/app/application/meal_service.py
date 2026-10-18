@@ -9,8 +9,12 @@ recipe dependency it does not otherwise need.
 
 from __future__ import annotations
 
-from app.application.commands import AddMealToPlanCommand
-from app.domain.errors import MealPlanNotFoundError, RecipeNotFoundError
+from app.application.commands import (
+    AddMealToPlanCommand,
+    RemoveMealFromPlanCommand,
+    UpdateMealInPlanCommand,
+)
+from app.domain.errors import MealNotFoundError, MealPlanNotFoundError, RecipeNotFoundError
 from app.domain.meal_plan import PlannedMeal
 from app.domain.nutrition import compute_meal_nutrition
 from app.domain.recipe import Recipe
@@ -52,3 +56,50 @@ class MealService:
         )
         self._plans.update(plan)
         return meal, recipe
+
+    def update_meal(self, command: UpdateMealInPlanCommand) -> tuple[PlannedMeal, Recipe | None]:
+        """Edit a planned meal's ``servings`` and/or ``day_index`` (DPL-107).
+
+        The plan is loaded owner-scoped (a missing/!owned plan raises
+        :class:`~app.domain.errors.MealPlanNotFoundError`, ``404``) and the meal located within it
+        (an unknown meal id raises :class:`~app.domain.errors.MealNotFoundError`, ``404``). When
+        ``servings`` changes the meal's nutrition is recomputed from its recipe (DPL-301); a missing
+        recipe — the catalog changed under the plan — is a ``422``. The mutated plan is persisted
+        only on success, and the plan's nutritional summary reflects the edit on the next read.
+        """
+        plan = self._plans.get(command.user_id, command.plan_id)
+        if plan is None:
+            raise MealPlanNotFoundError(command.plan_id)
+        meal = plan.find_meal(command.meal_id)
+        if meal is None:
+            raise MealNotFoundError(command.meal_id)
+
+        recipe: Recipe | None = None
+        nutritional_info = None
+        if command.servings is not None:
+            recipe = self._recipes.get(meal.recipe_id)
+            if recipe is None:
+                raise RecipeNotFoundError(meal.recipe_id)
+            nutritional_info = compute_meal_nutrition(recipe, command.servings)
+
+        updated = plan.update_meal(
+            command.meal_id,
+            servings=command.servings,
+            day_index=command.day_index,
+            nutritional_info=nutritional_info,
+        )
+        self._plans.update(plan)
+        return updated, recipe
+
+    def remove_meal(self, command: RemoveMealFromPlanCommand) -> None:
+        """Remove a planned meal from the caller's plan (DPL-107).
+
+        The plan is loaded owner-scoped (missing/!owned → :class:`MealPlanNotFoundError`, ``404``)
+        and the meal removed (unknown meal id → :class:`MealNotFoundError`, ``404``). The mutation
+        is persisted only on success.
+        """
+        plan = self._plans.get(command.user_id, command.plan_id)
+        if plan is None:
+            raise MealPlanNotFoundError(command.plan_id)
+        plan.remove_meal(command.meal_id)
+        self._plans.update(plan)

@@ -21,6 +21,8 @@ from app.domain.errors import (
     EmptyMealPlanActivationError,
     IllegalStateTransitionError,
     InvalidServingsError,
+    MealDayOutOfRangeError,
+    MealNotFoundError,
     MealPlanDateRangeError,
 )
 
@@ -229,6 +231,61 @@ class MealPlan(_Model):
         self.meals.append(meal)
         self.updated_at = _utcnow()
         return meal
+
+    @property
+    def day_count(self) -> int:
+        """Number of days in the plan's inclusive ``start_date``..``end_date`` window."""
+        return (self.end_date - self.start_date).days + 1
+
+    def find_meal(self, meal_id: str) -> PlannedMeal | None:
+        """Return the embedded meal with *meal_id*, or ``None`` if the plan has no such meal."""
+        return next((meal for meal in self.meals if meal.id == meal_id), None)
+
+    def update_meal(
+        self,
+        meal_id: str,
+        *,
+        servings: float | None = None,
+        day_index: int | None = None,
+        nutritional_info: NutritionalInfo | None = None,
+    ) -> PlannedMeal:
+        """Edit an embedded meal's ``servings`` and/or ``day_index`` and return it (DPL-107).
+
+        Only the supplied fields change. ``servings`` must be strictly positive
+        (:class:`~app.domain.errors.InvalidServingsError`) and ``day_index`` — a 0-based day within
+        the plan's inclusive range — must fall inside the plan's window
+        (:class:`~app.domain.errors.MealDayOutOfRangeError`); an unknown ``meal_id`` raises
+        :class:`~app.domain.errors.MealNotFoundError`. Recomputing ``nutritional_info`` for a new
+        ``servings`` is the application layer's job (it needs the recipe), so it is passed in rather
+        than derived here. On success ``updated_at`` is bumped.
+        """
+        meal = self.find_meal(meal_id)
+        if meal is None:
+            raise MealNotFoundError(meal_id)
+        if servings is not None:
+            if servings <= 0:
+                raise InvalidServingsError(servings)
+            meal.servings = servings
+            meal.nutritional_info = nutritional_info
+        if day_index is not None:
+            if not 0 <= day_index < self.day_count:
+                raise MealDayOutOfRangeError(day_index, self.day_count)
+            meal.day_index = day_index
+        self.updated_at = _utcnow()
+        return meal
+
+    def remove_meal(self, meal_id: str) -> None:
+        """Remove an embedded meal from the plan (DPL-107).
+
+        Raises :class:`~app.domain.errors.MealNotFoundError` if the plan has no such meal, leaving
+        the plan unchanged. On success ``updated_at`` is bumped; the plan's nutritional summary
+        (a derived read) reflects the removal automatically.
+        """
+        meal = self.find_meal(meal_id)
+        if meal is None:
+            raise MealNotFoundError(meal_id)
+        self.meals.remove(meal)
+        self.updated_at = _utcnow()
 
     def to_document(self) -> dict:
         """Serialize to a MongoDB document: camelCase keys, aggregate id stored as ``_id``."""

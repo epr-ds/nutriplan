@@ -31,7 +31,7 @@ class MealPlanDateRangeError(DomainError):
         self.end_date = end_date
 
 
-class MealPlanNotFoundError(DomainError):
+class MealPlanNotFoundError(NotFoundError):
     """Raised when the requested meal plan does not exist for the caller (maps to ``404``).
 
     A missing plan and a plan owned by a *different* user are deliberately indistinguishable, so the
@@ -41,6 +41,32 @@ class MealPlanNotFoundError(DomainError):
     def __init__(self, plan_id: str) -> None:
         super().__init__(f"Meal plan {plan_id} was not found")
         self.plan_id = plan_id
+
+
+class MealNotFoundError(NotFoundError):
+    """Raised when a planned meal is not found within its (already-resolved) plan (maps to ``404``).
+
+    The plan is resolved owner-scoped first, so this only ever means the meal id is absent from the
+    caller's plan — never an existence leak across users.
+    """
+
+    def __init__(self, meal_id: str) -> None:
+        super().__init__(f"Meal {meal_id} was not found in the plan")
+        self.meal_id = meal_id
+
+
+class MealDayOutOfRangeError(DomainError):
+    """Raised when a planned meal is assigned a day outside the plan's date span (maps to ``422``).
+
+    ``day_index`` is 0-based into the plan's inclusive ``startDate``..``endDate`` window, so any
+    index below ``0`` or at/after the number of days is a well-formed but unprocessable request
+    (DPL-107's "meal date must fall within the plan's range" invariant, expressed over day index).
+    """
+
+    def __init__(self, day_index: int, day_count: int) -> None:
+        super().__init__(f"dayIndex {day_index} is outside the plan's range (0..{day_count - 1})")
+        self.day_index = day_index
+        self.day_count = day_count
 
 
 class IllegalStateTransitionError(DomainError):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import CurrentPrincipal, MealPlanServiceDep, MealServiceDep
 from app.api.schemas import (
@@ -15,12 +15,15 @@ from app.api.schemas import (
     MealPlanSummaryResponse,
     MealResponse,
     UpdateMealPlanStatusRequest,
+    UpdateMealRequest,
 )
 from app.application.commands import (
     AddMealToPlanCommand,
     ChangeMealPlanStatusCommand,
     CreateMealPlanCommand,
     ListMealPlansQuery,
+    RemoveMealFromPlanCommand,
+    UpdateMealInPlanCommand,
 )
 from app.domain.meal_plan import MacroTargets, MealPlanStatus
 
@@ -143,3 +146,57 @@ def add_meal_to_plan(
     )
     meal, recipe = service.add_meal_to_plan(command)
     return MealResponse.from_meal(meal, recipe)
+
+
+@router.patch(
+    "/{plan_id}/meals/{meal_id}",
+    response_model=MealResponse,
+    summary="Update a planned meal",
+)
+def update_meal(
+    plan_id: str,
+    meal_id: str,
+    body: UpdateMealRequest,
+    principal: CurrentPrincipal,
+    service: MealServiceDep,
+) -> MealResponse:
+    """Edit a meal's servings and/or day within the caller's plan (DPL-107).
+
+    Returns the updated meal; a missing or not-owned plan, or a meal not in the plan, is ``404``,
+    while a non-positive ``servings`` or a day outside the plan's range is ``422``.
+    """
+    command = UpdateMealInPlanCommand(
+        user_id=principal.user_id,
+        plan_id=plan_id,
+        meal_id=meal_id,
+        servings=body.servings,
+        day_index=body.day_index,
+    )
+    meal, recipe = service.update_meal(command)
+    return MealResponse.from_meal(meal, recipe)
+
+
+@router.delete(
+    "/{plan_id}/meals/{meal_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a planned meal",
+)
+def remove_meal(
+    plan_id: str,
+    meal_id: str,
+    principal: CurrentPrincipal,
+    service: MealServiceDep,
+) -> Response:
+    """Remove a meal from the caller's plan (DPL-107).
+
+    A missing or not-owned plan, or a meal not in the plan, is ``404``. The plan's nutritional
+    summary reflects the removal on the next read.
+    """
+    service.remove_meal(
+        RemoveMealFromPlanCommand(
+            user_id=principal.user_id,
+            plan_id=plan_id,
+            meal_id=meal_id,
+        )
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

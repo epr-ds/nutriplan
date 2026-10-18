@@ -169,6 +169,56 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /meal-plans/{planId}/meals/{mealId}:
+    patch:
+      tags: [MealPlans]
+      operationId: updateMeal
+      summary: Update a planned meal
+      description: >-
+        Edit a planned meal's servings and/or day within its plan. At least one field is required;
+        the assigned day must fall inside the plan's date range.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlanId'
+        - $ref: '#/components/parameters/MealId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMealRequest'
+      responses:
+        '200':
+          description: Updated meal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags: [MealPlans]
+      operationId: removeMeal
+      summary: Remove a planned meal
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlanId'
+        - $ref: '#/components/parameters/MealId'
+      responses:
+        '204':
+          description: Meal removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /ai/recommendations:
     post:
       tags: [AI]
@@ -330,8 +380,9 @@ components:
             $ref: '#/components/schemas/Problem'
     NotFound:
       description: >-
-        The meal plan does not exist, or is not visible to the caller. A plan owned by a
-        different user is deliberately reported as not found (no existence/ownership leak).
+        The resource (the meal plan, or a planned meal within it) does not exist, or is not visible
+        to the caller. A plan owned by a different user is deliberately reported as not found (no
+        existence/ownership leak).
       content:
         application/problem+json:
           schema:
@@ -371,6 +422,13 @@ components:
       required: true
       schema:
         type: string
+    MealId:
+      name: mealId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     CreateMealPlanRequest:
@@ -405,6 +463,22 @@ components:
         servings:
           type: number
           format: float
+
+    UpdateMealRequest:
+      type: object
+      description: >-
+        Partial edit of a planned meal (DPL-107). At least one of `servings`/`dayIndex` is
+        required; an empty body is rejected with 422.
+      properties:
+        servings:
+          type: number
+          format: float
+          minimum: 0
+          exclusiveMinimum: true
+        dayIndex:
+          type: integer
+          minimum: 0
+          description: 0-based day within the plan's inclusive date range.
 
     UpdateMealPlanStatusRequest:
       type: object
@@ -483,6 +557,10 @@ components:
               maxProperties: 0
         servings:
           type: number
+        dayIndex:
+          type: integer
+          nullable: true
+          description: 0-based day within the plan's range, or null when unassigned.
         nutritionalInfo:
           $ref: '#/components/schemas/NutritionalInfo'
 
