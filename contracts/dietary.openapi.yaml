@@ -20,6 +20,7 @@ tags:
   - name: MealPlans
   - name: AI
   - name: Recipes
+  - name: Nutrition
 
 paths:
   /meal-plans:
@@ -367,6 +368,27 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/RecipeNotFound'
+
+  /nutrition/disclaimer:
+    get:
+      tags: [Nutrition]
+      operationId: getNutritionDisclaimer
+      summary: Nutrition source provenance + medical disclaimer
+      description: >-
+        Return the catalog-wide nutrition metadata: the verified data sources the nutrition values
+        are traceable to (with a per-nutrient field→source map) and the disclaimer the UI must
+        surface. The payload makes no medical/health claims (`medicalAdvice` is false).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Nutrition sources + disclaimer metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionDisclaimerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
 components:
   securitySchemes:
@@ -871,6 +893,58 @@ components:
           type: integer
         sugarGrams:
           type: integer
+
+    NutritionSource:
+      description: A verified dataset the catalog's nutrition values are traceable to (DPL-305).
+      type: object
+      required: [id, name, url, verified]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        verified:
+          type: boolean
+
+    NutritionFieldSources:
+      description: Maps each nutrient field to the id of the verified source it comes from (DPL-305).
+      type: object
+      required: [calories, protein, carbs, fat, sugar]
+      properties:
+        calories:
+          type: string
+        protein:
+          type: string
+        carbs:
+          type: string
+        fat:
+          type: string
+        sugar:
+          type: string
+
+    NutritionDisclaimerResponse:
+      description: >-
+        Catalog-wide nutrition source provenance + medical disclaimer (DPL-305). `medicalAdvice`
+        is false: the payload makes no medical/health claims.
+      type: object
+      required: [disclaimer, medicalAdvice, sources, fieldSources, lastReviewed]
+      properties:
+        disclaimer:
+          type: string
+        medicalAdvice:
+          type: boolean
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/NutritionSource'
+        fieldSources:
+          $ref: '#/components/schemas/NutritionFieldSources'
+        lastReviewed:
+          type: string
+          format: date
 
     Problem:
       type: object
