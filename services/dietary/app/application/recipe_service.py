@@ -34,10 +34,13 @@ class RecipeService:
         return recipe
 
     def search_recipes(self, query: SearchRecipesQuery) -> list[Recipe]:
-        """Return recipes matching the supplied filters with stable offset pagination (DPL-202).
+        """Return recipes matching the filters with ingredient relevance + stable paging.
+
+        Implements DPL-202 (filters/pagination) with DPL-206 ingredient relevance.
 
         An empty/over-broad query is handled gracefully: with no filters every recipe is eligible,
         bounded by ``limit`` and ordered deterministically by the repository so paging is stable.
+        When ``ingredients`` are supplied the repository ranks by ingredient overlap (DPL-206).
         """
         skip = (query.page - 1) * query.limit
         return self._recipes.search(

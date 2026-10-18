@@ -292,6 +292,10 @@ paths:
       parameters:
         - name: ingredients
           in: query
+          description: >-
+            Ingredient names to look for (case-insensitive). A recipe matches when it contains
+            at least one of them; results are ranked by how many they match (most relevant
+            first), then by name (DPL-206).
           schema:
             type: array
             items:

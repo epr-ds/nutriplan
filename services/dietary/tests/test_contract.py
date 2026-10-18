@@ -356,6 +356,13 @@ def test_search_recipes_conforms(openapi, client):
     assert_conforms(openapi, "get", "/recipes", resp)
 
 
+def test_search_recipes_by_ingredient_conforms(openapi, client):
+    resp = client.get("/recipes", params={"ingredients": "rolled oats"}, headers=_AUTH)
+    assert resp.status_code == 200
+    assert resp.json()[0]["id"] == RECIPE_ID
+    assert_conforms(openapi, "get", "/recipes", resp)
+
+
 def test_get_recipe_conforms(openapi, client):
     resp = client.get(f"/recipes/{RECIPE_ID}", headers=_AUTH)
     assert resp.status_code == 200

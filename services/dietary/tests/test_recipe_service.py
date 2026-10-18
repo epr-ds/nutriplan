@@ -91,17 +91,28 @@ def test_filter_by_min_protein(service):
     assert _names(results) == ["Chicken Bowl", "Salmon"]
 
 
-def test_ingredients_are_case_insensitive_and_require_all(service):
+def test_ingredients_are_case_insensitive_and_match_any(service):
     one = service.search_recipes(SearchRecipesQuery(ingredients=("broccoli",)))
     assert _names(one) == ["Tofu Stir-Fry"]
 
     both = service.search_recipes(SearchRecipesQuery(ingredients=("FIRM TOFU", "broccoli")))
     assert _names(both) == ["Tofu Stir-Fry"]
 
-    # Requiring all: ingredients spread across different recipes match nothing.
-    assert (
-        service.search_recipes(SearchRecipesQuery(ingredients=("firm tofu", "rolled oats"))) == []
+    # OR semantics (DPL-206): names spread across recipes match each recipe containing any of them.
+    spread = service.search_recipes(SearchRecipesQuery(ingredients=("firm tofu", "rolled oats")))
+    assert _names(spread) == ["Oats", "Tofu Stir-Fry"]
+
+
+def test_ingredients_ranked_by_overlap(service):
+    results = service.search_recipes(
+        SearchRecipesQuery(ingredients=("firm tofu", "broccoli", "chicken breast"))
     )
+    assert _names(results) == ["Tofu Stir-Fry", "Chicken Bowl"]
+
+
+def test_macro_filters_combine_with_ingredient_match(service):
+    query = SearchRecipesQuery(ingredients=("firm tofu", "rolled oats"), min_protein=20)
+    assert _names(service.search_recipes(query)) == ["Tofu Stir-Fry"]
 
 
 def test_filters_combine_with_and(service):

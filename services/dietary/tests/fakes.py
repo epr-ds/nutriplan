@@ -66,12 +66,15 @@ class InMemoryRecipeRepository(RecipeRepository):
         limit: int = 20,
     ) -> list[Recipe]:
         results = list(self.saved.values())
-        if ingredients:
-            wanted = [name.strip().lower() for name in ingredients if name and name.strip()]
-            if wanted:
-                results = [
-                    r for r in results if {i.name.lower() for i in r.ingredients}.issuperset(wanted)
-                ]
+        wanted = (
+            [name.strip().lower() for name in ingredients if name and name.strip()]
+            if ingredients
+            else []
+        )
+        if wanted:
+            # OR-match any requested ingredient (case-insensitive); ranking happens after filtering.
+            matching = set(wanted)
+            results = [r for r in results if {i.name.lower() for i in r.ingredients} & matching]
         if diet_type is not None:
             dt = diet_type.value if isinstance(diet_type, DietaryType) else diet_type
             results = [r for r in results if dt in r.dietary_types]
@@ -81,8 +84,19 @@ class InMemoryRecipeRepository(RecipeRepository):
             ]
         if min_protein is not None:
             results = [r for r in results if _protein(r) is not None and _protein(r) >= min_protein]
-        # Deterministic (name, id) ordering mirrors the Mongo adapter, so paging is stable.
-        results.sort(key=lambda r: (r.name, r.id))
+        if wanted:
+            # Rank by ingredient overlap (desc), then (name, id) — mirrors the Mongo adapter.
+            matching = set(wanted)
+            results.sort(
+                key=lambda r: (
+                    -len({i.name.lower() for i in r.ingredients} & matching),
+                    r.name,
+                    r.id,
+                )
+            )
+        else:
+            # Deterministic (name, id) ordering mirrors the Mongo adapter, so paging is stable.
+            results.sort(key=lambda r: (r.name, r.id))
         return results[skip : skip + limit]
 
 
