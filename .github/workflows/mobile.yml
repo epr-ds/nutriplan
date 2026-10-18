@@ -81,7 +81,7 @@ jobs:
         run: ./gradlew :androidApp:testDebugUnitTest --tests "com.nutriplan.android.e2e.AuthJourneyE2ETest" --stacktrace
       - name: Upload E2E report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-auth-e2e-report
           path: |
@@ -114,7 +114,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-release-apk
           path: mobile/androidApp/build/outputs/apk/release/*.apk
