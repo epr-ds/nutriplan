@@ -146,6 +146,9 @@ dependencies {
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
+
+    // IDN-703: headless auth-journey E2E drives the UI against a mock Identity backend.
+    testImplementation(libs.ktor.client.mock)
 }
 
 detekt {

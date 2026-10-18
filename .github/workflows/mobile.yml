@@ -61,6 +61,33 @@ jobs:
           # Lint includes AccessibilityCheck rules (ContentDescriptionCheck, ViewConfigurationCheck)
           ANDROID_LINT_COMPLETE: '1'
 
+  # IDN-703: headless auth-journey E2E — register -> onboarding -> authenticated /users/me.
+  # iOS runs the same journey through the shared layer but has no UI harness yet (IDN-506);
+  # the failure artifact here is the JUnit report rather than a device video.
+  android-e2e:
+    name: Android auth E2E (headless)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Auth journey E2E (JVM, Robolectric)
+        run: ./gradlew :androidApp:testDebugUnitTest --tests "com.nutriplan.android.e2e.AuthJourneyE2ETest" --stacktrace
+      - name: Upload E2E report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-auth-e2e-report
+          path: |
+            mobile/androidApp/build/reports/tests/testDebugUnitTest
+            mobile/androidApp/build/test-results/testDebugUnitTest
+
   android-release:
     name: Android release build (Play App Signing)
     runs-on: ubuntu-latest
