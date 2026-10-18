@@ -61,6 +61,18 @@ class MealType(StrEnum):
     SNACK = "snack"
 
 
+class ProgressStatus(StrEnum):
+    """How a nutrient's actual intake compares with its target (DPL-303).
+
+    ``under`` (< 100% of target), ``on_target`` (exactly 100%) and ``over`` (> 100%). ``on_target``
+    is an exact match rather than a tolerance band, so the flag needs no arbitrary threshold.
+    """
+
+    UNDER = "under"
+    ON_TARGET = "on_target"
+    OVER = "over"
+
+
 class _Model(BaseModel):
     """Base for aggregate models: camelCase wire/document keys, lenient on read."""
 
@@ -101,18 +113,49 @@ class NutritionalTargets(_Model):
     sugar: int | None = None
 
 
+class NutrientProgress(_Model):
+    """One nutrient's daily-average intake measured against its daily target (DPL-303).
+
+    ``target`` is the plan's daily goal for the nutrient (``None`` when unset); ``actual`` is the
+    plan's daily average (``None`` when nothing reports it). ``percent_of_target`` is
+    ``actual / target * 100`` (one decimal place, half-up) or ``None`` when either side is unknown
+    or the target is zero. ``status`` flags over/under target, or ``None`` when it cannot be judged.
+    """
+
+    target: float | None = None
+    actual: float | None = None
+    percent_of_target: float | None = None
+    status: ProgressStatus | None = None
+
+
+class NutritionalProgress(_Model):
+    """Per-nutrient targets-vs-progress for a plan: calories and each macro (DPL-303).
+
+    A *derived* value object (never persisted) recomputed from the aggregate's current meals.
+    Every nutrient is always present; a nutrient with no target or no measured intake degrades
+    gracefully to ``percent_of_target``/``status`` of ``None``.
+    """
+
+    calories: NutrientProgress
+    protein: NutrientProgress
+    carbs: NutrientProgress
+    fat: NutrientProgress
+    sugar: NutrientProgress
+
+
 class NutritionalSummary(_Model):
-    """A plan's overall nutrition versus its targets (DPL-302).
+    """A plan's overall nutrition versus its targets (DPL-302/303).
 
     A *derived* value object (never persisted): the ``total`` nutrition across all of the plan's
-    meals, the ``daily_average`` over the plan's date span, and the plan's ``targets``. It is
-    recomputed from the aggregate's current meals on every read, so it always reflects the latest
-    meals (DPL-105/107).
+    meals, the ``daily_average`` over the plan's date span, the plan's ``targets``, and the
+    per-nutrient ``progress`` of the daily average against those targets. It is recomputed from the
+    aggregate's current meals on every read, so it always reflects the latest meals (DPL-105/107).
     """
 
     total: NutritionalInfo
     daily_average: NutritionalInfo
     targets: NutritionalTargets
+    progress: NutritionalProgress
 
 
 class PlannedMeal(_Model):
