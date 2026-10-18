@@ -1,5 +1,7 @@
 package com.nutriplan.shared.data.repository
 
+import com.nutriplan.shared.auth.AuthError
+import com.nutriplan.shared.auth.toAuthError
 import com.nutriplan.shared.data.local.StoredTokens
 import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.model.LoginRequest
@@ -78,26 +80,17 @@ class AuthLoginTest {
     }
 
     @Test
-    fun `auth error messages never reveal whether an account exists`() {
-        assertEquals("Incorrect email or password.", ApiException.HttpError(401, null).toAuthErrorMessage())
-        assertEquals("Incorrect email or password.", ApiException.HttpError(400, null).toAuthErrorMessage())
-        assertEquals("Incorrect email or password.", ApiException.HttpError(403, null).toAuthErrorMessage())
+    fun `auth errors never reveal whether an account exists`() {
+        assertEquals(AuthError.INVALID_CREDENTIALS, ApiException.HttpError(401, null).toAuthError())
+        assertEquals(AuthError.INVALID_CREDENTIALS, ApiException.HttpError(400, null).toAuthError())
+        assertEquals(AuthError.INVALID_CREDENTIALS, ApiException.HttpError(403, null).toAuthError())
     }
 
     @Test
-    fun `auth error messages distinguish rate limits, server and network failures`() {
-        assertEquals(
-            "Too many attempts. Please wait a moment and try again.",
-            ApiException.HttpError(429, null).toAuthErrorMessage(),
-        )
-        assertEquals(
-            "The server had a problem. Please try again later.",
-            ApiException.HttpError(503, null).toAuthErrorMessage(),
-        )
-        assertEquals(
-            "Can't reach the server. Check your connection and try again.",
-            ApiException.NetworkError().toAuthErrorMessage(),
-        )
-        assertEquals("Something went wrong. Please try again.", IllegalStateException("x").toAuthErrorMessage())
+    fun `auth errors distinguish rate limits, server and network failures`() {
+        assertEquals(AuthError.TOO_MANY_ATTEMPTS, ApiException.HttpError(429, null).toAuthError())
+        assertEquals(AuthError.SERVER_PROBLEM, ApiException.HttpError(503, null).toAuthError())
+        assertEquals(AuthError.NETWORK, ApiException.NetworkError().toAuthError())
+        assertEquals(AuthError.UNKNOWN, IllegalStateException("x").toAuthError())
     }
 }

@@ -79,10 +79,7 @@ class OnboardingViewModel(
             _state.value = _state.value.copy(isSaving = false)
             throw cancellation
         } catch (failure: Exception) {
-            _state.value = _state.value.copy(
-                isSaving = false,
-                error = failure.message ?: "Could not save your preferences",
-            )
+            _state.value = _state.value.copy(isSaving = false, error = OnboardingError.SAVE_FAILED)
             false
         }
     }

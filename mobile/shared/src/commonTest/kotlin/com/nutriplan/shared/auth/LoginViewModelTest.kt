@@ -35,9 +35,9 @@ class LoginViewModelTest {
 
         assertFalse(model.submit())
 
-        assertEquals("Enter your email.", model.state.value.emailError)
-        assertEquals("Enter your password.", model.state.value.passwordError)
-        assertNull(model.state.value.errorMessage)
+        assertEquals(FieldError.EMAIL_REQUIRED, model.state.value.emailError)
+        assertEquals(FieldError.PASSWORD_REQUIRED, model.state.value.passwordError)
+        assertNull(model.state.value.error)
         assertFalse(repository.isAuthenticated)
     }
 
@@ -49,7 +49,7 @@ class LoginViewModelTest {
 
         assertFalse(model.submit())
 
-        assertEquals("Enter a valid email address.", model.state.value.emailError)
+        assertEquals(FieldError.EMAIL_INVALID, model.state.value.emailError)
         assertNull(model.state.value.passwordError)
     }
 
@@ -57,7 +57,7 @@ class LoginViewModelTest {
     fun `editing a field clears its inline error`() = runTest {
         val (model, _) = viewModel(backgroundScope)
         assertFalse(model.submit())
-        assertEquals("Enter your email.", model.state.value.emailError)
+        assertEquals(FieldError.EMAIL_REQUIRED, model.state.value.emailError)
 
         model.onEmailChange("ana@example.com")
 
@@ -75,7 +75,7 @@ class LoginViewModelTest {
         val state = model.state.value
         assertTrue(state.isSuccess)
         assertFalse(state.isLoading)
-        assertNull(state.errorMessage)
+        assertNull(state.error)
         assertEquals("", state.password)
         assertTrue(repository.isAuthenticated)
     }
@@ -89,7 +89,7 @@ class LoginViewModelTest {
         assertFalse(model.submit())
 
         val state = model.state.value
-        assertEquals("Incorrect email or password.", state.errorMessage)
+        assertEquals(AuthError.INVALID_CREDENTIALS, state.error)
         assertFalse(state.isLoading)
         assertFalse(state.isSuccess)
         assertEquals("wrong-password", state.password)

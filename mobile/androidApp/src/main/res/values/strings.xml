@@ -1,4 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NutriPlan</string>
+    <string name="app_name" translatable="false">NutriPlan</string>
+
+    <!-- Shared controls -->
+    <string name="cd_loading">Loading</string>
+
+    <!-- OAuth providers -->
+    <string name="oauth_continue_with_google">Continue with Google</string>
+    <string name="oauth_continue_with_facebook">Continue with Facebook</string>
+    <string name="oauth_continue_with_apple">Continue with Apple</string>
+
+    <!-- Field-level validation errors -->
+    <string name="error_field_name_required">Enter your name.</string>
+    <string name="error_field_name_too_short">Use at least 2 characters.</string>
+    <string name="error_field_email_required">Enter your email.</string>
+    <string name="error_field_email_invalid">Enter a valid email address.</string>
+    <string name="error_field_password_required">Enter your password.</string>
+    <string name="error_field_password_too_short">Use at least 8 characters.</string>
+    <string name="error_field_confirm_password_required">Re-enter your password.</string>
+    <string name="error_field_confirm_password_mismatch">Passwords don\'t match.</string>
+
+    <!-- Form-level auth errors -->
+    <string name="error_auth_invalid_credentials">Incorrect email or password.</string>
+    <string name="error_auth_too_many_attempts">Too many attempts. Please wait a moment and try again.</string>
+    <string name="error_auth_server_problem">The server had a problem. Please try again later.</string>
+    <string name="error_auth_login_failed">Login failed. Please try again.</string>
+    <string name="error_auth_network">Can\'t reach the server. Check your connection and try again.</string>
+    <string name="error_auth_unknown">Something went wrong. Please try again.</string>
+
+    <!-- Login -->
+    <string name="login_title">Welcome Back</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_email_placeholder">Enter your email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_password_placeholder">Enter your password</string>
+    <string name="login_forgot_password">Forgot Password?</string>
+    <string name="login_submit">Login</string>
+    <string name="login_no_account">Don\'t have an account? </string>
+    <string name="login_register_link">Register</string>
+
+    <!-- Register -->
+    <string name="register_title">Create Account</string>
+    <string name="register_name_label">Name</string>
+    <string name="register_name_placeholder">Enter your name</string>
+    <string name="register_email_label">Email</string>
+    <string name="register_email_placeholder">Enter your email</string>
+    <string name="register_password_label">Password</string>
+    <string name="register_password_placeholder">Enter your password</string>
+    <string name="register_confirm_password_label">Confirm Password</string>
+    <string name="register_confirm_password_placeholder">Re-enter your password</string>
+    <string name="register_submit">Register</string>
+    <string name="register_have_account">Already have an account? </string>
+    <string name="register_login_link">Login</string>
+
+    <!-- Onboarding wizard -->
+    <string name="onboarding_step_of">Step %1$d of %2$d</string>
+    <string name="cd_onboarding_progress">Progress: step %1$d of %2$d</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_finish">Finish</string>
+    <string name="onboarding_diet_title">What\'s your diet?</string>
+    <string name="onboarding_cuisines_title">Favourite cuisines</string>
+    <string name="onboarding_allergies_title">Any allergies?</string>
+    <string name="onboarding_excluded_title">Ingredients to avoid</string>
+    <string name="onboarding_calories_title">Daily calorie target</string>
+    <string name="onboarding_macros_title">Suggested macros</string>
+    <string name="onboarding_macros_summary">Protein %1$d g · Carbs %2$d g · Fat %3$d g</string>
+    <string name="onboarding_appetite_title">How satisfying are your current meals?</string>
+    <string name="onboarding_calories_value">%1$d kcal</string>
+    <string name="cd_onboarding_calorie_target">Calorie target: %1$d kilocalories</string>
+    <string name="error_onboarding_save_failed">Could not save your preferences. Please try again.</string>
+
+    <!-- Onboarding intro pager -->
+    <string name="intro_skip">Skip</string>
+    <string name="intro_next">Next</string>
+    <string name="intro_get_started">Get Started</string>
+    <string name="intro_welcome_title">Welcome to NutriPlan</string>
+    <string name="intro_welcome_body">Your personal nutrition assistant. Get personalized meal plans, track your progress, and eat healthier.</string>
+    <string name="intro_meals_title">Personalized Meal Plans</string>
+    <string name="intro_meals_body">Get meal plans tailored to your dietary preferences, health goals, and taste.</string>
+    <string name="intro_tracking_title">Track Your Progress</string>
+    <string name="intro_tracking_body">Monitor your nutrition intake, track your meals, and achieve your health goals.</string>
+    <string name="cd_intro_pages">Onboarding pages, %1$d of %2$d</string>
+    <string name="cd_intro_page">Page %1$d of %2$d</string>
+    <string name="cd_intro_page_current">Page %1$d of %2$d, current</string>
+    <string name="cd_intro_welcome_illustration">Fresh food illustration</string>
+    <string name="cd_intro_meals_illustration">Meal plan illustration</string>
+    <string name="cd_intro_tracking_illustration">Progress tracking illustration</string>
 </resources>

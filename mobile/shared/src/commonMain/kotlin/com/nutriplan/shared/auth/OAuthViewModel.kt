@@ -1,6 +1,5 @@
 package com.nutriplan.shared.auth
 
-import com.nutriplan.shared.data.repository.toAuthErrorMessage
 import com.nutriplan.shared.session.OAuthLogin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,13 +11,13 @@ import kotlin.coroutines.cancellation.CancellationException
  * Observable state of the OAuth sign-in flow.
  *
  * [activeProvider] is the provider currently showing native consent (so the UI can show a spinner
- * on the tapped button); [errorMessage] carries a form-level failure. [isSuccess] tells the screen
+ * on the tapped button); [error] carries a form-level failure code. [isSuccess] tells the screen
  * to route to the next destination for the resulting session state.
  */
 data class OAuthUiState(
     val isLoading: Boolean = false,
     val activeProvider: OAuthProvider? = null,
-    val errorMessage: String? = null,
+    val error: AuthError? = null,
     val isSuccess: Boolean = false,
 ) {
     /** Whether another sign-in can be started. */
@@ -46,13 +45,13 @@ class OAuthViewModel(
 
     /**
      * Attempts a sign-in with [provider]. Returns true on success; false if the user cancelled or
-     * the request was rejected (with [OAuthUiState.errorMessage] set only for the latter).
+     * the request was rejected (with [OAuthUiState.error] set only for the latter).
      * [CancellationException] is rethrown so navigating away cancels cleanly.
      */
     suspend fun signIn(provider: OAuthProvider): Boolean {
         if (_state.value.isLoading) return false
 
-        _state.update { it.copy(isLoading = true, activeProvider = provider, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, activeProvider = provider, error = null) }
         return try {
             val token = tokenProvider.signIn(provider)
             if (token == null) {
@@ -69,7 +68,7 @@ class OAuthViewModel(
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             _state.update {
-                it.copy(isLoading = false, activeProvider = null, errorMessage = e.toAuthErrorMessage())
+                it.copy(isLoading = false, activeProvider = null, error = e.toAuthError())
             }
             false
         }

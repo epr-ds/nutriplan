@@ -11,6 +11,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.nutriplan.android.screen.auth.LoginScreenContent
 import com.nutriplan.android.screen.auth.RegisterScreenContent
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import com.nutriplan.shared.auth.AuthError
+import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.auth.LoginUiState
 import com.nutriplan.shared.auth.OAuthProvider
 import com.nutriplan.shared.auth.OAuthUiState
@@ -88,8 +90,8 @@ class AuthAccessibilityTest {
             LoginUiState(
                 email = "not-an-email",
                 password = "secret",
-                emailError = "Enter a valid email address.",
-                errorMessage = "Incorrect email or password.",
+                emailError = FieldError.EMAIL_INVALID,
+                error = AuthError.INVALID_CREDENTIALS,
             ),
         )
 
@@ -117,8 +119,8 @@ class AuthAccessibilityTest {
                 email = "ana@example.com",
                 password = "secret12",
                 confirmPassword = "secret12",
-                passwordError = "Use at least 8 characters.",
-                errorMessage = "That email is already registered.",
+                passwordError = FieldError.PASSWORD_TOO_SHORT,
+                error = AuthError.LOGIN_FAILED,
             ),
         )
 
@@ -128,7 +130,25 @@ class AuthAccessibilityTest {
         compose.onNodeWithText("Password").assertExists()
         compose.onNodeWithText("Confirm Password").assertExists()
         compose.onNodeWithText("Use at least 8 characters.").assert(hasLiveRegion())
-        compose.onNodeWithText("That email is already registered.").assert(hasLiveRegion())
+        compose.onNodeWithText("Login failed. Please try again.").assert(hasLiveRegion())
         compose.onNodeWithText("Register").assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    @Config(sdk = [34], application = TestApplication::class, qualifiers = "es")
+    fun login_and_register_microcopy_is_localized_in_spanish() {
+        renderLogin(
+            LoginUiState(
+                email = "not-an-email",
+                emailError = FieldError.EMAIL_INVALID,
+                error = AuthError.INVALID_CREDENTIALS,
+            ),
+        )
+
+        compose.onNodeWithText("Bienvenido de nuevo").assert(isHeading())
+        compose.onNodeWithText("Correo electrónico").assertExists()
+        compose.onNodeWithText("Iniciar sesión").assertExists()
+        compose.onNodeWithText("Introduce una dirección de correo electrónico válida.").assertExists()
+        compose.onNodeWithText("Correo electrónico o contraseña incorrectos.").assertExists()
     }
 }

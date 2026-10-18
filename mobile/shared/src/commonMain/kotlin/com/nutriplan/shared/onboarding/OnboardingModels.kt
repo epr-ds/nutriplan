@@ -70,12 +70,22 @@ data class OnboardingDraft(
     val answers: OnboardingAnswers = OnboardingAnswers(),
 )
 
+/**
+ * A recoverable failure while finishing the wizard.
+ *
+ * A stable code (rather than literal text) so the platform UI localizes the microcopy (IDN-902).
+ */
+enum class OnboardingError {
+    /** The preferences could not be saved; the user can retry. */
+    SAVE_FAILED,
+}
+
 /** Immutable state the wizard UI renders. */
 data class OnboardingUiState(
     val step: OnboardingStep = OnboardingStep.DIET,
     val answers: OnboardingAnswers = OnboardingAnswers(),
     val isSaving: Boolean = false,
-    val error: String? = null,
+    val error: OnboardingError? = null,
     val isComplete: Boolean = false,
 ) {
     private val steps: Int get() = OnboardingStep.entries.size

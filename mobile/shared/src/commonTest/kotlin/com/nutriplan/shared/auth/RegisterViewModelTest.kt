@@ -51,10 +51,10 @@ class RegisterViewModelTest {
         assertFalse(fx.model.submit())
 
         val state = fx.model.state.value
-        assertEquals("Enter your name.", state.nameError)
-        assertEquals("Enter your email.", state.emailError)
-        assertEquals("Enter a password.", state.passwordError)
-        assertEquals("Re-enter your password.", state.confirmPasswordError)
+        assertEquals(FieldError.NAME_REQUIRED, state.nameError)
+        assertEquals(FieldError.EMAIL_REQUIRED, state.emailError)
+        assertEquals(FieldError.PASSWORD_REQUIRED, state.passwordError)
+        assertEquals(FieldError.CONFIRM_PASSWORD_REQUIRED, state.confirmPasswordError)
         assertFalse(fx.repository.isAuthenticated)
     }
 
@@ -65,7 +65,7 @@ class RegisterViewModelTest {
 
         assertFalse(fx.model.submit())
 
-        assertEquals("Use at least 2 characters.", fx.model.state.value.nameError)
+        assertEquals(FieldError.NAME_TOO_SHORT, fx.model.state.value.nameError)
     }
 
     @Test
@@ -75,7 +75,7 @@ class RegisterViewModelTest {
 
         assertFalse(fx.model.submit())
 
-        assertEquals("Enter a valid email address.", fx.model.state.value.emailError)
+        assertEquals(FieldError.EMAIL_INVALID, fx.model.state.value.emailError)
     }
 
     @Test
@@ -86,7 +86,7 @@ class RegisterViewModelTest {
 
         assertFalse(fx.model.submit())
 
-        assertEquals("Use at least 8 characters.", fx.model.state.value.passwordError)
+        assertEquals(FieldError.PASSWORD_TOO_SHORT, fx.model.state.value.passwordError)
     }
 
     @Test
@@ -97,14 +97,14 @@ class RegisterViewModelTest {
 
         assertFalse(fx.model.submit())
 
-        assertEquals("Passwords don't match.", fx.model.state.value.confirmPasswordError)
+        assertEquals(FieldError.CONFIRM_PASSWORD_MISMATCH, fx.model.state.value.confirmPasswordError)
     }
 
     @Test
     fun `editing a field clears its inline error`() = runTest {
         val fx = fixture(backgroundScope)
         assertFalse(fx.model.submit())
-        assertEquals("Enter your email.", fx.model.state.value.emailError)
+        assertEquals(FieldError.EMAIL_REQUIRED, fx.model.state.value.emailError)
 
         fx.model.onEmailChange("ana@example.com")
 
@@ -121,7 +121,7 @@ class RegisterViewModelTest {
         val state = fx.model.state.value
         assertTrue(state.isSuccess)
         assertFalse(state.isLoading)
-        assertNull(state.errorMessage)
+        assertNull(state.error)
         assertEquals("", state.password)
         assertEquals("", state.confirmPassword)
         assertTrue(fx.repository.isAuthenticated)
@@ -136,7 +136,7 @@ class RegisterViewModelTest {
         assertFalse(fx.model.submit())
 
         val state = fx.model.state.value
-        assertTrue(state.errorMessage != null)
+        assertEquals(AuthError.LOGIN_FAILED, state.error)
         assertFalse(state.isLoading)
         assertFalse(state.isSuccess)
         assertEquals("secret-password", state.password)

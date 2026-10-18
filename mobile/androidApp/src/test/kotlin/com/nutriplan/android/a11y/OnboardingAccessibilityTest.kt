@@ -82,4 +82,16 @@ class OnboardingAccessibilityTest {
         compose.onNodeWithContentDescription("Page 1 of 3, current").assertExists()
         compose.onNodeWithText("Next").assertExists()
     }
+
+    @Test
+    @Config(sdk = [34], application = TestApplication::class, qualifiers = "es")
+    fun wizard_microcopy_is_localized_in_spanish() {
+        renderWizard(OnboardingUiState(step = OnboardingStep.DIET, answers = OnboardingAnswers()))
+
+        compose.onNodeWithText("Paso 1 de 3").assertExists()
+        compose.onNodeWithContentDescription("Progreso: paso 1 de 3").assertExists()
+        compose.onNodeWithText("¿Cuál es tu dieta?").assert(isHeading())
+        compose.onNodeWithText("Omitir").assertExists()
+        compose.onNodeWithText("Siguiente").assertExists()
+    }
 }
