@@ -658,7 +658,7 @@ components:
 
     NutritionalSummary:
       type: object
-      required: [total, dailyAverage, targets]
+      required: [total, dailyAverage, targets, progress]
       properties:
         total:
           $ref: '#/components/schemas/NutritionalInfo'
@@ -666,6 +666,55 @@ components:
           $ref: '#/components/schemas/NutritionalInfo'
         targets:
           $ref: '#/components/schemas/NutritionalTargets'
+        progress:
+          $ref: '#/components/schemas/NutritionalProgress'
+
+    NutritionalProgress:
+      description: >-
+        Per-nutrient targets-vs-progress for a plan (DPL-303): the daily average measured
+        against each daily target. Every nutrient is always present; a nutrient with no
+        target or no measured intake degrades gracefully to null percent/status.
+      type: object
+      required: [calories, protein, carbs, fat, sugar]
+      properties:
+        calories:
+          $ref: '#/components/schemas/NutrientProgress'
+        protein:
+          $ref: '#/components/schemas/NutrientProgress'
+        carbs:
+          $ref: '#/components/schemas/NutrientProgress'
+        fat:
+          $ref: '#/components/schemas/NutrientProgress'
+        sugar:
+          $ref: '#/components/schemas/NutrientProgress'
+
+    NutrientProgress:
+      description: >-
+        One nutrient's daily-average intake measured against its daily target (DPL-303).
+        `target`/`actual` are null when unset/unknown; `percentOfTarget` is null when either
+        side is unknown or the target is zero; `status` flags over/under target, or is null
+        when it cannot be judged.
+      type: object
+      properties:
+        target:
+          type: number
+          nullable: true
+        actual:
+          type: number
+          nullable: true
+        percentOfTarget:
+          type: number
+          nullable: true
+        status:
+          description: >-
+            Over/under flag, or null when it cannot be judged (no target, unknown intake,
+            or a zero target).
+          anyOf:
+            - type: string
+              enum: [under, on_target, over]
+            - type: object
+              nullable: true
+              maxProperties: 0
 
     NutritionalTargets:
       description: >-

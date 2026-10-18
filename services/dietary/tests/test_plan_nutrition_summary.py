@@ -1,11 +1,12 @@
-"""DPL-302: plan-level nutritional summary (``summarize_plan_nutrition``).
+"""DPL-302/303: plan-level nutritional summary (``summarize_plan_nutrition``).
 
 Pure, Mongo-free tests for the domain service that rolls a meal plan's per-meal nutrition (computed
 by DPL-301 and embedded on each ``PlannedMeal``) up into a :class:`NutritionalSummary`: the
-**total** across the plan, the **daily average** over the plan's date span, and the plan's
-**targets**. They pin down the date-span divisor (inclusive), the **half-up** rounding rule
-(calories to a whole number, macros to one decimal place), and the "unknown stays ``None``" rule (a
-nutrient no meal reports is never silently reported as ``0``).
+**total** across the plan, the **daily average** over the plan's date span, the plan's **targets**,
+and the per-nutrient **progress** of the daily average against those targets (DPL-303). They pin
+down the date-span divisor (inclusive), the **half-up** rounding rule (calories to a whole number,
+macros to one decimal place), the "unknown stays ``None``" rule (a nutrient no meal reports is never
+silently reported as ``0``), and the graceful degradation of progress when a target is unset.
 """
 
 from datetime import date
@@ -16,6 +17,7 @@ from app.domain.meal_plan import (
     MealType,
     NutritionalInfo,
     PlannedMeal,
+    ProgressStatus,
 )
 from app.domain.nutrition import summarize_plan_nutrition
 
@@ -204,3 +206,102 @@ def test_meal_without_nutritional_info_is_skipped():
 
     assert summary.total.calories == 400
     assert summary.total.protein == 20.0
+
+
+# --- DPL-303: targets vs progress -------------------------------------------
+
+
+def test_progress_flags_under_target_for_calories_and_macros():
+    # 7 days: daily avg 1000 kcal / 75 g protein vs 2000 kcal / 150 g targets => 50% each, under.
+    plan = _plan(
+        daily_calorie_target=2000,
+        macro_targets=MacroTargets(protein_grams=150),
+        meals=[_meal(NutritionalInfo(calories=7000, protein=525.0))],
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.actual == 1000
+    assert progress.calories.percent_of_target == 50.0
+    assert progress.calories.status == ProgressStatus.UNDER
+    assert progress.protein.actual == 75.0
+    assert progress.protein.percent_of_target == 50.0
+    assert progress.protein.status == ProgressStatus.UNDER
+
+
+def test_progress_exactly_at_target_is_on_target():
+    plan = _plan(
+        daily_calorie_target=2000,
+        meals=[_meal(NutritionalInfo(calories=14000))],  # 14000 / 7 = 2000
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.percent_of_target == 100.0
+    assert progress.calories.status == ProgressStatus.ON_TARGET
+
+
+def test_progress_above_target_is_over():
+    plan = _plan(
+        daily_calorie_target=2000,
+        meals=[_meal(NutritionalInfo(calories=21000))],  # 3000 / day = 150%
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.percent_of_target == 150.0
+    assert progress.calories.status == ProgressStatus.OVER
+
+
+def test_progress_percent_rounds_half_up():
+    # 3 days, 5500 kcal => 1833.333/day => 91.666% => 91.7 (rounded once, half-up).
+    plan = _plan(
+        start=date(2026, 1, 1),
+        end=date(2026, 1, 3),
+        daily_calorie_target=2000,
+        meals=[_meal(NutritionalInfo(calories=5500))],
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.actual == 1833
+    assert progress.calories.percent_of_target == 91.7
+
+
+def test_progress_macros_null_without_macro_targets():
+    plan = _plan(
+        daily_calorie_target=2000,
+        macro_targets=None,
+        meals=[_meal(NutritionalInfo(calories=7000, protein=525.0))],
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.status == ProgressStatus.UNDER
+    assert progress.protein.target is None
+    assert progress.protein.percent_of_target is None
+    assert progress.protein.status is None
+
+
+def test_progress_without_measured_intake_has_no_percent():
+    plan = _plan(daily_calorie_target=2000, meals=[])
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.target == 2000
+    assert progress.calories.actual is None
+    assert progress.calories.percent_of_target is None
+    assert progress.calories.status is None
+
+
+def test_progress_zero_target_is_treated_as_no_target():
+    plan = _plan(
+        daily_calorie_target=0,
+        meals=[_meal(NutritionalInfo(calories=500))],
+    )
+
+    progress = summarize_plan_nutrition(plan).progress
+
+    assert progress.calories.target == 0
+    assert progress.calories.percent_of_target is None
+    assert progress.calories.status is None

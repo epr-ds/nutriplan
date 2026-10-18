@@ -132,6 +132,24 @@ def test_get_includes_nutritional_summary(client, repo, principal):
     assert summary["targets"]["protein"] is None
 
 
+def test_get_includes_targeted_progress(client, repo, principal):
+    plan = _seed(repo, principal.user_id, with_meal=True)
+
+    response = client.get(f"/meal-plans/{plan.id}", headers=_auth())
+
+    assert response.status_code == 200
+    progress = response.json()["nutritionalSummary"]["progress"]
+    # 60 kcal/day vs a 2000 kcal target => 3% and under.
+    assert progress["calories"]["target"] == 2000
+    assert progress["calories"]["actual"] == 60
+    assert progress["calories"]["percentOfTarget"] == 3.0
+    assert progress["calories"]["status"] == "under"
+    # No protein target => graceful nulls, not a crash or a bogus percentage.
+    assert progress["protein"]["target"] is None
+    assert progress["protein"]["percentOfTarget"] is None
+    assert progress["protein"]["status"] is None
+
+
 def test_get_unknown_plan_returns_404(client):
     response = client.get("/meal-plans/00000000-0000-0000-0000-000000000000", headers=_auth())
     assert response.status_code == 404

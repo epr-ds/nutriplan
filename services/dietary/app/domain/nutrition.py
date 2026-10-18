@@ -25,9 +25,12 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from app.domain.meal_plan import (
     MealPlan,
+    NutrientProgress,
     NutritionalInfo,
+    NutritionalProgress,
     NutritionalSummary,
     NutritionalTargets,
+    ProgressStatus,
 )
 from app.domain.recipe import Recipe
 
@@ -35,6 +38,7 @@ _MACRO_FIELDS = ("protein", "carbs", "fat", "sugar")
 _NUTRIENT_FIELDS = ("calories", *_MACRO_FIELDS)
 _CALORIE_QUANTUM = Decimal("1")
 _MACRO_QUANTUM = Decimal("0.1")
+_PERCENT_QUANTUM = Decimal("0.1")
 
 
 def compute_meal_nutrition(recipe: Recipe, servings: float) -> NutritionalInfo:
@@ -101,10 +105,58 @@ def summarize_plan_nutrition(plan: MealPlan) -> NutritionalSummary:
     daily = {
         field: (None if value is None else value / Decimal(days)) for field, value in totals.items()
     }
+    daily_average = _as_info(daily)
+    targets = _plan_targets(plan)
     return NutritionalSummary(
         total=_as_info(totals),
-        daily_average=_as_info(daily),
-        targets=_plan_targets(plan),
+        daily_average=daily_average,
+        targets=targets,
+        progress=_nutritional_progress(daily, daily_average, targets),
+    )
+
+
+def _nutritional_progress(
+    daily: dict[str, Decimal | None],
+    daily_average: NutritionalInfo,
+    targets: NutritionalTargets,
+) -> NutritionalProgress:
+    """Per-nutrient targets-vs-progress of the daily average against the daily targets (DPL-303).
+
+    ``percent_of_target`` is computed from the *exact* daily decimals so it is rounded only once
+    (one decimal, half-up), while ``actual`` mirrors the already-rounded ``daily_average``. A
+    nutrient with no target, an unknown intake, or a zero target yields ``None`` percent/status
+    rather than a misleading number — plans without macro targets are handled gracefully.
+    """
+
+    def one(field: str) -> NutrientProgress:
+        target = getattr(targets, field)
+        actual = getattr(daily_average, field)
+        measured = daily[field]
+        percent: Decimal | None = None
+        status: ProgressStatus | None = None
+        if target is not None and target != 0 and measured is not None:
+            ratio = measured / Decimal(target) * Decimal(100)
+            percent = _round_half_up(ratio, _PERCENT_QUANTUM)
+            status = (
+                ProgressStatus.UNDER
+                if ratio < 100
+                else ProgressStatus.OVER
+                if ratio > 100
+                else ProgressStatus.ON_TARGET
+            )
+        return NutrientProgress(
+            target=target,
+            actual=actual,
+            percent_of_target=_as_float(percent),
+            status=status,
+        )
+
+    return NutritionalProgress(
+        calories=one("calories"),
+        protein=one("protein"),
+        carbs=one("carbs"),
+        fat=one("fat"),
+        sugar=one("sugar"),
     )
 
 

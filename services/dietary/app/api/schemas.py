@@ -76,12 +76,32 @@ class NutritionalTargetsSchema(_Camel):
     sugar: int | None = None
 
 
+class NutrientProgressSchema(_Camel):
+    """``NutrientProgress`` — one nutrient's daily average measured against its daily target."""
+
+    target: float | None = None
+    actual: float | None = None
+    percent_of_target: float | None = None
+    status: str | None = None
+
+
+class NutritionalProgressSchema(_Camel):
+    """``NutritionalProgress`` — per-nutrient targets-vs-progress (DPL-303)."""
+
+    calories: NutrientProgressSchema
+    protein: NutrientProgressSchema
+    carbs: NutrientProgressSchema
+    fat: NutrientProgressSchema
+    sugar: NutrientProgressSchema
+
+
 class NutritionalSummarySchema(_Camel):
     """``NutritionalSummary`` — the plan's total + daily-average nutrition versus its targets."""
 
     total: NutritionalInfoSchema
     daily_average: NutritionalInfoSchema
     targets: NutritionalTargetsSchema
+    progress: NutritionalProgressSchema
 
     @classmethod
     def from_domain(cls, summary: NutritionalSummary) -> NutritionalSummarySchema:
@@ -89,6 +109,7 @@ class NutritionalSummarySchema(_Camel):
             total=NutritionalInfoSchema(**summary.total.model_dump()),
             daily_average=NutritionalInfoSchema(**summary.daily_average.model_dump()),
             targets=NutritionalTargetsSchema(**summary.targets.model_dump()),
+            progress=NutritionalProgressSchema(**summary.progress.model_dump()),
         )
 
 
