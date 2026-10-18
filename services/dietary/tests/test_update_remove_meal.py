@@ -1,10 +1,11 @@
-"""DPL-107: MealPlan.update_meal / remove_meal edit embedded meals and enforce their invariants."""
+"""DPL-107 / DPL-304: update_meal / remove_meal edit embedded meals and enforce their invariants."""
 
 from datetime import date
 
 import pytest
 
 from app.domain.errors import (
+    InvalidSatisfactionLevelError,
     InvalidServingsError,
     MealDayOutOfRangeError,
     MealNotFoundError,
@@ -70,6 +71,24 @@ def test_update_meal_unknown_meal_raises_not_found():
 
     with pytest.raises(MealNotFoundError):
         plan.update_meal("no-such-meal", servings=2)
+
+
+def test_update_meal_records_satisfaction_level():
+    plan, meal_id = _plan_with_meal()
+
+    updated = plan.update_meal(meal_id, satisfaction_level=4)
+
+    assert updated.satisfaction_level == 4
+
+
+@pytest.mark.parametrize("level", [0, 6, -1])
+def test_update_meal_rejects_satisfaction_outside_1_to_5(level):
+    plan, meal_id = _plan_with_meal()
+
+    with pytest.raises(InvalidSatisfactionLevelError):
+        plan.update_meal(meal_id, satisfaction_level=level)
+
+    assert plan.find_meal(meal_id).satisfaction_level is None
 
 
 def test_remove_meal_removes_and_bumps_updated_at():

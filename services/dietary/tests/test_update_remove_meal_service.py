@@ -72,6 +72,20 @@ def test_update_meal_day_only_does_not_touch_recipe():
     assert recipe is None
 
 
+def test_update_meal_records_satisfaction_without_touching_recipe():
+    plans, plan, meal_id = _plans_with_meal()
+
+    meal, recipe = _service(plans).update_meal(
+        UpdateMealInPlanCommand(
+            user_id="user-1", plan_id=plan.id, meal_id=meal_id, satisfaction_level=5
+        )
+    )
+
+    assert meal.satisfaction_level == 5
+    assert recipe is None
+    assert plans.get("user-1", plan.id).find_meal(meal_id).satisfaction_level == 5
+
+
 def test_update_meal_unknown_plan_raises_not_found():
     plans, _, meal_id = _plans_with_meal()
 

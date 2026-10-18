@@ -20,6 +20,7 @@ from app.domain.dietary_types import DietaryType
 from app.domain.errors import (
     EmptyMealPlanActivationError,
     IllegalStateTransitionError,
+    InvalidSatisfactionLevelError,
     InvalidServingsError,
     MealDayOutOfRangeError,
     MealNotFoundError,
@@ -125,6 +126,7 @@ class PlannedMeal(_Model):
     recipe_id: str
     servings: float
     day_index: int | None = None
+    satisfaction_level: int | None = Field(default=None, ge=1, le=5)
     nutritional_info: NutritionalInfo | None = None
 
 
@@ -247,14 +249,17 @@ class MealPlan(_Model):
         *,
         servings: float | None = None,
         day_index: int | None = None,
+        satisfaction_level: int | None = None,
         nutritional_info: NutritionalInfo | None = None,
     ) -> PlannedMeal:
-        """Edit an embedded meal's ``servings`` and/or ``day_index`` and return it (DPL-107).
+        """Edit an embedded meal's ``servings``, ``day_index``/``satisfactionLevel`` (DPL-107).
 
         Only the supplied fields change. ``servings`` must be strictly positive
-        (:class:`~app.domain.errors.InvalidServingsError`) and ``day_index`` — a 0-based day within
+        (:class:`~app.domain.errors.InvalidServingsError`), ``day_index`` — a 0-based day within
         the plan's inclusive range — must fall inside the plan's window
-        (:class:`~app.domain.errors.MealDayOutOfRangeError`); an unknown ``meal_id`` raises
+        (:class:`~app.domain.errors.MealDayOutOfRangeError`), and ``satisfaction_level`` — the
+        1–5 post-meal rating (DPL-304) — must be within range
+        (:class:`~app.domain.errors.InvalidSatisfactionLevelError`); an unknown ``meal_id`` raises
         :class:`~app.domain.errors.MealNotFoundError`. Recomputing ``nutritional_info`` for a new
         ``servings`` is the application layer's job (it needs the recipe), so it is passed in rather
         than derived here. On success ``updated_at`` is bumped.
@@ -271,6 +276,10 @@ class MealPlan(_Model):
             if not 0 <= day_index < self.day_count:
                 raise MealDayOutOfRangeError(day_index, self.day_count)
             meal.day_index = day_index
+        if satisfaction_level is not None:
+            if not 1 <= satisfaction_level <= 5:
+                raise InvalidSatisfactionLevelError(satisfaction_level)
+            meal.satisfaction_level = satisfaction_level
         self.updated_at = _utcnow()
         return meal
 

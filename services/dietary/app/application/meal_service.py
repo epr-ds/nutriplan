@@ -58,13 +58,14 @@ class MealService:
         return meal, recipe
 
     def update_meal(self, command: UpdateMealInPlanCommand) -> tuple[PlannedMeal, Recipe | None]:
-        """Edit a planned meal's ``servings`` and/or ``day_index`` (DPL-107).
+        """Edit a planned meal's ``servings``, ``day_index`` and/or ``satisfactionLevel`` (DPL-107).
 
         The plan is loaded owner-scoped (a missing/!owned plan raises
         :class:`~app.domain.errors.MealPlanNotFoundError`, ``404``) and the meal located within it
         (an unknown meal id raises :class:`~app.domain.errors.MealNotFoundError`, ``404``). When
         ``servings`` changes the meal's nutrition is recomputed from its recipe (DPL-301); a missing
-        recipe — the catalog changed under the plan — is a ``422``. The mutated plan is persisted
+        recipe — the catalog changed under the plan — is a ``422``. ``satisfactionLevel`` is the
+        1–5 post-meal rating (DPL-304), validated by the aggregate. The mutated plan is persisted
         only on success, and the plan's nutritional summary reflects the edit on the next read.
         """
         plan = self._plans.get(command.user_id, command.plan_id)
@@ -86,6 +87,7 @@ class MealService:
             command.meal_id,
             servings=command.servings,
             day_index=command.day_index,
+            satisfaction_level=command.satisfaction_level,
             nutritional_info=nutritional_info,
         )
         self._plans.update(plan)
