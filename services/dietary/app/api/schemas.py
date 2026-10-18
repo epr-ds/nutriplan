@@ -22,6 +22,7 @@ from app.domain.meal_plan import (
     PlannedMeal,
 )
 from app.domain.nutrition import summarize_plan_nutrition
+from app.domain.nutrition_disclaimer import NutritionDisclaimer
 from app.domain.recipe import Recipe
 
 
@@ -287,4 +288,43 @@ class MealPlanSummaryResponse(_Camel):
             start_date=plan.start_date,
             end_date=plan.end_date,
             status=MealPlanStatus(plan.status),
+        )
+
+
+class NutritionSourceSchema(_Camel):
+    """``NutritionSource`` — a verified dataset the nutrition values are traceable to (DPL-305)."""
+
+    id: str
+    name: str
+    url: str
+    verified: bool
+
+
+class NutritionFieldSourcesSchema(_Camel):
+    """Maps each nutrient field to the id of the verified source it comes from (DPL-305)."""
+
+    calories: str
+    protein: str
+    carbs: str
+    fat: str
+    sugar: str
+
+
+class NutritionDisclaimerResponse(_Camel):
+    """``NutritionDisclaimerResponse`` — source provenance + medical disclaimer (DPL-305)."""
+
+    disclaimer: str
+    medical_advice: bool
+    sources: list[NutritionSourceSchema]
+    field_sources: NutritionFieldSourcesSchema
+    last_reviewed: date
+
+    @classmethod
+    def from_domain(cls, disclaimer: NutritionDisclaimer) -> NutritionDisclaimerResponse:
+        return cls(
+            disclaimer=disclaimer.disclaimer,
+            medical_advice=disclaimer.medical_advice,
+            sources=[NutritionSourceSchema(**source.model_dump()) for source in disclaimer.sources],
+            field_sources=NutritionFieldSourcesSchema(**disclaimer.field_sources),
+            last_reviewed=disclaimer.last_reviewed,
         )

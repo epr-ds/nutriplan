@@ -31,11 +31,12 @@ def search_recipes(
 ) -> list[RecipeResponse]:
     """Search the global recipe catalog with optional filters + pagination (DPL-202).
 
-    All filters combine with AND: ``ingredients`` requires the recipe to contain every named
-    ingredient (case-insensitive), ``dietType`` matches a declared compatible diet, and
-    ``maxCalories``/``minProtein`` bound the per-serving nutrition. An empty or over-broad query is
-    handled gracefully — results are ordered deterministically and capped by ``limit`` so paging is
-    stable. Requires authentication; the catalog itself is global (not owner-scoped).
+    ``ingredients`` matches a recipe containing at least one named ingredient (case-insensitive)
+    and ranks results by how many they match (DPL-206); ``dietType`` matches a declared compatible
+    diet and ``maxCalories``/``minProtein`` bound the per-serving nutrition, all combining (AND)
+    with the ingredient match. An empty or over-broad query is handled gracefully — results are
+    ordered deterministically and capped by ``limit`` so paging is stable. Requires authentication;
+    the catalog itself is global (not owner-scoped).
     """
     query = SearchRecipesQuery(
         ingredients=tuple(ingredients) if ingredients else (),

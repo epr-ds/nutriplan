@@ -376,6 +376,19 @@ def test_get_recipe_not_found_conforms(openapi, client):
     assert_conforms(openapi, "get", f"/recipes/{MISSING_ID}", resp)
 
 
+def test_nutrition_disclaimer_conforms(openapi, client):
+    resp = client.get("/nutrition/disclaimer", headers=_AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["medicalAdvice"] is False
+    assert_conforms(openapi, "get", "/nutrition/disclaimer", resp)
+
+
+def test_unauthenticated_nutrition_disclaimer_conforms(openapi, client):
+    resp = client.get("/nutrition/disclaimer")
+    assert resp.status_code == 401
+    assert_conforms(openapi, "get", "/nutrition/disclaimer", resp)
+
+
 # --- Auth (problem+json, DPL-108) -------------------------------------------
 
 
