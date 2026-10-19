@@ -1,5 +1,6 @@
 package com.nutriplan.shared.di
 
+import com.nutriplan.shared.planning.MealPlanDetailViewModel
 import com.nutriplan.shared.planning.MealPlanListViewModel
 import org.koin.dsl.module
 
@@ -10,4 +11,5 @@ import org.koin.dsl.module
  */
 val planningModule = module {
     factory { MealPlanListViewModel(repository = get()) }
+    factory { MealPlanDetailViewModel(repository = get()) }
 }

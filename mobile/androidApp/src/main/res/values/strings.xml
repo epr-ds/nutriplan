@@ -105,4 +105,29 @@
     <string name="error_plans_server_saved">The server had a problem. Showing the plans saved on this device.</string>
     <string name="error_plans_session_expired">Your session has expired. Please sign in again.</string>
     <string name="error_plans_unknown">Something went wrong loading your meal plans. Please try again.</string>
+
+    <!-- Meal plan detail (DPL-505) -->
+    <string name="plan_detail_title_fallback">Meal plan</string>
+    <string name="plan_detail_dates">%1$s to %2$s</string>
+    <string name="plan_detail_target_calories">Target: %1$d kcal per day</string>
+    <string name="plan_detail_day_calories">%1$d kcal</string>
+    <string name="plan_detail_meal_calories">%1$d kcal</string>
+    <string name="plan_detail_meal_portion">Portion: %1$s</string>
+    <string name="plan_detail_empty_title">No meals planned yet</string>
+    <string name="plan_detail_empty_description">Add the first meal to this plan.</string>
+    <string name="plan_detail_add_meal">Add meal</string>
+    <string name="plan_detail_back_to_plans">Back to plans</string>
+    <string name="cd_plan_detail_edit">Edit plan</string>
+    <string name="cd_plan_detail_loading">Loading meal plan</string>
+    <string name="meal_type_breakfast">Breakfast</string>
+    <string name="meal_type_lunch">Lunch</string>
+    <string name="meal_type_dinner">Dinner</string>
+    <string name="meal_type_snack">Snack</string>
+    <string name="error_plan_detail_network">You\'re offline and this plan isn\'t saved on this device.</string>
+    <string name="error_plan_detail_network_saved">You\'re offline. Showing the version saved on this device.</string>
+    <string name="error_plan_detail_server">The server had a problem. Please try again later.</string>
+    <string name="error_plan_detail_server_saved">The server had a problem. Showing the version saved on this device.</string>
+    <string name="error_plan_detail_not_found">This meal plan no longer exists.</string>
+    <string name="error_plan_detail_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_plan_detail_unknown">Something went wrong loading this meal plan. Please try again.</string>
 </resources>
