@@ -3,7 +3,8 @@
 Holds the cached PyMongo client, the ``meal_plans`` and ``recipes`` collection accessors, and the
 ``ensure_*_collection`` helpers which idempotently install each write-time ``$jsonSchema`` validator
 and indexes: ``meal_plans`` (DPL-101: userId, status, start/end date range) and ``recipes``
-(DPL-201: ingredient name + per-serving macro filters). ``favorites`` (DPL-607) links users to recipes.
+(DPL-201: ingredient name + per-serving macro filters). `favorites` (DPL-607) links users to
+recipes.
 """
 
 from __future__ import annotations
