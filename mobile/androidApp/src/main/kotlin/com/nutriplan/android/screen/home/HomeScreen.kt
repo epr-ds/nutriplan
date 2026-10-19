@@ -22,6 +22,9 @@ import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.messageRes
+import com.nutriplan.android.i18n.planStatusLabelRes
+import com.nutriplan.android.screen.plans.formatPlanDay
+import com.nutriplan.shared.data.model.MealPlanSummary
 import com.nutriplan.shared.planning.MealPlanListViewModel
 import kotlinx.coroutines.launch
 
@@ -168,14 +171,20 @@ fun HomeScreen(
  */
 @Composable
 fun MealPlanCard(
-    mealPlan: com.nutriplan.shared.data.model.MealPlan,
+    mealPlan: MealPlanSummary,
     onClick: () -> Unit
 ) {
+    val dates = stringResource(
+        R.string.plan_detail_dates,
+        formatPlanDay(mealPlan.startDate),
+        formatPlanDay(mealPlan.endDate),
+    )
+    val status = planStatusLabelRes(mealPlan.status)?.let { stringResource(it) } ?: mealPlan.status
     Card(
         modifier = Modifier
             .fillMaxWidth()
             // F11: Add accessible name for screen readers (WCAG 4.1.2)
-            .semantics { contentDescription = "${mealPlan.name}, ${mealPlan.startDate} to ${mealPlan.endDate}" }
+            .semantics { contentDescription = "${mealPlan.name}, $dates, $status" }
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -191,17 +200,17 @@ fun MealPlanCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "${mealPlan.startDate} - ${mealPlan.endDate}",
+                text = dates,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
-                text = "Calories: ${mealPlan.targetCalories ?: "-"} kcal/day",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = status,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }

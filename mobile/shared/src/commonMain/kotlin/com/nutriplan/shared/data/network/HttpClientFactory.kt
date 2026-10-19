@@ -4,6 +4,10 @@ import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.repository.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
@@ -16,7 +20,15 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.errors.IOException
 import kotlinx.serialization.json.Json
+
+/** True for failures of the connection itself, as opposed to an HTTP response from the server. */
+internal fun Throwable.isTransportFailure(): Boolean =
+    this is IOException ||
+        this is HttpRequestTimeoutException ||
+        this is ConnectTimeoutException ||
+        this is SocketTimeoutException
 
 /** Sends Ktor's HTTP logs to stdout so each platform's log pipeline can capture them. */
 private val httpLogger = object : Logger {
@@ -65,6 +77,15 @@ object HttpClientFactory {
                 connectTimeoutMillis = timeoutMillis
                 socketTimeoutMillis = timeoutMillis
                 requestTimeoutMillis = timeoutMillis
+            }
+
+            // Transport failures (no connection, DNS failure, timeouts) surface as
+            // ApiException.NetworkError, so callers can tell "offline" from "the server said no"
+            // (see ApiFailure) and the offline cache fallback can actually trigger.
+            HttpResponseValidator {
+                handleResponseExceptionWithRequest { cause, _ ->
+                    if (cause.isTransportFailure()) throw ApiException.NetworkError(errorCause = cause)
+                }
             }
 
             // Auth-header-redacted logging (IDN-402): log request/response headers only (never

@@ -1,7 +1,8 @@
 package com.nutriplan.shared.planning
 
 import com.nutriplan.shared.data.model.MealPlan
-import com.nutriplan.shared.data.network.ApiException
+import com.nutriplan.shared.data.network.ApiFailure
+import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.DietaryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,14 +46,11 @@ data class MealPlanDetailUiState(
 }
 
 /** Maps a thrown repository failure to a stable, localizable [MealPlanDetailError]. */
-fun Throwable.toMealPlanDetailError(): MealPlanDetailError = when (this) {
-    is ApiException.HttpError -> when (statusCode) {
-        401 -> MealPlanDetailError.SESSION_EXPIRED
-        404 -> MealPlanDetailError.NOT_FOUND
-        in 500..599 -> MealPlanDetailError.SERVER_PROBLEM
-        else -> MealPlanDetailError.UNKNOWN
-    }
-    is ApiException.NetworkError -> MealPlanDetailError.NETWORK
+fun Throwable.toMealPlanDetailError(): MealPlanDetailError = when (toApiFailure()) {
+    ApiFailure.OFFLINE -> MealPlanDetailError.NETWORK
+    ApiFailure.SERVER -> MealPlanDetailError.SERVER_PROBLEM
+    ApiFailure.SESSION_EXPIRED -> MealPlanDetailError.SESSION_EXPIRED
+    ApiFailure.NOT_FOUND -> MealPlanDetailError.NOT_FOUND
     else -> MealPlanDetailError.UNKNOWN
 }
 
@@ -92,7 +90,7 @@ class MealPlanDetailViewModel(
             _state.update {
                 MealPlanDetailUiState(
                     plan = plan,
-                    days = groupMealsByDay(plan.meals.orEmpty()),
+                    days = groupMealsByDay(plan.startDate, plan.meals),
                     isLoading = false,
                 )
             }

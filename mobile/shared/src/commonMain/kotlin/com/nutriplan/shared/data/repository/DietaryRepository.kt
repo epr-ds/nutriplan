@@ -5,44 +5,60 @@ import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
+import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.model.PlanMeal
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.RecipeQuery
-import com.nutriplan.shared.data.model.UpdateMealPlanRequest
+import com.nutriplan.shared.data.model.UpdateMealPlanStatusRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
+import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 
 /**
- * Repository for dietary-related API operations.
+ * Repository for the Dietary service (`contracts/dietary.openapi.yaml`).
  *
- * Covers meal plan CRUD, meal additions, and recipe queries.
+ * Covers meal plans (create, list, get, status change, add meal) and recipe search. Failures are
+ * thrown as [ApiException]; use [com.nutriplan.shared.data.network.toApiFailure] to classify them.
  */
 interface DietaryRepository {
 
-    /** Create a new meal plan. */
+    /** Create a meal plan (`POST /meal-plans`). It starts as a draft. */
     suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan
 
-    /** List meal plans with optional filters. */
-    suspend fun getMealPlans(query: MealPlanQuery? = null): List<MealPlan>
+    /** List the caller's meal plans (`GET /meal-plans`); summaries only, 20 per page by default. */
+    suspend fun getMealPlans(query: MealPlanQuery? = null): List<MealPlanSummary>
 
-    /** Get a specific meal plan by ID. */
+    /** Get a plan with its meals and nutrition (`GET /meal-plans/{planId}`). */
     suspend fun getMealPlan(planId: String): MealPlan
 
-    /** Update an existing meal plan. */
-    suspend fun updateMealPlan(planId: String, request: UpdateMealPlanRequest): MealPlan
+    /**
+     * Move a plan through its lifecycle (`PATCH /meal-plans/{planId}`): `active`, `completed` or
+     * `saved`. This is the only edit the API offers for a plan itself.
+     */
+    suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan
 
-    /** Add a meal to a plan. */
-    suspend fun addMeal(planId: String, request: AddMealRequest): Any
+    /** Add a meal to a plan (`POST /meal-plans/{planId}/meals`); the response embeds the recipe. */
+    suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal
 
-    /** List recipes with optional filters. */
+    /**
+     * List recipes with optional filters.
+     *
+     * Not yet aligned with the contract's `GET /recipes` (query names and the recipe model); that
+     * comes with the recipe screens (DPL-405, DPL-601).
+     */
     suspend fun getRecipes(query: RecipeQuery? = null): List<Recipe>
 }
 
@@ -53,112 +69,63 @@ class DietaryRepositoryImpl : DietaryRepository {
 
     private val client = HttpClientProvider.client
 
-    override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan {
-        return withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.DIETARY}/meal-plans") {
-                setBody(request)
-            }
-            handleResponse(response)
+    override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.DIETARY}/meal-plans") { setBody(request) }.readOrThrow()
         }
-    }
 
-    override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlan> {
-        return withContext(Dispatchers.IO) {
-            val queryParams = mutableListOf<String>()
-            query?.let { q ->
-                q.status?.let { queryParams.add("status=$it") }
-                q.limit?.let { queryParams.add("limit=$it") }
-                q.offset?.let { queryParams.add("offset=$it") }
-            }
-            val url = if (queryParams.isEmpty()) {
-                "${ApiConfig.DIETARY}/meal-plans"
-            } else {
-                "${ApiConfig.DIETARY}/meal-plans?${queryParams.joinToString("&")}"
-            }
-            val response = client.get(url)
-            handleListResponse<MealPlan>(response)
+    override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> =
+        withContext(Dispatchers.IO) {
+            client.get("${ApiConfig.DIETARY}/meal-plans") {
+                query?.status?.let { parameter("status", it) }
+                query?.page?.let { parameter("page", it) }
+                query?.limit?.let { parameter("limit", it) }
+            }.readOrThrow()
         }
-    }
 
-    override suspend fun getMealPlan(planId: String): MealPlan {
-        return withContext(Dispatchers.IO) {
-            val response = client.get("${ApiConfig.DIETARY}/meal-plans/$planId")
-            handleResponse(response)
+    override suspend fun getMealPlan(planId: String): MealPlan =
+        withContext(Dispatchers.IO) {
+            client.get("${ApiConfig.DIETARY}/meal-plans/$planId").readOrThrow()
         }
-    }
 
-    override suspend fun updateMealPlan(planId: String, request: UpdateMealPlanRequest): MealPlan {
-        return withContext(Dispatchers.IO) {
-            val response = client.patch("${ApiConfig.DIETARY}/meal-plans/$planId") {
-                setBody(request)
-            }
-            handleResponse(response)
+    override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan =
+        withContext(Dispatchers.IO) {
+            client.patch("${ApiConfig.DIETARY}/meal-plans/$planId") {
+                setBody(UpdateMealPlanStatusRequest(status))
+            }.readOrThrow()
         }
-    }
 
-    override suspend fun addMeal(planId: String, request: AddMealRequest): Any {
-        return withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") {
-                setBody(request)
-            }
-            @Suppress("UNCHECKED_CAST")
-            response.body() as Any
+    override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") { setBody(request) }.readOrThrow()
         }
-    }
 
-    override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> {
-        return withContext(Dispatchers.IO) {
-            val queryParams = mutableListOf<String>()
-            query?.let { q ->
-                q.dietaryPreference?.let { queryParams.add("dietaryPreference=$it") }
-                q.calorieRangeMin?.let { queryParams.add("calorieRangeMin=$it") }
-                q.calorieRangeMax?.let { queryParams.add("calorieRangeMax=$it") }
-                q.limit?.let { queryParams.add("limit=$it") }
-                q.offset?.let { queryParams.add("offset=$it") }
-            }
-            val url = if (queryParams.isEmpty()) {
-                "${ApiConfig.DIETARY}/recipes"
-            } else {
-                "${ApiConfig.DIETARY}/recipes?${queryParams.joinToString("&")}"
-            }
-            val response = client.get(url)
-            handleListResponse<Recipe>(response)
+    override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> =
+        withContext(Dispatchers.IO) {
+            client.get("${ApiConfig.DIETARY}/recipes") {
+                query?.dietaryPreference?.let { parameter("dietaryPreference", it) }
+                query?.calorieRangeMin?.let { parameter("calorieRangeMin", it) }
+                query?.calorieRangeMax?.let { parameter("calorieRangeMax", it) }
+                query?.limit?.let { parameter("limit", it) }
+                query?.offset?.let { parameter("offset", it) }
+            }.readOrThrow()
         }
-    }
 
-    private suspend inline fun <reified T> handleResponse(response: io.ktor.client.statement.HttpResponse): T {
-        return when (response.status) {
-            HttpStatusCode.OK, HttpStatusCode.Created -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException.create(
-                message = "Unauthorized. Please log in again.",
-                code = ApiException.Code.UNAUTHORIZED,
-            )
-            HttpStatusCode.Forbidden -> throw ApiException.create(
-                message = "Forbidden. You don't have permission.",
-                code = ApiException.Code.FORBIDDEN,
-            )
-            HttpStatusCode.NotFound -> throw ApiException.create(
-                message = "Resource not found.",
-                code = ApiException.Code.NOT_FOUND,
-            )
-            else -> throw ApiException.HttpError(
-                statusCode = response.status.value,
-                body = response.body<String>(),
-            )
+    /**
+     * Decodes a 2xx response into [T]; anything else becomes an [ApiException.HttpError] carrying
+     * the status and the (problem+json) body, so it classifies by status. A body that does not match
+     * the model becomes an [ApiException.SerializationError] instead of an unexplained crash.
+     */
+    private suspend inline fun <reified T> HttpResponse.readOrThrow(): T {
+        if (!status.isSuccess()) {
+            throw ApiException.HttpError(statusCode = status.value, body = bodyAsText())
         }
-    }
-
-    private suspend inline fun <reified T> handleListResponse(response: io.ktor.client.statement.HttpResponse): List<T> {
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException.create(
-                message = "Unauthorized. Please log in again.",
-                code = ApiException.Code.UNAUTHORIZED,
-            )
-            else -> throw ApiException.HttpError(
-                statusCode = response.status.value,
-                body = response.body<String>(),
-            )
+        return try {
+            body()
+        } catch (e: SerializationException) {
+            throw ApiException.SerializationError(errorCause = e)
+        } catch (e: ContentConvertException) {
+            throw ApiException.SerializationError(errorCause = e)
         }
     }
 }

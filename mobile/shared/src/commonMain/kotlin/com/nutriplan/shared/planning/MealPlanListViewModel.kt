@@ -1,7 +1,8 @@
 package com.nutriplan.shared.planning
 
-import com.nutriplan.shared.data.model.MealPlan
-import com.nutriplan.shared.data.network.ApiException
+import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.network.ApiFailure
+import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.DietaryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,7 @@ enum class MealPlanListError {
  * on a bad connection never blanks the screen; [error] then describes the failed refresh.
  */
 data class MealPlanListUiState(
-    val plans: List<MealPlan> = emptyList(),
+    val plans: List<MealPlanSummary> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: MealPlanListError? = null,
@@ -44,13 +45,10 @@ data class MealPlanListUiState(
 }
 
 /** Maps a thrown repository failure to a stable, localizable [MealPlanListError]. */
-fun Throwable.toMealPlanListError(): MealPlanListError = when (this) {
-    is ApiException.HttpError -> when (statusCode) {
-        401 -> MealPlanListError.SESSION_EXPIRED
-        in 500..599 -> MealPlanListError.SERVER_PROBLEM
-        else -> MealPlanListError.UNKNOWN
-    }
-    is ApiException.NetworkError -> MealPlanListError.NETWORK
+fun Throwable.toMealPlanListError(): MealPlanListError = when (toApiFailure()) {
+    ApiFailure.OFFLINE -> MealPlanListError.NETWORK
+    ApiFailure.SERVER -> MealPlanListError.SERVER_PROBLEM
+    ApiFailure.SESSION_EXPIRED -> MealPlanListError.SESSION_EXPIRED
     else -> MealPlanListError.UNKNOWN
 }
 

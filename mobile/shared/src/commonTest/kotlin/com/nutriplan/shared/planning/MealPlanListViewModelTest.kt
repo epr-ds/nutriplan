@@ -4,9 +4,10 @@ import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
+import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.model.PlanMeal
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.RecipeQuery
-import com.nutriplan.shared.data.model.UpdateMealPlanRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.repository.DietaryRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -21,11 +22,11 @@ import kotlin.test.assertTrue
 class MealPlanListViewModelTest {
 
     private class FakeDietary : DietaryRepository {
-        var plans: List<MealPlan> = emptyList()
+        var plans: List<MealPlanSummary> = emptyList()
         var failure: Throwable? = null
         var gate: CompletableDeferred<Unit>? = null
 
-        override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlan> {
+        override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
             gate?.await()
             failure?.let { throw it }
             return plans
@@ -33,21 +34,20 @@ class MealPlanListViewModelTest {
 
         override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan = error("unused")
         override suspend fun getMealPlan(planId: String): MealPlan = error("unused")
-        override suspend fun updateMealPlan(planId: String, request: UpdateMealPlanRequest): MealPlan = error("unused")
-        override suspend fun addMeal(planId: String, request: AddMealRequest): Any = error("unused")
+        override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
+        override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal = error("unused")
         override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> = error("unused")
     }
 
     private val repository = FakeDietary()
     private val viewModel = MealPlanListViewModel(repository)
 
-    private fun plan(id: String) = MealPlan(
+    private fun plan(id: String) = MealPlanSummary(
         id = id,
         name = "Plan $id",
-        userId = "user-1",
         startDate = "2026-10-01",
         endDate = "2026-10-07",
-        status = "ACTIVE",
+        status = "active",
     )
 
     @Test
@@ -89,6 +89,25 @@ class MealPlanListViewModelTest {
         assertEquals(MealPlanListError.SESSION_EXPIRED, errorFor(ApiException.HttpError(401, null)))
         assertEquals(MealPlanListError.UNKNOWN, errorFor(ApiException.HttpError(404, null)))
         assertEquals(MealPlanListError.UNKNOWN, errorFor(IllegalStateException("boom")))
+    }
+
+    @Test
+    fun `a 401 reported through the repositories' create helper is a session problem, not offline`() = runTest {
+        // The repositories used to throw ApiException.create(..., UNAUTHORIZED), a NetworkError by class.
+        suspend fun errorFor(failure: Throwable): MealPlanListError? {
+            val vm = MealPlanListViewModel(FakeDietary().apply { this.failure = failure })
+            vm.load()
+            return vm.state.value.error
+        }
+
+        assertEquals(
+            MealPlanListError.SESSION_EXPIRED,
+            errorFor(ApiException.create("Unauthorized", ApiException.Code.UNAUTHORIZED)),
+        )
+        assertEquals(
+            MealPlanListError.NETWORK,
+            errorFor(ApiException.create("offline", ApiException.Code.NETWORK_ERROR)),
+        )
     }
 
     @Test

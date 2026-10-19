@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +59,6 @@ object MealPlanDetailTestTags {
     const val LIST = "plan_detail_list"
     const val LOADING = "plan_detail_loading"
     const val ADD_MEAL = "plan_detail_add_meal"
-    const val EDIT = "plan_detail_edit"
     const val ERROR_BANNER = "plan_detail_error_banner"
     const val MEAL_CARD = "plan_detail_meal_card"
 }
@@ -68,16 +66,16 @@ object MealPlanDetailTestTags {
 /**
  * DPL-505: one meal plan, day by day, with its meals grouped by meal type.
  *
- * Backed by the shared [MealPlanDetailViewModel]. [onAddMeal] and [onEditPlan] are the entry points
- * to add or change meals; [onSessionExpired] is called when the server rejects the session so the
- * app can send the user back to sign-in.
+ * Backed by the shared [MealPlanDetailViewModel]. [onAddMeal] is the entry point to add a meal;
+ * [onSessionExpired] is called when the server rejects the session so the app can send the user
+ * back to sign-in. (The API has no endpoint to rename a plan or change its dates, so there is no
+ * edit action.)
  */
 @Composable
 fun MealPlanDetailScreen(
     planId: String,
     onBack: () -> Unit,
     onAddMeal: () -> Unit,
-    onEditPlan: () -> Unit,
     onSessionExpired: () -> Unit,
 ) {
     val viewModel = koinInject<MealPlanDetailViewModel>()
@@ -95,7 +93,6 @@ fun MealPlanDetailScreen(
         onRetry = { scope.launch { viewModel.load(planId) } },
         onBack = onBack,
         onAddMeal = onAddMeal,
-        onEditPlan = onEditPlan,
     )
 }
 
@@ -107,7 +104,6 @@ fun MealPlanDetailScreenContent(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onAddMeal: () -> Unit,
-    onEditPlan: () -> Unit,
 ) {
     val plan = state.plan
     val error = state.error
@@ -128,16 +124,6 @@ fun MealPlanDetailScreenContent(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_meal_plans_back),
                         )
-                    }
-                },
-                actions = {
-                    if (plan != null) {
-                        IconButton(onClick = onEditPlan, modifier = Modifier.testTag(MealPlanDetailTestTags.EDIT)) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.cd_plan_detail_edit),
-                            )
-                        }
                     }
                 },
             )
@@ -229,9 +215,10 @@ private fun PlanDetailList(
             }
         } else {
             days.forEach { day ->
-                item(key = "day-${day.date}") { DayHeader(day) }
+                val dayKey = day.dayIndex?.toString() ?: "unassigned"
+                item(key = "day-$dayKey") { DayHeader(day) }
                 day.sections.forEach { section ->
-                    item(key = "section-${day.date}-${section.mealType}") { SectionLabel(section) }
+                    item(key = "section-$dayKey-${section.mealType}") { SectionLabel(section) }
                     items(section.meals.size, key = { section.meals[it].id }) { index ->
                         MealCard(section.meals[index])
                     }
@@ -257,6 +244,10 @@ private fun PlanDetailList(
 
 @Composable
 private fun PlanSummary(plan: MealPlan) {
+    val average = plan.nutritionalSummary?.dailyAverage?.calories
+    val target = plan.nutritionalSummary?.targets?.calories ?: plan.dailyCalorieTarget
+    val percent = plan.nutritionalSummary?.progress?.calories?.percentOfTarget
+
     Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
         Text(
             text = stringResource(
@@ -266,9 +257,18 @@ private fun PlanSummary(plan: MealPlan) {
             ),
             style = MaterialTheme.typography.bodyLarge,
         )
-        plan.targetCalories?.let { target ->
+        Text(
+            text = stringResource(R.string.plan_detail_target_calories, plan.dailyCalorieTarget),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (average != null) {
             Text(
-                text = stringResource(R.string.plan_detail_target_calories, target),
+                text = if (percent != null) {
+                    stringResource(R.string.plan_detail_daily_average_of_target, average, target, percent.toInt())
+                } else {
+                    stringResource(R.string.plan_detail_daily_average, average)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -278,6 +278,11 @@ private fun PlanSummary(plan: MealPlan) {
 
 @Composable
 private fun DayHeader(day: MealPlanDay) {
+    val title = when {
+        day.dayIndex == null -> stringResource(R.string.plan_detail_day_unassigned)
+        day.date != null -> "${stringResource(R.string.plan_detail_day_title, day.dayIndex!! + 1)} · ${formatPlanDay(day.date!!)}"
+        else -> stringResource(R.string.plan_detail_day_title, day.dayIndex!! + 1)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,10 +290,7 @@ private fun DayHeader(day: MealPlanDay) {
             .semantics(mergeDescendants = true) { heading() },
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = formatPlanDay(day.date),
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Text(text = title, style = MaterialTheme.typography.titleMedium)
         day.totalCalories?.let { total ->
             Text(
                 text = stringResource(R.string.plan_detail_day_calories, total),
@@ -317,14 +319,27 @@ private fun MealCard(meal: PlanMeal) {
             .semantics(mergeDescendants = true) {},
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = meal.recipeName, style = MaterialTheme.typography.titleSmall)
-            val details = listOfNotNull(
-                meal.calories?.let { stringResource(R.string.plan_detail_meal_calories, it) },
-                meal.portionSize?.let { stringResource(R.string.plan_detail_meal_portion, formatPortion(it)) },
+            // Plan reads do not include the recipe, so only a freshly added meal has a name.
+            Text(
+                text = meal.recipe?.name ?: stringResource(R.string.plan_detail_meal_unnamed),
+                style = MaterialTheme.typography.titleSmall,
             )
-            if (details.isNotEmpty()) {
+            val servings = stringResource(R.string.plan_detail_meal_servings, formatQuantity(meal.servings))
+            val calories = meal.nutritionalInfo?.calories?.let { stringResource(R.string.plan_detail_meal_calories, it) }
+            Text(
+                text = listOfNotNull(servings, calories).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val info = meal.nutritionalInfo
+            val macros = listOfNotNull(
+                info?.protein?.let { stringResource(R.string.plan_detail_meal_protein, formatQuantity(it)) },
+                info?.carbs?.let { stringResource(R.string.plan_detail_meal_carbs, formatQuantity(it)) },
+                info?.fat?.let { stringResource(R.string.plan_detail_meal_fat, formatQuantity(it)) },
+            )
+            if (macros.isNotEmpty()) {
                 Text(
-                    text = details.joinToString(" · "),
+                    text = macros.joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -333,6 +348,6 @@ private fun MealCard(meal: PlanMeal) {
     }
 }
 
-/** "2" for 2.0 and "1.5" for 1.5, so whole portions have no trailing ".0". */
-private fun formatPortion(portion: Double): String =
-    if (portion % 1.0 == 0.0) portion.toInt().toString() else portion.toString()
+/** "2" for 2.0 and "1.5" for 1.5, so whole quantities have no trailing ".0". */
+private fun formatQuantity(value: Double): String =
+    if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()

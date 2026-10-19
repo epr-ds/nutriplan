@@ -1,0 +1,32 @@
+-- Version 1 -> 2: the cache followed an invented plan model that does not match the Dietary API
+-- contract (userId, targetCalories, scheduledDate, ...). It only ever held data fetched from the
+-- server, so the old tables are dropped and recreated in the contract-aligned shape; the next
+-- refresh repopulates them.
+
+DROP TABLE IF EXISTS plan_meal;
+DROP TABLE IF EXISTS meal_plan;
+
+CREATE TABLE meal_plan (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    status TEXT NOT NULL,
+    daily_calorie_target INTEGER,
+    nutritional_summary TEXT,
+    has_detail INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
+);
+
+CREATE TABLE plan_meal (
+    id TEXT NOT NULL PRIMARY KEY,
+    plan_id TEXT NOT NULL REFERENCES meal_plan(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    meal_type TEXT NOT NULL,
+    servings REAL NOT NULL,
+    day_index INTEGER,
+    satisfaction_level INTEGER,
+    recipe TEXT,
+    nutritional_info TEXT
+);
+
+CREATE INDEX plan_meal_plan_id ON plan_meal(plan_id);

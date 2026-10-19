@@ -7,6 +7,7 @@ import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.model.UserProfile
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.session.SessionEvents
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BearerTokenRefresherTest {
@@ -28,6 +30,7 @@ class BearerTokenRefresherTest {
         var refreshCalls = 0
         var cleared = false
         var failRefresh = false
+        var failWith: Throwable? = null
 
         override val currentAccessToken: String? get() = access
         override val currentRefreshToken: String? get() = refresh
@@ -43,6 +46,7 @@ class BearerTokenRefresherTest {
         override suspend fun refreshToken(refreshToken: String): AuthResponse {
             refreshCalls++
             delay(10)
+            failWith?.let { throw it }
             if (failRefresh) throw ApiException.HttpError(statusCode = 401, body = null)
             return AuthResponse(
                 accessToken = "access-$refreshCalls",
@@ -104,5 +108,37 @@ class BearerTokenRefresherTest {
         assertEquals(1, repository.refreshCalls)
         assertTrue(repository.cleared)
         assertTrue(collector.isCompleted)
+    }
+
+    @Test
+    fun `a refresh that fails because the connection dropped keeps the session`() = runTest {
+        val repository = FakeAuthRepository().apply { failWith = ApiException.NetworkError() }
+        val refresher = BearerTokenRefresher(repository)
+
+        assertFailsWith<ApiException.NetworkError> { refresher.refresh("refresh-0") }
+
+        assertFalse(repository.cleared, "the user must not be signed out because the network failed")
+        assertEquals("refresh-0", repository.currentRefreshToken)
+    }
+
+    @Test
+    fun `a raw transport failure during refresh also keeps the session`() = runTest {
+        val repository = FakeAuthRepository().apply { failWith = IOException("connection reset") }
+        val refresher = BearerTokenRefresher(repository)
+
+        assertFailsWith<IOException> { refresher.refresh("refresh-0") }
+
+        assertFalse(repository.cleared)
+        assertEquals("refresh-0", repository.currentRefreshToken)
+    }
+
+    @Test
+    fun `a refresh the server rejects still ends the session`() = runTest {
+        val repository = FakeAuthRepository().apply { failWith = ApiException.HttpError(statusCode = 400, body = null) }
+        val refresher = BearerTokenRefresher(repository)
+
+        assertFailsWith<ApiException.HttpError> { refresher.refresh("refresh-0") }
+
+        assertTrue(repository.cleared)
     }
 }

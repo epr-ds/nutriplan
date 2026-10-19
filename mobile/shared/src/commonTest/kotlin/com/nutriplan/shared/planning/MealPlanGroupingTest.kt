@@ -1,5 +1,6 @@
 package com.nutriplan.shared.planning
 
+import com.nutriplan.shared.data.model.NutritionalInfo
 import com.nutriplan.shared.data.model.PlanMeal
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,71 +10,90 @@ class MealPlanGroupingTest {
 
     private fun meal(
         id: String,
-        date: String,
+        dayIndex: Int?,
         type: String,
         calories: Int? = null,
     ) = PlanMeal(
         id = id,
-        planId = "p1",
-        recipeId = "r-$id",
-        recipeName = "Recipe $id",
         mealType = type,
-        scheduledDate = date,
-        calories = calories,
+        servings = 1.0,
+        dayIndex = dayIndex,
+        nutritionalInfo = calories?.let { NutritionalInfo(calories = it) },
     )
+
+    private val start = "2026-10-01"
 
     @Test
     fun `no meals gives no days`() {
-        assertEquals(emptyList(), groupMealsByDay(emptyList()))
+        assertEquals(emptyList(), groupMealsByDay(start, emptyList()))
     }
 
     @Test
-    fun `days are sorted by date regardless of input order`() {
+    fun `days are sorted by day index regardless of input order`() {
         val days = groupMealsByDay(
-            listOf(
-                meal("c", "2026-10-03", "LUNCH"),
-                meal("a", "2026-10-01", "LUNCH"),
-                meal("b", "2026-10-02", "LUNCH"),
-            ),
+            start,
+            listOf(meal("c", 2, "lunch"), meal("a", 0, "lunch"), meal("b", 1, "lunch")),
         )
 
-        assertEquals(listOf("2026-10-01", "2026-10-02", "2026-10-03"), days.map { it.date })
+        assertEquals(listOf(0, 1, 2), days.map { it.dayIndex })
+    }
+
+    @Test
+    fun `a day's date is the plan start plus its index`() {
+        val days = groupMealsByDay(
+            start,
+            listOf(meal("a", 0, "lunch"), meal("b", 6, "lunch"), meal("c", 31, "lunch")),
+        )
+
+        assertEquals(listOf("2026-10-01", "2026-10-07", "2026-11-01"), days.map { it.date })
+    }
+
+    @Test
+    fun `an unparseable start date leaves the dates unknown instead of failing`() {
+        val day = groupMealsByDay("soon", listOf(meal("a", 0, "lunch"))).single()
+
+        assertEquals(0, day.dayIndex)
+        assertNull(day.date)
+    }
+
+    @Test
+    fun `meals without a day come last as one unassigned day`() {
+        val days = groupMealsByDay(
+            start,
+            listOf(meal("x", null, "snack"), meal("a", 1, "lunch"), meal("y", null, "lunch")),
+        )
+
+        assertEquals(listOf(1, null), days.map { it.dayIndex })
+        val unassigned = days.last()
+        assertNull(unassigned.date)
+        assertEquals(setOf("x", "y"), unassigned.sections.flatMap { it.meals }.map { it.id }.toSet())
     }
 
     @Test
     fun `sections follow breakfast lunch dinner snack`() {
         val day = groupMealsByDay(
-            listOf(
-                meal("1", "2026-10-01", "SNACK"),
-                meal("2", "2026-10-01", "DINNER"),
-                meal("3", "2026-10-01", "BREAKFAST"),
-                meal("4", "2026-10-01", "LUNCH"),
-            ),
+            start,
+            listOf(meal("1", 0, "snack"), meal("2", 0, "dinner"), meal("3", 0, "breakfast"), meal("4", 0, "lunch")),
         ).single()
 
-        assertEquals(listOf("BREAKFAST", "LUNCH", "DINNER", "SNACK"), day.sections.map { it.mealType })
+        assertEquals(listOf("breakfast", "lunch", "dinner", "snack"), day.sections.map { it.mealType })
     }
 
     @Test
     fun `unknown meal types come last, alphabetically`() {
         val day = groupMealsByDay(
-            listOf(
-                meal("1", "2026-10-01", "SUPPER"),
-                meal("2", "2026-10-01", "BRUNCH"),
-                meal("3", "2026-10-01", "DINNER"),
-            ),
+            start,
+            listOf(meal("1", 0, "supper"), meal("2", 0, "brunch"), meal("3", 0, "dinner")),
         ).single()
 
-        assertEquals(listOf("DINNER", "BRUNCH", "SUPPER"), day.sections.map { it.mealType })
+        assertEquals(listOf("dinner", "brunch", "supper"), day.sections.map { it.mealType })
     }
 
     @Test
     fun `meal types match case-insensitively and are shown as sent`() {
         val day = groupMealsByDay(
-            listOf(
-                meal("1", "2026-10-01", "lunch"),
-                meal("2", "2026-10-01", "LUNCH"),
-            ),
+            start,
+            listOf(meal("1", 0, "lunch"), meal("2", 0, "LUNCH")),
         ).single()
 
         assertEquals(1, day.sections.size)
@@ -84,11 +104,8 @@ class MealPlanGroupingTest {
     @Test
     fun `meals in a section keep their arrival order`() {
         val section = groupMealsByDay(
-            listOf(
-                meal("z", "2026-10-01", "LUNCH"),
-                meal("a", "2026-10-01", "LUNCH"),
-                meal("m", "2026-10-01", "LUNCH"),
-            ),
+            start,
+            listOf(meal("z", 0, "lunch"), meal("a", 0, "lunch"), meal("m", 0, "lunch")),
         ).single().sections.single()
 
         assertEquals(listOf("z", "a", "m"), section.meals.map { it.id })
@@ -97,10 +114,11 @@ class MealPlanGroupingTest {
     @Test
     fun `day calories add up the known per-meal calories`() {
         val day = groupMealsByDay(
+            start,
             listOf(
-                meal("1", "2026-10-01", "BREAKFAST", calories = 300),
-                meal("2", "2026-10-01", "LUNCH", calories = 600),
-                meal("3", "2026-10-01", "DINNER", calories = null),
+                meal("1", 0, "breakfast", calories = 300),
+                meal("2", 0, "lunch", calories = 600),
+                meal("3", 0, "dinner", calories = null),
             ),
         ).single()
 
@@ -109,7 +127,7 @@ class MealPlanGroupingTest {
 
     @Test
     fun `day calories are unknown, not zero, when no meal has them`() {
-        val day = groupMealsByDay(listOf(meal("1", "2026-10-01", "LUNCH"))).single()
+        val day = groupMealsByDay(start, listOf(meal("1", 0, "lunch"))).single()
 
         assertNull(day.totalCalories)
     }
