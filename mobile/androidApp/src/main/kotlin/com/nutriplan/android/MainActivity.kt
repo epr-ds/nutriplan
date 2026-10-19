@@ -243,8 +243,7 @@ class MainNavigationScreens(
         com.nutriplan.android.screen.plans.MealPlanDetailScreen(
             planId = planId,
             onBack = onBack,
-            // The add-meal flow (DPL-507) is not built yet; for now this opens recipe search.
-            onAddMeal = { onNavigate(Route.RecipeSearch) },
+            onAddMeal = { navController.navigate(Route.PickRecipe(planId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
@@ -259,6 +258,38 @@ class MainNavigationScreens(
             onBack = { navController.popBackStack() },
             // Pushed on top of the search so Back returns to it.
             onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
+    }
+
+    @Composable
+    override fun PickRecipeScreen(
+        planId: String,
+        onBack: () -> Unit,
+    ) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.recipes.RecipeSearchScreen(
+            onBack = onBack,
+            // Skip the recipe page: the user already said they want to add it.
+            onRecipeClick = { recipeId -> navController.navigate(Route.AddMeal(planId, recipeId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
+            isPicking = true,
+        )
+    }
+
+    @Composable
+    override fun AddMealScreen(
+        planId: String,
+        recipeId: String,
+        onBack: () -> Unit,
+    ) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.AddMealScreen(
+            planId = planId,
+            recipeId = recipeId,
+            onBack = onBack,
+            // Back to the plan: drop the picker and the form, so Back does not return to them.
+            onDone = { navController.popBackStack<Route.MealPlanDetail>(inclusive = false) },
             onSessionExpired = { sessionManager.onSignedOut() },
         )
     }

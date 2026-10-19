@@ -166,6 +166,7 @@
 
     <!-- DPL-601: recipe search -->
     <string name="recipes_title">Recipes</string>
+    <string name="recipes_pick_title">Choose a recipe</string>
     <string name="recipes_filter_ingredients_label">Ingredients</string>
     <string name="recipes_filter_ingredients_hint">Separate with commas, e.g. chicken, rice</string>
     <string name="recipes_filter_diet_label">Diet</string>
@@ -217,4 +218,28 @@
     <string name="error_recipe_detail_not_found">This recipe no longer exists.</string>
     <string name="error_recipe_detail_session_expired">Your session has expired. Please sign in again.</string>
     <string name="error_recipe_detail_unknown">Something went wrong loading this recipe. Please try again.</string>
+
+    <!-- DPL-507: add meal -->
+    <string name="add_meal_title">Add meal</string>
+    <string name="cd_add_meal_loading">Loading recipe</string>
+    <string name="cd_add_meal_saving">Adding the meal</string>
+    <string name="add_meal_recipe_calories">%1$d kcal per serving</string>
+    <string name="add_meal_type_label">Meal</string>
+    <string name="add_meal_servings_label">Servings</string>
+    <string name="add_meal_day_label">Day</string>
+    <string name="add_meal_day_none">No day yet</string>
+    <string name="add_meal_submit">Add to plan</string>
+    <string name="add_meal_retry_day">Try setting the day again</string>
+    <string name="add_meal_skip_day">Leave it without a day</string>
+    <string name="add_meal_back">Back</string>
+    <string name="error_add_meal_type_required">Choose a meal type.</string>
+    <string name="error_add_meal_servings_required">Enter the number of servings.</string>
+    <string name="error_add_meal_servings_invalid">Enter a number greater than 0 and up to 99.</string>
+    <string name="error_add_meal_network">You\'re offline. Connect to the internet to add a meal.</string>
+    <string name="error_add_meal_server">The server had a problem. Please try again later.</string>
+    <string name="error_add_meal_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_add_meal_not_found">This recipe or meal plan no longer exists.</string>
+    <string name="error_add_meal_rejected">The server didn\'t accept this meal. Please check it and try again.</string>
+    <string name="error_add_meal_unknown">Something went wrong adding the meal. Please try again.</string>
+    <string name="error_add_meal_day_not_set">The meal was added, but its day couldn\'t be set. Try again, or leave it without a day.</string>
 </resources>

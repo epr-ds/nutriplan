@@ -44,6 +44,17 @@ sealed class Route {
     @Serializable
     data class MealPlanDetail(val planId: String) : Route()
 
+    /**
+     * Choose a recipe to add to the plan [planId] (recipe search in picking mode). In-app only: it
+     * has no deep link that opens it from outside.
+     */
+    @Serializable
+    data class PickRecipe(val planId: String) : Route()
+
+    /** Add [recipeId] to the plan [planId] as a meal (meal type, servings, day). In-app only. */
+    @Serializable
+    data class AddMeal(val planId: String, val recipeId: String) : Route()
+
     // --- Recipe screens ---
     /** Recipe search. */
     @Serializable
@@ -119,6 +130,8 @@ sealed class Route {
         is MealPlanList -> "nutriplan://meal-plans"
         is CreateMealPlan -> "nutriplan://meal-plan/${planId ?: "new"}"
         is MealPlanDetail -> "nutriplan://meal-plan/$planId"
+        is PickRecipe -> "nutriplan://add-meal/$planId"
+        is AddMeal -> "nutriplan://add-meal/$planId/$recipeId"
         is RecipeSearch -> "nutriplan://recipes"
         is RecipeDetail -> "nutriplan://recipe/$recipeId"
         is AiMealAnalysis -> "nutriplan://ai/analyze"

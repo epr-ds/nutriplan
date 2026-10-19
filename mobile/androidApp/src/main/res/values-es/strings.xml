@@ -164,6 +164,7 @@
 
     <!-- DPL-601: búsqueda de recetas -->
     <string name="recipes_title">Recetas</string>
+    <string name="recipes_pick_title">Elige una receta</string>
     <string name="recipes_filter_ingredients_label">Ingredientes</string>
     <string name="recipes_filter_ingredients_hint">Sepáralos con comas, p. ej. pollo, arroz</string>
     <string name="recipes_filter_diet_label">Dieta</string>
@@ -215,4 +216,28 @@
     <string name="error_recipe_detail_not_found">Esta receta ya no existe.</string>
     <string name="error_recipe_detail_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
     <string name="error_recipe_detail_unknown">Algo salió mal al cargar esta receta. Inténtalo de nuevo.</string>
+
+    <!-- DPL-507: añadir comida -->
+    <string name="add_meal_title">Añadir comida</string>
+    <string name="cd_add_meal_loading">Cargando la receta</string>
+    <string name="cd_add_meal_saving">Añadiendo la comida</string>
+    <string name="add_meal_recipe_calories">%1$d kcal por ración</string>
+    <string name="add_meal_type_label">Comida</string>
+    <string name="add_meal_servings_label">Raciones</string>
+    <string name="add_meal_day_label">Día</string>
+    <string name="add_meal_day_none">Sin día por ahora</string>
+    <string name="add_meal_submit">Añadir al plan</string>
+    <string name="add_meal_retry_day">Reintentar asignar el día</string>
+    <string name="add_meal_skip_day">Dejarla sin día</string>
+    <string name="add_meal_back">Volver</string>
+    <string name="error_add_meal_type_required">Elige un tipo de comida.</string>
+    <string name="error_add_meal_servings_required">Introduce el número de raciones.</string>
+    <string name="error_add_meal_servings_invalid">Introduce un número mayor que 0 y hasta 99.</string>
+    <string name="error_add_meal_network">Estás sin conexión. Conéctate a internet para añadir una comida.</string>
+    <string name="error_add_meal_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_add_meal_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_add_meal_not_found">Esta receta o plan de comidas ya no existe.</string>
+    <string name="error_add_meal_rejected">El servidor no aceptó esta comida. Revísala e inténtalo de nuevo.</string>
+    <string name="error_add_meal_unknown">Algo salió mal al añadir la comida. Inténtalo de nuevo.</string>
+    <string name="error_add_meal_day_not_set">La comida se añadió, pero no se pudo asignar su día. Inténtalo de nuevo o déjala sin día.</string>
 </resources>

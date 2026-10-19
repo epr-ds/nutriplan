@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
@@ -55,6 +56,11 @@ class CachedDietaryRepositoryTest {
         override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal {
             failure?.let { throw it }
             return meal("new")
+        }
+
+        override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal {
+            failure?.let { throw it }
+            return meal(mealId)
         }
 
         override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = emptyList()
@@ -270,6 +276,17 @@ class CachedDietaryRepositoryTest {
         repository.getMealPlan("p1")
 
         repository.addMeal("p1", AddMealRequest(mealType = "lunch", recipeId = "r", servings = 1.0))
+
+        assertNull(cache.getPlan("p1"))
+        assertEquals(listOf("p1"), cache.getPlans().map { it.id })
+    }
+
+    @Test
+    fun `updating a meal forgets the cached plan detail but keeps the plan in the list`() = runTest {
+        remote.plan = fullPlan("p1", meals = listOf(meal("m1")))
+        repository.getMealPlan("p1")
+
+        repository.updateMeal("p1", "m1", UpdateMealRequest(dayIndex = 2))
 
         assertNull(cache.getPlan("p1"))
         assertEquals(listOf("p1"), cache.getPlans().map { it.id })

@@ -82,7 +82,7 @@ object RecipeSearchTestTags {
 
 /**
  * DPL-601: search the recipe catalog by ingredients, diet, calories and protein, with images in the
- * results. [onRecipeClick] opens a recipe; [onSessionExpired] is called when the server rejects the
+ * results. [onRecipeClick] opens a recipe (when [isPicking], the user is choosing one to add to a plan); [onSessionExpired] is called when the server rejects the
  * session so the app can send the user back to sign-in.
  */
 @Composable
@@ -90,6 +90,7 @@ fun RecipeSearchScreen(
     onBack: () -> Unit,
     onRecipeClick: (recipeId: String) -> Unit,
     onSessionExpired: () -> Unit,
+    isPicking: Boolean = false,
 ) {
     val viewModel = koinInject<RecipeSearchViewModel>()
     val state by viewModel.state.collectAsState()
@@ -115,6 +116,7 @@ fun RecipeSearchScreen(
         onLoadMore = { scope.launch { viewModel.loadMore() } },
         onRecipeClick = onRecipeClick,
         onBack = onBack,
+        isPicking = isPicking,
     )
 }
 
@@ -131,6 +133,7 @@ fun RecipeSearchScreenContent(
     onLoadMore: () -> Unit,
     onRecipeClick: (String) -> Unit,
     onBack: () -> Unit,
+    isPicking: Boolean = false,
 ) {
     val loadingDescription = stringResource(R.string.cd_recipes_loading)
     val loadingMoreDescription = stringResource(R.string.cd_recipes_loading_more)
@@ -140,7 +143,7 @@ fun RecipeSearchScreenContent(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.recipes_title),
+                        text = stringResource(if (isPicking) R.string.recipes_pick_title else R.string.recipes_title),
                         modifier = Modifier.semantics { heading() },
                     )
                 },

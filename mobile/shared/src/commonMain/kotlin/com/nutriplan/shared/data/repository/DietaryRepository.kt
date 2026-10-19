@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
@@ -56,6 +57,12 @@ interface DietaryRepository {
     suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal
 
     /**
+     * Edit a planned meal's servings, day or satisfaction (`PATCH /meal-plans/{planId}/meals/{mealId}`).
+     * The day must fall inside the plan's date range; at least one field is required.
+     */
+    suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal
+
+    /**
      * Search the recipe catalog (`GET /recipes`): by ingredient (a recipe matches when it has at
      * least one, best matches first), diet type, calories and protein. 20 per page by default.
      */
@@ -107,6 +114,13 @@ class DietaryRepositoryImpl : DietaryRepository {
     override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal =
         withContext(Dispatchers.IO) {
             client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") { setBody(request) }.readOrThrow()
+        }
+
+    override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal =
+        withContext(Dispatchers.IO) {
+            client.patch("${ApiConfig.DIETARY}/meal-plans/$planId/meals/${mealId.encodeURLPathPart()}") {
+                setBody(request)
+            }.readOrThrow()
         }
 
     override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> =

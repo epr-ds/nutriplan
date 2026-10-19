@@ -5,12 +5,33 @@ import com.nutriplan.android.R
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.onboarding.OnboardingError
+import com.nutriplan.shared.planning.AddMealError
+import com.nutriplan.shared.planning.AddMealFieldError
 import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanFormError
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.PlanFieldError
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeListError
+
+/** DPL-507: inline message for one invalid field of the add-meal form. */
+@StringRes
+fun AddMealFieldError.messageRes(): Int = when (this) {
+    AddMealFieldError.MEAL_TYPE_REQUIRED -> R.string.error_add_meal_type_required
+    AddMealFieldError.SERVINGS_REQUIRED -> R.string.error_add_meal_servings_required
+    AddMealFieldError.SERVINGS_INVALID -> R.string.error_add_meal_servings_invalid
+}
+
+/** DPL-507: message for a recipe that could not be loaded, or a meal that could not be added. */
+@StringRes
+fun AddMealError.messageRes(): Int = when (this) {
+    AddMealError.NETWORK -> R.string.error_add_meal_network
+    AddMealError.SERVER_PROBLEM -> R.string.error_add_meal_server
+    AddMealError.SESSION_EXPIRED -> R.string.error_add_meal_session_expired
+    AddMealError.NOT_FOUND -> R.string.error_add_meal_not_found
+    AddMealError.REJECTED -> R.string.error_add_meal_rejected
+    AddMealError.UNKNOWN -> R.string.error_add_meal_unknown
+}
 
 /** DPL-601: message for a recipe search that failed. */
 @StringRes
