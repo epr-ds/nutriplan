@@ -57,7 +57,14 @@ class MealPlanCache(private val database: NutriPlanDatabase) {
     fun upsertSummaries(plans: List<MealPlanSummary>) {
         database.transaction {
             plans.forEach { plan ->
-                queries.upsertSummary(
+                queries.updateSummary(
+                    name = plan.name,
+                    start_date = plan.startDate,
+                    end_date = plan.endDate,
+                    status = plan.status,
+                    id = plan.id,
+                )
+                queries.insertSummaryIfMissing(
                     id = plan.id,
                     name = plan.name,
                     start_date = plan.startDate,

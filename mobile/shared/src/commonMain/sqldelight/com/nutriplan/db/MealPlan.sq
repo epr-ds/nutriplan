@@ -36,14 +36,13 @@ SELECT * FROM meal_plan WHERE id = ? AND has_detail = 1;
 selectPlanIds:
 SELECT id FROM meal_plan;
 
-upsertSummary:
-INSERT INTO meal_plan(id, name, start_date, end_date, status)
-VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-    name = excluded.name,
-    start_date = excluded.start_date,
-    end_date = excluded.end_date,
-    status = excluded.status;
+-- A summary is saved with updateSummary + insertSummaryIfMissing instead of an upsert: ON CONFLICT
+-- needs SQLite 3.24 and the app supports Android 7 (API 24), which ships an older SQLite.
+updateSummary:
+UPDATE meal_plan SET name = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?;
+
+insertSummaryIfMissing:
+INSERT OR IGNORE INTO meal_plan(id, name, start_date, end_date, status) VALUES (?, ?, ?, ?, ?);
 
 upsertDetail:
 INSERT OR REPLACE INTO meal_plan(
