@@ -161,4 +161,58 @@
     <string name="error_plan_form_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
     <string name="error_plan_form_rejected">El servidor no aceptó estos datos. Revísalos e inténtalo de nuevo.</string>
     <string name="error_plan_form_unknown">Algo salió mal al crear el plan. Inténtalo de nuevo.</string>
+
+    <!-- DPL-601: búsqueda de recetas -->
+    <string name="recipes_title">Recetas</string>
+    <string name="recipes_filter_ingredients_label">Ingredientes</string>
+    <string name="recipes_filter_ingredients_hint">Sepáralos con comas, p. ej. pollo, arroz</string>
+    <string name="recipes_filter_diet_label">Dieta</string>
+    <string name="recipes_filter_diet_any">Cualquiera</string>
+    <string name="recipes_filter_max_calories_label">Máx. kcal</string>
+    <string name="recipes_filter_min_protein_label">Proteína mín. (g)</string>
+    <string name="recipes_search">Buscar</string>
+    <string name="recipes_clear_filters">Borrar</string>
+    <string name="recipes_load_more">Mostrar más</string>
+    <string name="recipes_empty_title">No hay recetas</string>
+    <string name="recipes_empty_description">Prueba con menos ingredientes o filtros más amplios.</string>
+    <string name="cd_recipes_loading">Buscando recetas</string>
+    <string name="cd_recipes_loading_more">Cargando más recetas</string>
+    <string name="recipe_minutes">%1$d min</string>
+    <string name="recipe_kcal">%1$d kcal</string>
+    <string name="recipe_protein_g">%1$s g de proteína</string>
+    <string name="diet_omnivore">Omnívora</string>
+    <string name="diet_vegetarian">Vegetariana</string>
+    <string name="diet_vegan">Vegana</string>
+    <string name="diet_keto">Keto</string>
+    <string name="diet_paleo">Paleo</string>
+    <string name="error_recipes_network">Estás sin conexión. Conéctate a internet para buscar recetas.</string>
+    <string name="error_recipes_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_recipes_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_recipes_unknown">Algo salió mal al buscar recetas. Inténtalo de nuevo.</string>
+
+    <!-- DPL-603: detalle de receta -->
+    <string name="recipe_detail_title_fallback">Receta</string>
+    <string name="cd_recipe_loading">Cargando la receta</string>
+    <string name="recipe_detail_back_to_recipes">Volver a las recetas</string>
+    <string name="recipe_detail_prep">Preparación %1$d min</string>
+    <string name="recipe_detail_cook">Cocción %1$d min</string>
+    <string name="recipe_detail_servings">%1$d raciones</string>
+    <string name="recipe_detail_nutrition_title">Nutrición por ración</string>
+    <string name="recipe_nutrition_protein">Proteína %1$s g</string>
+    <string name="recipe_nutrition_carbs">Carbohidratos %1$s g</string>
+    <string name="recipe_nutrition_fat">Grasa %1$s g</string>
+    <string name="recipe_nutrition_sugar">Azúcar %1$s g</string>
+    <string name="recipe_detail_ingredients">Ingredientes</string>
+    <string name="recipe_detail_instructions">Preparación</string>
+    <string name="recipe_detail_step">%1$d. %2$s</string>
+    <string name="recipe_detail_disclaimer_title">Sobre estos valores</string>
+    <string name="recipe_disclaimer_fallback">Los valores nutricionales son estimaciones con fines informativos generales. No son consejo médico ni dietético. Consulta con un profesional cualificado antes de cambiar tu dieta, sobre todo si tienes una afección médica o alergias.</string>
+    <string name="recipe_disclaimer_sources">Fuentes</string>
+    <string name="recipe_disclaimer_source_verified">%1$s (verificada)</string>
+    <string name="recipe_disclaimer_reviewed">Última revisión: %1$s</string>
+    <string name="error_recipe_detail_network">Estás sin conexión. Conéctate a internet para ver esta receta.</string>
+    <string name="error_recipe_detail_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_recipe_detail_not_found">Esta receta ya no existe.</string>
+    <string name="error_recipe_detail_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_recipe_detail_unknown">Algo salió mal al cargar esta receta. Inténtalo de nuevo.</string>
 </resources>
