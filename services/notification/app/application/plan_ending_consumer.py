@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.application.push_delivery import PushDelivery
+from app.domain.deep_links import plan_deep_link
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.events.envelope import EventEnvelope
@@ -67,9 +69,11 @@ class PlanEndingConsumer:
         recorder: Any,  # NotificationRecorder
         *,
         channels: tuple[NotificationChannel, ...] = DEFAULT_CHANNELS,
+        push: PushDelivery | None = None,
     ) -> None:
         self._recorder = recorder
         self._channels = channels
+        self._push = push
 
     def handle(self, envelope: EventEnvelope) -> None:
         """Handle a plan ending event.
@@ -91,13 +95,18 @@ class PlanEndingConsumer:
                 envelope.type,
             )
 
+    def _push_notification(self, result: Any) -> None:
+        """Send the push for a record this delivery just wrote (NTF-303)."""
+        if self._push is not None and result.notification is not None:
+            self._push.deliver(result.notification)
+
     def _handle_ending_soon(self, envelope: EventEnvelope) -> None:
         """Create a notification for an upcoming plan ending."""
         user_id = self._parse_user_id(envelope)
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan management
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/manage"
+        deep_link = plan_deep_link(plan_data.plan_id, "manage")
 
         # Build notification
         notification = Notification(
@@ -120,6 +129,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.soon duplicate plan_id=%s",
@@ -138,7 +148,7 @@ class PlanEndingConsumer:
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan management
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/summary"
+        deep_link = plan_deep_link(plan_data.plan_id, "summary")
 
         # Build notification
         notification = Notification(
@@ -161,6 +171,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.ended duplicate plan_id=%s",
@@ -179,7 +190,7 @@ class PlanEndingConsumer:
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan renewal
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/renew"
+        deep_link = plan_deep_link(plan_data.plan_id, "renew")
 
         # Build notification
         notification = Notification(
@@ -202,6 +213,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.renewal duplicate plan_id=%s",
@@ -243,7 +255,7 @@ class PlanEndingConsumer:
             user_id=self._parse_user_id(envelope),
             plan_type=plan_type,
             ending_date=ending_date,
-            deep_link=f"nutriplan://plan/{plan_id}/manage",
+            deep_link=plan_deep_link(plan_id, "manage"),
         )
 
     @staticmethod

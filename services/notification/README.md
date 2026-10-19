@@ -295,6 +295,45 @@ Registrations carry **no TTL**. As with preferences, forgetting an address on a 
 cut a user off from push at a moment unrelated to anything they did; removal is always
 explicit.
 
+## Push delivery
+
+Recording a notification is not the same as reaching the phone. After the recorder has
+written a copy that still targets `PUSH` (the preference gate may have narrowed it to
+`IN_APP`), the event consumers hand it to `PushDelivery`, which sends it and writes the
+provider's answer back onto the record.
+
+The flow is deliberately short:
+
+1. A notification with **no device** stays `PENDING` -- no attempt was made, so nothing
+   failed. A device that exists but whose platform has no configured gateway is skipped the
+   same way, with a warning; a user with one reachable device is still pushed to.
+2. The **most recently registered reachable device** is chosen. This service sends one push
+   per notification; fanning out to every device and tracking a receipt per device is
+   NTF-305, which is why the selection is a single device rather than a loop.
+3. A successful send means the provider **accepted** the message, not that the phone showed
+   it. That is recorded as `SENT`. `DELIVERED` is reserved for a future client-side receipt.
+4. A permanent refusal, or a transient one whose retry budget ran out, is recorded as
+   `FAILED`. Retryable errors (`UNAVAILABLE`, throttling, quotas) are retried in-process with
+   exponential backoff, bounded by `NOTIFICATION_PUSH_MAX_ATTEMPTS` (default 3),
+   `NOTIFICATION_PUSH_RETRY_BACKOFF_MS` (default 200), and
+   `NOTIFICATION_PUSH_RETRY_MULTIPLIER` (default 2.0). A push is a nudge, so the budget is
+   small and a provider outage costs the event handler seconds, not minutes.
+5. A token the provider says is **dead** -- FCM `UNREGISTERED`/`NOT_FOUND`, APNs
+   `BadDeviceToken`/`DeviceTokenNotForTopic`/`Unregistered` -- is pruned through
+   `DeviceRegistrationService.prune` and never retried. A dead address cannot start working,
+   so retrying only delays the failure.
+6. The app's target screen travels in `data.deepLink` -- the same `nutriplan://` URI the
+   feed carries (NTF-304). String values, copy included, are capped at 256 bytes so a long
+   free-text field cannot push the frame over the 4 KB FCM/APNs limit. The stored
+   notification keeps the full value; only the push copy is shortened.
+
+Delivery never raises on a provider refusal. The notification is already recorded, the event
+was handled, and a replay would be deduplicated rather than sent again; parking the event on
+the dead-letter queue would report a fixable delivery problem as an unprocessable event.
+`PushDelivery` also refuses to send a notification that is no longer `PENDING`, so a
+consumer replay cannot produce a second nudge. The provider clients themselves
+(`FCMAdapter`, `APNsAdapter`) are synchronous, matching the service's plain event loop.
+
 ## Consuming events
 
 Commerce publishes order lifecycle events to a Redis stream (`COM-109`); this service reads
@@ -421,11 +460,17 @@ managed to tell the user.
 
 ### What the client gets
 
-The payload carries `orderId`, `status`, `occurredAt`, and `previousStatus` when the event
-named a prior state. The status *values* are Commerce's own vocabulary, unaltered -- only the
-keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
+The payload carries `orderId`, `deepLink`, `status`, `occurredAt`, and `previousStatus` when
+the event named a prior state. The status *values* are Commerce's own vocabulary, unaltered --
+only the keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
 notification would expect. There is no title or body: copy is localized on the client, and a
 Spanish user should not receive English text baked in at write time.
+
+`deepLink` is the screen a tap opens: `nutriplan://order/<id>` here, `nutriplan://plan/<id>/
+<action>` for plan-ending notifications, and `nutriplan://meal/<id>` for meal reminders. The
+builders live in `app/domain/deep_links.py` and the mobile router parses the same
+`data.deepLink` key (`Route.fromNotificationData`, NTF-508), so the two sides share one
+spelling. The payload copy in the feed and the push data are the same value.
 
 `created_at` is the moment we record, **not** the event's `occurredAt`. Back-dating a replayed
 event would file it under a day the user has already scrolled past, so the original instant

@@ -445,6 +445,10 @@ components:
           description: >-
             Type-specific detail for rendering (order id, meal name, and so on). JSON-native
             values only; the domain refuses to store anything it cannot round-trip.
+            Notifications that open a screen also carry `deepLink`, a `nutriplan://` URI
+            shared with the mobile router: `nutriplan://order/<id>`,
+            `nutriplan://plan/<id>/<action>`, or `nutriplan://meal/<id>`. Push delivery
+            sends the same value in the provider data map.
         channels:
           type: array
           minItems: 1
