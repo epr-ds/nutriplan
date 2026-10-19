@@ -28,6 +28,7 @@ object KoinInitializer {
         startKoin {
             modules(dataModule)
             modules(sessionModule)
+            modules(planningModule)
             modules(appModules)
         }
     }
