@@ -279,4 +279,21 @@
     <string name="nutrient_carbs">Carbohidratos</string>
     <string name="nutrient_fat">Grasa</string>
     <string name="nutrient_sugar">Azúcar</string>
+
+    <!-- DPL-607: recetas favoritas -->
+    <string name="favorite_add">Guardar en favoritas</string>
+    <string name="favorite_remove">Quitar de favoritas</string>
+    <string name="favorites_title">Recetas favoritas</string>
+    <string name="cd_favorites_open">Recetas favoritas</string>
+    <string name="cd_favorites_loading">Cargando recetas favoritas</string>
+    <string name="favorites_empty_title">Aún no tienes favoritas</string>
+    <string name="favorites_empty_description">Toca el corazón de una receta para guardarla aquí.</string>
+    <string name="favorites_offline">Estás sin conexión. Se muestran las favoritas guardadas en este dispositivo.</string>
+    <string name="error_favorites_load_network">Estás sin conexión y no hay favoritas guardadas en este dispositivo.</string>
+    <string name="error_favorites_load_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_favorites_load_unknown">Algo salió mal al cargar tus favoritas. Inténtalo de nuevo.</string>
+    <string name="error_favorites_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_favorite_change_network">Estás sin conexión. Conéctate a internet para cambiar tus favoritas.</string>
+    <string name="error_favorite_change_server">El servidor tuvo un problema y tu favorita no se cambió. Inténtalo de nuevo más tarde.</string>
+    <string name="error_favorite_change_unknown">Algo salió mal y tu favorita no se cambió. Inténtalo de nuevo.</string>
 </resources>

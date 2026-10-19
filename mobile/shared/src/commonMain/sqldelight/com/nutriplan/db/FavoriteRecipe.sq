@@ -1,0 +1,26 @@
+-- Offline cache of the user's favorite recipes (DPL-607). It is a read cache of what the server
+-- sent (GET /favorites): the recipe is stored as the JSON of data.model.Recipe, which follows
+-- contracts/dietary.openapi.yaml, so the list can be shown without a connection. `position` keeps the
+-- server's order (most recently saved first).
+
+CREATE TABLE favorite_recipe (
+    recipe_id TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,
+    recipe TEXT NOT NULL
+);
+
+selectAll:
+SELECT recipe FROM favorite_recipe ORDER BY position;
+
+-- The smallest position (none when empty), so a newly saved recipe can be put in front of the others.
+selectFirstPosition:
+SELECT position FROM favorite_recipe ORDER BY position LIMIT 1;
+
+insertRecipe:
+INSERT OR REPLACE INTO favorite_recipe(recipe_id, position, recipe) VALUES (?, ?, ?);
+
+deleteRecipe:
+DELETE FROM favorite_recipe WHERE recipe_id = ?;
+
+deleteAll:
+DELETE FROM favorite_recipe;

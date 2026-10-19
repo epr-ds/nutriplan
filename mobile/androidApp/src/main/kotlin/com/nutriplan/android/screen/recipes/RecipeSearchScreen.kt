@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +61,8 @@ import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.dietTypeLabelRes
 import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.shared.data.model.Recipe
+import com.nutriplan.shared.recipes.FavoriteError
+import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
 import com.nutriplan.shared.recipes.RecipeListError
 import com.nutriplan.shared.recipes.RecipeSearchUiState
 import com.nutriplan.shared.recipes.RecipeSearchViewModel
@@ -78,6 +81,7 @@ object RecipeSearchTestTags {
     const val ERROR_BANNER = "recipe_search_error_banner"
     const val RECIPE_CARD = "recipe_search_card"
     const val DIET_CHIP = "recipe_search_diet_chip"
+    const val OPEN_FAVORITES = "recipe_search_open_favorites"
 }
 
 /**
@@ -91,15 +95,28 @@ fun RecipeSearchScreen(
     onRecipeClick: (recipeId: String) -> Unit,
     onSessionExpired: () -> Unit,
     isPicking: Boolean = false,
+    onOpenFavorites: (() -> Unit)? = null,
 ) {
     val viewModel = koinInject<RecipeSearchViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
+    // The hearts (DPL-607) are not shown while choosing a recipe for a plan.
+    val favorites = koinInject<FavoriteRecipesViewModel>()
+    val favoriteState by favorites.state.collectAsState()
+    val toggleFavorite: (Recipe) -> Unit = { recipe -> scope.launch { favorites.toggle(recipe) } }
 
     // Show the catalog straight away; the filters narrow it down.
     LaunchedEffect(viewModel) { viewModel.search() }
+    LaunchedEffect(favorites, isPicking) {
+        if (!isPicking && !favorites.state.value.hasLoaded) favorites.load()
+    }
     LaunchedEffect(state.error) {
         if (state.error == RecipeListError.SESSION_EXPIRED) onSessionExpired()
+    }
+    LaunchedEffect(favoriteState.changeError, favoriteState.loadError) {
+        if (favoriteState.changeError == FavoriteError.SESSION_EXPIRED || favoriteState.loadError == FavoriteError.SESSION_EXPIRED) {
+            onSessionExpired()
+        }
     }
 
     RecipeSearchScreenContent(
@@ -117,6 +134,11 @@ fun RecipeSearchScreen(
         onRecipeClick = onRecipeClick,
         onBack = onBack,
         isPicking = isPicking,
+        favoriteIds = favoriteState.ids,
+        pendingFavoriteIds = favoriteState.pendingIds,
+        favoriteError = favoriteState.changeError,
+        onToggleFavorite = if (isPicking) null else toggleFavorite,
+        onOpenFavorites = if (isPicking) null else onOpenFavorites,
     )
 }
 
@@ -134,6 +156,13 @@ fun RecipeSearchScreenContent(
     onRecipeClick: (String) -> Unit,
     onBack: () -> Unit,
     isPicking: Boolean = false,
+    favoriteIds: Set<String> = emptySet(),
+    pendingFavoriteIds: Set<String> = emptySet(),
+    favoriteError: FavoriteError? = null,
+    /** Shows a heart on every result when set (not while choosing a recipe for a plan). */
+    onToggleFavorite: ((Recipe) -> Unit)? = null,
+    /** Shows the entry to the favorites list in the top bar when set. */
+    onOpenFavorites: (() -> Unit)? = null,
 ) {
     val loadingDescription = stringResource(R.string.cd_recipes_loading)
     val loadingMoreDescription = stringResource(R.string.cd_recipes_loading_more)
@@ -153,6 +182,19 @@ fun RecipeSearchScreenContent(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_meal_plans_back),
                         )
+                    }
+                },
+                actions = {
+                    if (onOpenFavorites != null) {
+                        IconButton(
+                            onClick = onOpenFavorites,
+                            modifier = Modifier.testTag(RecipeSearchTestTags.OPEN_FAVORITES),
+                        ) {
+                            Icon(
+                                Icons.Filled.Favorite,
+                                contentDescription = stringResource(R.string.cd_favorites_open),
+                            )
+                        }
                     }
                 },
             )
@@ -176,6 +218,10 @@ fun RecipeSearchScreenContent(
                     onSearch = onSearch,
                     onClearFilters = onClearFilters,
                 )
+            }
+
+            if (favoriteError != null) {
+                item(key = "favorite-error") { FavoriteChangeError(favoriteError) }
             }
 
             val error = state.error
@@ -217,7 +263,17 @@ fun RecipeSearchScreenContent(
                 }
 
                 items(state.recipes, key = { it.id }) { recipe ->
-                    RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
+                    RecipeCard(
+                        recipe = recipe,
+                        onClick = { onRecipeClick(recipe.id) },
+                        favorite = onToggleFavorite?.let { toggle ->
+                            FavoriteAction(
+                                isFavorite = recipe.id in favoriteIds,
+                                enabled = recipe.id !in pendingFavoriteIds,
+                                onToggle = { toggle(recipe) },
+                            )
+                        },
+                    )
                 }
 
                 if (state.isLoadingMore) {
@@ -352,8 +408,9 @@ private fun DietChip(label: String, selected: Boolean, onClick: () -> Unit) {
     )
 }
 
+/** A recipe as a card: image, name and key numbers, with a heart when [favorite] is given. */
 @Composable
-private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
+internal fun RecipeCard(recipe: Recipe, onClick: () -> Unit, favorite: FavoriteAction? = null) {
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -388,6 +445,7 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
                     )
                 }
             }
+            if (favorite != null) FavoriteButton(favorite)
         }
     }
 }

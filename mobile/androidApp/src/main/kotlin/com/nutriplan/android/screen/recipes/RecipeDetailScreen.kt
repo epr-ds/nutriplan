@@ -51,6 +51,8 @@ import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.shared.data.model.NutritionDisclaimer
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.RecipeIngredient
+import com.nutriplan.shared.recipes.FavoriteError
+import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeDetailUiState
 import com.nutriplan.shared.recipes.RecipeDetailViewModel
@@ -80,8 +82,16 @@ fun RecipeDetailScreen(
     val viewModel = koinInject<RecipeDetailViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val favorites = koinInject<FavoriteRecipesViewModel>()
+    val favoriteState by favorites.state.collectAsState()
 
     LaunchedEffect(viewModel, recipeId) { viewModel.load(recipeId) }
+    LaunchedEffect(favorites) { if (!favorites.state.value.hasLoaded) favorites.load() }
+    LaunchedEffect(favoriteState.changeError, favoriteState.loadError) {
+        if (favoriteState.changeError == FavoriteError.SESSION_EXPIRED || favoriteState.loadError == FavoriteError.SESSION_EXPIRED) {
+            onSessionExpired()
+        }
+    }
     LaunchedEffect(state.error) {
         if (state.error == RecipeDetailError.SESSION_EXPIRED) onSessionExpired()
     }
@@ -90,6 +100,10 @@ fun RecipeDetailScreen(
         state = state,
         onRetry = { scope.launch { viewModel.load(recipeId) } },
         onBack = onBack,
+        isFavorite = favoriteState.isFavorite(recipeId),
+        isFavoritePending = recipeId in favoriteState.pendingIds,
+        favoriteError = favoriteState.changeError,
+        onToggleFavorite = { state.recipe?.let { recipe -> scope.launch { favorites.toggle(recipe) } } },
     )
 }
 
@@ -99,6 +113,11 @@ fun RecipeDetailScreenContent(
     state: RecipeDetailUiState,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    isFavorite: Boolean = false,
+    isFavoritePending: Boolean = false,
+    favoriteError: FavoriteError? = null,
+    /** Shows a heart in the top bar once the recipe is loaded, when set. */
+    onToggleFavorite: (() -> Unit)? = null,
 ) {
     val recipe = state.recipe
     val error = state.error
@@ -121,6 +140,13 @@ fun RecipeDetailScreenContent(
                         )
                     }
                 },
+                actions = {
+                    if (recipe != null && onToggleFavorite != null) {
+                        FavoriteButton(
+                            FavoriteAction(isFavorite = isFavorite, enabled = !isFavoritePending, onToggle = onToggleFavorite),
+                        )
+                    }
+                },
             )
         },
     ) { paddingValues ->
@@ -129,7 +155,12 @@ fun RecipeDetailScreenContent(
             .padding(paddingValues)
 
         when {
-            recipe != null -> RecipeContent(recipe = recipe, disclaimer = state.disclaimer, modifier = content)
+            recipe != null -> RecipeContent(
+                recipe = recipe,
+                disclaimer = state.disclaimer,
+                favoriteError = favoriteError,
+                modifier = content,
+            )
 
             state.isLoading -> Box(
                 modifier = content.testTag(RecipeDetailTestTags.LOADING),
@@ -161,6 +192,7 @@ fun RecipeDetailScreenContent(
 private fun RecipeContent(
     recipe: Recipe,
     disclaimer: NutritionDisclaimer?,
+    favoriteError: FavoriteError?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -185,6 +217,7 @@ private fun RecipeContent(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            favoriteError?.let { FavoriteChangeError(it) }
             Overview(recipe)
 
             recipe.nutritionalInfo?.let { info ->

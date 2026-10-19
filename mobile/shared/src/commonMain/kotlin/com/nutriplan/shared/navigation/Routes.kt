@@ -64,6 +64,10 @@ sealed class Route {
     @Serializable
     object RecipeSearch : Route()
 
+    /** The recipes the user saved as favorites. */
+    @Serializable
+    object FavoriteRecipes : Route()
+
     /** Recipe detail. */
     @Serializable
     data class RecipeDetail(val recipeId: String) : Route()
@@ -137,6 +141,7 @@ sealed class Route {
         is PickRecipe -> "nutriplan://add-meal/$planId"
         is AddMeal -> "nutriplan://add-meal/$planId/$recipeId"
         is EditMeal -> "nutriplan://edit-meal/$planId/$mealId"
+        is FavoriteRecipes -> "nutriplan://recipes/favorites"
         is RecipeSearch -> "nutriplan://recipes"
         is RecipeDetail -> "nutriplan://recipe/$recipeId"
         is AiMealAnalysis -> "nutriplan://ai/analyze"
@@ -167,6 +172,7 @@ sealed class Route {
                 if (id == "new") CreateMealPlan() else MealPlanDetail(id)
             }
             deepLink == "nutriplan://recipes" -> RecipeSearch
+            deepLink == "nutriplan://recipes/favorites" -> FavoriteRecipes
             deepLink.startsWith("nutriplan://recipe/") -> RecipeDetail(deepLink.substringAfter("nutriplan://recipe/"))
             deepLink == "nutriplan://ai/analyze" -> AiMealAnalysis
             deepLink == "nutriplan://ai/recommend" -> AiRecommendations

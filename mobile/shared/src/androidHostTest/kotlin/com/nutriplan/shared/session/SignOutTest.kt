@@ -10,7 +10,12 @@ import com.nutriplan.shared.data.repository.CachedDietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.InMemoryAuthRepository
 import com.nutriplan.shared.di.cacheModuleFor
+import com.nutriplan.shared.data.repository.FavoriteRecipesRepository
 import com.nutriplan.shared.di.dataModule
+import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
+import com.nutriplan.shared.testing.FakeFavoriteRemote
+import com.nutriplan.shared.testing.favoriteRecipe
+import com.nutriplan.shared.testing.newFavoriteCache
 import com.nutriplan.shared.testing.fullPlan
 import com.nutriplan.shared.testing.meal
 import com.nutriplan.shared.testing.newCache
@@ -57,13 +62,17 @@ class SignOutTest {
         auth.updateTokens("access", "refresh")
         cache.upsertPlan(fullPlan("p1", meals = listOf(meal("m1"))))
         cache.upsertSummaries(listOf(summary("p2")))
+        val favoriteCache = newFavoriteCache().apply { replaceAll(listOf(favoriteRecipe("f1"))) }
+        val favorites = FavoriteRecipesViewModel(FavoriteRecipesRepository(FakeFavoriteRemote(), favoriteCache))
 
-        SignOut(auth, cache)()
+        SignOut(auth, cache, favorites)()
 
         assertFalse(auth.isAuthenticated)
         assertNull(storage.stored)
         assertEquals(emptyList(), cache.getPlans())
         assertNull(cache.getPlan("p1"))
+        assertEquals(emptyList(), favoriteCache.getAll(), "favorites are wiped too")
+        assertEquals(emptyList(), favorites.state.value.recipes)
     }
 
     @Test

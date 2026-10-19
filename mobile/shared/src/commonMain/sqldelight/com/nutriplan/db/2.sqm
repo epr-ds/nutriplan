@@ -1,0 +1,8 @@
+-- Version 2 -> 3: the offline cache of favorite recipes (DPL-607). A new table only; the meal plan
+-- cache is untouched.
+
+CREATE TABLE favorite_recipe (
+    recipe_id TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,
+    recipe TEXT NOT NULL
+);
