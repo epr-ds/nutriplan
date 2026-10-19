@@ -295,6 +295,41 @@ Registrations carry **no TTL**. As with preferences, forgetting an address on a 
 cut a user off from push at a moment unrelated to anything they did; removal is always
 explicit.
 
+## Push delivery
+
+Recording a notification is not the same as reaching the phone. After the recorder has
+written a copy that still targets `PUSH` (the preference gate may have narrowed it to
+`IN_APP`), the event consumers hand it to `PushDelivery`, which sends it and writes the
+provider's answer back onto the record.
+
+The flow is deliberately short:
+
+1. A notification with **no device** stays `PENDING` -- no attempt was made, so nothing
+   failed. A device that exists but whose platform has no configured gateway is skipped the
+   same way, with a warning; a user with one reachable device is still pushed to.
+2. The **most recently registered reachable device** is chosen. This service sends one push
+   per notification; fanning out to every device and tracking a receipt per device is
+   NTF-305, which is why the selection is a single device rather than a loop.
+3. A successful send means the provider **accepted** the message, not that the phone showed
+   it. That is recorded as `SENT`. `DELIVERED` is reserved for a future client-side receipt.
+4. A permanent refusal, or a transient one whose retry budget ran out, is recorded as
+   `FAILED`. Retryable errors (`UNAVAILABLE`, throttling, quotas) are retried in-process with
+   exponential backoff, bounded by `NOTIFICATION_PUSH_MAX_ATTEMPTS` (default 3),
+   `NOTIFICATION_PUSH_RETRY_BACKOFF_MS` (default 200), and
+   `NOTIFICATION_PUSH_RETRY_MULTIPLIER` (default 2.0). A push is a nudge, so the budget is
+   small and a provider outage costs the event handler seconds, not minutes.
+5. A token the provider says is **dead** -- FCM `UNREGISTERED`/`NOT_FOUND`, APNs
+   `BadDeviceToken`/`DeviceTokenNotForTopic`/`Unregistered` -- is pruned through
+   `DeviceRegistrationService.prune` and never retried. A dead address cannot start working,
+   so retrying only delays the failure.
+
+Delivery never raises on a provider refusal. The notification is already recorded, the event
+was handled, and a replay would be deduplicated rather than sent again; parking the event on
+the dead-letter queue would report a fixable delivery problem as an unprocessable event.
+`PushDelivery` also refuses to send a notification that is no longer `PENDING`, so a
+consumer replay cannot produce a second nudge. The provider clients themselves
+(`FCMAdapter`, `APNsAdapter`) are synchronous, matching the service's plain event loop.
+
 ## Consuming events
 
 Commerce publishes order lifecycle events to a Redis stream (`COM-109`); this service reads

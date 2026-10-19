@@ -14,13 +14,24 @@ from typing import Any
 
 import pytest
 
-from app.domain.enums import NotificationChannel, NotificationType
+from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
+from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
+from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
+from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
+from app.application.devices import DeviceRegistrationService
+from app.application.notification_recorder import NotificationRecorder
+from app.application.order_status_consumer import OrderStatusConsumer
+from app.application.push_delivery import PushDelivery
+from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
+from app.domain.push import PushMessage
+from app.domain.repositories import PreferencesRepository
 from app.events.envelope import EventEnvelope
 from app.events.errors import MalformedEvent, UnsupportedEvent
 from app.events.registry import ORDER_CONFIRMED, ORDER_EVENT_VERSION, ORDER_STATUS_CHANGED
-from tests.conftest import OrderConsumerHarness
+from tests.conftest import TEST_POLICY, TEST_WINDOW, OrderConsumerHarness
 
 USER = uuid.UUID("11111111-2222-3333-4444-555555555555")
 
@@ -436,3 +447,82 @@ class TestThePreferenceGate:
         order_consumer.consumer.handle(event(order_id=order_id, to_status="delivered"))
 
         assert order_consumer.types(USER) == [NotificationType.ORDER_DELIVERED.value]
+
+
+class _Gateway:
+    """A provider that accepts everything, so the test can count what reached it."""
+
+    platform = DevicePlatform.ANDROID
+
+    def __init__(self) -> None:
+        self.sent: list[PushMessage] = []
+
+    def send(self, message: PushMessage) -> str:
+        self.sent.append(message)
+        return "message-id"
+
+
+class TestPushAfterRecording:
+    """NTF-303's integration point: the nudge follows the write, never the replay."""
+
+    def _consumer(
+        self,
+        preferences: PreferencesRepository | None = None,
+    ) -> tuple[OrderStatusConsumer, InMemoryNotificationRepository, _Gateway]:
+        repository = InMemoryNotificationRepository(policy=TEST_POLICY)
+        recorder = NotificationRecorder(
+            repository,
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+            preferences,
+        )
+        devices = DeviceRegistrationService(InMemoryDeviceTokenRepository())
+        devices.register(USER, DevicePlatform.ANDROID, "android-token")
+        gateway = _Gateway()
+        delivery = PushDelivery(
+            repository,
+            devices,
+            {DevicePlatform.ANDROID: gateway},
+            sleep=lambda _: None,
+        )
+        consumer = OrderStatusConsumer(
+            recorder,
+            InMemoryOrderProgressStore(ttl_seconds=3_600),
+            push=delivery,
+        )
+        return consumer, repository, gateway
+
+    def test_a_recorded_notification_is_pushed_and_marked_sent(self) -> None:
+        consumer, repository, gateway = self._consumer()
+
+        consumer.handle(event(to_status="in_transit"))
+
+        assert len(gateway.sent) == 1
+        assert gateway.sent[0].data["type"] == "order_in_transit"
+        stored = repository.list_for_user(USER)[0]
+        assert stored.status is DeliveryStatus.SENT
+
+    def test_a_replay_is_not_pushed_again(self) -> None:
+        consumer, _, gateway = self._consumer()
+        replayed = event(to_status="in_transit")
+
+        consumer.handle(replayed)
+        consumer.handle(replayed)
+
+        assert len(gateway.sent) == 1
+
+    def test_muting_push_keeps_the_in_app_copy_and_sends_nothing(self) -> None:
+        preferences = InMemoryPreferencesRepository()
+        preferences.save(
+            NotificationPreferences.defaults(USER).muting(
+                NotificationType.ORDER_IN_TRANSIT, NotificationChannel.PUSH
+            )
+        )
+        consumer, repository, gateway = self._consumer(preferences)
+
+        consumer.handle(event(to_status="in_transit"))
+
+        assert gateway.sent == []
+        stored = repository.list_for_user(USER)
+        assert len(stored) == 1
+        assert stored[0].channels == (NotificationChannel.IN_APP,)
+        assert stored[0].status is DeliveryStatus.PENDING
