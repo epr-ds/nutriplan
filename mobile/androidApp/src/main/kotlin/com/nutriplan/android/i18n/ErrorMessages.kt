@@ -5,6 +5,21 @@ import com.nutriplan.android.R
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.onboarding.OnboardingError
+import com.nutriplan.shared.planning.MealPlanListError
+
+/**
+ * DPL-501: message for a failed meal plan load. When [hasSavedPlans] the list is still shown from
+ * the device, so the message says so instead of blocking the screen.
+ */
+@StringRes
+fun MealPlanListError.messageRes(hasSavedPlans: Boolean): Int = when (this) {
+    MealPlanListError.NETWORK ->
+        if (hasSavedPlans) R.string.error_plans_network_saved else R.string.error_plans_network
+    MealPlanListError.SERVER_PROBLEM ->
+        if (hasSavedPlans) R.string.error_plans_server_saved else R.string.error_plans_server
+    MealPlanListError.SESSION_EXPIRED -> R.string.error_plans_session_expired
+    MealPlanListError.UNKNOWN -> R.string.error_plans_unknown
+}
 
 /**
  * IDN-902: maps the shared layer's stable error codes to localized Android string resources.

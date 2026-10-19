@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +29,7 @@ import com.nutriplan.android.screen.onboarding.OnboardingScreen
 import com.nutriplan.android.screen.onboarding.OnboardingWizardScreen
 import com.nutriplan.android.screen.profile.ProfileScreen
 import com.nutriplan.android.navigation.AppNavigationGraph
+import com.nutriplan.android.navigation.SessionGate
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.auth.CurrentActivity
 import com.nutriplan.shared.data.repository.AuthRepository
@@ -62,6 +64,11 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val authRepository = koinInject<AuthRepository>()
                     val analyticsTracker = (application as NutriPlanApplication).analyticsTracker
+
+                    // DPL-509: leave signed-in screens as soon as the session ends.
+                    val sessionManager = koinInject<SessionManager>()
+                    val sessionState by sessionManager.state.collectAsState()
+                    SessionGate(navController, sessionState)
 
                     fun openPendingDeepLink(isAuthenticated: Boolean) {
                         pendingDeepLink.takeIfAuthenticated(isAuthenticated)?.let { navController.navigate(it) }
@@ -185,7 +192,8 @@ class MainNavigationScreens(
             onNavigateToMealPlanDetail = { planId -> onNavigate(Route.MealPlanDetail(planId)) },
             onNavigateToCreateMealPlan = { onNavigate(Route.CreateMealPlan(null)) },
             onNavigateToRecipeSearch = { onNavigate(Route.RecipeSearch) },
-            onNavigateToAiRecommendations = { onNavigate(Route.AiRecommendations) }
+            onNavigateToAiRecommendations = { onNavigate(Route.AiRecommendations) },
+            onNavigateToMealPlans = { onNavigate(Route.MealPlanList) },
         )
     }
 
@@ -194,7 +202,14 @@ class MainNavigationScreens(
         onNavigate: (Any) -> Unit,
         onPlanClick: (String) -> Unit,
     ) {
-        MealPlanListScreenContent(onNavigate, onPlanClick)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.MealPlanListScreen(
+            onPlanClick = onPlanClick,
+            onCreatePlan = { onNavigate(Route.CreateMealPlan(null)) },
+            onBack = { navController.popBackStack() },
+            // The server rejected the session: end it, and SessionGate returns the user to sign-in.
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -386,19 +401,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun MealPlanListScreenContent(
-    onNavigate: (Any) -> Unit,
-    onPlanClick: (String) -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Meal Plans", style = MaterialTheme.typography.headlineLarge)
     }
 }
 

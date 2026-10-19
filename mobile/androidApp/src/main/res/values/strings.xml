@@ -88,4 +88,21 @@
     <string name="cd_intro_welcome_illustration">Fresh food illustration</string>
     <string name="cd_intro_meals_illustration">Meal plan illustration</string>
     <string name="cd_intro_tracking_illustration">Progress tracking illustration</string>
+
+    <!-- Meal plans (DPL-501) -->
+    <string name="meal_plans_title">Meal plans</string>
+    <string name="meal_plans_empty_title">No meal plans yet</string>
+    <string name="meal_plans_empty_description">Create your first meal plan to get started.</string>
+    <string name="meal_plans_empty_action">Create meal plan</string>
+    <string name="meal_plans_retry">Retry</string>
+    <string name="meal_plans_all">All plans</string>
+    <string name="cd_meal_plans_create">Create meal plan</string>
+    <string name="cd_meal_plans_loading">Loading meal plans</string>
+    <string name="cd_meal_plans_back">Back</string>
+    <string name="error_plans_network">You\'re offline and no meal plans are saved on this device yet.</string>
+    <string name="error_plans_network_saved">You\'re offline. Showing the plans saved on this device.</string>
+    <string name="error_plans_server">The server had a problem. Please try again later.</string>
+    <string name="error_plans_server_saved">The server had a problem. Showing the plans saved on this device.</string>
+    <string name="error_plans_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_plans_unknown">Something went wrong loading your meal plans. Please try again.</string>
 </resources>

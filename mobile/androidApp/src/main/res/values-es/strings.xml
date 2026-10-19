@@ -86,4 +86,21 @@
     <string name="cd_intro_welcome_illustration">Ilustración de comida fresca</string>
     <string name="cd_intro_meals_illustration">Ilustración de plan de comidas</string>
     <string name="cd_intro_tracking_illustration">Ilustración de seguimiento del progreso</string>
+
+    <!-- Meal plans (DPL-501) -->
+    <string name="meal_plans_title">Planes de comidas</string>
+    <string name="meal_plans_empty_title">Aún no tienes planes de comidas</string>
+    <string name="meal_plans_empty_description">Crea tu primer plan de comidas para empezar.</string>
+    <string name="meal_plans_empty_action">Crear plan de comidas</string>
+    <string name="meal_plans_retry">Reintentar</string>
+    <string name="meal_plans_all">Todos los planes</string>
+    <string name="cd_meal_plans_create">Crear plan de comidas</string>
+    <string name="cd_meal_plans_loading">Cargando planes de comidas</string>
+    <string name="cd_meal_plans_back">Atrás</string>
+    <string name="error_plans_network">Estás sin conexión y aún no hay planes de comidas guardados en este dispositivo.</string>
+    <string name="error_plans_network_saved">Estás sin conexión. Mostrando los planes guardados en este dispositivo.</string>
+    <string name="error_plans_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_plans_server_saved">El servidor tuvo un problema. Mostrando los planes guardados en este dispositivo.</string>
+    <string name="error_plans_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_plans_unknown">Algo salió mal al cargar tus planes de comidas. Inténtalo de nuevo.</string>
 </resources>

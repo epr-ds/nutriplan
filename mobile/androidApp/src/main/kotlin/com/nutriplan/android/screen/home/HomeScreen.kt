@@ -15,10 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.nutriplan.android.R
 import com.nutriplan.android.component.EmptyState
 import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.i18n.messageRes
+import com.nutriplan.shared.planning.MealPlanListViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Home screen displaying the user's meal plans.
@@ -28,28 +33,23 @@ fun HomeScreen(
     onNavigateToMealPlanDetail: (String) -> Unit,
     onNavigateToCreateMealPlan: () -> Unit,
     onNavigateToRecipeSearch: () -> Unit,
-    onNavigateToAiRecommendations: () -> Unit
+    onNavigateToAiRecommendations: () -> Unit,
+    onNavigateToMealPlans: () -> Unit = {},
 ) {
-    val dietaryRepository = koinInject<com.nutriplan.shared.data.repository.DietaryRepository>()
-    
-    var isLoading by remember { mutableStateOf(true) }
-    var mealPlans by remember { mutableStateOf<List<com.nutriplan.shared.data.model.MealPlan>>(emptyList()) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    // DPL-501: Home shows the same plans as the full list, from the shared view-model.
+    val viewModel = koinInject<MealPlanListViewModel>()
+    val state by viewModel.state.collectAsState()
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        // TODO: Load meal plans from repository
-        // mealPlans = dietaryRepository.getMealPlans()
-        isLoading = false
-        // TODO: Set errorMessage on failure
-    }
+    LaunchedEffect(viewModel) { viewModel.load() }
 
-    val retryAction = {
-        isLoading = true
-        errorMessage = null
-        // TODO: Retry loading meal plans
-        // mealPlans = dietaryRepository.getMealPlans()
-        isLoading = false
-    }
+    val isLoading = state.isLoading && state.plans.isEmpty()
+    val mealPlans = state.plans
+    val errorMessage = state.error
+        ?.takeIf { mealPlans.isEmpty() }
+        ?.let { stringResource(it.messageRes(hasSavedPlans = false)) }
+
+    val retryAction: () -> Unit = { scope.launch { viewModel.load() } }
 
     Scaffold(
         topBar = {
@@ -136,6 +136,13 @@ fun HomeScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        QuickActionCard(
+                            icon = Icons.Default.CalendarMonth,
+                            label = stringResource(R.string.meal_plans_all),
+                            onClick = onNavigateToMealPlans,
+                            modifier = Modifier.weight(1f)
+                        )
+
                         QuickActionCard(
                             icon = Icons.Default.Search,
                             label = "Recipes",
