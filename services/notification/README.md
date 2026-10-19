@@ -322,6 +322,10 @@ The flow is deliberately short:
    `BadDeviceToken`/`DeviceTokenNotForTopic`/`Unregistered` -- is pruned through
    `DeviceRegistrationService.prune` and never retried. A dead address cannot start working,
    so retrying only delays the failure.
+6. The app's target screen travels in `data.deepLink` -- the same `nutriplan://` URI the
+   feed carries (NTF-304). String values, copy included, are capped at 256 bytes so a long
+   free-text field cannot push the frame over the 4 KB FCM/APNs limit. The stored
+   notification keeps the full value; only the push copy is shortened.
 
 Delivery never raises on a provider refusal. The notification is already recorded, the event
 was handled, and a replay would be deduplicated rather than sent again; parking the event on
@@ -456,11 +460,17 @@ managed to tell the user.
 
 ### What the client gets
 
-The payload carries `orderId`, `status`, `occurredAt`, and `previousStatus` when the event
-named a prior state. The status *values* are Commerce's own vocabulary, unaltered -- only the
-keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
+The payload carries `orderId`, `deepLink`, `status`, `occurredAt`, and `previousStatus` when
+the event named a prior state. The status *values* are Commerce's own vocabulary, unaltered --
+only the keys are renamed from the event's `toStatus`/`fromStatus` to what a client reading a
 notification would expect. There is no title or body: copy is localized on the client, and a
 Spanish user should not receive English text baked in at write time.
+
+`deepLink` is the screen a tap opens: `nutriplan://order/<id>` here, `nutriplan://plan/<id>/
+<action>` for plan-ending notifications, and `nutriplan://meal/<id>` for meal reminders. The
+builders live in `app/domain/deep_links.py` and the mobile router parses the same
+`data.deepLink` key (`Route.fromNotificationData`, NTF-508), so the two sides share one
+spelling. The payload copy in the feed and the push data are the same value.
 
 `created_at` is the moment we record, **not** the event's `occurredAt`. Back-dating a replayed
 event would file it under a day the user has already scrolled past, so the original instant

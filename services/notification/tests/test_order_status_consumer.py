@@ -146,7 +146,9 @@ class TestWhatTheClientGetsToRender:
 
         order_consumer.consumer.handle(event(order_id=order_id))
 
-        assert order_consumer.feed(USER)[0].payload["orderId"] == order_id
+        payload = order_consumer.feed(USER)[0].payload
+        assert payload["orderId"] == order_id
+        assert payload["deepLink"] == f"nutriplan://order/{order_id}"
 
     def test_it_carries_commerce_status_vocabulary_verbatim(
         self, order_consumer: OrderConsumerHarness

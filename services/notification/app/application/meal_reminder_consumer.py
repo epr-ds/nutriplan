@@ -25,6 +25,7 @@ from datetime import datetime
 from typing import Any
 
 from app.application.push_delivery import PushDelivery
+from app.domain.deep_links import meal_deep_link
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.events.envelope import EventEnvelope
@@ -102,7 +103,7 @@ class MealReminderConsumer:
         meal_data = self._parse_meal_data(envelope)
 
         # Build deep link to meal details
-        deep_link = f"nutriplan://meal/{meal_data.meal_id}"
+        deep_link = meal_deep_link(meal_data.meal_id)
 
         # Build notification
         notification = Notification(
@@ -189,7 +190,7 @@ class MealReminderConsumer:
             meal_type=meal_type,
             meal_name=meal_name,
             scheduled_time=scheduled_time,
-            deep_link=f"nutriplan://meal/{meal_id}",
+            deep_link=meal_deep_link(meal_id),
         )
 
     @staticmethod

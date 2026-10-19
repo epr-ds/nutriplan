@@ -48,6 +48,25 @@ logger = logging.getLogger(__name__)
 DEFAULT_TITLE = "NutriPlan"
 """Brand name, so it is not a translation. NTF-401 replaces the body with localized copy."""
 
+MAX_VALUE_BYTES = 256
+"""FCM and APNs cap a whole message at 4 KB (NTF-304).
+
+Push data is a routing hint -- the deep link, the entity id, the type -- and the app fetches
+the screen's content by id, so a long free-text field (a meal name) is shortened here rather
+than allowed to push the frame over the provider's limit. The stored notification keeps the
+full value for the in-app feed. The limit is per *encoded* value and generous next to every
+field the producers actually send, so truncation only ever affects pathological input.
+"""
+
+
+def _truncate(value: str) -> str:
+    """Shorten one value to ``MAX_VALUE_BYTES`` of UTF-8 without splitting a character."""
+    encoded = value.encode("utf-8")
+    if len(encoded) <= MAX_VALUE_BYTES:
+        return value
+    suffix = "…".encode()
+    return encoded[: MAX_VALUE_BYTES - len(suffix)].decode("utf-8", "ignore") + "…"
+
 
 @dataclass(frozen=True, slots=True)
 class PushDeliveryResult:
@@ -259,8 +278,8 @@ class PushDelivery:
         payload = notification.payload
         return PushMessage(
             token=token,
-            title=str(payload.get("title") or DEFAULT_TITLE),
-            body=str(payload.get("body") or notification.type.value),
+            title=_truncate(str(payload.get("title") or DEFAULT_TITLE)),
+            body=_truncate(str(payload.get("body") or notification.type.value)),
             data=self._data(notification),
         )
 
@@ -274,7 +293,7 @@ class PushDelivery:
             if isinstance(value, bool):
                 data[key] = "true" if value else "false"
             elif isinstance(value, (str, int, float)):
-                data[key] = str(value)
+                data[key] = _truncate(str(value))
         # Written last so a producer cannot shadow the fields the client relies on.
         data["notificationId"] = str(notification.id)
         data["type"] = notification.type.value

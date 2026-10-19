@@ -68,6 +68,7 @@ from typing import Any
 
 from app.application.notification_recorder import NotificationRecorder, RecordResult
 from app.application.push_delivery import PushDelivery
+from app.domain.deep_links import order_deep_link
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.domain.order_status import (
@@ -177,6 +178,7 @@ class OrderStatusConsumer:
     ) -> Mapping[str, Any]:
         payload: dict[str, Any] = {
             "orderId": order_id,
+            "deepLink": order_deep_link(order_id),
             "status": status.value,
             # When the *order* moved, which is not when we recorded it -- see ``handle``.
             # A client renders "delivered at 3:04" from this, not from ``createdAt``.

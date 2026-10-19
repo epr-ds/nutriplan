@@ -7,6 +7,7 @@ not FCM's or APNs' HTTP behaviour (NTF-604 covers the sandboxes).
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -15,7 +16,7 @@ import pytest
 from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.application.devices import DeviceRegistrationService
-from app.application.push_delivery import PushDelivery
+from app.application.push_delivery import MAX_VALUE_BYTES, PushDelivery
 from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.notification import Notification
@@ -341,3 +342,89 @@ def test_rejects_an_impossible_retry_budget(
 ) -> None:
     with pytest.raises(ValueError):
         PushDelivery(notifications, devices, {}, **kwargs)  # type: ignore[arg-type]
+
+
+def _frame_size(message: PushMessage) -> int:
+    """Bytes of the provider message, token included, so the 4 KB cap is conservative."""
+    return len(
+        json.dumps(
+            {
+                "token": message.token,
+                "title": message.title,
+                "body": message.body,
+                "data": dict(message.data),
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+    )
+
+
+class TestPayloadSize:
+    """The push frame stays under the 4 KB FCM/APNs limit (NTF-304)."""
+
+    def test_realistic_deep_link_payloads_fit(
+        self, notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+    ) -> None:
+        _register(devices, ANDROID, "android-token")
+        order_id = str(uuid.uuid4())
+        meal_id = str(uuid.uuid4())
+        plan_id = str(uuid.uuid4())
+        payloads = [
+            {
+                "orderId": order_id,
+                "deepLink": f"nutriplan://order/{order_id}",
+                "status": "out_for_delivery",
+                "previousStatus": "preparing",
+                "occurredAt": "2026-10-19T02:53:35.123456+00:00",
+            },
+            {
+                "mealId": meal_id,
+                "deepLink": f"nutriplan://meal/{meal_id}",
+                "mealName": "Grilled salmon with quinoa and roasted vegetables",
+                "mealType": "dinner",
+                "scheduledTime": "2026-10-19T19:00:00+00:00",
+                "occurredAt": "2026-10-19T02:53:35.123456+00:00",
+            },
+            {
+                "planId": plan_id,
+                "deepLink": f"nutriplan://plan/{plan_id}/renew",
+                "planType": "weekly",
+                "renewalDate": "2026-10-26T00:00:00+00:00",
+                "occurredAt": "2026-10-19T02:53:35.123456+00:00",
+            },
+        ]
+        gateway = FakeGateway(ANDROID)
+        push = _service(notifications, devices, gateway)
+
+        for payload in payloads:
+            push.deliver(_store(notifications, payload=payload))
+
+        assert len(gateway.sent) == len(payloads)
+        assert all(_frame_size(message) <= 4096 for message in gateway.sent)
+
+    def test_long_free_text_is_bounded_and_the_deep_link_survives(
+        self, notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+    ) -> None:
+        _register(devices, ANDROID, "android-token")
+        notification = _store(
+            notifications,
+            payload={
+                "mealId": "meal-1",
+                "mealName": "é" * 5_000,
+                "deepLink": "nutriplan://meal/meal-1",
+                "title": "T" * 1_000,
+                "body": "B" * 1_000,
+            },
+        )
+        gateway = FakeGateway(ANDROID)
+
+        _service(notifications, devices, gateway).deliver(notification)
+
+        message = gateway.sent[0]
+        data = dict(message.data)
+        assert len(data["mealName"].encode("utf-8")) <= MAX_VALUE_BYTES
+        assert data["mealName"].endswith("…")
+        assert data["deepLink"] == "nutriplan://meal/meal-1"
+        assert len(message.title.encode("utf-8")) <= MAX_VALUE_BYTES
+        assert len(message.body.encode("utf-8")) <= MAX_VALUE_BYTES
+        assert _frame_size(message) <= 4096
