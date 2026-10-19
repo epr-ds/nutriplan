@@ -31,7 +31,7 @@ class SessionGateTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val user = UserProfile(id = "u1", email = "ana@example.com", firstName = "Ana", lastName = "Perez")
+    private val user = UserProfile(id = "u1", email = "ana@example.com", name = "Ana Perez")
 
     private var sessionState: SessionState by mutableStateOf(SessionState.SignedIn(user))
     private lateinit var navController: NavHostController
