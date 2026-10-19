@@ -2,6 +2,10 @@ package com.nutriplan.android.recipes
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -119,17 +123,30 @@ class RecipeSearchScreenTest {
         var ingredients = ""
         var calories = ""
         var protein = ""
-        render(
-            RecipeSearchUiState(),
-            onIngredientsChange = { ingredients = it },
-            onMaxCaloriesChange = { calories = it },
-            onMinProteinChange = { protein = it },
-        )
+        compose.setContent {
+            // Hosted with real state, as in the app: a controlled field only shows what the state holds.
+            var state by remember { mutableStateOf(RecipeSearchUiState()) }
+            NutriPlanTheme {
+                RecipeSearchScreenContent(
+                    state = state,
+                    onIngredientsChange = { state = state.copy(ingredients = it); ingredients = it },
+                    onDietTypeChange = {},
+                    onMaxCaloriesChange = { state = state.copy(maxCalories = it); calories = it },
+                    onMinProteinChange = { state = state.copy(minProtein = it); protein = it },
+                    onSearch = {},
+                    onClearFilters = {},
+                    onLoadMore = {},
+                    onRecipeClick = {},
+                    onBack = {},
+                )
+            }
+        }
 
         compose.onNodeWithTag(RecipeSearchTestTags.INGREDIENTS).performTextInput("chicken")
         compose.onNodeWithTag(RecipeSearchTestTags.MAX_CALORIES).performTextInput("600")
         compose.onNodeWithTag(RecipeSearchTestTags.MIN_PROTEIN).performTextInput("25")
 
+        compose.onNodeWithTag(RecipeSearchTestTags.INGREDIENTS).assert(hasText("chicken"))
         assertEquals("chicken", ingredients)
         assertEquals("600", calories)
         assertEquals("25", protein)
