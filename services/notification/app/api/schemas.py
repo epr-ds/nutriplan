@@ -26,7 +26,13 @@ from pydantic.alias_generators import to_camel
 from app.adapters import codec, preferences_codec
 from app.application.feed import FeedPage
 from app.application.preferences import PreferenceMatrix, TypePreference
-from app.domain.enums import DeliveryStatus, NotificationChannel, NotificationType
+from app.domain.device_token import MAX_TOKEN_LENGTH, DeviceToken
+from app.domain.enums import (
+    DeliveryStatus,
+    DevicePlatform,
+    NotificationChannel,
+    NotificationType,
+)
 from app.domain.notification import Notification
 from app.domain.quiet_hours import DEFAULT_TIME_ZONE, QuietHours
 
@@ -172,6 +178,46 @@ class NotificationPreferencesResponse(_Camel):
                 else QuietHoursSchema.from_domain(matrix.quiet_hours)
             ),
             updated_at=matrix.updated_at,
+        )
+
+
+class RegisterDeviceRequest(_Camel):
+    """A push token the app wants associated with the authenticated account.
+
+    The platform is part of the request rather than inferred from the token: both providers
+    issue opaque strings, and the string alone does not say which credential can deliver to
+    it. Sending the wrong one would store a perfectly valid address for the other provider.
+    """
+
+    platform: DevicePlatform
+    token: str = Field(
+        min_length=1,
+        max_length=MAX_TOKEN_LENGTH,
+        examples=["fcm-registration-token"],
+        description="The provider-issued push token, exactly as the platform SDK returned it.",
+    )
+
+
+class RegisteredDeviceResponse(_Camel):
+    """A stored registration, as the client sees it.
+
+    The token itself is **not** echoed. The caller just sent it, so repeating it adds nothing
+    to the response while giving it one more place to end up in a log or crash report. What
+    the client actually needs back is the id, which is what it uses to revoke the device.
+    """
+
+    id: uuid.UUID
+    platform: DevicePlatform
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, device: DeviceToken) -> RegisteredDeviceResponse:
+        return cls(
+            id=device.id,
+            platform=device.platform,
+            created_at=device.created_at,
+            updated_at=device.updated_at,
         )
 
 

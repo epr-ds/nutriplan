@@ -44,6 +44,16 @@ def _aliases(model: type) -> set[str]:
     return {field.alias or name for name, field in model.model_fields.items()}
 
 
+_PYTHON_PARAMETERS = (("notification_id", "notificationId"), ("device_id", "deviceId"))
+
+
+def _document_style(path: str) -> str:
+    """Rewrite FastAPI's snake_case path parameters into the contract's camelCase ones."""
+    for python_name, documented_name in _PYTHON_PARAMETERS:
+        path = path.replace(f"{{{python_name}}}", f"{{{documented_name}}}")
+    return path
+
+
 # -- the implementation, on its own ----------------------------------------------------
 
 
@@ -113,19 +123,16 @@ def _spec() -> dict:
 def test_every_documented_feed_path_is_implemented():
     implemented = set(_schema()["paths"])
     documented = set(_spec()["paths"])
-    # The contract documents ``{notificationId}``; FastAPI names the parameter after the
-    # handler argument. Normalise the one difference rather than renaming the Python
-    # argument to camelCase.
-    normalised = {path.replace("{notification_id}", "{notificationId}") for path in implemented}
+    # The contract documents camelCase parameters; FastAPI names them after the handler
+    # arguments. Normalise the difference rather than renaming the Python arguments.
+    normalised = {_document_style(path) for path in implemented}
     assert documented <= normalised
 
 
 def test_no_feed_endpoint_is_implemented_without_being_documented():
     documented = set(_spec()["paths"])
     implemented = {
-        path.replace("{notification_id}", "{notificationId}")
-        for path in _schema()["paths"]
-        if path.startswith("/notifications")
+        _document_style(path) for path in _schema()["paths"] if path.startswith("/notifications")
     }
     assert implemented <= documented
 

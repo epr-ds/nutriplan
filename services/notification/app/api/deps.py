@@ -24,14 +24,23 @@ import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.adapters.factory import build_notification_repository, build_preferences_repository
+from app.adapters.factory import (
+    build_device_token_repository,
+    build_notification_repository,
+    build_preferences_repository,
+)
+from app.application.devices import DeviceRegistrationService
 from app.application.feed import NotificationFeed
 from app.application.preferences import NotificationPreferenceService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.ratelimit import RateLimitExceeded, check_rate_limit
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
-from app.domain.repositories import NotificationRepository, PreferencesRepository
+from app.domain.repositories import (
+    DeviceTokenRepository,
+    NotificationRepository,
+    PreferencesRepository,
+)
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -62,6 +71,24 @@ def get_preferences_repository() -> PreferencesRepository:
     make a ``PUT`` appear to succeed and the following ``GET`` return the defaults.
     """
     return build_preferences_repository()
+
+
+@lru_cache(maxsize=1)
+def get_device_token_repository() -> DeviceTokenRepository:
+    """Build the (cached) configured device registry.
+
+    Cached for the reason the other stores are, and with the same failure mode if it were not:
+    the in-process default keeps registrations inside the object, so rebuilding it per request
+    would make a ``POST`` succeed and the next delivery find no device to push to.
+    """
+    return build_device_token_repository()
+
+
+def get_device_service(
+    repository: Annotated[DeviceTokenRepository, Depends(get_device_token_repository)],
+) -> DeviceRegistrationService:
+    """Build the device registration use cases over the configured store."""
+    return DeviceRegistrationService(repository)
 
 
 def get_preference_service(
@@ -153,3 +180,4 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 CurrentUserId = Annotated[uuid.UUID, Depends(get_current_user_id)]
 NotificationFeedDep = Annotated[NotificationFeed, Depends(get_notification_feed)]
 PreferenceServiceDep = Annotated[NotificationPreferenceService, Depends(get_preference_service)]
+DeviceServiceDep = Annotated[DeviceRegistrationService, Depends(get_device_service)]

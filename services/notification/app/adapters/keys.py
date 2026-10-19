@@ -15,6 +15,16 @@ and the dead-letter queue is a fifth pair (NTF-204)::
     {ns}:v1:dlq                  -> every parked delivery id, newest first (sorted set)
     {ns}:v1:dlq:e:{delivery_id}  -> the parked entry's JSON record   (string, EX retention)
 
+and device registrations add three more (NTF-302)::
+
+    {ns}:v1:dt:{device_id}                    -> the registration's JSON record
+    {ns}:v1:dtx:{platform}:{sha256(token)}    -> the id owning that provider token
+    {ns}:v1:u:{user_id}:devices               -> the user's ids, by registration time
+
+The token index is hashed so a provider address never appears in a key, while the record
+keeps the token in full because delivery has to present it to FCM/APNs. None of these keys
+carries a TTL: a registration is removed explicitly, never on a timer.
+
 The two per-user sorted sets are the "indexed for feed queries" half of AC3: listing a
 page is a ``ZREVRANGE`` slice plus an ``MGET``, and the unread badge is a ``ZCOUNT`` --
 both O(log N + page) rather than a scan over the user's history.
@@ -83,6 +93,27 @@ class NotificationKeys:
         retention sweep touches.
         """
         return f"{self.prefix}:p:{user_id}"
+
+    def device(self, device_id: uuid.UUID | str) -> str:
+        """The key holding one device registration's JSON record (NTF-302)."""
+        return f"{self.prefix}:dt:{device_id}"
+
+    def device_token_index(self, platform: str, token_hash: str) -> str:
+        """The key mapping a ``(platform, token)`` pair to the id of the device owning it.
+
+        The token is hashed by the caller before it reaches this method. A raw provider token
+        in a key would appear in ``redis-cli`` output, slow logs, and any key-pattern scan --
+        which is exactly the kind of address this service should not scatter around.
+        """
+        return f"{self.prefix}:dtx:{platform}:{token_hash}"
+
+    def user_devices(self, user_id: uuid.UUID | str) -> str:
+        """The sorted set indexing a user's registrations by when they were registered.
+
+        Kept apart from ``user feed``/``unread`` in name and in lifetime: those carry the
+        feed's retention TTL and are swept, while a registration is only removed explicitly.
+        """
+        return f"{self.prefix}:u:{user_id}:devices"
 
     def order_progress(self, order_id: str) -> str:
         """The key holding how far along one order has been announced (NTF-202).

@@ -30,7 +30,9 @@ servers:
     description: Local development
 tags:
   - name: Notifications
-    description: The in-app feed, its badge count, and read-state.
+    description: >-
+      The in-app feed, its badge count and read-state, notification settings, and push
+      device registrations.
   - name: health
     description: Liveness and readiness probes for orchestration.
 
@@ -200,6 +202,66 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /notifications/devices:
+    post:
+      tags: [Notifications]
+      operationId: registerNotificationDevice
+      summary: Register or refresh a push device token
+      description: >-
+        Associates the caller's provider-issued push token with their account. The token is
+        the identity: repeating this call -- which clients do on every launch -- refreshes
+        the existing registration and returns the same id rather than creating another. If
+        the token already belongs to a different account, it is moved to the caller: a device
+        that changed hands must not keep receiving the previous owner's notifications.
+
+        A `201` is returned for a first registration and for a refresh alike, because the
+        client's action is the same either way. The id is stable across refreshes, so it can
+        be stored and used to revoke the device later.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDevice'
+      responses:
+        '201':
+          description: The token is now registered to the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredDevice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /notifications/devices/{deviceId}:
+    delete:
+      tags: [Notifications]
+      operationId: revokeNotificationDevice
+      summary: Revoke a push device token
+      description: >-
+        Removes one of the caller's registrations, so the provider is no longer asked to
+        deliver to that device. The operation is owner-scoped by the token subject; an id
+        that never existed, was already revoked, or belongs to somebody else is the same
+        `404`, so the endpoint cannot be used to discover other users' devices. A `204`
+        carries no body because nothing remains to report.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '204':
+          description: The registration was removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /health:
     get:
       tags: [health]
@@ -256,6 +318,15 @@ components:
         type: string
         format: uuid
 
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      description: The id returned when the device token was registered.
+      schema:
+        type: string
+        format: uuid
+
   responses:
     Unauthorized:
       description: Authentication is required, or the bearer token is missing/invalid
@@ -295,6 +366,54 @@ components:
         - order_cancelled
         - meal_reminder
         - plan_ending
+
+    DevicePlatform:
+      type: string
+      description: >-
+        The push provider that issued the token and is asked to deliver to it. The platform
+        travels with the token because the two providers' credentials are not interchangeable,
+        and the token string itself does not say which one can deliver to it.
+      enum: [ios, android]
+
+    RegisterDevice:
+      type: object
+      description: >-
+        A push token the app wants associated with the authenticated account. The token is
+        the registration's identity, so sending the same value again is a refresh rather than
+        a second device. The token value is never echoed back by the API.
+      required: [platform, token]
+      properties:
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          example: fcm-registration-token
+          description: >-
+            The provider-issued push token, exactly as the platform SDK returned it. Blank
+            values, values containing whitespace, and values over the documented maximum are
+            rejected with `422`.
+
+    RegisteredDevice:
+      type: object
+      description: >-
+        A stored registration. `id` is stable across refreshes and is what the client uses to
+        revoke the device; `createdAt` records the first registration and `updatedAt` the most
+        recent refresh (or the moment the device changed accounts).
+      required: [id, platform, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     NotificationChannel:
       type: string

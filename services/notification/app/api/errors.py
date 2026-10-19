@@ -10,6 +10,8 @@ status codes. The mapping is short by design:
 
 * an unknown / expired / not-owned notification -> ``404``, deliberately indistinguishable so
   the endpoint cannot be used to enumerate other users' notification ids;
+* an unknown / already revoked / not-owned device registration -> the same ``404``, for the
+  same anti-enumeration reason;
 * a page requested outside the served bounds -> ``422``;
 * any other invariant violation -> ``422``.
 
@@ -28,7 +30,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.domain.errors import InvalidFeedQuery, NotificationError, NotificationNotFound
+from app.domain.errors import (
+    DeviceTokenNotFound,
+    InvalidFeedQuery,
+    NotificationError,
+    NotificationNotFound,
+)
 
 PROBLEM_JSON = "application/problem+json"
 
@@ -37,6 +44,7 @@ PROBLEM_JSON = "application/problem+json"
 # an Unprocessable Entity.
 _DOMAIN_STATUS: tuple[tuple[type[NotificationError], int], ...] = (
     (NotificationNotFound, HTTPStatus.NOT_FOUND),
+    (DeviceTokenNotFound, HTTPStatus.NOT_FOUND),
     (InvalidFeedQuery, HTTPStatus.UNPROCESSABLE_ENTITY),
     (NotificationError, HTTPStatus.UNPROCESSABLE_ENTITY),
 )

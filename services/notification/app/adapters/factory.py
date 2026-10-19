@@ -25,11 +25,13 @@ from app.adapters.apns_adapter import APNsAdapter, APNsConfig, build_apns_adapte
 from app.adapters.fcm_adapter import FCMAdapter, FCMConfig, build_fcm_adapter  # noqa: F401
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
+from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
+from app.adapters.redis_device_token_repository import RedisDeviceTokenRepository
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
@@ -39,6 +41,7 @@ from app.core.config import Settings
 from app.core.config import settings as default_settings
 from app.domain.repositories import (
     DeduplicationStore,
+    DeviceTokenRepository,
     NotificationRepository,
     OrderProgressStore,
     PreferencesRepository,
@@ -103,6 +106,18 @@ def build_preferences_repository(settings: Settings | None = None) -> Preference
             keys=NotificationKeys(namespace=settings.redis_namespace),
         )
     return InMemoryPreferencesRepository()
+
+
+def build_device_token_repository(settings: Settings | None = None) -> DeviceTokenRepository:
+    """Return a Redis-backed device registry when a URL is configured, else in-process."""
+    settings = settings or default_settings
+    url = settings.redis_url.strip()
+    if url:
+        return RedisDeviceTokenRepository.from_url(
+            url,
+            keys=NotificationKeys(namespace=settings.redis_namespace),
+        )
+    return InMemoryDeviceTokenRepository()
 
 
 def build_order_progress_store(settings: Settings | None = None) -> OrderProgressStore:
