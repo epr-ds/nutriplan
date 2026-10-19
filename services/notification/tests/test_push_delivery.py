@@ -15,12 +15,14 @@ import pytest
 
 from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.application.devices import DeviceRegistrationService
 from app.application.push_delivery import MAX_VALUE_BYTES, PushDelivery
 from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.domain.push import PushError, PushMessage
+from app.domain.push_receipt import PushReceipt
 from app.domain.repositories import DeviceTokenRepository
 
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
@@ -50,6 +52,7 @@ def _service(
     notifications: InMemoryNotificationRepository,
     devices: DeviceRegistrationService,
     *gateways: FakeGateway,
+    receipts: InMemoryPushReceiptStore | None = None,
     sleeps: list[float] | None = None,
     **kwargs: object,
 ) -> PushDelivery:
@@ -57,6 +60,7 @@ def _service(
         notifications,
         devices,
         {gateway.platform: gateway for gateway in gateways},
+        receipts if receipts is not None else InMemoryPushReceiptStore(),
         sleep=(sleeps if sleeps is not None else []).append,
         **kwargs,  # type: ignore[arg-type]
     )
@@ -108,7 +112,7 @@ def _register(
     return devices.register(USER_ID, platform, token, now=now)
 
 
-def test_sends_to_most_recent_device_and_marks_sent(
+def test_fans_out_to_every_reachable_device_and_marks_sent(
     notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
 ) -> None:
     _register(devices, IOS, "ios-old", minutes_ago=5)
@@ -121,11 +125,84 @@ def test_sends_to_most_recent_device_and_marks_sent(
 
     assert result.status is DeliveryStatus.SENT
     assert result.attempted is True
-    assert result.device_id is not None
-    assert result.message_id == "projects/p/messages/1"
+    assert result.accepted == 2
     assert android.sent[0].token == "android-new"
-    assert ios.sent == []
+    assert ios.sent[0].token == "ios-old"
+    assert {receipt.device_id for receipt in result.receipts} == {
+        device.id for device in devices.list_devices(USER_ID)
+    }
     assert _persisted(notifications, notification).status is DeliveryStatus.SENT
+
+
+def test_fans_out_to_several_devices_on_the_same_platform(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    _register(devices, ANDROID, "phone", minutes_ago=5)
+    _register(devices, ANDROID, "tablet")
+    notification = _store(notifications)
+    android = FakeGateway(ANDROID, "a", "b")
+
+    result = _service(notifications, devices, android).deliver(notification)
+
+    assert result.accepted == 2
+    assert [message.token for message in android.sent] == ["tablet", "phone"]
+    assert _persisted(notifications, notification).status is DeliveryStatus.SENT
+
+
+def test_rolls_up_sent_when_one_device_accepts_and_another_refuses(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    _register(devices, ANDROID, "android-token")
+    _register(devices, IOS, "ios-token")
+    notification = _store(notifications)
+    android = FakeGateway(ANDROID, "ok")
+    ios = FakeGateway(IOS, PushError("BadDeviceToken", dead_token=True))
+
+    result = _service(notifications, devices, android, ios).deliver(notification)
+
+    assert result.status is DeliveryStatus.SENT
+    assert result.accepted == 1
+    assert result.refused == 1
+    assert _persisted(notifications, notification).status is DeliveryStatus.SENT
+
+
+def test_rolls_up_failed_when_every_device_refuses(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    _register(devices, ANDROID, "android-token")
+    _register(devices, IOS, "ios-token")
+    notification = _store(notifications)
+    android = FakeGateway(ANDROID, PushError("INVALID_ARGUMENT"))
+    ios = FakeGateway(IOS, PushError("BadDeviceToken", dead_token=True))
+
+    result = _service(notifications, devices, android, ios).deliver(notification)
+
+    assert result.status is DeliveryStatus.FAILED
+    assert result.accepted == 0
+    assert result.refused == 2
+    assert _persisted(notifications, notification).status is DeliveryStatus.FAILED
+
+
+def test_a_device_with_an_existing_receipt_is_not_sent_again(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """A fan-out resumed after a partial failure skips what already answered."""
+    android_device = _register(devices, ANDROID, "android-token")
+    _register(devices, IOS, "ios-token")
+    notification = _store(notifications)
+    receipts = InMemoryPushReceiptStore()
+    receipts.record(
+        PushReceipt.accepted_by(notification.id, android_device.id, ANDROID, message_id="earlier")
+    )
+    android = FakeGateway(ANDROID)
+    ios = FakeGateway(IOS, "apns-1")
+
+    result = _service(notifications, devices, android, ios, receipts=receipts).deliver(notification)
+
+    assert android.sent == []
+    assert len(ios.sent) == 1
+    assert result.attempted is True
+    assert result.accepted == 2
 
 
 def test_records_failed_when_provider_refuses_and_does_not_retry_permanent(
@@ -138,7 +215,8 @@ def test_records_failed_when_provider_refuses_and_does_not_retry_permanent(
     result = _service(notifications, devices, gateway).deliver(notification)
 
     assert result.status is DeliveryStatus.FAILED
-    assert result.error == "INVALID_ARGUMENT"
+    assert result.receipts[0].error == "INVALID_ARGUMENT"
+    assert result.receipts[0].accepted is False
     assert len(gateway.sent) == 1
     assert _persisted(notifications, notification).status is DeliveryStatus.FAILED
 
@@ -199,7 +277,7 @@ def test_dead_token_is_pruned_and_never_retried(
     result = _service(notifications, devices, gateway).deliver(notification)
 
     assert result.status is DeliveryStatus.FAILED
-    assert result.pruned is True
+    assert result.receipts[0].pruned is True
     assert len(gateway.sent) == 1
     assert devices.list_devices(USER_ID) == ()
     assert _persisted(notifications, notification).status is DeliveryStatus.FAILED
@@ -220,7 +298,7 @@ def test_no_device_leaves_the_notification_pending(
     assert _persisted(notifications, notification).status is DeliveryStatus.PENDING
 
 
-def test_skips_a_newer_device_on_an_unconfigured_platform(
+def test_a_device_on_an_unconfigured_platform_is_skipped_not_failed(
     notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
 ) -> None:
     _register(devices, ANDROID, "android-reachable", minutes_ago=5)
@@ -231,6 +309,7 @@ def test_skips_a_newer_device_on_an_unconfigured_platform(
     result = _service(notifications, devices, android).deliver(notification)
 
     assert result.status is DeliveryStatus.SENT
+    assert result.accepted == 1
     assert android.sent[0].token == "android-reachable"
 
 
@@ -279,7 +358,7 @@ def test_a_failed_status_write_does_not_fail_the_delivery(
     )
 
     assert result.status is DeliveryStatus.SENT
-    assert result.message_id == "message-1"
+    assert result.receipts[0].message_id == "message-1"
 
 
 def test_message_payload_flattens_scalars_and_omits_unrenderable_values(
@@ -341,7 +420,9 @@ def test_rejects_an_impossible_retry_budget(
     kwargs: dict[str, object],
 ) -> None:
     with pytest.raises(ValueError):
-        PushDelivery(notifications, devices, {}, **kwargs)  # type: ignore[arg-type]
+        PushDelivery(  # type: ignore[arg-type]
+            notifications, devices, {}, InMemoryPushReceiptStore(), **kwargs
+        )
 
 
 def _frame_size(message: PushMessage) -> int:

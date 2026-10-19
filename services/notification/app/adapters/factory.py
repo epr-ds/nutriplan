@@ -27,6 +27,7 @@ from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRe
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
+from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.adapters.keys import NotificationKeys
 from app.adapters.push_gateways import ApnsPushGateway, FcmPushGateway
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
@@ -34,6 +35,7 @@ from app.adapters.redis_device_token_repository import RedisDeviceTokenRepositor
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
+from app.adapters.redis_push_receipt_store import RedisPushReceiptStore
 from app.adapters.retention import RetentionPolicy
 from app.application.devices import DeviceRegistrationService
 from app.application.notification_recorder import NotificationRecorder
@@ -48,6 +50,7 @@ from app.domain.repositories import (
     NotificationRepository,
     OrderProgressStore,
     PreferencesRepository,
+    PushReceiptStore,
 )
 
 logger = logging.getLogger(__name__)
@@ -174,12 +177,31 @@ def build_push_gateways(settings: Settings | None = None) -> dict[DevicePlatform
     return gateways
 
 
+def build_push_receipt_store(settings: Settings | None = None) -> PushReceiptStore:
+    """Return the per-device receipt store backing fan-out (NTF-305).
+
+    It follows ``NOTIFICATION_REDIS_URL`` onto the same backend as the notifications, because
+    a receipt living somewhere the notification does not is worse than no receipt: the fan-out
+    would think a device had already been tried (or not) based on state no other replica can
+    see, and either skip a device or send it a second push.
+    """
+    settings = settings or default_settings
+    url = settings.redis_url.strip()
+    if url:
+        return RedisPushReceiptStore.from_url(
+            url,
+            keys=NotificationKeys(namespace=settings.redis_namespace),
+            ttl_seconds=settings.feed_ttl_seconds,
+        )
+    return InMemoryPushReceiptStore(ttl_seconds=settings.feed_ttl_seconds)
+
+
 def build_push_delivery(
     settings: Settings | None = None,
     *,
     notifications: NotificationRepository,
 ) -> PushDelivery | None:
-    """Assemble the send-and-record path over the *caller's* notification store (NTF-303).
+    """Assemble the send-and-record path over the *caller's* notification store (NTF-303/305).
 
     The repository is passed in rather than rebuilt because the in-process store keeps its
     state inside the object: a delivery path reading a different instance than the recorder
@@ -194,6 +216,7 @@ def build_push_delivery(
         notifications,
         DeviceRegistrationService(build_device_token_repository(settings)),
         gateways,
+        build_push_receipt_store(settings),
         max_attempts=settings.push_max_attempts,
         backoff_seconds=settings.push_retry_backoff_ms / 1000.0,
         backoff_multiplier=settings.push_retry_multiplier,
