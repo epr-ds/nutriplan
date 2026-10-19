@@ -153,7 +153,7 @@ class AddMealScreenTest {
         val calls = Calls()
         compose.setContent {
             // Hosted with real state, as in the app: a controlled field only shows what the state holds.
-            var state by remember { mutableStateOf(form()) }
+            var state by remember { mutableStateOf(form(servings = "")) }
             NutriPlanTheme {
                 AddMealScreenContent(
                     state = state,
@@ -168,10 +168,10 @@ class AddMealScreenTest {
             }
         }
 
-        compose.onNodeWithTag(AddMealTestTags.SERVINGS).performTextInput("2")
+        compose.onNodeWithTag(AddMealTestTags.SERVINGS).performTextInput("2.5")
 
-        compose.onNodeWithTag(AddMealTestTags.SERVINGS).assert(hasText("12"))
-        assertEquals("12", calls.servings.lastOrNull())
+        compose.onNodeWithTag(AddMealTestTags.SERVINGS).assert(hasText("2.5"))
+        assertEquals("2.5", calls.servings.lastOrNull())
     }
 
     @Test
