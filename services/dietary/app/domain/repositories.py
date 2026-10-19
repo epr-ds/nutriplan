@@ -88,6 +88,7 @@ class RecipeRepository(ABC):
         pagination is stable and reproducible.
         """
 
+
 class FavoriteRepository(ABC):
     """Persistence boundary for a user's favorite recipes (DPL-607).
 

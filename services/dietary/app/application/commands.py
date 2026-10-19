@@ -115,6 +115,7 @@ class SearchRecipesQuery:
     page: int = 1
     limit: int = 20
 
+
 @dataclass(frozen=True)
 class ListFavoritesQuery:
     """Inputs for the *list favorite recipes* use case (DPL-607).

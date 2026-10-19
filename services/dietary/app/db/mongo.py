@@ -203,6 +203,7 @@ def ensure_recipes_collection(db: Database) -> Collection:
     coll.create_index([("dietaryTypes", ASCENDING)], name="dietaryTypes")
     return coll
 
+
 def ensure_favorites_collection(db: Database) -> Collection:
     """Idempotently install the favorites validator and indexes (safe to call on every boot).
 
