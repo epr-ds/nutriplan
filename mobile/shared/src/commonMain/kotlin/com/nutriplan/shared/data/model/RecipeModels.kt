@@ -126,7 +126,7 @@ data class AIRecommendationResponse(
 /** A recommended recipe with context. */
 @Serializable
 data class RecommendedRecipe(
-    val recipe: RecipeResponse,
+    val recipe: Recipe,
     val reason: String,
     val mealType: String,
 )
