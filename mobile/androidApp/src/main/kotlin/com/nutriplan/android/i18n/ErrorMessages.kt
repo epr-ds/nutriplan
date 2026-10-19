@@ -6,7 +6,30 @@ import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.onboarding.OnboardingError
 import com.nutriplan.shared.planning.MealPlanDetailError
+import com.nutriplan.shared.planning.MealPlanFormError
 import com.nutriplan.shared.planning.MealPlanListError
+import com.nutriplan.shared.planning.PlanFieldError
+
+/** DPL-503: inline message for one invalid field of the create-plan form. */
+@StringRes
+fun PlanFieldError.messageRes(): Int = when (this) {
+    PlanFieldError.NAME_REQUIRED -> R.string.error_plan_name_required
+    PlanFieldError.START_DATE_REQUIRED -> R.string.error_plan_start_required
+    PlanFieldError.END_DATE_REQUIRED -> R.string.error_plan_end_required
+    PlanFieldError.END_BEFORE_START -> R.string.error_plan_end_before_start
+    PlanFieldError.CALORIES_REQUIRED -> R.string.error_plan_calories_required
+    PlanFieldError.CALORIES_INVALID -> R.string.error_plan_calories_invalid
+}
+
+/** DPL-503: message for a create-plan request that failed. */
+@StringRes
+fun MealPlanFormError.messageRes(): Int = when (this) {
+    MealPlanFormError.NETWORK -> R.string.error_plan_form_network
+    MealPlanFormError.SERVER_PROBLEM -> R.string.error_plan_form_server
+    MealPlanFormError.SESSION_EXPIRED -> R.string.error_plan_form_session_expired
+    MealPlanFormError.REJECTED -> R.string.error_plan_form_rejected
+    MealPlanFormError.UNKNOWN -> R.string.error_plan_form_unknown
+}
 
 /**
  * DPL-501: message for a failed meal plan load. When [hasSavedPlans] the list is still shown from

@@ -141,4 +141,26 @@
     <string name="error_plan_detail_not_found">This meal plan no longer exists.</string>
     <string name="error_plan_detail_session_expired">Your session has expired. Please sign in again.</string>
     <string name="error_plan_detail_unknown">Something went wrong loading this meal plan. Please try again.</string>
+
+    <!-- Create meal plan (DPL-503) -->
+    <string name="plan_form_title">New meal plan</string>
+    <string name="plan_form_name_label">Plan name</string>
+    <string name="plan_form_start_label">Start date</string>
+    <string name="plan_form_end_label">End date</string>
+    <string name="plan_form_calories_label">Daily calories</string>
+    <string name="plan_form_calories_suffix">kcal</string>
+    <string name="plan_form_calories_prefilled">Filled in from your dietary preferences. You can change it.</string>
+    <string name="plan_form_submit">Create plan</string>
+    <string name="cd_plan_form_saving">Creating the plan</string>
+    <string name="error_plan_name_required">Give your plan a name.</string>
+    <string name="error_plan_start_required">Choose a start date.</string>
+    <string name="error_plan_end_required">Choose an end date.</string>
+    <string name="error_plan_end_before_start">The end date can\'t be before the start date.</string>
+    <string name="error_plan_calories_required">Enter a daily calorie target.</string>
+    <string name="error_plan_calories_invalid">Enter a whole number greater than 0.</string>
+    <string name="error_plan_form_network">You\'re offline. Connect to the internet to create a plan.</string>
+    <string name="error_plan_form_server">The server had a problem. Please try again later.</string>
+    <string name="error_plan_form_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_plan_form_rejected">The server didn\'t accept these details. Please check them and try again.</string>
+    <string name="error_plan_form_unknown">Something went wrong creating the plan. Please try again.</string>
 </resources>
