@@ -15,7 +15,8 @@ The pipeline, in order
 3. **Check the order has not already moved past it.** This is the out-of-order guard.
 4. **Record**, through :class:`~app.application.notification_recorder.NotificationRecorder`,
    which applies the user's preferences (NTF-104) and the replay guard (NTF-103).
-5. **Advance the mark.**
+5. **Push**, if the stored copy still targets ``PUSH`` after the preference gate (NTF-303).
+6. **Advance the mark.**
 
 Why the guard reads before the write and the mark moves after it
 ----------------------------------------------------------------
@@ -38,6 +39,13 @@ is a *stale* status being announced, and that is prevented by the mark being mon
 store's ``advance`` is a compare-and-set, so the mark can only ever end up at the furthest
 status either worker saw.
 
+The push send sits between the write and the mark for the same reason the write does: if the
+process dies after the push but before the mark, the redelivery is deduplicated and advances
+without sending again; if the mark moved first, a crash before the send would make the
+redelivery look stale and the nudge would never be attempted. Delivery never raises -- a
+provider refusal is recorded as ``FAILED`` -- so a bad provider cannot turn a successfully
+recorded notification into a dead-lettered event.
+
 What lands in the payload
 -------------------------
 The feed API (NTF-105) publishes ``type`` and ``payload`` and no title or body: rendering is
@@ -59,6 +67,7 @@ from datetime import datetime
 from typing import Any
 
 from app.application.notification_recorder import NotificationRecorder, RecordResult
+from app.application.push_delivery import PushDelivery
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.domain.order_status import (
@@ -99,10 +108,12 @@ class OrderStatusConsumer:
         progress: OrderProgressStore,
         *,
         channels: tuple[NotificationChannel, ...] = DEFAULT_CHANNELS,
+        push: PushDelivery | None = None,
     ) -> None:
         self._recorder = recorder
         self._progress = progress
         self._channels = channels
+        self._push = push
 
     # -- reading the event -------------------------------------------------------
 
@@ -227,6 +238,12 @@ class OrderStatusConsumer:
 
         result = self._recorder.record(notification, event_id=envelope.event_id)
         self._log_outcome(result, envelope=envelope, order_id=order_id, status=status)
+
+        # A replay or a preference-suppressed copy has nothing to push; only the delivery
+        # that actually wrote the record does. ``deliver`` itself checks the narrowed channel
+        # set, because the preference gate may have kept IN_APP and dropped PUSH.
+        if result.recorded and result.notification is not None and self._push is not None:
+            self._push.deliver(result.notification)
 
         # Only after the recorder has had its say. A mark advanced before this line would,
         # on a failed write, convince the redelivery that the event was stale. See the module

@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.application.push_delivery import PushDelivery
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.events.envelope import EventEnvelope
@@ -69,9 +70,11 @@ class MealReminderConsumer:
         recorder: Any,  # NotificationRecorder
         *,
         channels: tuple[NotificationChannel, ...] = DEFAULT_CHANNELS,
+        push: PushDelivery | None = None,
     ) -> None:
         self._recorder = recorder
         self._channels = channels
+        self._push = push
 
     def handle(self, envelope: EventEnvelope) -> None:
         """Handle a meal reminder event.
@@ -123,6 +126,8 @@ class MealReminderConsumer:
                 meal_data.meal_id,
                 user_id,
             )
+            if result.notification is not None and self._push is not None:
+                self._push.deliver(result.notification)
         elif result.duplicate:
             logger.info(
                 "meal_reminder.due duplicate meal_id=%s",

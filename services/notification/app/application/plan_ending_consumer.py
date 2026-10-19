@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.application.push_delivery import PushDelivery
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.events.envelope import EventEnvelope
@@ -67,9 +68,11 @@ class PlanEndingConsumer:
         recorder: Any,  # NotificationRecorder
         *,
         channels: tuple[NotificationChannel, ...] = DEFAULT_CHANNELS,
+        push: PushDelivery | None = None,
     ) -> None:
         self._recorder = recorder
         self._channels = channels
+        self._push = push
 
     def handle(self, envelope: EventEnvelope) -> None:
         """Handle a plan ending event.
@@ -90,6 +93,11 @@ class PlanEndingConsumer:
                 envelope.event_id,
                 envelope.type,
             )
+
+    def _push_notification(self, result: Any) -> None:
+        """Send the push for a record this delivery just wrote (NTF-303)."""
+        if self._push is not None and result.notification is not None:
+            self._push.deliver(result.notification)
 
     def _handle_ending_soon(self, envelope: EventEnvelope) -> None:
         """Create a notification for an upcoming plan ending."""
@@ -120,6 +128,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.soon duplicate plan_id=%s",
@@ -161,6 +170,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.ended duplicate plan_id=%s",
@@ -202,6 +212,7 @@ class PlanEndingConsumer:
                 plan_data.plan_id,
                 user_id,
             )
+            self._push_notification(result)
         elif result.duplicate:
             logger.info(
                 "plan_ending.renewal duplicate plan_id=%s",

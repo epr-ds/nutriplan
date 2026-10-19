@@ -1,13 +1,12 @@
-"""Apple Push Notification service adapter (NTF-302).
+"""Apple Push Notification service adapter (NTF-301).
 
-This module provides the APNs push notification adapter that sends push notifications
-to iOS devices via the Apple Push Notification service.
+Sends one message to one iOS device token through APNs' HTTP/2 API. Like the FCM adapter this
+is **synchronous**: delivery runs inside the service's plain event loop, and an async client
+would add lifecycle and event-loop bridging without making any send faster.
 
-The adapter handles:
-- Authentication with APNs using JWT (JSON Web Token)
-- Sending messages to device tokens
-- Handling APNs error responses and retry logic
-- Deep link payload construction
+The signing step is still a placeholder -- NTF-705 supplies the provider key -- but the JWT
+shape, the sandbox/production switch, and the error classification are real, because those are
+what NTF-303's receipt tracking depends on.
 """
 
 from __future__ import annotations
@@ -15,7 +14,9 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,15 +24,41 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# APNs endpoint
-APNS_ENDPOINT = "https://api.push.apple.com/3/{device_token}"
+APNS_PRODUCTION_URL = "https://api.push.apple.com"
+APNS_SANDBOX_URL = "https://api.sandbox.push.apple.com"
 
-# APNs error codes that indicate permanent failures (no retry)
-PERMANENT_APNS_ERRORS = {
-    "BadDeviceToken": "bad device token",
-    "DeviceTokenNotForTopic": "device token not for topic",
-    "Unregistered": "unregistered device",
-}
+INVALID_TOKEN_APNS_ERRORS = frozenset({"BadDeviceToken", "DeviceTokenNotForTopic", "Unregistered"})
+"""Codes that mean the *address* is gone, so the registration should be pruned."""
+
+PERMANENT_APNS_ERRORS = frozenset(
+    {
+        "BadCollapseId",
+        "BadExpirationDate",
+        "BadMessageId",
+        "BadPriority",
+        "BadTopic",
+        "DeviceTokenNotForTopic",
+        "DuplicateHeaders",
+        "MissingDeviceToken",
+        "MissingTopic",
+        "PayloadEmpty",
+        "PayloadTooLarge",
+        "TopicDisallowed",
+        "BadCertificate",
+        "BadCertificateEnvironment",
+        "Forbidden",
+        "InvalidProviderToken",
+        "MissingProviderToken",
+        "BadPath",
+        "MethodNotAllowed",
+        *INVALID_TOKEN_APNS_ERRORS,
+    }
+)
+"""Refusals a retry cannot change. Transient codes (``ServiceUnavailable``, ``InternalServerError``,
+``TooManyRequests``) are left out and retried by NTF-303."""
+
+REFRESH_TOKEN_ERRORS = frozenset({"ExpiredProviderToken", "InvalidProviderToken"})
+"""A stale provider JWT; drop it so the next attempt signs a fresh one."""
 
 
 @dataclass(frozen=True)
@@ -42,6 +69,7 @@ class APNsConfig:
     team_id: str
     auth_key: bytes  # PEM-encoded private key
     bundle_id: str
+    use_sandbox: bool = False
     timeout: float = 10.0
 
 
@@ -62,39 +90,36 @@ class APNsAdapter:
 
     def __init__(self, config: APNsConfig) -> None:
         self._config = config
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx.Client | None = None
         self._access_token: str | None = None
         self._token_expiry: float = 0
 
-    async def start(self) -> None:
-        """Initialize the HTTP client and fetch access token."""
-        self._client = httpx.AsyncClient(
-            base_url="https://api.push.apple.com",
+    def start(self) -> None:
+        """Initialize the HTTP client and fetch a provider JWT (idempotent)."""
+        if self._client is not None:
+            return
+        base_url = APNS_SANDBOX_URL if self._config.use_sandbox else APNS_PRODUCTION_URL
+        self._client = httpx.Client(
+            base_url=base_url,
             timeout=self._config.timeout,
-            headers={
-                "apns-topic": self._config.bundle_id,
-            },
+            headers={"apns-topic": self._config.bundle_id},
         )
-        await self._refresh_token()
+        self._refresh_token()
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Close the HTTP client."""
         if self._client is not None:
-            await self._client.aclose()
+            self._client.close()
             self._client = None
 
-    async def _refresh_token(self) -> None:
-        """Fetch a new JWT for APNs authentication."""
-        # Create JWT header
-        header = {
-            "alg": "ES256",
-            "kid": self._config.key_id,
-        }
-
-        # Create JWT payload
+    def _refresh_token(self) -> None:
+        """Create the short-lived JWT APNs accepts as a bearer token."""
+        issued_at = int(time.time())
+        header = {"alg": "ES256", "kid": self._config.key_id}
         payload = {
             "iss": self._config.team_id,
-            "iat": int(time.time()),
+            "iat": issued_at,
+            "exp": issued_at + 1800,
         }
 
         def b64encode(data: bytes) -> str:
@@ -103,41 +128,31 @@ class APNsAdapter:
         header_b64 = b64encode(json.dumps(header, separators=(",", ":")).encode())
         payload_b64 = b64encode(json.dumps(payload, separators=(",", ":")).encode())
         signing_input = f"{header_b64}.{payload_b64}"
-
-        # Sign with private key (simplified - in production, use cryptography library)
         signature = self._sign(signing_input.encode())
 
         self._access_token = f"{signing_input}.{signature}"
-        self._token_expiry = int(time.time()) + 1800  # JWTs valid for 30 minutes
+        self._token_expiry = issued_at + 1800
 
     def _sign(self, data: bytes) -> str:
         """Sign data with the APNs private key.
 
-        In production, use the cryptography library:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import ec
-
-        private_key = serialization.load_pem_private_key(self._config.auth_key, password=None)
-        signature = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
-        return base64.urlsafe_b64encode(signature).rstrip(b"=").decode("ascii")
+        The real implementation loads ``self._config.auth_key`` with ``cryptography`` and signs
+        with ECDSA/P-256; NTF-705 owns landing the key, so this returns a placeholder until then.
         """
-        # Placeholder - in production, implement proper signing
         return base64.urlsafe_b64encode(b"placeholder_signature").rstrip(b"=").decode("ascii")
 
-    async def send(self, message: APNsMessage) -> str:
+    def send(self, message: APNsMessage) -> str:
         """Send a push notification to a device token.
 
-        Returns the APNs message ID on success.
-        Raises APNsError on permanent failures.
+        Returns the APNs message ID on success and raises :class:`APNsError` on refusal.
         """
         if self._client is None:
-            raise RuntimeError("APNsAdapter not started")
+            self.start()
 
         if self._access_token is None or time.time() > self._token_expiry:
-            await self._refresh_token()
+            self._refresh_token()
 
-        # Build APNs payload
-        apns_payload = {
+        apns_payload: dict[str, Any] = {
             "aps": {
                 "alert": {
                     "title": message.payload.get("title", ""),
@@ -158,19 +173,19 @@ class APNsAdapter:
         if message.thread_id:
             apns_payload["aps"]["thread-id"] = message.thread_id
 
-        # Add custom data
         for key, value in message.payload.items():
-            if key != "title" and key != "body":
+            if key not in {"title", "body"}:
                 apns_payload[key] = value
 
         headers = {
             "Authorization": f"Bearer {self._access_token}",
             "apns-topic": self._config.bundle_id,
-            "apns-id": message.payload.get("id", __import__("uuid").uuid4().hex),
+            "apns-id": str(message.payload.get("id") or uuid.uuid4().hex),
         }
 
+        assert self._client is not None
         try:
-            response = await self._client.post(
+            response = self._client.post(
                 f"/3/{message.token}",
                 json=apns_payload,
                 headers=headers,
@@ -183,30 +198,43 @@ class APNsAdapter:
             )
             return response.headers.get("apns-id", "")
         except httpx.HTTPStatusError as exc:
-            error_data = exc.response.json() if exc.response.text else {}
-            error_code = error_data.get("reason", "UNKNOWN")
+            error_data = _json_or_empty(exc.response)
+            error_code = str(error_data.get("reason", "UNKNOWN"))
+
+            if error_code in REFRESH_TOKEN_ERRORS:
+                self._access_token = None
+                self._token_expiry = 0
 
             if error_code in PERMANENT_APNS_ERRORS:
                 logger.warning(
                     "apns.permanent_failure token=%s error=%s",
-                    message.token,
+                    message.token[-8:],
                     error_code,
                 )
-                raise APNsError(error_code, error_data) from exc
-            else:
-                logger.warning(
-                    "apns.temporary_failure token=%s error=%s",
-                    message.token,
+                raise APNsError(
                     error_code,
-                )
-                raise APNsError(error_code, error_data, retryable=True) from exc
-        except httpx.HTTPError as exc:
-            logger.error(
-                "apns.http_error token=%s error=%s",
-                message.token,
-                exc,
+                    error_data,
+                    dead_token=error_code in INVALID_TOKEN_APNS_ERRORS,
+                ) from exc
+
+            logger.warning(
+                "apns.temporary_failure token=%s error=%s",
+                message.token[-8:],
+                error_code,
             )
+            raise APNsError(error_code, error_data, retryable=True) from exc
+        except httpx.HTTPError as exc:
+            logger.error("apns.http_error token=%s error=%s", message.token[-8:], exc)
             raise APNsError("HTTP_ERROR", {"message": str(exc)}, retryable=True) from exc
+
+
+def _json_or_empty(response: httpx.Response) -> dict[str, Any]:
+    """The provider's error body, which is sometimes not JSON at all (a gateway page)."""
+    try:
+        body = response.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}
 
 
 class APNsError(Exception):
@@ -217,33 +245,34 @@ class APNsError(Exception):
         code: str,
         details: dict[str, Any] | None = None,
         retryable: bool = False,
+        dead_token: bool = False,
     ) -> None:
         self.code = code
         self.details = details or {}
-        self.retryable = retryable
+        self.dead_token = dead_token
+        self.retryable = retryable and not dead_token
         super().__init__(f"APNs error {code}: {details}")
 
 
 def build_apns_adapter(settings: Any) -> APNsAdapter:
     """Build an APNs adapter from settings.
 
-    Settings must have:
-    - apns_key_id: Apple Key ID
-    - apns_team_id: Apple Team ID
-    - apns_auth_key: Path to or content of auth key PEM file
-    - apns_bundle_id: Apple bundle ID
+    ``apns_private_key`` is a SecretStr holding either the PEM content or a path to it.
     """
-    import os
-
-    auth_key = settings.apns_auth_key
-    if isinstance(auth_key, str) and os.path.exists(auth_key):
-        with open(auth_key, "rb") as f:
-            auth_key = f.read()
+    raw = settings.apns_private_key
+    auth_key = raw.get_secret_value() if hasattr(raw, "get_secret_value") else raw
+    if isinstance(auth_key, str):
+        if os.path.exists(auth_key):
+            with open(auth_key, "rb") as handle:
+                auth_key = handle.read()
+        else:
+            auth_key = auth_key.encode()
 
     config = APNsConfig(
         key_id=settings.apns_key_id,
         team_id=settings.apns_team_id,
         auth_key=auth_key,
         bundle_id=settings.apns_bundle_id,
+        use_sandbox=settings.apns_use_sandbox,
     )
     return APNsAdapter(config)

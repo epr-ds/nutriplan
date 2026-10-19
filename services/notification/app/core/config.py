@@ -112,6 +112,14 @@ class Settings(BaseSettings):
     apns_bundle_id: str = "mx.nutriplan.app"
     apns_private_key: SecretStr = SecretStr("")
     apns_use_sandbox: bool = True
+    # Delivery retries (NTF-303). A provider failure that is explicitly transient -- an
+    # unavailable service, a throttle, a quota -- is retried in-process with exponential
+    # backoff before the notification is marked FAILED. The budget is deliberately small and
+    # is counted in *attempts*, not retries: a push is a nudge, and holding an event handler
+    # for a provider outage helps nobody. Permanent refusals and dead tokens are never retried.
+    push_max_attempts: int = 3
+    push_retry_backoff_ms: int = 200
+    push_retry_multiplier: float = 2.0
 
     # Access-token verification (NTF-105, NTF-702). The in-app feed API is a resource server:
     # it verifies RS256 tokens minted by Identity against its published JWKS, so iss/aud must
