@@ -20,7 +20,7 @@ import com.nutriplan.android.a11y.hasLiveRegion
 import com.nutriplan.android.screen.plans.MealPlanListScreenContent
 import com.nutriplan.android.screen.plans.MealPlanListTestTags
 import com.nutriplan.android.ui.theme.NutriPlanTheme
-import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.MealPlanSummary
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.MealPlanListUiState
 import org.junit.Assert.assertEquals
@@ -45,14 +45,12 @@ class MealPlanListScreenTest {
 
     private fun str(@StringRes id: Int): String = context.getString(id)
 
-    private fun plan(id: String) = MealPlan(
+    private fun plan(id: String) = MealPlanSummary(
         id = id,
         name = "Plan $id",
-        userId = "user-1",
         startDate = "2026-10-01",
         endDate = "2026-10-07",
-        targetCalories = 2000,
-        status = "ACTIVE",
+        status = "active",
     )
 
     private fun loaded(vararg ids: String, error: MealPlanListError? = null) = MealPlanListUiState(
@@ -101,6 +99,21 @@ class MealPlanListScreenTest {
 
         compose.onNodeWithText("Plan b").performClick()
         assertEquals("b", opened)
+    }
+
+    @Test
+    fun `a plan card shows its dates and status in plain language`() {
+        render(loaded("a"))
+
+        compose.onNodeWithText("Thursday, October 1, 2026 to Wednesday, October 7, 2026").assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.plan_status_active)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unknown status is shown as sent instead of hidden`() {
+        render(MealPlanListUiState(plans = listOf(plan("a").copy(status = "archived")), isLoading = false))
+
+        compose.onNodeWithText("archived").assertIsDisplayed()
     }
 
     @Test

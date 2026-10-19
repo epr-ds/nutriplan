@@ -38,8 +38,12 @@ class BearerTokenRefresher(private val authRepository: AuthRepository) {
         val response = try {
             authRepository.refreshToken(staleRefreshToken)
         } catch (error: Exception) {
-            authRepository.clearTokens()
-            SessionEvents.emitSignedOut()
+            // A connection that dropped mid-refresh says nothing about the session: keep it, so the
+            // user is not signed out just because the network failed. Only a server rejection ends it.
+            if (error.toApiFailure() != ApiFailure.OFFLINE && !error.isTransportFailure()) {
+                authRepository.clearTokens()
+                SessionEvents.emitSignedOut()
+            }
             throw error
         }
         authRepository.updateTokens(response.accessToken, response.refreshToken)

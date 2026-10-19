@@ -2,78 +2,116 @@ package com.nutriplan.shared.data.local
 
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.model.NutritionalInfo
+import com.nutriplan.shared.data.model.NutritionalSummary
 import com.nutriplan.shared.data.model.PlanMeal
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import com.nutriplan.shared.data.model.PlanMealRecipe
 import kotlinx.serialization.json.Json
 
 /**
- * Offline cache of meal plans backed by SQLDelight.
+ * On-device read cache of meal plans, so the app can show what it last received when the server
+ * cannot be reached.
  *
- * Plans written locally are stored with `synced = false` until [markSynced] is called after
- * the server accepted them; plans fetched from the server are stored with `synced = true`.
+ * The list endpoint only returns summaries, so a plan is cached in two levels: a summary (from the
+ * list) and, once the plan has been opened, its detail (target, meals, nutrition). [getPlan] returns
+ * only plans whose detail was cached.
  */
 class MealPlanCache(private val database: NutriPlanDatabase) {
 
     private val queries = database.mealPlanQueries
-    private val preferencesSerializer = ListSerializer(String.serializer())
 
-    /** All cached plans, newest start date first, with their meals. */
-    fun getPlans(): List<MealPlan> =
-        queries.selectAllPlans(::toPlan).executeAsList().map { it.withMeals() }
+    /** Tolerant on read: a cached blob written by an older app version must never crash the app. */
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
-    /** A single cached plan with its meals, or null if it is not cached. */
+    /** All cached plan summaries, newest start date first. */
+    fun getPlans(): List<MealPlanSummary> =
+        queries.selectAllPlans { id, name, startDate, endDate, status ->
+            MealPlanSummary(id = id, name = name, startDate = startDate, endDate = endDate, status = status)
+        }.executeAsList()
+
+    /** A plan with its meals, or null if it is not cached or only its summary is. */
     fun getPlan(id: String): MealPlan? =
-        queries.selectPlanById(id, ::toPlan).executeAsOneOrNull()?.withMeals()
-
-    /** Plans with local changes that still have to be sent to the server. */
-    fun getUnsyncedPlans(): List<MealPlan> =
-        queries.selectUnsyncedPlans(::toPlan).executeAsList().map { it.withMeals() }
-
-    /** Ids of plans that mirror the server (no pending local changes). */
-    fun getSyncedPlanIds(): List<String> = queries.selectSyncedPlanIds().executeAsList()
-
-    /** Insert or replace [plan] and all its meals atomically. */
-    fun upsert(plan: MealPlan, synced: Boolean) {
-        database.transaction {
-            queries.deleteMealsForPlan(plan.id)
-            queries.upsertPlan(
-                id = plan.id,
-                name = plan.name,
-                description = plan.description,
-                user_id = plan.userId,
-                start_date = plan.startDate,
-                end_date = plan.endDate,
-                dietary_preferences = plan.dietaryPreferences?.let {
-                    Json.encodeToString(preferencesSerializer, it)
-                },
-                target_calories = plan.targetCalories?.toLong(),
-                status = plan.status,
-                created_at = plan.createdAt,
-                updated_at = plan.updatedAt,
-                synced = synced,
+        queries.selectDetailedPlanById(id) { planId, name, startDate, endDate, status, calorieTarget, summaryJson, _ ->
+            MealPlan(
+                id = planId,
+                name = name,
+                startDate = startDate,
+                endDate = endDate,
+                // Always set together with has_detail = 1 (upsertDetail), which this query requires.
+                dailyCalorieTarget = (calorieTarget ?: 0L).toInt(),
+                status = status,
+                meals = mealsFor(planId),
+                nutritionalSummary = summaryJson.decodeOrNull<NutritionalSummary>(),
             )
-            plan.meals.orEmpty().forEach { meal ->
-                queries.insertMeal(
-                    id = meal.id,
-                    plan_id = plan.id,
-                    recipe_id = meal.recipeId,
-                    recipe_name = meal.recipeName,
-                    meal_type = meal.mealType,
-                    scheduled_date = meal.scheduledDate,
-                    portion_size = meal.portionSize,
-                    calories = meal.calories?.toLong(),
+        }.executeAsOneOrNull()
+
+    /** Ids of every cached plan. */
+    fun getPlanIds(): List<String> = queries.selectPlanIds().executeAsList()
+
+    /** Insert or refresh summaries, leaving any cached detail of the same plans in place. */
+    fun upsertSummaries(plans: List<MealPlanSummary>) {
+        database.transaction {
+            plans.forEach { plan ->
+                queries.updateSummary(
+                    name = plan.name,
+                    start_date = plan.startDate,
+                    end_date = plan.endDate,
+                    status = plan.status,
+                    id = plan.id,
+                )
+                queries.insertSummaryIfMissing(
+                    id = plan.id,
+                    name = plan.name,
+                    start_date = plan.startDate,
+                    end_date = plan.endDate,
+                    status = plan.status,
                 )
             }
         }
     }
 
-    /** Mark a plan as accepted by the server. */
-    fun markSynced(id: String) {
-        queries.markPlanSynced(id)
+    /** Insert or replace a full [plan] and all its meals atomically. */
+    fun upsertPlan(plan: MealPlan) {
+        database.transaction {
+            queries.deleteMealsForPlan(plan.id)
+            queries.upsertDetail(
+                id = plan.id,
+                name = plan.name,
+                start_date = plan.startDate,
+                end_date = plan.endDate,
+                status = plan.status,
+                daily_calorie_target = plan.dailyCalorieTarget.toLong(),
+                nutritional_summary = plan.nutritionalSummary?.let { json.encodeToString(NutritionalSummary.serializer(), it) },
+            )
+            plan.meals.forEachIndexed { position, meal ->
+                queries.insertMeal(
+                    id = meal.id,
+                    plan_id = plan.id,
+                    position = position.toLong(),
+                    meal_type = meal.mealType,
+                    servings = meal.servings,
+                    day_index = meal.dayIndex?.toLong(),
+                    satisfaction_level = meal.satisfactionLevel?.toLong(),
+                    recipe = meal.recipe?.let { json.encodeToString(PlanMealRecipe.serializer(), it) },
+                    nutritional_info = meal.nutritionalInfo?.let { json.encodeToString(NutritionalInfo.serializer(), it) },
+                )
+            }
+        }
     }
 
-    /** Remove a plan and its meals. */
+    /** Forget a plan's cached meals and detail, keeping its summary (its detail is stale). */
+    fun invalidateDetail(id: String) {
+        database.transaction {
+            queries.deleteMealsForPlan(id)
+            queries.invalidateDetail(id)
+        }
+    }
+
+    /** Remove a plan entirely. */
     fun delete(id: String) {
         database.transaction {
             queries.deleteMealsForPlan(id)
@@ -89,49 +127,20 @@ class MealPlanCache(private val database: NutriPlanDatabase) {
         }
     }
 
-    private fun MealPlan.withMeals(): MealPlan = copy(meals = mealsFor(id))
-
     private fun mealsFor(planId: String): List<PlanMeal> =
-        queries.selectMealsForPlan(planId) { id, plan_id, recipe_id, recipe_name, meal_type,
-            scheduled_date, portion_size, calories ->
+        queries.selectMealsForPlan(planId) {
+            id, _, _, mealType, servings, dayIndex, satisfactionLevel, recipeJson, nutritionJson ->
             PlanMeal(
                 id = id,
-                planId = plan_id,
-                recipeId = recipe_id,
-                recipeName = recipe_name,
-                mealType = meal_type,
-                scheduledDate = scheduled_date,
-                portionSize = portion_size,
-                calories = calories?.toInt(),
+                mealType = mealType,
+                servings = servings,
+                dayIndex = dayIndex?.toInt(),
+                satisfactionLevel = satisfactionLevel?.toInt(),
+                recipe = recipeJson.decodeOrNull<PlanMealRecipe>(),
+                nutritionalInfo = nutritionJson.decodeOrNull<NutritionalInfo>(),
             )
         }.executeAsList()
 
-    @Suppress("LongParameterList", "UNUSED_PARAMETER")
-    private fun toPlan(
-        id: String,
-        name: String,
-        description: String?,
-        userId: String,
-        startDate: String,
-        endDate: String,
-        dietaryPreferences: String?,
-        targetCalories: Long?,
-        status: String,
-        createdAt: String?,
-        updatedAt: String?,
-        synced: Boolean,
-    ): MealPlan = MealPlan(
-        id = id,
-        name = name,
-        description = description,
-        userId = userId,
-        startDate = startDate,
-        endDate = endDate,
-        dietaryPreferences = dietaryPreferences?.let { Json.decodeFromString(preferencesSerializer, it) },
-        targetCalories = targetCalories?.toInt(),
-        meals = null,
-        status = status,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-    )
+    private inline fun <reified T> String?.decodeOrNull(): T? =
+        this?.let { runCatching { json.decodeFromString<T>(it) }.getOrNull() }
 }

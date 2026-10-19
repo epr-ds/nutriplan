@@ -47,6 +47,16 @@ fun mealTypeLabelRes(mealType: String): Int? = when (mealType.uppercase()) {
     else -> null
 }
 
+/** Localized name of a plan status as sent by the server; unknown statuses are shown as sent. */
+@StringRes
+fun planStatusLabelRes(status: String): Int? = when (status.lowercase()) {
+    "draft" -> R.string.plan_status_draft
+    "active" -> R.string.plan_status_active
+    "completed" -> R.string.plan_status_completed
+    "saved" -> R.string.plan_status_saved
+    else -> null
+}
+
 /**
  * IDN-902: maps the shared layer's stable error codes to localized Android string resources.
  *

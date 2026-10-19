@@ -231,10 +231,9 @@ class MainNavigationScreens(
         com.nutriplan.android.screen.plans.MealPlanDetailScreen(
             planId = planId,
             onBack = onBack,
-            // The add-meal flow (DPL-507) and plan editing (DPL-503) are not built yet; these open
-            // the recipe picker / plan form screens, which are still placeholders.
+            // The add-meal flow (DPL-507) is not built yet; this opens the recipe screen, which is
+            // still a placeholder.
             onAddMeal = { onNavigate(Route.RecipeSearch) },
-            onEditPlan = { onNavigate(Route.CreateMealPlan(planId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
         )
     }

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -21,7 +22,13 @@ import com.nutriplan.android.screen.plans.MealPlanDetailScreenContent
 import com.nutriplan.android.screen.plans.MealPlanDetailTestTags
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.NutrientProgress
+import com.nutriplan.shared.data.model.NutritionalInfo
+import com.nutriplan.shared.data.model.NutritionalProgress
+import com.nutriplan.shared.data.model.NutritionalSummary
+import com.nutriplan.shared.data.model.NutritionalTargets
 import com.nutriplan.shared.data.model.PlanMeal
+import com.nutriplan.shared.data.model.PlanMealRecipe
 import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanDetailUiState
 import com.nutriplan.shared.planning.groupMealsByDay
@@ -33,7 +40,7 @@ import org.robolectric.annotation.Config
 
 /**
  * DPL-505: the plan detail renders meals by day and meal type, with nutrition per meal, and exposes
- * the add/edit entry points accessibly. Runs on the JVM via Robolectric.
+ * the add-meal entry point accessibly. Runs on the JVM via Robolectric.
  */
 @RunWith(AndroidJUnit4::class)
 // A tall viewport so every lazily composed list item is on screen.
@@ -49,49 +56,53 @@ class MealPlanDetailScreenTest {
 
     private fun meal(
         id: String,
-        date: String,
+        dayIndex: Int?,
         type: String,
         calories: Int? = null,
-        portion: Double? = null,
+        servings: Double = 1.0,
+        recipe: PlanMealRecipe? = null,
+        macros: Boolean = false,
     ) = PlanMeal(
         id = id,
-        planId = "p1",
-        recipeId = "r-$id",
-        recipeName = "Recipe $id",
         mealType = type,
-        scheduledDate = date,
-        calories = calories,
-        portionSize = portion,
+        servings = servings,
+        dayIndex = dayIndex,
+        recipe = recipe,
+        nutritionalInfo = if (calories != null || macros) {
+            NutritionalInfo(
+                calories = calories,
+                protein = if (macros) 20.5 else null,
+                carbs = if (macros) 30.0 else null,
+                fat = if (macros) 10.0 else null,
+            )
+        } else {
+            null
+        },
     )
 
-    private fun loaded(
-        vararg meals: PlanMeal,
-        error: MealPlanDetailError? = null,
-    ): MealPlanDetailUiState {
-        val plan = MealPlan(
-            id = "p1",
-            name = "Week 40",
-            userId = "user-1",
-            startDate = "2026-10-01",
-            endDate = "2026-10-07",
-            targetCalories = 2000,
-            meals = meals.toList(),
-            status = "ACTIVE",
-        )
-        return MealPlanDetailUiState(
-            plan = plan,
-            days = groupMealsByDay(meals.toList()),
-            isLoading = false,
-            error = error,
-        )
-    }
+    private fun plan(vararg meals: PlanMeal, summary: NutritionalSummary? = null) = MealPlan(
+        id = "p1",
+        name = "Week 40",
+        startDate = "2026-10-01",
+        endDate = "2026-10-07",
+        dailyCalorieTarget = 2000,
+        status = "active",
+        meals = meals.toList(),
+        nutritionalSummary = summary,
+    )
+
+    private fun loaded(plan: MealPlan, error: MealPlanDetailError? = null) = MealPlanDetailUiState(
+        plan = plan,
+        days = groupMealsByDay(plan.startDate, plan.meals),
+        isLoading = false,
+        error = error,
+    )
 
     private fun render(
         state: MealPlanDetailUiState,
         onRetry: () -> Unit = {},
         onBack: () -> Unit = {},
         onAddMeal: () -> Unit = {},
-        onEditPlan: () -> Unit = {},
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -101,7 +112,6 @@ class MealPlanDetailScreenTest {
                     onRetry = onRetry,
                     onBack = onBack,
                     onAddMeal = onAddMeal,
-                    onEditPlan = onEditPlan,
                 )
             }
         }
@@ -116,83 +126,114 @@ class MealPlanDetailScreenTest {
     }
 
     @Test
-    fun `meals are shown under their day and meal type`() {
+    fun `days are numbered and dated from the plan start, with meals under their meal type`() {
         render(
             loaded(
-                meal("1", "2026-10-01", "BREAKFAST", calories = 300, portion = 1.0),
-                meal("2", "2026-10-01", "LUNCH", calories = 600, portion = 1.5),
-                meal("3", "2026-10-02", "DINNER", calories = 700),
+                plan(
+                    meal("1", 0, "breakfast", calories = 300),
+                    meal("2", 0, "lunch", calories = 600),
+                    meal("3", 1, "dinner", calories = 700),
+                ),
             ),
         )
 
         compose.onNodeWithText("Week 40").assertIsDisplayed()
-        compose.onNodeWithText("Thursday, October 1, 2026").assertIsDisplayed()
+        compose.onNodeWithText("Day 1 · Thursday, October 1, 2026").assertIsDisplayed()
+        compose.onNodeWithText("Day 2 · Friday, October 2, 2026").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(str(R.string.meal_type_breakfast)).assertIsDisplayed()
-        compose.onNodeWithText("Recipe 1").assertIsDisplayed()
-        compose.onNodeWithText("Recipe 2").assertIsDisplayed()
-        compose.onNodeWithText("Friday, October 2, 2026").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Recipe 3").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.meal_type_lunch)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.meal_type_dinner)).assertIsDisplayed()
+        assertEquals(3, compose.onAllNodesWithTag(MealPlanDetailTestTags.MEAL_CARD).fetchSemanticsNodes().size)
     }
 
     @Test
-    fun `meal cards show calories and portion, and the day shows its total`() {
+    fun `meal cards show servings, calories and macros, and the day shows its total`() {
         render(
             loaded(
-                meal("1", "2026-10-01", "BREAKFAST", calories = 300, portion = 1.0),
-                meal("2", "2026-10-01", "LUNCH", calories = 600, portion = 1.5),
+                plan(
+                    meal("1", 0, "breakfast", calories = 300, servings = 1.5, macros = true),
+                    meal("2", 0, "lunch", calories = 600),
+                ),
             ),
         )
 
         compose.onNodeWithText(str(R.string.plan_detail_day_calories, 900)).assertIsDisplayed()
-        compose.onNodeWithText("300 kcal · Portion: 1").assertIsDisplayed()
-        compose.onNodeWithText("600 kcal · Portion: 1.5").assertIsDisplayed()
+        compose.onNodeWithText("Servings: 1.5 · 300 kcal").assertIsDisplayed()
+        compose.onNodeWithText("Protein 20.5 g · Carbs 30 g · Fat 10 g").assertIsDisplayed()
+        compose.onNodeWithText("Servings: 1 · 600 kcal").assertIsDisplayed()
     }
 
     @Test
-    fun `a meal without nutrition data just shows the recipe`() {
-        render(loaded(meal("1", "2026-10-01", "LUNCH")))
+    fun `a meal shows its recipe name when the server included it, otherwise a neutral title`() {
+        render(
+            loaded(
+                plan(
+                    meal("1", 0, "lunch", recipe = PlanMealRecipe("r1", "Lentil soup")),
+                    meal("2", 0, "dinner"),
+                ),
+            ),
+        )
 
-        compose.onNodeWithText("Recipe 1").assertIsDisplayed()
-        assertEquals(1, compose.onAllNodesWithTag(MealPlanDetailTestTags.MEAL_CARD).fetchSemanticsNodes().size)
+        compose.onNodeWithText("Lentil soup").assertIsDisplayed()
+        assertEquals(1, compose.onAllNodesWithText(str(R.string.plan_detail_meal_unnamed)).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `a meal without nutrition data still shows its servings`() {
+        render(loaded(plan(meal("1", 0, "lunch", servings = 2.0))))
+
+        compose.onNodeWithText("Servings: 2").assertIsDisplayed()
+    }
+
+    @Test
+    fun `meals not assigned to a day are grouped under their own heading`() {
+        render(loaded(plan(meal("1", null, "snack", calories = 120))))
+
+        compose.onNodeWithText(str(R.string.plan_detail_day_unassigned)).assertIsDisplayed()
     }
 
     @Test
     fun `an unknown meal type is shown as sent`() {
-        render(loaded(meal("1", "2026-10-01", "BRUNCH")))
+        render(loaded(plan(meal("1", 0, "brunch"))))
 
-        compose.onNodeWithText("BRUNCH").assertIsDisplayed()
+        compose.onNodeWithText("brunch").assertIsDisplayed()
     }
 
     @Test
-    fun `each day header is a heading for screen readers`() {
-        render(loaded(meal("1", "2026-10-01", "LUNCH", calories = 500)))
+    fun `the summary shows the target and, when known, the daily average against it`() {
+        val summary = NutritionalSummary(
+            dailyAverage = NutritionalInfo(calories = 128),
+            targets = NutritionalTargets(calories = 2000),
+            progress = NutritionalProgress(calories = NutrientProgress(target = 2000.0, actual = 128.0, percentOfTarget = 6.4)),
+        )
+        render(loaded(plan(meal("1", 0, "lunch"), summary = summary)))
 
-        compose.onNodeWithText("Thursday, October 1, 2026").assert(isHeading())
+        compose.onNodeWithText(str(R.string.plan_detail_target_calories, 2000)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.plan_detail_daily_average_of_target, 128, 2000, 6)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `each day header and the title are headings for screen readers`() {
+        render(loaded(plan(meal("1", 0, "lunch", calories = 500))))
+
+        compose.onNodeWithText("Day 1 · Thursday, October 1, 2026").assert(isHeading())
         compose.onNodeWithText("Week 40").assert(isHeading())
     }
 
     @Test
-    fun `add meal and edit plan are available`() {
+    fun `add meal is available, and there is no edit action the API cannot serve`() {
         var added = 0
-        var edited = 0
-        render(
-            loaded(meal("1", "2026-10-01", "LUNCH")),
-            onAddMeal = { added++ },
-            onEditPlan = { edited++ },
-        )
+        render(loaded(plan(meal("1", 0, "lunch"))), onAddMeal = { added++ })
 
         compose.onNodeWithTag(MealPlanDetailTestTags.ADD_MEAL).performScrollTo().performClick()
-        compose.onNodeWithTag(MealPlanDetailTestTags.EDIT).performClick()
-        compose.onNodeWithContentDescription(str(R.string.cd_plan_detail_edit)).assertExists()
-
         assertEquals(1, added)
-        assertEquals(1, edited)
+        compose.onNodeWithContentDescription("Edit plan").assertDoesNotExist()
     }
 
     @Test
     fun `a plan without meals offers to add the first one`() {
         var added = 0
-        render(loaded(), onAddMeal = { added++ })
+        render(loaded(plan()), onAddMeal = { added++ })
 
         compose.onNodeWithText(str(R.string.plan_detail_empty_title)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.plan_detail_add_meal)).performClick()
@@ -230,9 +271,9 @@ class MealPlanDetailScreenTest {
 
     @Test
     fun `failing with a saved plan keeps it and announces the problem politely`() {
-        render(loaded(meal("1", "2026-10-01", "LUNCH"), error = MealPlanDetailError.NETWORK))
+        render(loaded(plan(meal("1", 0, "lunch", calories = 500)), error = MealPlanDetailError.NETWORK))
 
-        compose.onNodeWithText("Recipe 1").assertIsDisplayed()
+        compose.onNodeWithText("Week 40").assertIsDisplayed()
         compose.onNodeWithTag(MealPlanDetailTestTags.ERROR_BANNER).assert(hasLiveRegion())
         compose.onNodeWithText(str(R.string.error_plan_detail_network_saved)).assertIsDisplayed()
     }
@@ -240,7 +281,7 @@ class MealPlanDetailScreenTest {
     @Test
     fun `the back button works`() {
         var backed = 0
-        render(loaded(meal("1", "2026-10-01", "LUNCH")), onBack = { backed++ })
+        render(loaded(plan(meal("1", 0, "lunch"))), onBack = { backed++ })
 
         compose.onNodeWithContentDescription(str(R.string.cd_meal_plans_back)).performClick()
         assertEquals(1, backed)
