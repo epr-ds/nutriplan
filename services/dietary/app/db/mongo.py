@@ -3,14 +3,14 @@
 Holds the cached PyMongo client, the ``meal_plans`` and ``recipes`` collection accessors, and the
 ``ensure_*_collection`` helpers which idempotently install each write-time ``$jsonSchema`` validator
 and indexes: ``meal_plans`` (DPL-101: userId, status, start/end date range) and ``recipes``
-(DPL-201: ingredient name + per-serving macro filters).
+(DPL-201: ingredient name + per-serving macro filters). ``favorites`` (DPL-607) links users to recipes.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
 
-from pymongo import ASCENDING, MongoClient
+from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
@@ -18,6 +18,7 @@ from app.core.config import settings
 
 MEAL_PLANS = "meal_plans"
 RECIPES = "recipes"
+FAVORITES = "favorites"
 
 # Applied to every write on meal_plans: enforces required fields, BSON types, and enum domains
 # (DPL-101 "schema validation on write"). Dates and timestamps are stored as ISO-8601 strings,
@@ -121,6 +122,22 @@ RECIPE_VALIDATOR: dict = {
 }
 
 
+# Applied to every write on favorites (DPL-607): a link from a user to a catalog recipe. The pair
+# (userId, recipeId) is unique (see the index), so a recipe can be saved at most once per user.
+FAVORITE_VALIDATOR: dict = {
+    "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["_id", "userId", "recipeId", "createdAt"],
+        "properties": {
+            "_id": {"bsonType": "string"},
+            "userId": {"bsonType": "string", "minLength": 1},
+            "recipeId": {"bsonType": "string", "minLength": 1},
+            "createdAt": {"bsonType": "string"},
+        },
+    }
+}
+
+
 @lru_cache(maxsize=1)
 def get_client() -> MongoClient:
     return MongoClient(
@@ -140,6 +157,10 @@ def meal_plans(db: Database | None = None) -> Collection:
 
 def recipes(db: Database | None = None) -> Collection:
     return (db if db is not None else get_db())[RECIPES]
+
+
+def favorites(db: Database | None = None) -> Collection:
+    return (db if db is not None else get_db())[FAVORITES]
 
 
 def ensure_meal_plans_collection(db: Database) -> Collection:
@@ -179,4 +200,24 @@ def ensure_recipes_collection(db: Database) -> Collection:
     coll.create_index([("nutritionalInfo.carbs", ASCENDING)], name="nutrition_carbs")
     coll.create_index([("nutritionalInfo.fat", ASCENDING)], name="nutrition_fat")
     coll.create_index([("dietaryTypes", ASCENDING)], name="dietaryTypes")
+    return coll
+
+def ensure_favorites_collection(db: Database) -> Collection:
+    """Idempotently install the favorites validator and indexes (safe to call on every boot).
+
+    The unique ``(userId, recipeId)`` index makes saving idempotent and prevents duplicates even
+    under concurrent requests; ``(userId, createdAt)`` serves the "my favorites, newest first" list.
+    """
+    if FAVORITES in db.list_collection_names():
+        db.command("collMod", FAVORITES, validator=FAVORITE_VALIDATOR)
+    else:
+        db.create_collection(FAVORITES, validator=FAVORITE_VALIDATOR)
+
+    coll = db[FAVORITES]
+    coll.create_index(
+        [("userId", ASCENDING), ("recipeId", ASCENDING)],
+        name="userId_recipeId",
+        unique=True,
+    )
+    coll.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)], name="userId_createdAt")
     return coll

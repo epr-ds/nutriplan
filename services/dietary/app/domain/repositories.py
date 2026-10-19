@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.domain.dietary_types import DietaryType
+from app.domain.favorite import Favorite
 from app.domain.meal_plan import MealPlan, MealPlanStatus
 from app.domain.recipe import Recipe
 
@@ -86,3 +87,22 @@ class RecipeRepository(ABC):
         Results are ordered deterministically by ``(name, id)`` so ``skip``/``limit`` offset
         pagination is stable and reproducible.
         """
+
+class FavoriteRepository(ABC):
+    """Persistence boundary for a user's favorite recipes (DPL-607).
+
+    Every operation is owner-scoped: a favorite is only ever read or removed for the ``user_id``
+    that saved it.
+    """
+
+    @abstractmethod
+    def add(self, favorite: Favorite) -> None:
+        """Save a favorite. Saving the same ``(user_id, recipe_id)`` again is a no-op."""
+
+    @abstractmethod
+    def remove(self, user_id: str, recipe_id: str) -> None:
+        """Remove the caller's favorite; a no-op when it is not saved."""
+
+    @abstractmethod
+    def list_for_user(self, user_id: str, *, skip: int = 0, limit: int = 20) -> list[Favorite]:
+        """Return the caller's favorites, most recently saved first (stable tiebreak on id)."""

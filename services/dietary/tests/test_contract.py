@@ -27,11 +27,13 @@ from openapi_core import Config, OpenAPI
 from openapi_core.testing import MockRequest, MockResponse
 
 from app.api.deps import (
+    get_favorite_service,
     get_meal_plan_service,
     get_meal_service,
     get_recipe_service,
     get_token_verifier,
 )
+from app.application.favorite_service import FavoriteService
 from app.application.meal_plan_service import MealPlanService
 from app.application.meal_service import MealService
 from app.application.recipe_service import RecipeService
@@ -40,7 +42,11 @@ from app.core.security import InvalidTokenError
 from app.domain.dietary_types import DietaryType
 from app.domain.recipe import Ingredient, NutritionalInfo, Recipe
 from app.main import app
-from tests.fakes import InMemoryMealPlanRepository, InMemoryRecipeRepository
+from tests.fakes import (
+    InMemoryFavoriteRepository,
+    InMemoryMealPlanRepository,
+    InMemoryRecipeRepository,
+)
 
 HOST = "http://localhost:8082"
 GOOD_TOKEN = "good-token"
@@ -132,8 +138,10 @@ def client():
     plans = InMemoryMealPlanRepository()
     recipes = InMemoryRecipeRepository()
     recipes.add(_full_recipe())
+    favorites = InMemoryFavoriteRepository()
     principal = Principal(user_id="user-123", email="contract@example.com")
 
+    app.dependency_overrides[get_favorite_service] = lambda: FavoriteService(favorites, recipes)
     app.dependency_overrides[get_meal_plan_service] = lambda: MealPlanService(plans)
     app.dependency_overrides[get_meal_service] = lambda: MealService(plans, recipes)
     app.dependency_overrides[get_recipe_service] = lambda: RecipeService(recipes)
@@ -374,6 +382,73 @@ def test_get_recipe_not_found_conforms(openapi, client):
     resp = client.get(f"/recipes/{MISSING_ID}", headers=_AUTH)
     assert resp.status_code == 404
     assert_conforms(openapi, "get", f"/recipes/{MISSING_ID}", resp)
+
+
+# --- Favorites (DPL-607) ----------------------------------------------------
+
+
+def test_list_favorites_empty_conforms(openapi, client):
+    resp = client.get("/favorites", headers=_AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == []
+    assert_conforms(openapi, "get", "/favorites", resp)
+
+
+def test_add_favorite_conforms(openapi, client):
+    resp = client.put(f"/favorites/{RECIPE_ID}", headers=_AUTH)
+    assert resp.status_code == 204
+    assert_conforms(openapi, "put", f"/favorites/{RECIPE_ID}", resp)
+
+
+def test_add_favorite_twice_conforms(openapi, client):
+    assert client.put(f"/favorites/{RECIPE_ID}", headers=_AUTH).status_code == 204
+    resp = client.put(f"/favorites/{RECIPE_ID}", headers=_AUTH)
+    assert resp.status_code == 204
+    assert_conforms(openapi, "put", f"/favorites/{RECIPE_ID}", resp)
+
+
+def test_add_favorite_unknown_recipe_conforms(openapi, client):
+    resp = client.put(f"/favorites/{MISSING_ID}", headers=_AUTH)
+    assert resp.status_code == 404
+    assert_conforms(openapi, "put", f"/favorites/{MISSING_ID}", resp)
+
+
+def test_list_favorites_conforms(openapi, client):
+    assert client.put(f"/favorites/{RECIPE_ID}", headers=_AUTH).status_code == 204
+    resp = client.get("/favorites", params={"page": 1, "limit": 10}, headers=_AUTH)
+    assert resp.status_code == 200
+    assert resp.json()[0]["id"] == RECIPE_ID
+    assert_conforms(openapi, "get", "/favorites", resp)
+
+
+def test_list_favorites_bad_paging_conforms(openapi, client):
+    resp = client.get("/favorites", params={"limit": 0}, headers=_AUTH)
+    assert resp.status_code == 422
+    assert_conforms(openapi, "get", "/favorites", resp)
+
+
+def test_remove_favorite_conforms(openapi, client):
+    assert client.put(f"/favorites/{RECIPE_ID}", headers=_AUTH).status_code == 204
+    resp = client.delete(f"/favorites/{RECIPE_ID}", headers=_AUTH)
+    assert resp.status_code == 204
+    assert_conforms(openapi, "delete", f"/favorites/{RECIPE_ID}", resp)
+
+
+def test_remove_favorite_that_is_not_saved_conforms(openapi, client):
+    resp = client.delete(f"/favorites/{MISSING_ID}", headers=_AUTH)
+    assert resp.status_code == 204
+    assert_conforms(openapi, "delete", f"/favorites/{MISSING_ID}", resp)
+
+
+def test_unauthenticated_favorites_conform(openapi, client):
+    for method, path in (
+        ("get", "/favorites"),
+        ("put", f"/favorites/{RECIPE_ID}"),
+        ("delete", f"/favorites/{RECIPE_ID}"),
+    ):
+        resp = getattr(client, method)(path)
+        assert resp.status_code == 401, (method, path)
+        assert_conforms(openapi, method, path, resp)
 
 
 def test_nutrition_disclaimer_conforms(openapi, client):

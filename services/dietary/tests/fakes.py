@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from app.domain.dietary_types import DietaryType
+from app.domain.favorite import Favorite
 from app.domain.meal_plan import MealPlan, MealPlanStatus
 from app.domain.recipe import Recipe
-from app.domain.repositories import MealPlanRepository, RecipeRepository
+from app.domain.repositories import FavoriteRepository, MealPlanRepository, RecipeRepository
 
 
 class InMemoryMealPlanRepository(MealPlanRepository):
@@ -98,6 +99,31 @@ class InMemoryRecipeRepository(RecipeRepository):
             # Deterministic (name, id) ordering mirrors the Mongo adapter, so paging is stable.
             results.sort(key=lambda r: (r.name, r.id))
         return results[skip : skip + limit]
+
+
+class InMemoryFavoriteRepository(FavoriteRepository):
+    """A dict-backed :class:`FavoriteRepository`, keyed like the unique (userId, recipeId) index."""
+
+    def __init__(self) -> None:
+        self.saved: dict[tuple[str, str], Favorite] = {}
+
+    def add(self, favorite: Favorite) -> None:
+        # Saving twice keeps the first one (and its timestamp), like the Mongo upsert.
+        self.saved.setdefault((favorite.user_id, favorite.recipe_id), favorite)
+
+    def remove(self, user_id: str, recipe_id: str) -> None:
+        self.saved.pop((user_id, recipe_id), None)
+
+    def list_for_user(self, user_id: str, *, skip: int = 0, limit: int = 20) -> list[Favorite]:
+        mine = [
+            (position, favorite)
+            for position, (key, favorite) in enumerate(self.saved.items())
+            if key[0] == user_id
+        ]
+        # Newest first; two saved within the same clock tick keep the later save first, so tests
+        # that save back to back have a deterministic order.
+        mine.sort(key=lambda pair: (pair[1].created_at, pair[0]), reverse=True)
+        return [favorite for _, favorite in mine[skip : skip + limit]]
 
 
 def _calories(recipe: Recipe) -> int | None:
