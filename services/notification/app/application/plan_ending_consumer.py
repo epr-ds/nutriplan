@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import Any
 
 from app.application.push_delivery import PushDelivery
+from app.domain.deep_links import plan_deep_link
 from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.events.envelope import EventEnvelope
@@ -105,7 +106,7 @@ class PlanEndingConsumer:
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan management
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/manage"
+        deep_link = plan_deep_link(plan_data.plan_id, "manage")
 
         # Build notification
         notification = Notification(
@@ -147,7 +148,7 @@ class PlanEndingConsumer:
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan management
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/summary"
+        deep_link = plan_deep_link(plan_data.plan_id, "summary")
 
         # Build notification
         notification = Notification(
@@ -189,7 +190,7 @@ class PlanEndingConsumer:
         plan_data = self._parse_plan_data(envelope)
 
         # Build deep link to plan renewal
-        deep_link = f"nutriplan://plan/{plan_data.plan_id}/renew"
+        deep_link = plan_deep_link(plan_data.plan_id, "renew")
 
         # Build notification
         notification = Notification(
@@ -254,7 +255,7 @@ class PlanEndingConsumer:
             user_id=self._parse_user_id(envelope),
             plan_type=plan_type,
             ending_date=ending_date,
-            deep_link=f"nutriplan://plan/{plan_id}/manage",
+            deep_link=plan_deep_link(plan_id, "manage"),
         )
 
     @staticmethod
