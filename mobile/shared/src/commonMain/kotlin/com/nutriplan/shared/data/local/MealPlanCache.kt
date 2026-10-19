@@ -36,18 +36,17 @@ class MealPlanCache(private val database: NutriPlanDatabase) {
     /** A plan with its meals, or null if it is not cached or only its summary is. */
     fun getPlan(id: String): MealPlan? =
         queries.selectDetailedPlanById(id) { planId, name, startDate, endDate, status, calorieTarget, summaryJson, _ ->
-            calorieTarget?.let {
-                MealPlan(
-                    id = planId,
-                    name = name,
-                    startDate = startDate,
-                    endDate = endDate,
-                    dailyCalorieTarget = it.toInt(),
-                    status = status,
-                    meals = mealsFor(planId),
-                    nutritionalSummary = summaryJson.decodeOrNull<NutritionalSummary>(),
-                )
-            }
+            MealPlan(
+                id = planId,
+                name = name,
+                startDate = startDate,
+                endDate = endDate,
+                // Always set together with has_detail = 1 (upsertDetail), which this query requires.
+                dailyCalorieTarget = (calorieTarget ?: 0L).toInt(),
+                status = status,
+                meals = mealsFor(planId),
+                nutritionalSummary = summaryJson.decodeOrNull<NutritionalSummary>(),
+            )
         }.executeAsOneOrNull()
 
     /** Ids of every cached plan. */
