@@ -242,4 +242,25 @@
     <string name="error_add_meal_rejected">The server didn\'t accept this meal. Please check it and try again.</string>
     <string name="error_add_meal_unknown">Something went wrong adding the meal. Please try again.</string>
     <string name="error_add_meal_day_not_set">The meal was added, but its day couldn\'t be set. Try again, or leave it without a day.</string>
+
+    <!-- DPL-508: edit, rate and remove a meal -->
+    <string name="edit_meal_title">Edit meal</string>
+    <string name="cd_edit_meal_loading">Loading meal</string>
+    <string name="cd_edit_meal_saving">Working on it</string>
+    <string name="edit_meal_save">Save changes</string>
+    <string name="edit_meal_remove">Remove from plan</string>
+    <string name="edit_meal_remove_title">Remove this meal?</string>
+    <string name="edit_meal_remove_message">It will be taken out of the plan. This can\'t be undone.</string>
+    <string name="edit_meal_remove_confirm">Remove</string>
+    <string name="edit_meal_cancel">Cancel</string>
+    <string name="edit_meal_satisfaction_label">How satisfying was it?</string>
+    <string name="edit_meal_satisfaction_value">%1$d of 5</string>
+    <string name="edit_meal_satisfaction_unrated">Not rated yet. Rate it after you\'ve eaten it.</string>
+    <string name="plan_detail_meal_rated">Rated %1$d of 5</string>
+    <string name="error_edit_meal_network">You\'re offline. Connect to the internet to change this meal.</string>
+    <string name="error_edit_meal_server">The server had a problem. Please try again later.</string>
+    <string name="error_edit_meal_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_edit_meal_not_found">This meal no longer exists.</string>
+    <string name="error_edit_meal_rejected">The server didn\'t accept these changes. Please check them and try again.</string>
+    <string name="error_edit_meal_unknown">Something went wrong changing the meal. Please try again.</string>
 </resources>

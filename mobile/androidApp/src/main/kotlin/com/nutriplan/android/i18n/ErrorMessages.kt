@@ -7,12 +7,32 @@ import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.onboarding.OnboardingError
 import com.nutriplan.shared.planning.AddMealError
 import com.nutriplan.shared.planning.AddMealFieldError
+import com.nutriplan.shared.planning.EditMealError
+import com.nutriplan.shared.planning.EditMealFieldError
 import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanFormError
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.PlanFieldError
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeListError
+
+/** DPL-508: inline message for one invalid field of the edit-meal form. */
+@StringRes
+fun EditMealFieldError.messageRes(): Int = when (this) {
+    EditMealFieldError.SERVINGS_REQUIRED -> R.string.error_add_meal_servings_required
+    EditMealFieldError.SERVINGS_INVALID -> R.string.error_add_meal_servings_invalid
+}
+
+/** DPL-508: message for a meal that could not be loaded, changed or removed. */
+@StringRes
+fun EditMealError.messageRes(): Int = when (this) {
+    EditMealError.NETWORK -> R.string.error_edit_meal_network
+    EditMealError.SERVER_PROBLEM -> R.string.error_edit_meal_server
+    EditMealError.SESSION_EXPIRED -> R.string.error_edit_meal_session_expired
+    EditMealError.NOT_FOUND -> R.string.error_edit_meal_not_found
+    EditMealError.REJECTED -> R.string.error_edit_meal_rejected
+    EditMealError.UNKNOWN -> R.string.error_edit_meal_unknown
+}
 
 /** DPL-507: inline message for one invalid field of the add-meal form. */
 @StringRes

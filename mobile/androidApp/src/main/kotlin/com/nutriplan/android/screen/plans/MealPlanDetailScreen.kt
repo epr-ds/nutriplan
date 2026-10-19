@@ -76,6 +76,7 @@ fun MealPlanDetailScreen(
     planId: String,
     onBack: () -> Unit,
     onAddMeal: () -> Unit,
+    onEditMeal: (mealId: String) -> Unit,
     onSessionExpired: () -> Unit,
 ) {
     val viewModel = koinInject<MealPlanDetailViewModel>()
@@ -93,6 +94,7 @@ fun MealPlanDetailScreen(
         onRetry = { scope.launch { viewModel.load(planId) } },
         onBack = onBack,
         onAddMeal = onAddMeal,
+        onEditMeal = onEditMeal,
     )
 }
 
@@ -104,6 +106,7 @@ fun MealPlanDetailScreenContent(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onAddMeal: () -> Unit,
+    onEditMeal: (mealId: String) -> Unit = {},
 ) {
     val plan = state.plan
     val error = state.error
@@ -168,6 +171,7 @@ fun MealPlanDetailScreenContent(
                     error = error,
                     hasNoMeals = state.hasNoMeals,
                     onAddMeal = onAddMeal,
+                    onEditMeal = onEditMeal,
                 )
             }
         }
@@ -181,6 +185,7 @@ private fun PlanDetailList(
     error: MealPlanDetailError?,
     hasNoMeals: Boolean,
     onAddMeal: () -> Unit,
+    onEditMeal: (mealId: String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -220,7 +225,7 @@ private fun PlanDetailList(
                 day.sections.forEach { section ->
                     item(key = "section-$dayKey-${section.mealType}") { SectionLabel(section) }
                     items(section.meals.size, key = { section.meals[it].id }) { index ->
-                        MealCard(section.meals[index])
+                        MealCard(section.meals[index], onClick = { onEditMeal(section.meals[index].id) })
                     }
                 }
             }
@@ -311,8 +316,9 @@ private fun SectionLabel(section: MealSection) {
 }
 
 @Composable
-private fun MealCard(meal: PlanMeal) {
+private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .testTag(MealPlanDetailTestTags.MEAL_CARD)
@@ -337,6 +343,13 @@ private fun MealCard(meal: PlanMeal) {
                 info?.carbs?.let { stringResource(R.string.plan_detail_meal_carbs, formatQuantity(it)) },
                 info?.fat?.let { stringResource(R.string.plan_detail_meal_fat, formatQuantity(it)) },
             )
+            meal.satisfactionLevel?.let {
+                Text(
+                    text = stringResource(R.string.plan_detail_meal_rated, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (macros.isNotEmpty()) {
                 Text(
                     text = macros.joinToString(" · "),

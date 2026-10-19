@@ -141,6 +141,17 @@ fun AppNavigationGraph(
             )
         }
 
+        // Edit, rate or remove a planned meal
+        composable<Route.EditMeal> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.EditMeal>()
+            analyticsTracker?.logScreenView("edit_meal", "EditMealScreen")
+            screens.EditMealScreen(
+                planId = route.planId,
+                mealId = route.mealId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // Add a recipe to a plan as a meal
         composable<Route.AddMeal> { backStackEntry ->
             val route = backStackEntry.toRoute<Route.AddMeal>()
@@ -320,6 +331,11 @@ interface AppNavigationScreens {
     )
     @Composable fun PickRecipeScreen(
         planId: String,
+        onBack: () -> Unit,
+    )
+    @Composable fun EditMealScreen(
+        planId: String,
+        mealId: String,
         onBack: () -> Unit,
     )
     @Composable fun AddMealScreen(

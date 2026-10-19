@@ -5,7 +5,6 @@
 
 package com.nutriplan.android.screen.plans
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +20,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,10 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +44,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -66,7 +58,7 @@ import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.mealTypeLabelRes
 import com.nutriplan.android.i18n.messageRes
-import com.nutriplan.shared.planning.AddMealDay
+import com.nutriplan.shared.planning.PlanDayOption
 import com.nutriplan.shared.planning.AddMealError
 import com.nutriplan.shared.planning.AddMealUiState
 import com.nutriplan.shared.planning.AddMealViewModel
@@ -202,7 +194,12 @@ fun AddMealScreenContent(
                 )
 
                 if (state.days.isNotEmpty()) {
-                    DayChoice(days = state.days, selected = state.dayIndex, onDayChange = onDayChange)
+                    DayChoice(
+                        days = state.days,
+                        selected = state.dayIndex,
+                        onDayChange = onDayChange,
+                        testTag = AddMealTestTags.DAY,
+                    )
                 }
 
                 Button(
@@ -329,55 +326,3 @@ private fun MealTypeChoice(state: AddMealUiState, onMealTypeChange: (String) -> 
         }
     }
 }
-
-/**
- * The day of the plan, from a menu. (A read-only text field swallows taps, so a transparent
- * clickable area sits over it.)
- */
-@Composable
-private fun DayChoice(days: List<AddMealDay>, selected: Int?, onDayChange: (Int?) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val none = stringResource(R.string.add_meal_day_none)
-    val selectedLabel = days.firstOrNull { it.dayIndex == selected }?.let { dayLabel(it) } ?: none
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.add_meal_day_label)) },
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(AddMealTestTags.DAY),
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable(role = Role.DropdownList) { expanded = true }
-                .semantics { contentDescription = selectedLabel },
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(none) },
-                onClick = {
-                    expanded = false
-                    onDayChange(null)
-                },
-            )
-            days.forEach { day ->
-                DropdownMenuItem(
-                    text = { Text(dayLabel(day)) },
-                    onClick = {
-                        expanded = false
-                        onDayChange(day.dayIndex)
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun dayLabel(day: AddMealDay): String =
-    "${stringResource(R.string.plan_detail_day_title, day.dayIndex + 1)} · ${formatPlanDay(day.date)}"

@@ -31,7 +31,7 @@ import com.nutriplan.android.screen.plans.AddMealTestTags
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.shared.data.model.NutritionalInfo
 import com.nutriplan.shared.data.model.Recipe
-import com.nutriplan.shared.planning.AddMealDay
+import com.nutriplan.shared.planning.PlanDayOption
 import com.nutriplan.shared.planning.AddMealError
 import com.nutriplan.shared.planning.AddMealFieldError
 import com.nutriplan.shared.planning.AddMealUiState
@@ -65,16 +65,16 @@ class AddMealScreenTest {
     )
 
     private val days = listOf(
-        AddMealDay(0, "2026-10-01"),
-        AddMealDay(1, "2026-10-02"),
-        AddMealDay(2, "2026-10-03"),
+        PlanDayOption(0, "2026-10-01"),
+        PlanDayOption(1, "2026-10-02"),
+        PlanDayOption(2, "2026-10-03"),
     )
 
     private fun form(
         mealType: String? = null,
         servings: String = "1",
         dayIndex: Int? = null,
-        days: List<AddMealDay> = this.days,
+        days: List<PlanDayOption> = this.days,
     ) = AddMealUiState(
         recipe = recipe,
         days = days,

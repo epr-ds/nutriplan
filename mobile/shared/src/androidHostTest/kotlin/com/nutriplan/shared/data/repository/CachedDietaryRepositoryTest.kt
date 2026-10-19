@@ -58,6 +58,9 @@ class CachedDietaryRepositoryTest {
             return meal("new")
         }
 
+        override suspend fun removeMeal(planId: String, mealId: String) {
+            failure?.let { throw it }
+        }
         override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal {
             failure?.let { throw it }
             return meal(mealId)
@@ -290,5 +293,27 @@ class CachedDietaryRepositoryTest {
 
         assertNull(cache.getPlan("p1"))
         assertEquals(listOf("p1"), cache.getPlans().map { it.id })
+    }
+
+    @Test
+    fun `removing a meal forgets the cached plan detail but keeps the plan in the list`() = runTest {
+        remote.plan = fullPlan("p1", meals = listOf(meal("m1")))
+        repository.getMealPlan("p1")
+
+        repository.removeMeal("p1", "m1")
+
+        assertNull(cache.getPlan("p1"))
+        assertEquals(listOf("p1"), cache.getPlans().map { it.id })
+    }
+
+    @Test
+    fun `a failed removal keeps the cached plan`() = runTest {
+        remote.plan = fullPlan("p1", meals = listOf(meal("m1")))
+        repository.getMealPlan("p1")
+        remote.failure = offline
+
+        assertFailsWith<ApiException.NetworkError> { repository.removeMeal("p1", "m1") }
+
+        assertNotNull(cache.getPlan("p1"))
     }
 }

@@ -55,6 +55,10 @@ sealed class Route {
     @Serializable
     data class AddMeal(val planId: String, val recipeId: String) : Route()
 
+    /** Edit, rate or remove the meal [mealId] of the plan [planId]. In-app only. */
+    @Serializable
+    data class EditMeal(val planId: String, val mealId: String) : Route()
+
     // --- Recipe screens ---
     /** Recipe search. */
     @Serializable
@@ -132,6 +136,7 @@ sealed class Route {
         is MealPlanDetail -> "nutriplan://meal-plan/$planId"
         is PickRecipe -> "nutriplan://add-meal/$planId"
         is AddMeal -> "nutriplan://add-meal/$planId/$recipeId"
+        is EditMeal -> "nutriplan://edit-meal/$planId/$mealId"
         is RecipeSearch -> "nutriplan://recipes"
         is RecipeDetail -> "nutriplan://recipe/$recipeId"
         is AiMealAnalysis -> "nutriplan://ai/analyze"

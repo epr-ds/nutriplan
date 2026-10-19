@@ -176,6 +176,25 @@ class DietaryRepositoryContractTest {
         assertEquals(ApiFailure.REJECTED, error.toApiFailure())
     }
 
+    @Test
+    fun `remove meal deletes the meal and accepts the empty 204`() = runTest {
+        val repository = serve(status = HttpStatusCode.NoContent, body = "")
+
+        repository.removeMeal("p1", "m9")
+
+        assertEquals(HttpMethod.Delete, lastRequest!!.method)
+        assertEquals("/dietary/v1/meal-plans/p1/meals/m9", lastRequest!!.url.encodedPath)
+    }
+
+    @Test
+    fun `remove meal classifies a 404 as not found`() = runTest {
+        val repository = serve(status = HttpStatusCode.NotFound, body = PROBLEM_JSON, headers = problemHeaders)
+
+        val error = assertFailsWith<ApiException.HttpError> { repository.removeMeal("p1", "gone") }
+
+        assertEquals(ApiFailure.NOT_FOUND, error.toApiFailure())
+    }
+
     // --- failures ---
 
     @Test

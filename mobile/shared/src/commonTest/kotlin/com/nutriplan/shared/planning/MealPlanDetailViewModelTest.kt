@@ -41,6 +41,7 @@ class MealPlanDetailViewModelTest {
         override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> = error("unused")
         override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan = error("unused")
         override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
+        override suspend fun removeMeal(planId: String, mealId: String): Unit = error("unused")
         override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal = error("unused")
         override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal = error("unused")
         override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = error("unused")

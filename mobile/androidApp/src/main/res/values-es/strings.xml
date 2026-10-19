@@ -240,4 +240,25 @@
     <string name="error_add_meal_rejected">El servidor no aceptó esta comida. Revísala e inténtalo de nuevo.</string>
     <string name="error_add_meal_unknown">Algo salió mal al añadir la comida. Inténtalo de nuevo.</string>
     <string name="error_add_meal_day_not_set">La comida se añadió, pero no se pudo asignar su día. Inténtalo de nuevo o déjala sin día.</string>
+
+    <!-- DPL-508: editar, valorar y quitar una comida -->
+    <string name="edit_meal_title">Editar comida</string>
+    <string name="cd_edit_meal_loading">Cargando la comida</string>
+    <string name="cd_edit_meal_saving">Procesando</string>
+    <string name="edit_meal_save">Guardar cambios</string>
+    <string name="edit_meal_remove">Quitar del plan</string>
+    <string name="edit_meal_remove_title">Â¿Quitar esta comida?</string>
+    <string name="edit_meal_remove_message">Se eliminarÃ¡ del plan. No se puede deshacer.</string>
+    <string name="edit_meal_remove_confirm">Quitar</string>
+    <string name="edit_meal_cancel">Cancelar</string>
+    <string name="edit_meal_satisfaction_label">Â¿QuÃ© tan satisfactoria fue?</string>
+    <string name="edit_meal_satisfaction_value">%1$d de 5</string>
+    <string name="edit_meal_satisfaction_unrated">Sin valorar. ValÃ³rala despuÃ©s de comerla.</string>
+    <string name="plan_detail_meal_rated">Valorada con %1$d de 5</string>
+    <string name="error_edit_meal_network">EstÃ¡s sin conexiÃ³n. ConÃ©ctate a internet para cambiar esta comida.</string>
+    <string name="error_edit_meal_server">El servidor tuvo un problema. IntÃ©ntalo de nuevo mÃ¡s tarde.</string>
+    <string name="error_edit_meal_session_expired">Tu sesiÃ³n ha expirado. Inicia sesiÃ³n de nuevo.</string>
+    <string name="error_edit_meal_not_found">Esta comida ya no existe.</string>
+    <string name="error_edit_meal_rejected">El servidor no aceptÃ³ estos cambios. RevÃ­salos e intÃ©ntalo de nuevo.</string>
+    <string name="error_edit_meal_unknown">Algo saliÃ³ mal al cambiar la comida. IntÃ©ntalo de nuevo.</string>
 </resources>

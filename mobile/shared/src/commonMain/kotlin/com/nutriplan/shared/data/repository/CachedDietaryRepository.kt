@@ -74,6 +74,11 @@ class CachedDietaryRepository(
     override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal =
         remote.updateMeal(planId, mealId, request).also { cache.invalidateDetail(planId) }
 
+    override suspend fun removeMeal(planId: String, mealId: String) {
+        remote.removeMeal(planId, mealId)
+        cache.invalidateDetail(planId)
+    }
+
     /** After a listing that returned every plan, drop cached plans that no longer exist on the server. */
     private fun pruneRemoved(serverPlans: List<MealPlanSummary>) {
         val onServer = serverPlans.map { it.id }.toSet()
