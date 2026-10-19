@@ -243,8 +243,7 @@ class MainNavigationScreens(
         com.nutriplan.android.screen.plans.MealPlanDetailScreen(
             planId = planId,
             onBack = onBack,
-            // The add-meal flow (DPL-507) is not built yet; this opens the recipe screen, which is
-            // still a placeholder.
+            // The add-meal flow (DPL-507) is not built yet; for now this opens recipe search.
             onAddMeal = { onNavigate(Route.RecipeSearch) },
             onSessionExpired = { sessionManager.onSignedOut() },
         )
@@ -255,7 +254,13 @@ class MainNavigationScreens(
         onNavigate: (Any) -> Unit,
         onRecipeClick: (String) -> Unit,
     ) {
-        RecipeSearchScreenContent(onNavigate, onRecipeClick)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.recipes.RecipeSearchScreen(
+            onBack = { navController.popBackStack() },
+            // Pushed on top of the search so Back returns to it.
+            onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -263,7 +268,12 @@ class MainNavigationScreens(
         recipeId: String,
         onBack: () -> Unit,
     ) {
-        RecipeDetailScreenContent(recipeId, onBack)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.recipes.RecipeDetailScreen(
+            recipeId = recipeId,
+            onBack = onBack,
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -421,30 +431,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-
-@Composable
-private fun RecipeSearchScreenContent(
-    onNavigate: (Any) -> Unit,
-    onRecipeClick: (String) -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Recipes", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun RecipeDetailScreenContent(recipeId: String, onBack: () -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Recipe: $recipeId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 

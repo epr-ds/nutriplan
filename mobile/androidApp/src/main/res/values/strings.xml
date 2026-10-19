@@ -163,4 +163,58 @@
     <string name="error_plan_form_session_expired">Your session has expired. Please sign in again.</string>
     <string name="error_plan_form_rejected">The server didn\'t accept these details. Please check them and try again.</string>
     <string name="error_plan_form_unknown">Something went wrong creating the plan. Please try again.</string>
+
+    <!-- DPL-601: recipe search -->
+    <string name="recipes_title">Recipes</string>
+    <string name="recipes_filter_ingredients_label">Ingredients</string>
+    <string name="recipes_filter_ingredients_hint">Separate with commas, e.g. chicken, rice</string>
+    <string name="recipes_filter_diet_label">Diet</string>
+    <string name="recipes_filter_diet_any">Any</string>
+    <string name="recipes_filter_max_calories_label">Max kcal</string>
+    <string name="recipes_filter_min_protein_label">Min protein (g)</string>
+    <string name="recipes_search">Search</string>
+    <string name="recipes_clear_filters">Clear</string>
+    <string name="recipes_load_more">Show more</string>
+    <string name="recipes_empty_title">No recipes found</string>
+    <string name="recipes_empty_description">Try fewer ingredients or looser filters.</string>
+    <string name="cd_recipes_loading">Searching recipes</string>
+    <string name="cd_recipes_loading_more">Loading more recipes</string>
+    <string name="recipe_minutes">%1$d min</string>
+    <string name="recipe_kcal">%1$d kcal</string>
+    <string name="recipe_protein_g">%1$s g protein</string>
+    <string name="diet_omnivore">Omnivore</string>
+    <string name="diet_vegetarian">Vegetarian</string>
+    <string name="diet_vegan">Vegan</string>
+    <string name="diet_keto">Keto</string>
+    <string name="diet_paleo">Paleo</string>
+    <string name="error_recipes_network">You\'re offline. Connect to the internet to search recipes.</string>
+    <string name="error_recipes_server">The server had a problem. Please try again later.</string>
+    <string name="error_recipes_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_recipes_unknown">Something went wrong searching recipes. Please try again.</string>
+
+    <!-- DPL-603: recipe detail -->
+    <string name="recipe_detail_title_fallback">Recipe</string>
+    <string name="cd_recipe_loading">Loading recipe</string>
+    <string name="recipe_detail_back_to_recipes">Back to recipes</string>
+    <string name="recipe_detail_prep">Prep %1$d min</string>
+    <string name="recipe_detail_cook">Cook %1$d min</string>
+    <string name="recipe_detail_servings">%1$d servings</string>
+    <string name="recipe_detail_nutrition_title">Nutrition per serving</string>
+    <string name="recipe_nutrition_protein">Protein %1$s g</string>
+    <string name="recipe_nutrition_carbs">Carbs %1$s g</string>
+    <string name="recipe_nutrition_fat">Fat %1$s g</string>
+    <string name="recipe_nutrition_sugar">Sugar %1$s g</string>
+    <string name="recipe_detail_ingredients">Ingredients</string>
+    <string name="recipe_detail_instructions">Instructions</string>
+    <string name="recipe_detail_step">%1$d. %2$s</string>
+    <string name="recipe_detail_disclaimer_title">About these values</string>
+    <string name="recipe_disclaimer_fallback">Nutrition values are estimates for general information only. They are not medical or dietary advice. Talk to a qualified professional before changing your diet, especially if you have a medical condition or allergies.</string>
+    <string name="recipe_disclaimer_sources">Sources</string>
+    <string name="recipe_disclaimer_source_verified">%1$s (verified)</string>
+    <string name="recipe_disclaimer_reviewed">Last reviewed: %1$s</string>
+    <string name="error_recipe_detail_network">You\'re offline. Connect to the internet to see this recipe.</string>
+    <string name="error_recipe_detail_server">The server had a problem. Please try again later.</string>
+    <string name="error_recipe_detail_not_found">This recipe no longer exists.</string>
+    <string name="error_recipe_detail_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_recipe_detail_unknown">Something went wrong loading this recipe. Please try again.</string>
 </resources>

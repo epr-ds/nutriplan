@@ -9,6 +9,38 @@ import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanFormError
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.PlanFieldError
+import com.nutriplan.shared.recipes.RecipeDetailError
+import com.nutriplan.shared.recipes.RecipeListError
+
+/** DPL-601: message for a recipe search that failed. */
+@StringRes
+fun RecipeListError.messageRes(): Int = when (this) {
+    RecipeListError.NETWORK -> R.string.error_recipes_network
+    RecipeListError.SERVER_PROBLEM -> R.string.error_recipes_server
+    RecipeListError.SESSION_EXPIRED -> R.string.error_recipes_session_expired
+    RecipeListError.UNKNOWN -> R.string.error_recipes_unknown
+}
+
+/** DPL-603: message for a recipe that could not be loaded. */
+@StringRes
+fun RecipeDetailError.messageRes(): Int = when (this) {
+    RecipeDetailError.NETWORK -> R.string.error_recipe_detail_network
+    RecipeDetailError.SERVER_PROBLEM -> R.string.error_recipe_detail_server
+    RecipeDetailError.NOT_FOUND -> R.string.error_recipe_detail_not_found
+    RecipeDetailError.SESSION_EXPIRED -> R.string.error_recipe_detail_session_expired
+    RecipeDetailError.UNKNOWN -> R.string.error_recipe_detail_unknown
+}
+
+/** Localized name of a diet type as sent by the server; unknown types are shown as sent. */
+@StringRes
+fun dietTypeLabelRes(dietType: String): Int? = when (dietType.lowercase()) {
+    "omnivore" -> R.string.diet_omnivore
+    "vegetarian" -> R.string.diet_vegetarian
+    "vegan" -> R.string.diet_vegan
+    "keto" -> R.string.diet_keto
+    "paleo" -> R.string.diet_paleo
+    else -> null
+}
 
 /** DPL-503: inline message for one invalid field of the create-plan form. */
 @StringRes
