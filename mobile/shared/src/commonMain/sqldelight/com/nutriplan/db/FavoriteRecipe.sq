@@ -12,9 +12,9 @@ CREATE TABLE favorite_recipe (
 selectAll:
 SELECT recipe FROM favorite_recipe ORDER BY position;
 
--- The smallest position, so a newly saved recipe can be put in front of the others.
+-- The smallest position (none when empty), so a newly saved recipe can be put in front of the others.
 selectFirstPosition:
-SELECT MIN(position) FROM favorite_recipe;
+SELECT position FROM favorite_recipe ORDER BY position LIMIT 1;
 
 insertRecipe:
 INSERT OR REPLACE INTO favorite_recipe(recipe_id, position, recipe) VALUES (?, ?, ?);

@@ -36,7 +36,7 @@ class FavoriteRecipeCache(private val database: NutriPlanDatabase) {
     /** Save [recipe] in front of the others (or move it there if it is already cached). */
     fun addFirst(recipe: Recipe) {
         database.transaction {
-            val first = queries.selectFirstPosition().executeAsOne()
+            val first = queries.selectFirstPosition().executeAsOneOrNull()
             insert(recipe, (first ?: 0L) - 1L)
         }
     }
