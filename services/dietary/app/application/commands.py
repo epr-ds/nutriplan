@@ -114,3 +114,16 @@ class SearchRecipesQuery:
     min_protein: float | None = None
     page: int = 1
     limit: int = 20
+
+
+@dataclass(frozen=True)
+class ListFavoritesQuery:
+    """Inputs for the *list favorite recipes* use case (DPL-607).
+
+    ``user_id`` comes from the authenticated principal, so results are always the caller's own.
+    ``page`` is 1-based; the service translates it to a repository ``skip`` offset.
+    """
+
+    user_id: str
+    page: int = 1
+    limit: int = 20

@@ -14,13 +14,15 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.application.favorite_service import FavoriteService
 from app.application.meal_plan_service import MealPlanService
 from app.application.meal_service import MealService
 from app.application.recipe_service import RecipeService
 from app.core.config import settings
 from app.core.principal import Principal
 from app.core.security import InvalidTokenError, JwtTokenVerifier, TokenVerifier
-from app.domain.repositories import MealPlanRepository, RecipeRepository
+from app.domain.repositories import FavoriteRepository, MealPlanRepository, RecipeRepository
+from app.repositories.mongo_favorite_repository import MongoFavoriteRepository
 from app.repositories.mongo_meal_plan_repository import MongoMealPlanRepository
 from app.repositories.mongo_recipe_repository import MongoRecipeRepository
 
@@ -86,7 +88,19 @@ def get_recipe_service(
     return RecipeService(recipes)
 
 
+def get_favorite_repository() -> FavoriteRepository:
+    return MongoFavoriteRepository()
+
+
+def get_favorite_service(
+    favorites: Annotated[FavoriteRepository, Depends(get_favorite_repository)],
+    recipes: Annotated[RecipeRepository, Depends(get_recipe_repository)],
+) -> FavoriteService:
+    return FavoriteService(favorites, recipes)
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 MealPlanServiceDep = Annotated[MealPlanService, Depends(get_meal_plan_service)]
 MealServiceDep = Annotated[MealService, Depends(get_meal_service)]
 RecipeServiceDep = Annotated[RecipeService, Depends(get_recipe_service)]
+FavoriteServiceDep = Annotated[FavoriteService, Depends(get_favorite_service)]

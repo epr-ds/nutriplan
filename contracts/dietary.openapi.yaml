@@ -20,6 +20,7 @@ tags:
   - name: MealPlans
   - name: AI
   - name: Recipes
+  - name: Favorites
   - name: Nutrition
 
 paths:
@@ -368,6 +369,83 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/RecipeNotFound'
+
+  /favorites:
+    get:
+      tags: [Favorites]
+      operationId: listFavoriteRecipes
+      summary: List my favorite recipes
+      description: >-
+        Return the caller's saved recipes, most recently saved first. Each item is the full catalog
+        recipe, so it can be shown like a search result. The list is always the caller's own.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: 1-based page number for offset pagination.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Maximum number of recipes to return per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: The caller's favorite recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /favorites/{recipeId}:
+    put:
+      tags: [Favorites]
+      operationId: addFavoriteRecipe
+      summary: Save a recipe as a favorite
+      description: >-
+        Save a catalog recipe to the caller's favorites. Idempotent: saving a recipe that is already
+        a favorite succeeds and changes nothing. Unknown recipe ids return 404.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '204':
+          description: The recipe is a favorite
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/RecipeNotFound'
+
+    delete:
+      tags: [Favorites]
+      operationId: removeFavoriteRecipe
+      summary: Remove a recipe from my favorites
+      description: >-
+        Remove a recipe from the caller's favorites. Idempotent: removing a recipe that is not a
+        favorite also succeeds, so a client can safely retry.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '204':
+          description: The recipe is not a favorite
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /nutrition/disclaimer:
     get:
