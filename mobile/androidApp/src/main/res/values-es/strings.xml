@@ -139,4 +139,26 @@
     <string name="error_plan_detail_not_found">Este plan de comidas ya no existe.</string>
     <string name="error_plan_detail_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
     <string name="error_plan_detail_unknown">Algo salió mal al cargar este plan de comidas. Inténtalo de nuevo.</string>
+
+    <!-- Create meal plan (DPL-503) -->
+    <string name="plan_form_title">Nuevo plan de comidas</string>
+    <string name="plan_form_name_label">Nombre del plan</string>
+    <string name="plan_form_start_label">Fecha de inicio</string>
+    <string name="plan_form_end_label">Fecha de fin</string>
+    <string name="plan_form_calories_label">Calorías diarias</string>
+    <string name="plan_form_calories_suffix">kcal</string>
+    <string name="plan_form_calories_prefilled">Rellenado con tus preferencias dietéticas. Puedes cambiarlo.</string>
+    <string name="plan_form_submit">Crear plan</string>
+    <string name="cd_plan_form_saving">Creando el plan</string>
+    <string name="error_plan_name_required">Ponle un nombre a tu plan.</string>
+    <string name="error_plan_start_required">Elige una fecha de inicio.</string>
+    <string name="error_plan_end_required">Elige una fecha de fin.</string>
+    <string name="error_plan_end_before_start">La fecha de fin no puede ser anterior a la de inicio.</string>
+    <string name="error_plan_calories_required">Introduce un objetivo de calorías diarias.</string>
+    <string name="error_plan_calories_invalid">Introduce un número entero mayor que 0.</string>
+    <string name="error_plan_form_network">Estás sin conexión. Conéctate a internet para crear un plan.</string>
+    <string name="error_plan_form_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_plan_form_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_plan_form_rejected">El servidor no aceptó estos datos. Revísalos e inténtalo de nuevo.</string>
+    <string name="error_plan_form_unknown">Algo salió mal al crear el plan. Inténtalo de nuevo.</string>
 </resources>

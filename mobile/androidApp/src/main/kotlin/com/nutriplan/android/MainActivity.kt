@@ -218,7 +218,19 @@ class MainNavigationScreens(
         onSave: (Any) -> Unit,
         onCancel: () -> Unit,
     ) {
-        CreateMealPlanScreenContent(planId, onSave, onCancel)
+        // Plans can only be created: the API has no endpoint to edit one (PATCH only changes its
+        // status), so a plan id is not used.
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.MealPlanFormScreen(
+            onBack = onCancel,
+            // Open the new plan and drop the form from the back stack, so Back does not return to it.
+            onCreated = { createdId ->
+                navController.navigate(Route.MealPlanDetail(createdId)) {
+                    popUpTo<Route.CreateMealPlan> { inclusive = true }
+                }
+            },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -409,20 +421,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun CreateMealPlanScreenContent(
-    planId: String?,
-    onSave: (Any) -> Unit,
-    onCancel: () -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Create Plan", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
