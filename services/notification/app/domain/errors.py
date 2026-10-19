@@ -71,3 +71,13 @@ class DeviceTokenNotFound(NotificationError):
     one account at a time, so distinguishing them would let a caller probe whether a
     particular device is registered to another user.
     """
+
+
+class InvalidPushReceipt(NotificationError, ValueError):
+    """A per-device push receipt was given in a state the domain will not store (NTF-305).
+
+    A receipt records one of two outcomes -- the provider accepted the message or it refused
+    it -- so anything else (a ``PENDING`` or ``SUPPRESSED`` status, or an unknown platform)
+    is refused here rather than written. A store holding a receipt that says nothing would
+    make the fan-out path skip a device as "already attempted" when it never was.
+    """

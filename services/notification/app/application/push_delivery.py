@@ -1,16 +1,18 @@
-"""Send one notification to one device and record what the provider said (NTF-303).
+"""Send a notification to every reachable device and record what each provider said (NTF-303/5).
 
 The stored :class:`~app.domain.notification.Notification` already knows *whether* it wants a
 push; this module answers the next question -- *did it get there?* -- and writes the answer
-back onto the record. Three decisions shape it.
+back. Three decisions shape it.
 
-**One device, not every device.** NTF-305 owns multi-device fan-out and per-device receipts;
-this slice deliberately picks one reachable destination so that the notification's single
-``status`` has one unambiguous meaning. The chosen device is the most recently registered one
-whose platform has a configured gateway, which is both the best single guess at "the phone
-they are holding" and a graceful degradation when only one provider is configured. Selecting
-by recency alone would fail a user whose newest device is on the platform this deployment
-cannot reach while an older, reachable device sits right behind it.
+**Every reachable device, one receipt each.** A user with a phone and a tablet should be nudged
+on both, so the fan-out sends to every registered device whose platform has a configured
+gateway. Each device's outcome is recorded as its own
+:class:`~app.domain.push_receipt.PushReceipt`, and the notification's ``status`` becomes a
+*rollup*: ``SENT`` when at least one device accepted the message, ``FAILED`` when every attempt
+was refused. Devices are tried most-recently-registered first -- the phone they are holding
+before the tablet in a drawer -- and a device on a platform this deployment cannot reach is
+skipped rather than counted as a failure. A receipt already on record for a device means a
+previous run reached it, so a resumed fan-out does not send it a second nudge.
 
 **``SENT`` means the provider accepted it.** FCM and APNs acknowledge acceptance, not
 on-device display; there is no delivery receipt to wait for. So a successful send moves the
@@ -18,8 +20,8 @@ notification to ``SENT`` and leaves ``DELIVERED`` to a future client-side acknow
 ``FAILED`` is reserved for "we tried and gave up" -- either a permanent refusal or a retryable
 one whose bounded budget ran out. A user with **no registered device** is not a failure: no
 attempt was made, the notification stays ``PENDING``, and it becomes eligible again if a
-device appears. Nothing in this service currently sweeps pending records, so that is a
-recorded intent rather than a promise; NTF-305 is where re-attempting belongs.
+device appears. Nothing in this service sweeps pending records, so that is a recorded intent
+rather than a promise.
 
 **A provider refusal stays out of the event ack.** A send failure is recorded as status,
 never raised: the event *was* handled, and re-raising would park it on the dead-letter queue
@@ -41,7 +43,8 @@ from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel
 from app.domain.notification import Notification
 from app.domain.push import PushError, PushGateway, PushMessage
-from app.domain.repositories import NotificationRepository
+from app.domain.push_receipt import PushReceipt
+from app.domain.repositories import NotificationRepository, PushReceiptStore
 
 logger = logging.getLogger(__name__)
 
@@ -70,27 +73,35 @@ def _truncate(value: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class PushDeliveryResult:
-    """What one delivery attempt did, for logging, tests, and a future metrics hook."""
+    """What one fan-out did, for logging, tests, and a future metrics hook (NTF-305)."""
 
     notification_id: uuid.UUID
     status: DeliveryStatus
     attempted: bool = False
-    device_id: uuid.UUID | None = None
-    message_id: str | None = None
-    error: str | None = None
-    pruned: bool = False
+    receipts: tuple[PushReceipt, ...] = ()
     skipped: str | None = None
     """The reason no send happened, when ``attempted`` is false."""
 
+    @property
+    def accepted(self) -> int:
+        """How many devices the provider accepted the message for."""
+        return sum(1 for receipt in self.receipts if receipt.accepted)
+
+    @property
+    def refused(self) -> int:
+        """How many devices were refused, or had their retry budget exhausted."""
+        return sum(1 for receipt in self.receipts if not receipt.accepted)
+
 
 class PushDelivery:
-    """Deliver a recorded notification through its device's provider and record the receipt."""
+    """Fan a recorded notification out to every reachable device, recording each receipt."""
 
     def __init__(
         self,
         notifications: NotificationRepository,
         devices: DeviceRegistrationService,
         gateways: Mapping[DevicePlatform, PushGateway],
+        receipts: PushReceiptStore,
         *,
         max_attempts: int = 3,
         backoff_seconds: float = 0.2,
@@ -108,28 +119,76 @@ class PushDelivery:
         self._gateways = {
             DevicePlatform(platform): gateway for platform, gateway in gateways.items()
         }
+        self._receipts = receipts
         self._max_attempts = max_attempts
         self._backoff_seconds = backoff_seconds
         self._backoff_multiplier = backoff_multiplier
         self._sleep = sleep or time.sleep
 
     def deliver(self, notification: Notification) -> PushDeliveryResult:
-        """Send ``notification`` to one reachable device and persist the outcome.
+        """Fan ``notification`` out to every reachable device and persist the outcome.
 
         Idempotent enough to be safe on a redelivery: only a ``PENDING`` notification is
-        pushed. Anything else already carries an outcome, and re-sending would either duplicate
-        a nudge the user has seen (``SENT``/``DELIVERED``) or ignore the bounded budget that
-        produced ``FAILED``. A separate re-attempt policy belongs to NTF-305, not here.
+        pushed. Anything else already carries a rolled-up outcome, and re-sending would
+        duplicate a nudge the user has seen (``SENT``/``DELIVERED``) or ignore the bounded
+        budget that produced ``FAILED``. Within a single fan-out, a device that already has a
+        receipt is skipped, so a run resumed after a partial failure does not send twice.
         """
         if not notification.targets(NotificationChannel.PUSH):
             return self._skip(notification, "not-a-push-notification")
         if notification.status is not DeliveryStatus.PENDING:
             return self._skip(notification, "delivery-already-recorded")
 
-        device = self._choose_device(notification.user_id)
-        if device is None:
+        devices = self._reachable_devices(notification.user_id)
+        if not devices:
             return self._skip(notification, "no-reachable-device")
 
+        attempted = False
+        receipts: list[PushReceipt] = []
+        for device in devices:
+            existing = self._receipts.get(notification.id, device.id)
+            if existing is not None:
+                receipts.append(existing)
+                continue
+            receipts.append(self._deliver_to(notification, device))
+            attempted = True
+
+        accepted = sum(1 for receipt in receipts if receipt.accepted)
+        status = DeliveryStatus.SENT if accepted else DeliveryStatus.FAILED
+        self._record_status(notification, status)
+        logger.info(
+            "notification.push.fanout notification_id=%s devices=%d accepted=%d refused=%d",
+            notification.id,
+            len(receipts),
+            accepted,
+            len(receipts) - accepted,
+        )
+        return PushDeliveryResult(
+            notification_id=notification.id,
+            status=status,
+            attempted=attempted,
+            receipts=tuple(receipts),
+        )
+
+    # -- choosing destinations ---------------------------------------------------
+
+    def _reachable_devices(self, user_id: uuid.UUID) -> list[DeviceToken]:
+        """Every registered device on a platform this deployment can actually reach."""
+        devices = self._devices.list_devices(user_id)
+        if not devices:
+            logger.info("notification.push.no_device user_id=%s", user_id)
+            return []
+        reachable = [device for device in devices if device.platform in self._gateways]
+        if not reachable:
+            logger.warning(
+                "notification.push.no_gateway user_id=%s configured=%s",
+                user_id,
+                ",".join(platform.value for platform in self._gateways),
+            )
+        return reachable
+
+    def _deliver_to(self, notification: Notification, device: DeviceToken) -> PushReceipt:
+        """Send to one device and record its receipt; a refused send is not raised."""
         gateway = self._gateways[device.platform]
         message = self._build_message(notification, device.token)
         try:
@@ -147,14 +206,14 @@ class PushDelivery:
                 exc.dead_token,
                 pruned,
             )
-            self._record_status(notification, DeliveryStatus.FAILED)
-            return PushDeliveryResult(
-                notification_id=notification.id,
-                status=DeliveryStatus.FAILED,
-                attempted=True,
-                device_id=device.id,
-                error=exc.code,
-                pruned=pruned,
+            return self._record_receipt(
+                PushReceipt.refused_by(
+                    notification.id,
+                    device.id,
+                    device.platform,
+                    error=exc.code,
+                    pruned=pruned,
+                )
             )
 
         logger.info(
@@ -164,32 +223,11 @@ class PushDelivery:
             device.platform.value,
             message_id,
         )
-        self._record_status(notification, DeliveryStatus.SENT)
-        return PushDeliveryResult(
-            notification_id=notification.id,
-            status=DeliveryStatus.SENT,
-            attempted=True,
-            device_id=device.id,
-            message_id=message_id,
+        return self._record_receipt(
+            PushReceipt.accepted_by(
+                notification.id, device.id, device.platform, message_id=message_id
+            )
         )
-
-    # -- choosing a destination --------------------------------------------------
-
-    def _choose_device(self, user_id: uuid.UUID) -> DeviceToken | None:
-        """The most recent device on a platform this deployment can actually reach."""
-        devices = self._devices.list_devices(user_id)
-        if not devices:
-            logger.info("notification.push.no_device user_id=%s", user_id)
-            return None
-        for device in devices:
-            if device.platform in self._gateways:
-                return device
-        logger.warning(
-            "notification.push.no_gateway user_id=%s configured=%s",
-            user_id,
-            ",".join(platform.value for platform in self._gateways),
-        )
-        return None
 
     # -- the send, with bounded retries -----------------------------------------
 
@@ -214,6 +252,25 @@ class PushDelivery:
                 self._sleep(delay)
 
     # -- receipts ----------------------------------------------------------------
+
+    def _record_receipt(self, receipt: PushReceipt) -> PushReceipt:
+        """Persist one device's receipt, tolerating a store that cannot take it.
+
+        The push has already happened, so a failed write is logged rather than raised: failing
+        the delivery over it would report a send as broken when the send is what succeeded. The
+        receipt in hand is returned either way, so the rollup still counts this device for this
+        run even if the store kept nothing.
+        """
+        try:
+            return self._receipts.record(receipt)
+        except Exception:
+            logger.warning(
+                "notification.push.receipt_write_failed notification_id=%s device_id=%s",
+                receipt.notification_id,
+                receipt.device_id,
+                exc_info=True,
+            )
+            return receipt
 
     def _record_status(self, notification: Notification, status: DeliveryStatus) -> None:
         """Persist ``status``, tolerating a store that cannot take it.
