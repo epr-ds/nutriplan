@@ -103,4 +103,29 @@
     <string name="error_plans_server_saved">El servidor tuvo un problema. Mostrando los planes guardados en este dispositivo.</string>
     <string name="error_plans_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
     <string name="error_plans_unknown">Algo salió mal al cargar tus planes de comidas. Inténtalo de nuevo.</string>
+
+    <!-- Meal plan detail (DPL-505) -->
+    <string name="plan_detail_title_fallback">Plan de comidas</string>
+    <string name="plan_detail_dates">%1$s al %2$s</string>
+    <string name="plan_detail_target_calories">Objetivo: %1$d kcal al día</string>
+    <string name="plan_detail_day_calories">%1$d kcal</string>
+    <string name="plan_detail_meal_calories">%1$d kcal</string>
+    <string name="plan_detail_meal_portion">Porción: %1$s</string>
+    <string name="plan_detail_empty_title">Aún no hay comidas planificadas</string>
+    <string name="plan_detail_empty_description">Añade la primera comida a este plan.</string>
+    <string name="plan_detail_add_meal">Añadir comida</string>
+    <string name="plan_detail_back_to_plans">Volver a los planes</string>
+    <string name="cd_plan_detail_edit">Editar plan</string>
+    <string name="cd_plan_detail_loading">Cargando plan de comidas</string>
+    <string name="meal_type_breakfast">Desayuno</string>
+    <string name="meal_type_lunch">Almuerzo</string>
+    <string name="meal_type_dinner">Cena</string>
+    <string name="meal_type_snack">Merienda</string>
+    <string name="error_plan_detail_network">Estás sin conexión y este plan no está guardado en este dispositivo.</string>
+    <string name="error_plan_detail_network_saved">Estás sin conexión. Mostrando la versión guardada en este dispositivo.</string>
+    <string name="error_plan_detail_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_plan_detail_server_saved">El servidor tuvo un problema. Mostrando la versión guardada en este dispositivo.</string>
+    <string name="error_plan_detail_not_found">Este plan de comidas ya no existe.</string>
+    <string name="error_plan_detail_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
+    <string name="error_plan_detail_unknown">Algo salió mal al cargar este plan de comidas. Inténtalo de nuevo.</string>
 </resources>

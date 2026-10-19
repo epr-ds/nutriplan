@@ -5,6 +5,7 @@ import com.nutriplan.android.R
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.onboarding.OnboardingError
+import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanListError
 
 /**
@@ -19,6 +20,31 @@ fun MealPlanListError.messageRes(hasSavedPlans: Boolean): Int = when (this) {
         if (hasSavedPlans) R.string.error_plans_server_saved else R.string.error_plans_server
     MealPlanListError.SESSION_EXPIRED -> R.string.error_plans_session_expired
     MealPlanListError.UNKNOWN -> R.string.error_plans_unknown
+}
+
+/**
+ * DPL-505: message for a failed plan detail load. When [hasSavedPlan] the plan is still shown from
+ * the device, so the message says so instead of blocking the screen.
+ */
+@StringRes
+fun MealPlanDetailError.messageRes(hasSavedPlan: Boolean): Int = when (this) {
+    MealPlanDetailError.NETWORK ->
+        if (hasSavedPlan) R.string.error_plan_detail_network_saved else R.string.error_plan_detail_network
+    MealPlanDetailError.SERVER_PROBLEM ->
+        if (hasSavedPlan) R.string.error_plan_detail_server_saved else R.string.error_plan_detail_server
+    MealPlanDetailError.NOT_FOUND -> R.string.error_plan_detail_not_found
+    MealPlanDetailError.SESSION_EXPIRED -> R.string.error_plan_detail_session_expired
+    MealPlanDetailError.UNKNOWN -> R.string.error_plan_detail_unknown
+}
+
+/** Localized name of a meal type as sent by the server; unknown types are shown as sent. */
+@StringRes
+fun mealTypeLabelRes(mealType: String): Int? = when (mealType.uppercase()) {
+    "BREAKFAST" -> R.string.meal_type_breakfast
+    "LUNCH" -> R.string.meal_type_lunch
+    "DINNER" -> R.string.meal_type_dinner
+    "SNACK" -> R.string.meal_type_snack
+    else -> null
 }
 
 /**

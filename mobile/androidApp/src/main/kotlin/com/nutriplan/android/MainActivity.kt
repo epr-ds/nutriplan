@@ -227,7 +227,16 @@ class MainNavigationScreens(
         onNavigate: (Any) -> Unit,
         onBack: () -> Unit,
     ) {
-        MealPlanDetailScreenContent(planId, onNavigate, onBack)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.MealPlanDetailScreen(
+            planId = planId,
+            onBack = onBack,
+            // The add-meal flow (DPL-507) and plan editing (DPL-503) are not built yet; these open
+            // the recipe picker / plan form screens, which are still placeholders.
+            onAddMeal = { onNavigate(Route.RecipeSearch) },
+            onEditPlan = { onNavigate(Route.CreateMealPlan(planId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -418,19 +427,6 @@ private fun CreateMealPlanScreenContent(
     }
 }
 
-@Composable
-private fun MealPlanDetailScreenContent(
-    planId: String,
-    onNavigate: (Any) -> Unit,
-    onBack: () -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Plan Detail: $planId", style = MaterialTheme.typography.headlineLarge)
-    }
-}
 
 @Composable
 private fun RecipeSearchScreenContent(
