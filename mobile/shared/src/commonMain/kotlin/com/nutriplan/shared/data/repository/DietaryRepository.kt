@@ -15,6 +15,7 @@ import com.nutriplan.shared.data.model.UpdateMealPlanStatusRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
@@ -62,6 +63,8 @@ interface DietaryRepository {
      */
     suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal
 
+    /** Remove a planned meal from its plan (`DELETE /meal-plans/{planId}/meals/{mealId}`, 204). */
+    suspend fun removeMeal(planId: String, mealId: String)
     /**
      * Search the recipe catalog (`GET /recipes`): by ingredient (a recipe matches when it has at
      * least one, best matches first), diet type, calories and protein. 20 per page by default.
@@ -122,6 +125,15 @@ class DietaryRepositoryImpl : DietaryRepository {
                 setBody(request)
             }.readOrThrow()
         }
+
+    override suspend fun removeMeal(planId: String, mealId: String) {
+        withContext(Dispatchers.IO) {
+            val response = client.delete("${ApiConfig.DIETARY}/meal-plans/$planId/meals/${mealId.encodeURLPathPart()}")
+            if (!response.status.isSuccess()) {
+                throw ApiException.HttpError(statusCode = response.status.value, body = response.bodyAsText())
+            }
+        }
+    }
 
     override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> =
         withContext(Dispatchers.IO) {

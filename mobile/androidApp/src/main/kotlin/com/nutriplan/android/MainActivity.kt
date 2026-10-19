@@ -244,6 +244,7 @@ class MainNavigationScreens(
             planId = planId,
             onBack = onBack,
             onAddMeal = { navController.navigate(Route.PickRecipe(planId)) },
+            onEditMeal = { mealId -> navController.navigate(Route.EditMeal(planId, mealId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
@@ -274,6 +275,23 @@ class MainNavigationScreens(
             onRecipeClick = { recipeId -> navController.navigate(Route.AddMeal(planId, recipeId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
             isPicking = true,
+        )
+    }
+
+    @Composable
+    override fun EditMealScreen(
+        planId: String,
+        mealId: String,
+        onBack: () -> Unit,
+    ) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.EditMealScreen(
+            planId = planId,
+            mealId = mealId,
+            onBack = onBack,
+            // Back to the plan, which reloads to show the change.
+            onDone = { navController.popBackStack() },
+            onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
 

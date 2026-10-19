@@ -60,6 +60,7 @@ class AddMealViewModelTest {
             return PlanMeal(id = "m${added.size}", mealType = request.mealType, servings = request.servings)
         }
 
+        override suspend fun removeMeal(planId: String, mealId: String): Unit = error("unused")
         override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal {
             updated += Triple(planId, mealId, request)
             updateFailure?.let { throw it }
@@ -98,7 +99,7 @@ class AddMealViewModelTest {
         assertEquals("Soup", state.recipe?.name)
         assertFalse(state.isLoading)
         assertEquals(
-            listOf(AddMealDay(0, "2026-10-01"), AddMealDay(1, "2026-10-02"), AddMealDay(2, "2026-10-03")),
+            listOf(PlanDayOption(0, "2026-10-01"), PlanDayOption(1, "2026-10-02"), PlanDayOption(2, "2026-10-03")),
             state.days,
         )
     }

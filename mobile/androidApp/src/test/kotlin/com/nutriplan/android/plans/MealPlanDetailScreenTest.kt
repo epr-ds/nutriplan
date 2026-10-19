@@ -103,6 +103,7 @@ class MealPlanDetailScreenTest {
         onRetry: () -> Unit = {},
         onBack: () -> Unit = {},
         onAddMeal: () -> Unit = {},
+        onEditMeal: (String) -> Unit = {},
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -112,6 +113,7 @@ class MealPlanDetailScreenTest {
                     onRetry = onRetry,
                     onBack = onBack,
                     onAddMeal = onAddMeal,
+                    onEditMeal = onEditMeal,
                 )
             }
         }
@@ -285,5 +287,27 @@ class MealPlanDetailScreenTest {
 
         compose.onNodeWithContentDescription(str(R.string.cd_meal_plans_back)).performClick()
         assertEquals(1, backed)
+    }
+
+    @Test
+    fun `tapping a meal opens it for editing`() {
+        var edited: String? = null
+        render(loaded(plan(meal("m7", 0, "lunch", calories = 600))), onEditMeal = { edited = it })
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.MEAL_CARD).performClick()
+
+        assertEquals("m7", edited)
+    }
+
+    @Test
+    fun `a rated meal shows its rating and an unrated one does not`() {
+        val rated = PlanMeal(id = "m1", mealType = "lunch", servings = 1.0, dayIndex = 0, satisfactionLevel = 4)
+        render(loaded(plan(rated, meal("m2", 0, "dinner"))))
+
+        compose.onNodeWithText(str(R.string.plan_detail_meal_rated, 4)).assertIsDisplayed()
+        assertEquals(
+            1,
+            compose.onAllNodesWithText(str(R.string.plan_detail_meal_rated, 4)).fetchSemanticsNodes().size,
+        )
     }
 }

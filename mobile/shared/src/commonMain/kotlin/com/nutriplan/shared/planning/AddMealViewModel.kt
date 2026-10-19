@@ -41,7 +41,7 @@ enum class AddMealError {
 }
 
 /** One day of the plan the meal can be placed on. */
-data class AddMealDay(
+data class PlanDayOption(
     /** 0-based day within the plan, as the API expects. */
     val dayIndex: Int,
     /** ISO date (`yyyy-MM-dd`) of that day. */
@@ -58,7 +58,7 @@ data class AddMealDay(
  */
 data class AddMealUiState(
     val recipe: Recipe? = null,
-    val days: List<AddMealDay> = emptyList(),
+    val days: List<PlanDayOption> = emptyList(),
     val isLoading: Boolean = true,
     /** Why the recipe could not be loaded; the form is not usable then. */
     val loadError: AddMealError? = null,
@@ -134,18 +134,13 @@ class AddMealViewModel(
         if (_state.value.days.isNotEmpty()) return
         try {
             val plan = repository.getMealPlan(planId)
-            val count = (IsoDate.daysBetween(plan.startDate, plan.endDate) ?: return) + 1
-            val days = (0 until count.coerceAtMost(MAX_DAYS)).mapNotNull { index ->
-                IsoDate.addDays(plan.startDate, index)?.let { AddMealDay(index, it) }
-            }
-            _state.update { it.copy(days = days) }
+            _state.update { it.copy(days = planDays(plan.startDate, plan.endDate)) }
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception) {
             // Not fatal: without the plan's days the meal is simply added without a day.
         }
     }
-
     fun onMealTypeChange(value: String) {
         if (_state.value.addedMealId != null) return
         _state.update {
@@ -217,7 +212,6 @@ class AddMealViewModel(
         val MEAL_TYPES = listOf("breakfast", "lunch", "dinner", "snack")
 
         private const val MAX_SERVINGS = 99.0
-        private const val MAX_DAYS = 366
     }
 }
 
