@@ -112,8 +112,6 @@
     <string name="plan_detail_target_calories">Target: %1$d kcal per day</string>
     <string name="plan_detail_day_calories">%1$d kcal</string>
     <string name="plan_detail_meal_calories">%1$d kcal</string>
-    <string name="plan_detail_daily_average">Daily average: %1$d kcal</string>
-    <string name="plan_detail_daily_average_of_target">Daily average: %1$d of %2$d kcal (%3$d%%)</string>
     <string name="plan_detail_day_title">Day %1$d</string>
     <string name="plan_detail_day_unassigned">Not assigned to a day</string>
     <string name="plan_detail_meal_unnamed">Planned meal</string>
@@ -263,4 +261,24 @@
     <string name="error_edit_meal_not_found">This meal no longer exists.</string>
     <string name="error_edit_meal_rejected">The server didn\'t accept these changes. Please check them and try again.</string>
     <string name="error_edit_meal_unknown">Something went wrong changing the meal. Please try again.</string>
+
+    <!-- DPL-605 / DPL-606: nutrition progress and summary -->
+    <string name="nutrition_title">Nutrition</string>
+    <string name="nutrition_subtitle">Daily average compared with your targets</string>
+    <string name="nutrition_percent">%1$d%%</string>
+    <string name="nutrition_total">Plan total: %1$s</string>
+    <string name="nutrition_kcal_of_target">%1$s of %2$s kcal</string>
+    <string name="nutrition_g_of_target">%1$s of %2$s g</string>
+    <string name="nutrition_kcal">%1$s kcal</string>
+    <string name="nutrition_g">%1$s g</string>
+    <string name="nutrition_no_data">Not enough data</string>
+    <string name="nutrition_status_under">Under target</string>
+    <string name="nutrition_status_on_target">On target</string>
+    <string name="nutrition_status_over">Over target</string>
+    <string name="nutrition_status_no_target">No target set</string>
+    <string name="nutrient_calories">Calories</string>
+    <string name="nutrient_protein">Protein</string>
+    <string name="nutrient_carbs">Carbs</string>
+    <string name="nutrient_fat">Fat</string>
+    <string name="nutrient_sugar">Sugar</string>
 </resources>

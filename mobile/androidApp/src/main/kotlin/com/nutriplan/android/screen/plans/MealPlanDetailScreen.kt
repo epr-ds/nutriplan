@@ -52,6 +52,7 @@ import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanDetailUiState
 import com.nutriplan.shared.planning.MealPlanDetailViewModel
 import com.nutriplan.shared.planning.MealSection
+import com.nutriplan.shared.planning.toNutritionSummaryUi
 import kotlinx.coroutines.launch
 
 /** Test tags for the plan detail screen (used by the Robolectric UI tests). */
@@ -209,6 +210,8 @@ private fun PlanDetailList(
 
         item(key = "summary") { PlanSummary(plan) }
 
+        item(key = "nutrition") { NutritionSummaryCard(plan.nutritionalSummary.toNutritionSummaryUi()) }
+
         if (hasNoMeals) {
             item(key = "empty") {
                 EmptyState(
@@ -249,9 +252,6 @@ private fun PlanDetailList(
 
 @Composable
 private fun PlanSummary(plan: MealPlan) {
-    val average = plan.nutritionalSummary?.dailyAverage?.calories
-    val target = plan.nutritionalSummary?.targets?.calories ?: plan.dailyCalorieTarget
-    val percent = plan.nutritionalSummary?.progress?.calories?.percentOfTarget
 
     Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
         Text(
@@ -267,17 +267,6 @@ private fun PlanSummary(plan: MealPlan) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (average != null) {
-            Text(
-                text = if (percent != null) {
-                    stringResource(R.string.plan_detail_daily_average_of_target, average, target, percent.toInt())
-                } else {
-                    stringResource(R.string.plan_detail_daily_average, average)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

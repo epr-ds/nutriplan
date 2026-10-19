@@ -20,6 +20,7 @@ import com.nutriplan.android.a11y.TestApplication
 import com.nutriplan.android.a11y.hasLiveRegion
 import com.nutriplan.android.screen.plans.MealPlanDetailScreenContent
 import com.nutriplan.android.screen.plans.MealPlanDetailTestTags
+import com.nutriplan.android.screen.plans.NutritionSummaryTestTags
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.NutrientProgress
@@ -211,7 +212,16 @@ class MealPlanDetailScreenTest {
         render(loaded(plan(meal("1", 0, "lunch"), summary = summary)))
 
         compose.onNodeWithText(str(R.string.plan_detail_target_calories, 2000)).assertIsDisplayed()
-        compose.onNodeWithText(str(R.string.plan_detail_daily_average_of_target, 128, 2000, 6)).assertIsDisplayed()
+        // The daily average against the target is drawn by the nutrition card (DPL-605).
+        compose.onNodeWithTag(NutritionSummaryTestTags.CARD).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.nutrition_kcal_of_target, "128", "2,000")).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a plan without nutrition data shows no nutrition card`() {
+        render(loaded(plan(meal("1", 0, "lunch"))))
+
+        compose.onNodeWithTag(NutritionSummaryTestTags.CARD).assertDoesNotExist()
     }
 
     @Test
