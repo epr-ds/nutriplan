@@ -110,8 +110,6 @@
     <string name="plan_detail_target_calories">Objetivo: %1$d kcal al día</string>
     <string name="plan_detail_day_calories">%1$d kcal</string>
     <string name="plan_detail_meal_calories">%1$d kcal</string>
-    <string name="plan_detail_daily_average">Promedio diario: %1$d kcal</string>
-    <string name="plan_detail_daily_average_of_target">Promedio diario: %1$d de %2$d kcal (%3$d%%)</string>
     <string name="plan_detail_day_title">Día %1$d</string>
     <string name="plan_detail_day_unassigned">Sin día asignado</string>
     <string name="plan_detail_meal_unnamed">Comida planificada</string>
@@ -247,18 +245,38 @@
     <string name="cd_edit_meal_saving">Procesando</string>
     <string name="edit_meal_save">Guardar cambios</string>
     <string name="edit_meal_remove">Quitar del plan</string>
-    <string name="edit_meal_remove_title">Â¿Quitar esta comida?</string>
-    <string name="edit_meal_remove_message">Se eliminarÃ¡ del plan. No se puede deshacer.</string>
+    <string name="edit_meal_remove_title">¿Quitar esta comida?</string>
+    <string name="edit_meal_remove_message">Se eliminará del plan. No se puede deshacer.</string>
     <string name="edit_meal_remove_confirm">Quitar</string>
     <string name="edit_meal_cancel">Cancelar</string>
-    <string name="edit_meal_satisfaction_label">Â¿QuÃ© tan satisfactoria fue?</string>
+    <string name="edit_meal_satisfaction_label">¿Qué tan satisfactoria fue?</string>
     <string name="edit_meal_satisfaction_value">%1$d de 5</string>
-    <string name="edit_meal_satisfaction_unrated">Sin valorar. ValÃ³rala despuÃ©s de comerla.</string>
+    <string name="edit_meal_satisfaction_unrated">Sin valorar. Valórala después de comerla.</string>
     <string name="plan_detail_meal_rated">Valorada con %1$d de 5</string>
-    <string name="error_edit_meal_network">EstÃ¡s sin conexiÃ³n. ConÃ©ctate a internet para cambiar esta comida.</string>
-    <string name="error_edit_meal_server">El servidor tuvo un problema. IntÃ©ntalo de nuevo mÃ¡s tarde.</string>
-    <string name="error_edit_meal_session_expired">Tu sesiÃ³n ha expirado. Inicia sesiÃ³n de nuevo.</string>
+    <string name="error_edit_meal_network">Estás sin conexión. Conéctate a internet para cambiar esta comida.</string>
+    <string name="error_edit_meal_server">El servidor tuvo un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_edit_meal_session_expired">Tu sesión ha expirado. Inicia sesión de nuevo.</string>
     <string name="error_edit_meal_not_found">Esta comida ya no existe.</string>
-    <string name="error_edit_meal_rejected">El servidor no aceptÃ³ estos cambios. RevÃ­salos e intÃ©ntalo de nuevo.</string>
-    <string name="error_edit_meal_unknown">Algo saliÃ³ mal al cambiar la comida. IntÃ©ntalo de nuevo.</string>
+    <string name="error_edit_meal_rejected">El servidor no aceptó estos cambios. Revísalos e inténtalo de nuevo.</string>
+    <string name="error_edit_meal_unknown">Algo salió mal al cambiar la comida. Inténtalo de nuevo.</string>
+
+    <!-- DPL-605 / DPL-606: progreso y resumen nutricional -->
+    <string name="nutrition_title">Nutrición</string>
+    <string name="nutrition_subtitle">Promedio diario frente a tus objetivos</string>
+    <string name="nutrition_percent">%1$d%%</string>
+    <string name="nutrition_total">Total del plan: %1$s</string>
+    <string name="nutrition_kcal_of_target">%1$s de %2$s kcal</string>
+    <string name="nutrition_g_of_target">%1$s de %2$s g</string>
+    <string name="nutrition_kcal">%1$s kcal</string>
+    <string name="nutrition_g">%1$s g</string>
+    <string name="nutrition_no_data">Faltan datos</string>
+    <string name="nutrition_status_under">Por debajo del objetivo</string>
+    <string name="nutrition_status_on_target">En el objetivo</string>
+    <string name="nutrition_status_over">Por encima del objetivo</string>
+    <string name="nutrition_status_no_target">Sin objetivo definido</string>
+    <string name="nutrient_calories">Calorías</string>
+    <string name="nutrient_protein">Proteína</string>
+    <string name="nutrient_carbs">Carbohidratos</string>
+    <string name="nutrient_fat">Grasa</string>
+    <string name="nutrient_sugar">Azúcar</string>
 </resources>
