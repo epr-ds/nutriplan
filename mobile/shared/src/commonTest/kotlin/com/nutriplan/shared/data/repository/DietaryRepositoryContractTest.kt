@@ -3,6 +3,7 @@ package com.nutriplan.shared.data.repository
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlanQuery
+import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.HttpClientProvider
@@ -186,6 +187,87 @@ class DietaryRepositoryContractTest {
         val error = assertFailsWith<ApiException.SerializationError> { repository.getMealPlan("p1") }
 
         assertEquals(ApiFailure.UNKNOWN, error.toApiFailure())
+    }
+
+    // --- recipes ---
+
+    @Test
+    fun `recipe search sends the ingredient filter as a repeated parameter with the contract's names`() = runTest {
+        val repository = serve(body = "[]")
+
+        repository.searchRecipes(
+            RecipeSearchQuery(
+                ingredients = listOf("chicken", "olive oil"),
+                dietType = "keto",
+                maxCalories = 600,
+                minProtein = 30.5,
+                page = 2,
+                limit = 10,
+            ),
+        )
+
+        val request = lastRequest!!
+        assertEquals(HttpMethod.Get, request.method)
+        assertEquals("/dietary/v1/recipes", request.url.encodedPath)
+        assertEquals(listOf("chicken", "olive oil"), request.url.parameters.getAll("ingredients"))
+        assertEquals("keto", request.url.parameters["dietType"])
+        assertEquals("600", request.url.parameters["maxCalories"])
+        assertEquals("30.5", request.url.parameters["minProtein"])
+        assertEquals("2", request.url.parameters["page"])
+        assertEquals("10", request.url.parameters["limit"])
+    }
+
+    @Test
+    fun `an unfiltered recipe search only sends the paging`() = runTest {
+        val repository = serve(body = "[]")
+
+        repository.searchRecipes()
+
+        val parameters = lastRequest!!.url.parameters
+        assertEquals(setOf("page", "limit"), parameters.names())
+        assertEquals("1", parameters["page"])
+        assertEquals("20", parameters["limit"])
+    }
+
+    @Test
+    fun `recipe search decodes the results`() = runTest {
+        val repository = serve(body = """[{"id":"r1","name":"Soup","dietaryTypes":["vegan"]},{"id":"r2","name":"Toast"}]""")
+
+        val recipes = repository.searchRecipes(RecipeSearchQuery(ingredients = listOf("lentils")))
+
+        assertEquals(listOf("r1", "r2"), recipes.map { it.id })
+        assertEquals(listOf("vegan"), recipes[0].dietaryTypes)
+    }
+
+    @Test
+    fun `get recipe reads one recipe and escapes the id`() = runTest {
+        val repository = serve(body = """{"id":"a b/c","name":"Odd id"}""")
+
+        val recipe = repository.getRecipe("a b/c")
+
+        assertEquals("/dietary/v1/recipes/a%20b%2Fc", lastRequest!!.url.encodedPath)
+        assertEquals("Odd id", recipe.name)
+    }
+
+    @Test
+    fun `an unknown recipe is a not found failure`() = runTest {
+        val repository = serve(status = HttpStatusCode.NotFound, body = PROBLEM_JSON, headers = problemHeaders)
+
+        val error = assertFailsWith<ApiException.HttpError> { repository.getRecipe("missing") }
+
+        assertEquals(ApiFailure.NOT_FOUND, error.toApiFailure())
+    }
+
+    @Test
+    fun `the nutrition disclaimer is read from its endpoint`() = runTest {
+        val repository = serve(
+            body = """{"disclaimer":"Estimates only.","medicalAdvice":false,"sources":[],"fieldSources":{},"lastReviewed":"2026-09-01"}""",
+        )
+
+        val disclaimer = repository.getNutritionDisclaimer()
+
+        assertEquals("/dietary/v1/nutrition/disclaimer", lastRequest!!.url.encodedPath)
+        assertEquals("Estimates only.", disclaimer.disclaimer)
     }
 
     @Test

@@ -1,60 +1,125 @@
 package com.nutriplan.shared.data.model
 
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
+/** The recipe models against payloads shaped like `contracts/dietary.openapi.yaml`. */
 class RecipeModelsTest {
 
+    /** Same settings as the app's HTTP client. */
+    private val json = Json {
+        isLenient = true
+        ignoreUnknownKeys = true
+        prettyPrint = false
+        encodeDefaults = true
+    }
+
     @Test
-    fun `RecipeSearchQuery has pagination defaults`() {
+    fun `search query has the contract's paging defaults`() {
         val query = RecipeSearchQuery()
+
         assertEquals(emptyList(), query.ingredients)
         assertNull(query.dietType)
+        assertNull(query.maxCalories)
+        assertNull(query.minProtein)
         assertEquals(1, query.page)
         assertEquals(20, query.limit)
     }
 
     @Test
-    fun `RecipeSearchQuery creates correctly`() {
-        val query = RecipeSearchQuery(
-            ingredients = listOf("chicken", "rice"),
-            dietType = "high-protein",
-            maxCalories = 600,
-            minProtein = 30.0,
-        )
-        assertEquals(listOf("chicken", "rice"), query.ingredients)
-        assertEquals("high-protein", query.dietType)
-        assertEquals(600, query.maxCalories)
-        assertEquals(30.0, query.minProtein)
+    fun `decodes a full recipe`() {
+        val recipe = json.decodeFromString<Recipe>(FULL_RECIPE)
+
+        assertEquals("lentil-soup", recipe.id)
+        assertEquals("Lentil soup", recipe.name)
+        assertEquals("Warm and filling", recipe.description)
+        assertEquals(4, recipe.servings)
+        assertEquals(10, recipe.prepTime)
+        assertEquals(30, recipe.cookTime)
+        assertEquals("https://example.com/soup.jpg", recipe.imageUrl)
+        assertEquals(listOf("vegan", "vegetarian"), recipe.dietaryTypes)
+        assertEquals(listOf("Chop the onion", "Simmer the lentils"), recipe.instructions)
+        assertEquals(320, recipe.nutritionalInfo?.calories)
+        assertEquals(18.5, recipe.nutritionalInfo?.protein)
     }
 
     @Test
-    fun `RecipeResponse creates correctly`() {
-        val recipe = RecipeResponse(
-            id = "recipe-123",
-            name = "Grilled Chicken Salad",
-            description = "Healthy grilled chicken with mixed greens",
-            servings = 2,
-            prepTimeMinutes = 15,
-            cookTimeMinutes = 20,
-            nutritionPerServing = NutritionPerServing(calories = 450, protein = 35.0, carbs = 20.0, fat = 15.0, sugar = 4.0),
-            ingredients = listOf(
-                RecipeIngredient(name = "Chicken", quantity = 200.0, unit = "g", calories = null, protein = null, carbs = null, fat = null),
-            ),
-            instructions = listOf("Grill the chicken", "Toss with greens"),
-            tags = listOf("high-protein"),
-            dietType = "high-protein",
-            imageUrl = "https://example.com/image.jpg",
-            createdAt = "2024-01-15T10:00:00Z",
+    fun `decodes ingredients, keeping unknown quantities as null rather than zero`() {
+        val ingredients = json.decodeFromString<Recipe>(FULL_RECIPE).ingredients
+
+        assertEquals(2, ingredients.size)
+        assertEquals(RecipeIngredient(name = "lentils", quantity = 200.0, unit = "g", calories = 230, protein = 18.0), ingredients[0])
+        assertEquals(RecipeIngredient(name = "salt"), ingredients[1])
+        assertNull(ingredients[1].quantity)
+    }
+
+    @Test
+    fun `a recipe with only the required fields still decodes`() {
+        val recipe = json.decodeFromString<Recipe>("""{"id":"r1","name":"Toast"}""")
+
+        assertEquals(emptyList(), recipe.ingredients)
+        assertEquals(emptyList(), recipe.instructions)
+        assertEquals(emptyList(), recipe.dietaryTypes)
+        assertNull(recipe.nutritionalInfo)
+        assertNull(recipe.servings)
+    }
+
+    @Test
+    fun `explicit nulls from the server are accepted`() {
+        val recipe = json.decodeFromString<Recipe>(
+            """{"id":"r1","name":"Toast","description":null,"prepTime":null,"cookTime":null,"servings":null,"imageUrl":null,"nutritionalInfo":null}""",
         )
-        assertEquals("recipe-123", recipe.id)
-        assertEquals(15, recipe.prepTimeMinutes)
-        assertEquals(20, recipe.cookTimeMinutes)
-        assertEquals(2, recipe.servings)
-        assertEquals(450, recipe.nutritionPerServing.calories)
-        assertEquals(1, recipe.ingredients.size)
-        assertEquals(2, recipe.instructions.size)
-        assertEquals("https://example.com/image.jpg", recipe.imageUrl)
+
+        assertNull(recipe.description)
+        assertNull(recipe.imageUrl)
+    }
+
+    @Test
+    fun `decodes a page of search results`() {
+        val recipes = json.decodeFromString<List<Recipe>>("[$FULL_RECIPE, {\"id\":\"r2\",\"name\":\"Toast\"}]")
+
+        assertEquals(listOf("lentil-soup", "r2"), recipes.map { it.id })
+    }
+
+    @Test
+    fun `decodes the nutrition disclaimer with its sources`() {
+        val disclaimer = json.decodeFromString<NutritionDisclaimer>(
+            """
+            {
+              "disclaimer":"Values are estimates and not medical advice.",
+              "medicalAdvice":false,
+              "sources":[{"id":"usda","name":"USDA FoodData Central","url":"https://fdc.nal.usda.gov","verified":true}],
+              "fieldSources":{"calories":"usda","protein":"usda","carbs":"usda","fat":"usda","sugar":"usda"},
+              "lastReviewed":"2026-09-01"
+            }
+            """,
+        )
+
+        assertEquals("Values are estimates and not medical advice.", disclaimer.disclaimer)
+        assertFalse(disclaimer.medicalAdvice)
+        assertEquals("USDA FoodData Central", disclaimer.sources.single().name)
+        assertTrue(disclaimer.sources.single().verified)
+        assertEquals("2026-09-01", disclaimer.lastReviewed)
+    }
+
+    private companion object {
+        val FULL_RECIPE = """
+            {
+              "id":"lentil-soup","name":"Lentil soup","description":"Warm and filling",
+              "ingredients":[
+                {"name":"lentils","quantity":200.0,"unit":"g","calories":230,"protein":18.0},
+                {"name":"salt"}
+              ],
+              "instructions":["Chop the onion","Simmer the lentils"],
+              "prepTime":10,"cookTime":30,"servings":4,
+              "imageUrl":"https://example.com/soup.jpg",
+              "nutritionalInfo":{"calories":320,"protein":18.5,"carbs":45.0,"fat":6.0,"sugar":5.0},
+              "dietaryTypes":["vegan","vegetarian"]
+            }
+        """.trimIndent()
     }
 }

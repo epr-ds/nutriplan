@@ -149,30 +149,10 @@ data class MealPlanQuery(
     val limit: Int? = null,
 )
 
-/** Query parameters for listing recipes. */
-data class RecipeQuery(
-    val dietaryPreference: String? = null,
-    val calorieRangeMin: Int? = null,
-    val calorieRangeMax: Int? = null,
-    val limit: Int? = null,
-    val offset: Int? = null,
-)
-
-/** A recipe entity. */
-@Serializable
-data class Recipe(
-    val id: String,
-    val name: String,
-    val description: String? = null,
-    val ingredients: List<Ingredient>? = null,
-    val nutritionInfo: NutritionInfo? = null,
-    val dietaryTags: List<String>? = null,
-    val imageUrl: String? = null,
-    val prepTimeMinutes: Int? = null,
-    val servings: Int? = null,
-)
-
-/** Nutrition information for a recipe. */
+/**
+ * Nutrition values as the AI models use them (see `AiModels.kt`). Recipes and meals use
+ * [NutritionalInfo], which follows the Dietary contract.
+ */
 @Serializable
 data class NutritionInfo(
     val calories: Int? = null,
@@ -180,12 +160,4 @@ data class NutritionInfo(
     val carbohydrates: Double? = null,
     val fat: Double? = null,
     val fiber: Double? = null,
-)
-
-/** Ingredient for a recipe. */
-@Serializable
-data class Ingredient(
-    val name: String,
-    val amount: Double? = null,
-    val unit: String? = null,
 )
