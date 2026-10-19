@@ -14,7 +14,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from app.adapters.factory import build_notification_recorder, build_order_progress_store
+from app.adapters.factory import (
+    build_notification_recorder,
+    build_order_progress_store,
+    build_push_delivery,
+)
 from app.adapters.keys import NotificationKeys
 from app.application.dead_letter_replay import DeadLetterReplayer
 from app.application.order_status_consumer import OrderStatusConsumer
@@ -84,11 +88,13 @@ def build_dead_letter_queue(settings: Settings | None = None) -> DeadLetterQueue
 
 
 def build_order_status_consumer(settings: Settings | None = None) -> OrderStatusConsumer:
-    """Assemble the handler that turns order events into notifications (NTF-202)."""
+    """Assemble the handler that turns order events into notifications (NTF-202/303)."""
     settings = settings or default_settings
+    recorder = build_notification_recorder(settings)
     return OrderStatusConsumer(
-        build_notification_recorder(settings),
+        recorder,
         build_order_progress_store(settings),
+        push=build_push_delivery(settings, notifications=recorder.repository),
     )
 
 

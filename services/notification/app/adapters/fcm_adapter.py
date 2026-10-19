@@ -1,18 +1,23 @@
 """Firebase Cloud Messaging push adapter (NTF-301).
 
-This module provides the FCM push notification adapter that sends push notifications
-to Android devices via the Firebase Cloud Messaging API.
+Sends one message to one Android device token through FCM's HTTP v1 API. The adapter is
+**synchronous**, like the rest of this service: the event consumer that drives delivery is a
+plain loop, not an event loop, and bridging to an async client per message would buy nothing
+but an OAuth round trip and a client lifecycle to manage.
 
-The adapter handles:
-- Authentication with FCM using service account credentials
-- Sending messages to device tokens
-- Handling FCM error responses and retry logic
-- Deep link payload construction
+Two parts are deliberately still scaffolds, because they belong to later stories rather than
+this one: the service-account assertion is a placeholder until NTF-705 injects real
+credentials, and successful sends are only *accepted* by the provider -- there is no
+on-device delivery receipt to record (NTF-303 owns the status mapping).
 """
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
+import os
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,23 +25,25 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# FCM endpoint
 FCM_SEND_ENDPOINT = "https://fcm.googleapis.com/v1/projects/{project}/messages:send"
 
-# FCM error codes that indicate permanent failures (no retry)
-PERMANENT_FCM_ERRORS = {
-    "INVALID_ARGUMENT": "invalid argument",
-    "NOT_FOUND": "device token not found",
-    "UNREGISTERED": "device token unregistered",
-    "APPS_CHECK_FAILED": "apps check failed",
-    "FAULTY_ETAG": "faulty etag",
-    "INTERNAL": "internal error",
-    "QUOTA_EXCEEDED": "quota exceeded",
-    "QUOTA_EXCEEDED_PER_USER": "quota exceeded per user",
-    "QUOTA_EXCEEDED_PER_PROJECT": "quota exceeded per project",
-    "SERVICE_UNAVAILABLE": "service unavailable",
-    "THROTTLE": "throttle",
-}
+INVALID_TOKEN_FCM_ERRORS = frozenset({"UNREGISTERED", "NOT_FOUND"})
+"""Codes that mean the *address* is gone, so the registration should be pruned."""
+
+PERMANENT_FCM_ERRORS = frozenset(
+    {
+        "INVALID_ARGUMENT",
+        "APPS_CHECK_FAILED",
+        "FAULTY_ETAG",
+        "SENDER_ID_MISMATCH",
+        "THIRD_PARTY_AUTH_ERROR",
+        "UNAUTHENTICATED",
+        "PERMISSION_DENIED",
+        *INVALID_TOKEN_FCM_ERRORS,
+    }
+)
+"""Refusals a retry cannot change. Everything else (UNAVAILABLE, INTERNAL, quotas, throttling)
+is transient by FCM's own classification and is retried by NTF-303."""
 
 
 @dataclass(frozen=True)
@@ -66,25 +73,27 @@ class FCMAdapter:
 
     def __init__(self, config: FCMConfig) -> None:
         self._config = config
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx.Client | None = None
         self._access_token: str | None = None
         self._token_expiry: float = 0
 
-    async def start(self) -> None:
-        """Initialize the HTTP client and fetch access token."""
-        self._client = httpx.AsyncClient(
+    def start(self) -> None:
+        """Initialize the HTTP client and fetch an access token (idempotent)."""
+        if self._client is not None:
+            return
+        self._client = httpx.Client(
             base_url="https://oauth2.googleapis.com/token",
             timeout=self._config.timeout,
         )
-        await self._refresh_token()
+        self._refresh_token()
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Close the HTTP client."""
         if self._client is not None:
-            await self._client.aclose()
+            self._client.close()
             self._client = None
 
-    async def _refresh_token(self) -> None:
+    def _refresh_token(self) -> None:
         """Fetch a new OAuth2 access token from Google."""
         if self._client is None:
             raise RuntimeError("FCMAdapter not started")
@@ -94,35 +103,28 @@ class FCMAdapter:
             "assertion": self._make_jwt(),
         }
         try:
-            response = await self._client.post(
-                "/token",
-                data=payload,
-            )
+            response = self._client.post("/token", data=payload)
             response.raise_for_status()
             token_data = response.json()
             self._access_token = token_data["access_token"]
-            self._token_expiry = (
-                self._config.credentials_json.get("token_expiry", 0)
-                or (self._config.credentials_json.get("expires_in", 3600) / 1000)
-                + __import__("time").time()
-            )
-        except httpx.HTTPError as exc:
+            self._token_expiry = time.time() + float(token_data.get("expires_in", 3600))
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
             logger.error("fcm.token_fetch_failed error=%s", exc)
-            raise
+            raise FCMError("TOKEN_FETCH_FAILED", {"message": str(exc)}, retryable=True) from exc
 
     def _make_jwt(self) -> str:
-        """Create a JWT assertion for FCM authentication."""
-        # Simplified JWT creation - in production, use a proper JWT library
-        import base64
-        import json
+        """Create a JWT assertion for FCM authentication.
 
+        The signature is a placeholder until NTF-705 supplies the service-account key; the
+        claims are real so the shape is already correct when signing lands.
+        """
         header = {"alg": "RS256", "typ": "JWT"}
         payload = {
             "iss": self._config.credentials_json["client_email"],
             "scope": "https://www.googleapis.com/auth/cloud-platform",
             "aud": "https://oauth2.googleapis.com/token",
-            "exp": int(__import__("time").time()) + 3600,
-            "iat": int(__import__("time").time()),
+            "exp": int(time.time()) + 3600,
+            "iat": int(time.time()),
         }
 
         def b64encode(data: bytes) -> str:
@@ -131,24 +133,20 @@ class FCMAdapter:
         header_b64 = b64encode(json.dumps(header, separators=(",", ":")).encode())
         payload_b64 = b64encode(json.dumps(payload, separators=(",", ":")).encode())
         signing_input = f"{header_b64}.{payload_b64}"
-
-        # In production, use the private key from credentials
-        # For now, return a placeholder
         return f"{signing_input}.signature"
 
-    async def send(self, message: FCMMessage) -> str:
+    def send(self, message: FCMMessage) -> str:
         """Send a push notification to a device token.
 
-        Returns the FCM message ID on success.
-        Raises FCMError on permanent failures.
+        Returns the FCM message ID on success and raises :class:`FCMError` on refusal.
         """
         if self._client is None:
-            raise RuntimeError("FCMAdapter not started")
+            self.start()
 
-        if self._access_token is None or __import__("time").time() > self._token_expiry:
-            await self._refresh_token()
+        if self._access_token is None or time.time() > self._token_expiry:
+            self._refresh_token()
 
-        fcm_payload = {
+        fcm_payload: dict[str, Any] = {
             "message": {
                 "token": message.token,
                 "notification": {
@@ -170,8 +168,9 @@ class FCMAdapter:
             "Content-Type": "application/json",
         }
 
+        assert self._client is not None
         try:
-            response = await self._client.post(
+            response = self._client.post(
                 FCM_SEND_ENDPOINT.format(project=self._config.project_id),
                 json=fcm_payload,
                 headers=headers,
@@ -185,31 +184,39 @@ class FCMAdapter:
             )
             return result.get("name", "")
         except httpx.HTTPStatusError as exc:
-            error_data = exc.response.json() if exc.response.text else {}
-            error_data.get("error", {}).get("code", "UNKNOWN")
+            error_data = _json_or_empty(exc.response)
             error_status = error_data.get("error", {}).get("status", "UNKNOWN")
 
             if error_status in PERMANENT_FCM_ERRORS:
                 logger.warning(
-                    "fcm.permanent_failure message_id=%s error=%s",
-                    message.token,
+                    "fcm.permanent_failure token=%s error=%s",
+                    message.token[-8:],
                     error_status,
                 )
-                raise FCMError(error_status, error_data) from exc
-            else:
-                logger.warning(
-                    "fcm.temporary_failure message_id=%s error=%s",
-                    message.token,
+                raise FCMError(
                     error_status,
-                )
-                raise FCMError(error_status, error_data, retryable=True) from exc
-        except httpx.HTTPError as exc:
-            logger.error(
-                "fcm.http_error message_id=%s error=%s",
-                message.token,
-                exc,
+                    error_data,
+                    dead_token=error_status in INVALID_TOKEN_FCM_ERRORS,
+                ) from exc
+
+            logger.warning(
+                "fcm.temporary_failure token=%s error=%s",
+                message.token[-8:],
+                error_status,
             )
+            raise FCMError(error_status, error_data, retryable=True) from exc
+        except httpx.HTTPError as exc:
+            logger.error("fcm.http_error token=%s error=%s", message.token[-8:], exc)
             raise FCMError("HTTP_ERROR", {"message": str(exc)}, retryable=True) from exc
+
+
+def _json_or_empty(response: httpx.Response) -> dict[str, Any]:
+    """The provider's error body, which is sometimes not JSON at all (a gateway page)."""
+    try:
+        body = response.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}
 
 
 class FCMError(Exception):
@@ -220,29 +227,27 @@ class FCMError(Exception):
         code: str,
         details: dict[str, Any] | None = None,
         retryable: bool = False,
+        dead_token: bool = False,
     ) -> None:
         self.code = code
         self.details = details or {}
-        self.retryable = retryable
+        self.dead_token = dead_token
+        self.retryable = retryable and not dead_token
         super().__init__(f"FCM error {code}: {details}")
 
 
 def build_fcm_adapter(settings: Any) -> FCMAdapter:
     """Build an FCM adapter from settings.
 
-    Settings must have:
-    - fcm_project_id: Firebase project ID
-    - fcm_credentials: Service account credentials JSON (dict or path)
+    ``fcm_credentials_json`` is a SecretStr holding the service-account JSON (or a path to
+    it); both are accepted so credentials can be mounted as a file or injected as a secret.
     """
-    import json
-    import os
-
-    credentials = settings.fcm_credentials
+    raw = settings.fcm_credentials_json
+    credentials = raw.get_secret_value() if hasattr(raw, "get_secret_value") else raw
     if isinstance(credentials, str):
-        # Load from file or JSON string
         if os.path.exists(credentials):
-            with open(credentials) as f:
-                credentials = json.load(f)
+            with open(credentials, encoding="utf-8") as handle:
+                credentials = json.load(handle)
         else:
             credentials = json.loads(credentials)
 

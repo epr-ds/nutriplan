@@ -84,17 +84,13 @@ def build_handler_registry() -> dict[str, EventHandler]:
 
     :return: Mapping from handler import path to handler instance.
     """
-    from app.adapters.factory import build_notification_recorder, build_order_progress_store
-    from app.application.order_status_consumer import OrderStatusConsumer
-    from app.core.config import settings
+    from app.events.factory import build_order_status_consumer
 
     handlers_by_name: dict[str, EventHandler] = {}
 
-    # Build the order status consumer (our only handler type currently)
-    order_status = OrderStatusConsumer(
-        build_notification_recorder(settings),
-        build_order_progress_store(settings),
-    )
+    # Build the order status consumer (our only handler type currently), sharing the one
+    # wiring path in ``events.factory`` so push delivery cannot be forgotten here.
+    order_status = build_order_status_consumer()
 
     # Map each configured handler path to the same instance
     # In this service, all event types route to OrderStatusConsumer

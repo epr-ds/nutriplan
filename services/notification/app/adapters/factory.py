@@ -19,10 +19,8 @@ from __future__ import annotations
 
 import logging
 
-from app.adapters.apns_adapter import APNsAdapter, APNsConfig, build_apns_adapter  # noqa: F401
-
-# Phase 5: Push notification adapters
-from app.adapters.fcm_adapter import FCMAdapter, FCMConfig, build_fcm_adapter  # noqa: F401
+from app.adapters.apns_adapter import build_apns_adapter
+from app.adapters.fcm_adapter import build_fcm_adapter
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
@@ -30,15 +28,20 @@ from app.adapters.in_memory_notification_repository import InMemoryNotificationR
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
+from app.adapters.push_gateways import ApnsPushGateway, FcmPushGateway
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_device_token_repository import RedisDeviceTokenRepository
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.retention import RetentionPolicy
+from app.application.devices import DeviceRegistrationService
 from app.application.notification_recorder import NotificationRecorder
+from app.application.push_delivery import PushDelivery
 from app.core.config import Settings
 from app.core.config import settings as default_settings
+from app.domain.enums import DevicePlatform
+from app.domain.push import PushGateway
 from app.domain.repositories import (
     DeduplicationStore,
     DeviceTokenRepository,
@@ -143,33 +146,58 @@ def build_notification_recorder(settings: Settings | None = None) -> Notificatio
     )
 
 
-# Phase 5: Push adapter builders
+# Phase 5: Push delivery
 
 
-def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapter | APNsAdapter]:
-    """Build configured push notification adapters (NTF-301/302).
+def build_push_gateways(settings: Settings | None = None) -> dict[DevicePlatform, PushGateway]:
+    """Build the configured provider gateways, keyed by the platform they reach (NTF-303).
 
-    Returns a dict of adapter name to adapter instance.
-    Only adapters with valid configuration are included.
+    An absent or half-configured provider is simply left out: a deployment with only FCM
+    configured still pushes to Android devices, and the delivery path selects a device on a
+    reachable platform rather than failing the user outright.
     """
     settings = settings or default_settings
-    adapters: dict[str, FCMAdapter | APNsAdapter] = {}
+    if not settings.push_enabled:
+        return {}
 
-    # Build FCM adapter if configured
-    if hasattr(settings, "fcm_project_id") and settings.fcm_project_id:
+    gateways: dict[DevicePlatform, PushGateway] = {}
+    if settings.fcm_configured:
         try:
-            adapters["fcm"] = build_fcm_adapter(settings)
+            gateways[DevicePlatform.ANDROID] = FcmPushGateway(build_fcm_adapter(settings))
         except Exception as exc:
-            logger.warning("fcm.adapter_build_failed error=%s", exc)
-
-    # Build APNs adapter if configured
-    if hasattr(settings, "apns_key_id") and settings.apns_key_id:
+            logger.warning("fcm.gateway_build_failed error=%s", exc)
+    if settings.apns_configured:
         try:
-            adapters["apns"] = build_apns_adapter(settings)
+            gateways[DevicePlatform.IOS] = ApnsPushGateway(build_apns_adapter(settings))
         except Exception as exc:
-            logger.warning("apns.adapter_build_failed error=%s", exc)
+            logger.warning("apns.gateway_build_failed error=%s", exc)
+    return gateways
 
-    return adapters
+
+def build_push_delivery(
+    settings: Settings | None = None,
+    *,
+    notifications: NotificationRepository,
+) -> PushDelivery | None:
+    """Assemble the send-and-record path over the *caller's* notification store (NTF-303).
+
+    The repository is passed in rather than rebuilt because the in-process store keeps its
+    state inside the object: a delivery path reading a different instance than the recorder
+    wrote to would report every notification as expired in dev and CI. ``None`` means no
+    provider is configured, so the caller should not attempt delivery at all.
+    """
+    settings = settings or default_settings
+    gateways = build_push_gateways(settings)
+    if not gateways:
+        return None
+    return PushDelivery(
+        notifications,
+        DeviceRegistrationService(build_device_token_repository(settings)),
+        gateways,
+        max_attempts=settings.push_max_attempts,
+        backoff_seconds=settings.push_retry_backoff_ms / 1000.0,
+        backoff_multiplier=settings.push_retry_multiplier,
+    )
 
 
 # Phase 5: Meal reminder consumer builder
@@ -178,12 +206,14 @@ def build_push_adapters(settings: Settings | None = None) -> dict[str, FCMAdapte
 def build_meal_reminder_consumer(
     settings: Settings | None = None,
 ) -> "MealReminderConsumer":  # noqa: F821
-    """Assemble the meal reminder handler (NTF-401)."""
+    """Assemble the meal reminder handler."""
     from app.application.meal_reminder_consumer import MealReminderConsumer
 
     settings = settings or default_settings
+    recorder = build_notification_recorder(settings)
     return MealReminderConsumer(
-        build_notification_recorder(settings),
+        recorder,
+        push=build_push_delivery(settings, notifications=recorder.repository),
     )
 
 
@@ -193,10 +223,12 @@ def build_meal_reminder_consumer(
 def build_plan_ending_consumer(
     settings: Settings | None = None,
 ) -> "PlanEndingConsumer":  # noqa: F821
-    """Assemble the plan ending handler (NTF-402)."""
+    """Assemble the plan ending handler."""
     from app.application.plan_ending_consumer import PlanEndingConsumer
 
     settings = settings or default_settings
+    recorder = build_notification_recorder(settings)
     return PlanEndingConsumer(
-        build_notification_recorder(settings),
+        recorder,
+        push=build_push_delivery(settings, notifications=recorder.repository),
     )
