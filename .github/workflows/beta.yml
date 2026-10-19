@@ -70,7 +70,7 @@ jobs:
           fastlane firebase_beta
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nutriplan-debug-apk
           path: mobile/build/outputs/apk/debug/*.apk
@@ -103,7 +103,7 @@ jobs:
           fastlane beta
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nutriplan-debug-ipa
           path: mobile/build/outputs/ipa/*.ipa

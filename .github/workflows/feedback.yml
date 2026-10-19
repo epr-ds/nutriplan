@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Create GitHub Issue from feedback
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const category = context.payload.inputs?.category || 'Bug';
