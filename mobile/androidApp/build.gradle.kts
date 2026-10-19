@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.detekt)
-    id("com.google.firebase.crashlytics") version "3.0.5"
+    id("com.google.firebase.crashlytics") version "3.0.8"
 }
 
 // HRD-701: App signing — secrets from environment, never in repo.
