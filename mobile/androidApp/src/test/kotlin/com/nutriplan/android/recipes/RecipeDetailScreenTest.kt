@@ -26,6 +26,9 @@ import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.RecipeIngredient
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeDetailUiState
+import androidx.compose.ui.test.assertIsNotEnabled
+import com.nutriplan.android.screen.recipes.FavoriteTestTags
+import com.nutriplan.shared.recipes.FavoriteError
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -230,4 +233,80 @@ class RecipeDetailScreenTest {
 
         assertEquals(1, back)
     }
-}
+
+    // --- favorites (DPL-607) ---
+
+    @Test
+    fun `no heart unless the screen can toggle favorites`() {
+        render(loaded())
+
+        compose.onNodeWithTag(FavoriteTestTags.TOGGLE).assertDoesNotExist()
+    }
+
+    private fun renderWithHeart(
+        state: RecipeDetailUiState,
+        isFavorite: Boolean = false,
+        pending: Boolean = false,
+        error: FavoriteError? = null,
+        onToggle: () -> Unit = {},
+    ) {
+        compose.setContent {
+            NutriPlanTheme {
+                RecipeDetailScreenContent(
+                    state = state,
+                    onRetry = {},
+                    onBack = {},
+                    isFavorite = isFavorite,
+                    isFavoritePending = pending,
+                    favoriteError = error,
+                    onToggleFavorite = onToggle,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `the heart offers to save a recipe that is not a favorite`() {
+        renderWithHeart(loaded(), isFavorite = false)
+
+        compose.onNodeWithContentDescription(str(R.string.favorite_add)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the heart offers to remove a favorite`() {
+        renderWithHeart(loaded(), isFavorite = true)
+
+        compose.onNodeWithContentDescription(str(R.string.favorite_remove)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping the heart reports a toggle`() {
+        var toggles = 0
+        renderWithHeart(loaded(), onToggle = { toggles++ })
+
+        compose.onNodeWithTag(FavoriteTestTags.TOGGLE).performClick()
+
+        assertEquals(1, toggles)
+    }
+
+    @Test
+    fun `the heart is disabled while its change is being sent`() {
+        renderWithHeart(loaded(), pending = true)
+
+        compose.onNodeWithTag(FavoriteTestTags.TOGGLE).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `there is no heart while the recipe is still loading or failed to load`() {
+        renderWithHeart(RecipeDetailUiState())
+
+        compose.onNodeWithTag(FavoriteTestTags.TOGGLE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an undone change is announced politely`() {
+        renderWithHeart(loaded(), error = FavoriteError.SERVER_PROBLEM)
+
+        compose.onNodeWithTag(FavoriteTestTags.ERROR_BANNER).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.error_favorite_change_server)).assertIsDisplayed()
+    }}

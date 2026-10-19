@@ -260,6 +260,17 @@ class MainNavigationScreens(
             // Pushed on top of the search so Back returns to it.
             onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
+            onOpenFavorites = { navController.navigate(Route.FavoriteRecipes) },
+        )
+    }
+
+    @Composable
+    override fun FavoriteRecipesScreen(onBack: () -> Unit) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.recipes.FavoriteRecipesScreen(
+            onBack = onBack,
+            onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
 

@@ -163,6 +163,14 @@ fun AppNavigationGraph(
             )
         }
 
+        // Favorite recipes
+        composable<Route.FavoriteRecipes> {
+            analyticsTracker?.logScreenView("favorite_recipes", "FavoriteRecipesScreen")
+            screens.FavoriteRecipesScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // Recipe detail
         composable<Route.RecipeDetail> { backStackEntry ->
             val recipeId = backStackEntry.toRoute<Route.RecipeDetail>().recipeId
@@ -328,6 +336,9 @@ interface AppNavigationScreens {
     @Composable fun RecipeSearchScreen(
         onNavigate: (Any) -> Unit,
         onRecipeClick: (String) -> Unit,
+    )
+    @Composable fun FavoriteRecipesScreen(
+        onBack: () -> Unit,
     )
     @Composable fun PickRecipeScreen(
         planId: String,

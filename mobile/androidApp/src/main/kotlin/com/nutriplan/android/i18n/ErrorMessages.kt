@@ -13,8 +13,27 @@ import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanFormError
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.PlanFieldError
+import com.nutriplan.shared.recipes.FavoriteError
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeListError
+
+/** DPL-607: message for a favorites list that could not be loaded. */
+@StringRes
+fun FavoriteError.loadMessageRes(): Int = when (this) {
+    FavoriteError.NETWORK -> R.string.error_favorites_load_network
+    FavoriteError.SERVER_PROBLEM -> R.string.error_favorites_load_server
+    FavoriteError.SESSION_EXPIRED -> R.string.error_favorites_session_expired
+    FavoriteError.UNKNOWN -> R.string.error_favorites_load_unknown
+}
+
+/** DPL-607: message for a heart that was put back because saving or removing a favorite failed. */
+@StringRes
+fun FavoriteError.changeMessageRes(): Int = when (this) {
+    FavoriteError.NETWORK -> R.string.error_favorite_change_network
+    FavoriteError.SERVER_PROBLEM -> R.string.error_favorite_change_server
+    FavoriteError.SESSION_EXPIRED -> R.string.error_favorites_session_expired
+    FavoriteError.UNKNOWN -> R.string.error_favorite_change_unknown
+}
 
 /** DPL-508: inline message for one invalid field of the edit-meal form. */
 @StringRes

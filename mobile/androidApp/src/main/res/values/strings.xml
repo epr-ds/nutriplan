@@ -281,4 +281,21 @@
     <string name="nutrient_carbs">Carbs</string>
     <string name="nutrient_fat">Fat</string>
     <string name="nutrient_sugar">Sugar</string>
+
+    <!-- DPL-607: favorite recipes -->
+    <string name="favorite_add">Save to favorites</string>
+    <string name="favorite_remove">Remove from favorites</string>
+    <string name="favorites_title">Favorite recipes</string>
+    <string name="cd_favorites_open">Favorite recipes</string>
+    <string name="cd_favorites_loading">Loading favorite recipes</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_description">Tap the heart on a recipe to save it here.</string>
+    <string name="favorites_offline">You\'re offline. Showing the favorites saved on this device.</string>
+    <string name="error_favorites_load_network">You\'re offline and no favorites are saved on this device.</string>
+    <string name="error_favorites_load_server">The server had a problem. Please try again later.</string>
+    <string name="error_favorites_load_unknown">Something went wrong loading your favorites. Please try again.</string>
+    <string name="error_favorites_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_favorite_change_network">You\'re offline. Connect to the internet to change your favorites.</string>
+    <string name="error_favorite_change_server">The server had a problem, so your favorite was not changed. Please try again later.</string>
+    <string name="error_favorite_change_unknown">Something went wrong, so your favorite was not changed. Please try again.</string>
 </resources>

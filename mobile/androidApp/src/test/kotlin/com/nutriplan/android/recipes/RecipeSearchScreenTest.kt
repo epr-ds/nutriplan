@@ -32,6 +32,10 @@ import com.nutriplan.shared.data.model.NutritionalInfo
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.recipes.RecipeListError
 import com.nutriplan.shared.recipes.RecipeSearchUiState
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
+import com.nutriplan.android.screen.recipes.FavoriteTestTags
+import com.nutriplan.shared.recipes.FavoriteError
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -322,4 +326,112 @@ class RecipeSearchScreenTest {
         compose.onNodeWithText(str(R.string.diet_vegetarian)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.diet_paleo)).assertIsDisplayed()
     }
-}
+
+    // --- favorites (DPL-607) ---
+
+    @Test
+    fun `no hearts and no favorites entry by default`() {
+        render(RecipeSearchUiState(recipes = listOf(recipe("1", "Soup")), hasSearched = true))
+
+        assertEquals(0, compose.onAllNodesWithTag(FavoriteTestTags.TOGGLE).fetchSemanticsNodes().size)
+        compose.onNodeWithTag(RecipeSearchTestTags.OPEN_FAVORITES).assertDoesNotExist()
+    }
+
+    private fun renderWithFavorites(
+        state: RecipeSearchUiState,
+        favoriteIds: Set<String> = emptySet(),
+        pending: Set<String> = emptySet(),
+        error: FavoriteError? = null,
+        toggled: MutableList<String> = mutableListOf(),
+        onOpenFavorites: (() -> Unit)? = null,
+    ) {
+        compose.setContent {
+            NutriPlanTheme {
+                RecipeSearchScreenContent(
+                    state = state,
+                    onIngredientsChange = {},
+                    onDietTypeChange = {},
+                    onMaxCaloriesChange = {},
+                    onMinProteinChange = {},
+                    onSearch = {},
+                    onClearFilters = {},
+                    onLoadMore = {},
+                    onRecipeClick = {},
+                    onBack = {},
+                    favoriteIds = favoriteIds,
+                    pendingFavoriteIds = pending,
+                    favoriteError = error,
+                    onToggleFavorite = { toggled += it.id },
+                    onOpenFavorites = onOpenFavorites,
+                )
+            }
+        }
+    }
+
+    private val twoResults = RecipeSearchUiState(
+        recipes = listOf(recipe("1", "Soup"), recipe("2", "Stew")),
+        hasSearched = true,
+    )
+
+    @Test
+    fun `every result has a heart that says what a tap does`() {
+        renderWithFavorites(twoResults, favoriteIds = setOf("2"))
+
+        assertEquals(2, compose.onAllNodesWithTag(FavoriteTestTags.TOGGLE).fetchSemanticsNodes().size)
+        assertEquals(1, compose.onAllNodesWithContentDescription(str(R.string.favorite_add)).fetchSemanticsNodes().size)
+        assertEquals(1, compose.onAllNodesWithContentDescription(str(R.string.favorite_remove)).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `tapping a heart toggles that recipe without opening it`() {
+        val toggled = mutableListOf<String>()
+        var opened = 0
+        compose.setContent {
+            NutriPlanTheme {
+                RecipeSearchScreenContent(
+                    state = twoResults,
+                    onIngredientsChange = {},
+                    onDietTypeChange = {},
+                    onMaxCaloriesChange = {},
+                    onMinProteinChange = {},
+                    onSearch = {},
+                    onClearFilters = {},
+                    onLoadMore = {},
+                    onRecipeClick = { opened++ },
+                    onBack = {},
+                    onToggleFavorite = { toggled += it.id },
+                )
+            }
+        }
+
+        compose.onAllNodesWithTag(FavoriteTestTags.TOGGLE).onFirst().performClick()
+
+        assertEquals(listOf("1"), toggled)
+        assertEquals(0, opened)
+    }
+
+    @Test
+    fun `a heart is disabled while its change is being sent`() {
+        renderWithFavorites(twoResults, pending = setOf("1"))
+
+        compose.onAllNodesWithTag(FavoriteTestTags.TOGGLE).onFirst().assertIsNotEnabled()
+    }
+
+    @Test
+    fun `an undone change is announced politely`() {
+        renderWithFavorites(twoResults, error = FavoriteError.NETWORK)
+
+        compose.onNodeWithTag(FavoriteTestTags.ERROR_BANNER).assertIsDisplayed().assert(hasLiveRegion())
+        compose.onNodeWithText(str(R.string.error_favorite_change_network)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the favorites entry opens the favorites list`() {
+        var opened = 0
+        renderWithFavorites(twoResults, onOpenFavorites = { opened++ })
+
+        compose.onNodeWithTag(RecipeSearchTestTags.OPEN_FAVORITES).performClick()
+
+        assertEquals(1, opened)
+        compose.onNodeWithContentDescription(str(R.string.cd_favorites_open)).assertExists()
+    }}
