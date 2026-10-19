@@ -3,12 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
+from app.api.favorites import router as favorites_router
 from app.api.health import router as health_router
 from app.api.meal_plans import router as meal_plans_router
 from app.api.nutrition import router as nutrition_router
 from app.api.recipes import router as recipes_router
 from app.core.config import settings
 from app.db.mongo import (
+    ensure_favorites_collection,
     ensure_meal_plans_collection,
     ensure_recipes_collection,
     get_db,
@@ -23,6 +25,7 @@ async def lifespan(app: FastAPI):
     db = get_db()
     ensure_meal_plans_collection(db)  # DPL-101
     ensure_recipes_collection(db)  # DPL-201
+    ensure_favorites_collection(db)  # DPL-607
     seed_recipes(recipes(db))  # DPL-201 reference catalog
     yield
 
@@ -32,6 +35,7 @@ register_exception_handlers(app)
 app.include_router(health_router)
 app.include_router(meal_plans_router)
 app.include_router(recipes_router)
+app.include_router(favorites_router)
 app.include_router(nutrition_router)
 
 

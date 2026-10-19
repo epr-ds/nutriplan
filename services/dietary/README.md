@@ -47,6 +47,7 @@ app/
     schemas.py           #   Request/response models (camelCase, match the contract)
     meal_plans.py        #   POST + GET (list) + GET /{id} + PATCH /{id} meal-plans router
     recipes.py           #   GET /recipes recipe-search router
+    favorites.py         #   GET /favorites + PUT/DELETE /favorites/{recipeId} router (DPL-607)
     errors.py            #   DomainError -> HTTP mapping
     health.py            #   /health liveness probe
 tests/                   # pytest suite (domain + application + security unit tests; API + Mongo)
@@ -199,6 +200,9 @@ token; the catalog itself is global (not owner-scoped).
 | `PATCH` | `/meal-plans/{planId}` | DPL-106 | Transition a plan's lifecycle status (`draft → active → completed/saved`) → `200 MealPlanResponse`. Body `{ status }` (active/completed/saved). Illegal transition → `409`; activating with no meals → `422`; missing or not owned → `404` |
 | `POST` | `/meal-plans/{planId}/meals` | DPL-105 | Add a meal (a recipe reference + servings) to the caller's plan → `201 MealResponse` (with the embedded recipe). Body `{ mealType, recipeId, servings }`. Unknown recipe or `servings ≤ 0` → `422`; missing or not owned plan → `404` |
 | `GET` | `/recipes` | DPL-202 | Search the global recipe catalog → `200 RecipeResponse[]`. Requires a Bearer token. Query (all optional, AND): `ingredients` (repeatable, all-must-match), `dietType`, `maxCalories`, `minProtein`, `page` (≥1), `limit` (1–100); results sorted by name for stable pagination |
+| `GET` | `/favorites` | DPL-607 | List the caller's favorite recipes → `200 RecipeResponse[]` (full recipes), most recently saved first. Requires a Bearer token. Query: `page` (≥1), `limit` (1–100) |
+| `PUT` | `/favorites/{recipeId}` | DPL-607 | Save a catalog recipe as a favorite → `204`. Idempotent (saving twice changes nothing); unknown recipe → `404` |
+| `DELETE` | `/favorites/{recipeId}` | DPL-607 | Remove a recipe from the caller's favorites → `204`. Idempotent (removing a non-favorite also succeeds) |
 | `GET` | `/health` | — | liveness probe |
 
 > All `4xx`/`5xx` responses are RFC 7807 `application/problem+json` documents (see
