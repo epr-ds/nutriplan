@@ -37,12 +37,14 @@ from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRe
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
+from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
 from app.adapters.redis_device_token_repository import RedisDeviceTokenRepository
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
+from app.adapters.redis_push_receipt_store import RedisPushReceiptStore
 from app.adapters.retention import RetentionPolicy
 from app.application.notification_recorder import NotificationRecorder
 from app.application.order_status_consumer import OrderStatusConsumer
@@ -53,6 +55,7 @@ from app.domain.repositories import (
     NotificationRepository,
     OrderProgressStore,
     PreferencesRepository,
+    PushReceiptStore,
 )
 from app.events.consumer import EventConsumer
 from app.events.dead_letter import DeadLetterQueue, InMemoryDeadLetterQueue
@@ -264,6 +267,33 @@ def device_repository(request: pytest.FixtureRequest) -> Iterator[DeviceTokenRep
         yield RedisDeviceTokenRepository(
             client,  # type: ignore[arg-type]
             keys=NotificationKeys(namespace=namespace),
+        )
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@pytest.fixture(params=["memory", "redis"])
+def push_receipt_store(request: pytest.FixtureRequest) -> Iterator[PushReceiptStore]:
+    """One receipt store per adapter, so every test using it is a parity contract.
+
+    The property that matters is the one the fan-out depends on: a device that already has a
+    receipt is never sent a second push. An in-memory stand-in that forgot a receipt would let
+    a resumed fan-out duplicate a nudge in CI and only in production.
+    """
+    if request.param == "memory":
+        yield InMemoryPushReceiptStore(ttl_seconds=TEST_POLICY.ttl_seconds)
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    try:
+        yield RedisPushReceiptStore(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+            ttl_seconds=TEST_POLICY.ttl_seconds,
         )
     finally:
         drop_namespace(client, namespace)

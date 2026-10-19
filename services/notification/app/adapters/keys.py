@@ -25,6 +25,13 @@ The token index is hashed so a provider address never appears in a key, while th
 keeps the token in full because delivery has to present it to FCM/APNs. None of these keys
 carries a TTL: a registration is removed explicitly, never on a timer.
 
+Per-device push receipts are a seventh shape (NTF-305)::
+
+    {ns}:v1:pr:{notification_id}              -> { device_id: receipt JSON }  (hash, EX)
+
+A hash rather than a key per device because the store is always asked about one notification
+at a time, and one TTL then expires the whole bucket with the notification it describes.
+
 The two per-user sorted sets are the "indexed for feed queries" half of AC3: listing a
 page is a ``ZREVRANGE`` slice plus an ``MGET``, and the unread badge is a ``ZCOUNT`` --
 both O(log N + page) rather than a scan over the user's history.
@@ -114,6 +121,15 @@ class NotificationKeys:
         feed's retention TTL and are swept, while a registration is only removed explicitly.
         """
         return f"{self.prefix}:u:{user_id}:devices"
+
+    def push_receipts(self, notification_id: uuid.UUID | str) -> str:
+        """The hash holding per-device push receipts for one notification (NTF-305).
+
+        Keyed by notification because every read is "what happened to this message?", and
+        because the bucket can then share the notification's retention: a receipt for a
+        notification nobody can read any more is only a leak with a timestamp.
+        """
+        return f"{self.prefix}:pr:{notification_id}"
 
     def order_progress(self, order_id: str) -> str:
         """The key holding how far along one order has been announced (NTF-202).

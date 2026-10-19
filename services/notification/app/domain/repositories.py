@@ -25,6 +25,7 @@ from app.domain.enums import DevicePlatform
 from app.domain.notification import Notification
 from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
+from app.domain.push_receipt import PushReceipt
 
 
 @runtime_checkable
@@ -254,4 +255,32 @@ class OrderProgressStore(Protocol):
         this is called, deliberately, so that a crash between the two costs a redelivery that
         the dedupe store then suppresses, rather than a notification nobody ever sends.
         """
+        ...
+
+
+@runtime_checkable
+class PushReceiptStore(Protocol):
+    """Persistence port for per-device push receipts (NTF-305).
+
+    Keyed by notification, holding one receipt per device that was attempted. That shape is
+    what the fan-out path needs: "which devices has this notification already reached?" is a
+    single lookup, and the answer is what makes a re-run of a partially completed fan-out skip
+    the devices it already tried instead of sending a second nudge to each.
+
+    Writing a receipt is **idempotent per device**: the same (notification, device) pair
+    overwrites rather than duplicates, so a retry of a single device does not make the rollup
+    count it twice. Receipts expire with the notification they describe; the store is a
+    window onto the same rolling feed, not an audit log.
+    """
+
+    def record(self, receipt: PushReceipt) -> PushReceipt:
+        """Store ``receipt``, replacing any previous outcome for the same device."""
+        ...
+
+    def get(self, notification_id: uuid.UUID, device_id: uuid.UUID) -> PushReceipt | None:
+        """Return the receipt already recorded for a device, or ``None`` if it has none."""
+        ...
+
+    def list_for(self, notification_id: uuid.UUID) -> list[PushReceipt]:
+        """Return every device's receipt for a notification, most recently updated first."""
         ...

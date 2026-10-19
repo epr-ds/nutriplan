@@ -306,12 +306,16 @@ The flow is deliberately short:
 
 1. A notification with **no device** stays `PENDING` -- no attempt was made, so nothing
    failed. A device that exists but whose platform has no configured gateway is skipped the
-   same way, with a warning; a user with one reachable device is still pushed to.
-2. The **most recently registered reachable device** is chosen. This service sends one push
-   per notification; fanning out to every device and tracking a receipt per device is
-   NTF-305, which is why the selection is a single device rather than a loop.
+   same way, with a warning; a user with any reachable device is still pushed to.
+2. **Every reachable device gets the push**, most recently registered first, one at a time.
+   Each device's outcome is stored as its own `PushReceipt` under
+   `{ns}:v1:pr:{notificationId}`, keyed by device id, expiring with the notification. A
+   device that already has a receipt is skipped, so a fan-out resumed after a partial failure
+   does not send a second nudge.
 3. A successful send means the provider **accepted** the message, not that the phone showed
-   it. That is recorded as `SENT`. `DELIVERED` is reserved for a future client-side receipt.
+   it. That is recorded as `SENT` per device, and the notification's own `status` is the
+   **rollup**: `SENT` once any device accepts, `FAILED` once every attempt is refused.
+   `DELIVERED` is reserved for a future client-side receipt.
 4. A permanent refusal, or a transient one whose retry budget ran out, is recorded as
    `FAILED`. Retryable errors (`UNAVAILABLE`, throttling, quotas) are retried in-process with
    exponential backoff, bounded by `NOTIFICATION_PUSH_MAX_ATTEMPTS` (default 3),

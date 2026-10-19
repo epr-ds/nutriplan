@@ -19,6 +19,7 @@ from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRe
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
+from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.application.devices import DeviceRegistrationService
 from app.application.notification_recorder import NotificationRecorder
 from app.application.order_status_consumer import OrderStatusConsumer
@@ -484,6 +485,7 @@ class TestPushAfterRecording:
             repository,
             devices,
             {DevicePlatform.ANDROID: gateway},
+            InMemoryPushReceiptStore(),
             sleep=lambda _: None,
         )
         consumer = OrderStatusConsumer(
