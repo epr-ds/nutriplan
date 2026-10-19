@@ -24,7 +24,9 @@ off. **NTF-201** built the consumer framework and the versioned event-schema reg
 service can read Commerce's order stream, validate what it finds, and settle every delivery
 exactly once. **NTF-202** plugged the first real handler into that framework: an order event
 now becomes a notification in the user's feed. Delivery is still in-app only -- push arrives
-in NTF-301.
+in NTF-301. **NTF-302** added the push device registry: a client can register or refresh the
+provider token it holds, revoke it on logout, and stale addresses are pruned when FCM/APNs
+report them dead.
 
 ## Layout
 
@@ -35,11 +37,13 @@ app/
   domain/dedupe.py      # the deterministic (event, user, type) key
   domain/quiet_hours.py # the nightly window, in the user's own zone
   domain/preferences.py # the per-type, per-channel deny-list
+  domain/device_token.py# a registered push destination (NTF-302)
   domain/order_status.py# the order vocabulary and how far an order has progressed
   domain/repositories.py# the persistence and deduplication ports
   application/notification_recorder.py  # the idempotent, preference-gated write path
   application/feed.py     # the paged feed query, badge count, and mark-read use cases
   application/preferences.py  # the settings-screen matrix and the replace use case
+  application/devices.py  # register / refresh / revoke / prune push destinations
   application/order_status_consumer.py  # order event -> notification
   events/envelope.py    # the wire envelope Commerce publishes, parsed
   events/registry.py    # the versioned schema registry and its four verdicts
@@ -52,6 +56,7 @@ app/
   events/factory.py     # picks the consumer from configuration
   adapters/codec.py     # JSON record <-> Notification
   adapters/preferences_codec.py  # JSON record <-> NotificationPreferences
+  adapters/device_token_codec.py # JSON record <-> DeviceToken
   adapters/keys.py      # the Redis key scheme
   adapters/retention.py # the age + length window both stores enforce
   adapters/idempotency.py  # the replay window + provisional claim length
@@ -61,6 +66,8 @@ app/
   adapters/in_memory_deduplication_store.py
   adapters/redis_preferences_repository.py
   adapters/in_memory_preferences_repository.py
+  adapters/redis_device_token_repository.py     # push registrations, token-indexed
+  adapters/in_memory_device_token_repository.py # the same registry, in process
   adapters/redis_order_progress.py       # the monotonic progress mark, in Redis
   adapters/in_memory_order_progress.py   # the same mark, in process
   adapters/factory.py   # picks the stores from configuration
@@ -74,6 +81,7 @@ app/
   api/schemas.py        # the camelCase wire shapes
   api/notifications.py  # GET /notifications, /unread-count, POST /{id}/read
   api/preferences.py    # GET + PUT /notifications/preferences
+  api/devices.py        # POST /notifications/devices, DELETE /{deviceId}
   api/health.py         # GET /health, GET /health/ready
   main.py               # FastAPI wiring
 tests/                  # pytest
@@ -253,6 +261,39 @@ sending one they had muted.
 
 Preferences never expire. They are the user's own configuration, not a cached derivative, so
 the Redis write carries no `EX` -- asserted by reading `TTL == -1` back from a live server.
+
+## Push device registrations
+
+Before a user can be pushed to, the app has to say which provider address belongs to them.
+Two endpoints do that, both owner-scoped by the token subject:
+
+| endpoint | purpose |
+| --- | --- |
+| `POST /notifications/devices` | register or refresh the current `(platform, token)` |
+| `DELETE /notifications/devices/{deviceId}` | revoke one of the caller's registrations |
+
+The **token is the identity**, not the id the service mints. Clients register on every
+launch, so a repeat call refreshes `updatedAt` and returns the same id instead of adding a
+row; otherwise one phone would accumulate a registration per launch and every push would be
+delivered to all of them.
+
+A token belongs to **exactly one account at a time**. When the same token arrives under a
+different user -- a phone that signed out and signed in as somebody else -- the registration
+is moved, not duplicated. Duplicating it would deliver the previous owner's notifications to
+the new owner's phone, which is a privacy failure rather than a stale row.
+
+Revocation is by the id returned at registration, matching the rest of the platform's
+`DELETE /{id}` convention. An unknown, already-revoked, or not-owned id is the same `404`,
+so the endpoint cannot be used to discover other users' devices.
+
+Dead tokens are pruned by token, without an owner: when FCM or APNs answers `UNREGISTERED`
+or `NOT_FOUND`, the delivery path calls `DeviceRegistrationService.prune`, and the address is
+forgotten. The owner is deliberately not required -- at that moment the only useful action is
+to forget the token, and an owner lookup that failed would leave it in place.
+
+Registrations carry **no TTL**. As with preferences, forgetting an address on a timer would
+cut a user off from push at a moment unrelated to anything they did; removal is always
+explicit.
 
 ## Consuming events
 

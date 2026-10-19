@@ -33,11 +33,13 @@ import pytest
 
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
+from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.keys import NotificationKeys
 from app.adapters.redis_deduplication_store import RedisDeduplicationStore
+from app.adapters.redis_device_token_repository import RedisDeviceTokenRepository
 from app.adapters.redis_notification_repository import RedisNotificationRepository
 from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
@@ -47,6 +49,7 @@ from app.application.order_status_consumer import OrderStatusConsumer
 from app.domain.notification import Notification
 from app.domain.repositories import (
     DeduplicationStore,
+    DeviceTokenRepository,
     NotificationRepository,
     OrderProgressStore,
     PreferencesRepository,
@@ -232,6 +235,33 @@ def preferences_repository(request: pytest.FixtureRequest) -> Iterator[Preferenc
     namespace = isolated_namespace()
     try:
         yield RedisPreferencesRepository(
+            client,  # type: ignore[arg-type]
+            keys=NotificationKeys(namespace=namespace),
+        )
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@pytest.fixture(params=["memory", "redis"])
+def device_repository(request: pytest.FixtureRequest) -> Iterator[DeviceTokenRepository]:
+    """One device registry per adapter, so every test using it is a parity contract.
+
+    Registrations are the one thing this service stores that is both long-lived and
+    security-sensitive: a duplicate, or a stale owner, means a push lands on the wrong
+    phone. An in-memory stand-in that got that wrong would let the API pass here and leak
+    in production, which is exactly what running both adapters prevents.
+    """
+    if request.param == "memory":
+        yield InMemoryDeviceTokenRepository()
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    try:
+        yield RedisDeviceTokenRepository(
             client,  # type: ignore[arg-type]
             keys=NotificationKeys(namespace=namespace),
         )

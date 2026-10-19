@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import enforce_rate_limit
+from app.api.devices import router as devices_router
 from app.api.errors import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.notifications import router as notifications_router
@@ -32,10 +33,12 @@ def create_app() -> FastAPI:
 
     guarded = [Depends(enforce_rate_limit)]
     app.include_router(health_router)
-    # Before the feed router: ``/notifications/preferences`` is a literal segment that the feed's
-    # ``/notifications/{notification_id}/read`` parameter would otherwise be offered first refusal
-    # on. FastAPI matches in registration order, so the specific route is registered first.
+    # Before the feed router: ``/notifications/preferences`` and ``/notifications/devices`` are
+    # literal segments that the feed's ``/notifications/{notification_id}/read`` parameter would
+    # otherwise be offered first refusal on. FastAPI matches in registration order, so the
+    # specific routes are registered first.
     app.include_router(preferences_router, dependencies=guarded)
+    app.include_router(devices_router, dependencies=guarded)
     app.include_router(notifications_router, dependencies=guarded)
 
     @app.get("/")

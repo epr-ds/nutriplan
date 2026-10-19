@@ -49,6 +49,19 @@ class NotificationChannel(StrEnum):
     PUSH = "push"
 
 
+class DevicePlatform(StrEnum):
+    """The push provider a device token belongs to (NTF-302).
+
+    One member per provider, not per operating-system version: FCM delivers to Android and
+    APNs to iOS, and those are the two credentials this service holds. A token is only
+    meaningful to the provider that issued it, so the platform travels with it everywhere --
+    the same string can (and eventually will) exist in both namespaces with different owners.
+    """
+
+    IOS = "ios"
+    ANDROID = "android"
+
+
 class DeliveryStatus(StrEnum):
     """How far a notification got on its way to the user.
 

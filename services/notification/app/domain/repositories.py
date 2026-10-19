@@ -20,6 +20,8 @@ import uuid
 from typing import Protocol, runtime_checkable
 
 from app.domain.dedupe import Claim, DedupeKey
+from app.domain.device_token import DeviceToken
+from app.domain.enums import DevicePlatform
 from app.domain.notification import Notification
 from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
@@ -151,6 +153,62 @@ class PreferencesRepository(Protocol):
 
     def save(self, preferences: NotificationPreferences) -> NotificationPreferences:
         """Persist a user's preferences, replacing any previous record, and return them."""
+        ...
+
+
+@runtime_checkable
+class DeviceTokenRepository(Protocol):
+    """Persistence port for push destinations (NTF-302).
+
+    The identity of a record is its ``(platform, token)`` pair, not the id the service mints.
+    A client re-registers the same token on every launch, so :meth:`upsert` must refresh the
+    existing record rather than insert a second one -- otherwise a single phone accumulates a
+    row per launch and every push is delivered to all of them.
+
+    ``(platform, token)`` is also **globally unique**: if a token arrives under a different
+    user, the old registration is replaced rather than duplicated. A token that mapped to two
+    accounts would deliver one user's notifications to the other's phone.
+
+    Unlike notifications, registrations **do not age out**. A device that stops being used
+    stops being active, but it does not stop being reachable; silently forgetting it would
+    cut a user off from push at a moment unrelated to anything they did. Stale addresses are
+    removed explicitly, either by the client (:meth:`delete`) or by provider feedback saying
+    the token is dead (:meth:`delete_by_token`).
+    """
+
+    def find_by_token(self, platform: DevicePlatform, token: str) -> DeviceToken | None:
+        """Load the registration owning this ``(platform, token)`` pair, if any."""
+        ...
+
+    def get(self, device_id: uuid.UUID, *, user_id: uuid.UUID) -> DeviceToken | None:
+        """Load one of ``user_id``'s registrations, or ``None`` if absent/not theirs."""
+        ...
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[DeviceToken]:
+        """Return every device registered to ``user_id``, most recently registered first."""
+        ...
+
+    def upsert(self, device: DeviceToken) -> DeviceToken:
+        """Store ``device``, replacing any registration with the same token.
+
+        If the token was previously registered to another user, that registration is removed
+        and the token now belongs solely to the new owner. The return value is what is stored,
+        so callers never have to re-read to learn the canonical record.
+        """
+        ...
+
+    def delete(self, device_id: uuid.UUID, *, user_id: uuid.UUID) -> bool:
+        """Remove one of ``user_id``'s registrations; ``False`` if it was not theirs."""
+        ...
+
+    def delete_by_token(self, platform: DevicePlatform, token: str) -> bool:
+        """Remove the registration owning a token regardless of owner (provider feedback).
+
+        The owner is deliberately not required: a provider tells us "this token is invalid",
+        and at that moment the only useful action is to forget it. Making the delivery path
+        look up an owner first would leave the dead token in place whenever that lookup was
+        what failed.
+        """
         ...
 
 

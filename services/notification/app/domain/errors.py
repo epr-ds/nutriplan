@@ -52,3 +52,22 @@ class InvalidPreferences(NotificationError, ValueError):
     window whose ends coincide, or a duplicated per-type row would each otherwise be stored
     and then silently mis-evaluated on every notification for as long as the user kept them.
     """
+
+
+class InvalidDeviceToken(NotificationError, ValueError):
+    """A device token was given in a state the domain will not store (NTF-302).
+
+    A blank, oversized, or whitespace-bearing token is refused here rather than at the push
+    provider: storing one would make every later delivery to that device fail, and the
+    failure would surface as a provider error far from the registration that caused it.
+    """
+
+
+class DeviceTokenNotFound(NotificationError):
+    """The requested device token is not visible to the caller (NTF-302).
+
+    As with :class:`NotificationNotFound`, an id that never existed, one already revoked,
+    and one belonging to somebody else are reported identically. A token belongs to exactly
+    one account at a time, so distinguishing them would let a caller probe whether a
+    particular device is registered to another user.
+    """
