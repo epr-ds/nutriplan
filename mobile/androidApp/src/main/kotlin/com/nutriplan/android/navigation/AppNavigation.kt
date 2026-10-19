@@ -131,6 +131,27 @@ fun AppNavigationGraph(
             )
         }
 
+        // Choose a recipe to add to a plan
+        composable<Route.PickRecipe> { backStackEntry ->
+            val planId = backStackEntry.toRoute<Route.PickRecipe>().planId
+            analyticsTracker?.logScreenView("pick_recipe", "PickRecipeScreen")
+            screens.PickRecipeScreen(
+                planId = planId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Add a recipe to a plan as a meal
+        composable<Route.AddMeal> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.AddMeal>()
+            analyticsTracker?.logScreenView("add_meal", "AddMealScreen")
+            screens.AddMealScreen(
+                planId = route.planId,
+                recipeId = route.recipeId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // Recipe detail
         composable<Route.RecipeDetail> { backStackEntry ->
             val recipeId = backStackEntry.toRoute<Route.RecipeDetail>().recipeId
@@ -296,6 +317,15 @@ interface AppNavigationScreens {
     @Composable fun RecipeSearchScreen(
         onNavigate: (Any) -> Unit,
         onRecipeClick: (String) -> Unit,
+    )
+    @Composable fun PickRecipeScreen(
+        planId: String,
+        onBack: () -> Unit,
+    )
+    @Composable fun AddMealScreen(
+        planId: String,
+        recipeId: String,
+        onBack: () -> Unit,
     )
     @Composable fun RecipeDetailScreen(
         recipeId: String,

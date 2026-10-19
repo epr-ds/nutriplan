@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
@@ -69,6 +70,9 @@ class CachedDietaryRepository(
     override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal =
         // The cached detail is stale after this; forget it so the next online read refills it.
         remote.addMeal(planId, request).also { cache.invalidateDetail(planId) }
+
+    override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal =
+        remote.updateMeal(planId, mealId, request).also { cache.invalidateDetail(planId) }
 
     /** After a listing that returned every plan, drop cached plans that no longer exist on the server. */
     private fun pruneRemoved(serverPlans: List<MealPlanSummary>) {

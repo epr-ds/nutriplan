@@ -1,5 +1,7 @@
 package com.nutriplan.shared.data.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /*
@@ -37,6 +39,21 @@ data class AddMealRequest(
     val mealType: String,
     val recipeId: String,
     val servings: Double,
+)
+
+/**
+ * Body of `PATCH /meal-plans/{planId}/meals/{mealId}` (`UpdateMealRequest`). The API needs at least
+ * one field and treats an absent field as "leave unchanged", so unset fields are never sent (not
+ * even as null).
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+data class UpdateMealRequest(
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val servings: Double? = null,
+    /** 0-based day within the plan's inclusive date range. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val dayIndex: Int? = null,
+    /** Post-meal rating 1 to 5. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val satisfactionLevel: Int? = null,
 )
 
 /** One row of `GET /meal-plans` (`MealPlanSummaryResponse`): enough to list a plan, nothing more. */

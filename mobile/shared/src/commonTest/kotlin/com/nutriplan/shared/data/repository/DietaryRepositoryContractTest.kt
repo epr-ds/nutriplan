@@ -4,6 +4,7 @@ import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlanQuery
 import com.nutriplan.shared.data.model.RecipeSearchQuery
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.HttpClientProvider
@@ -139,6 +140,40 @@ class DietaryRepositoryContractTest {
         assertEquals("/dietary/v1/meal-plans/p1/meals", lastRequest!!.url.encodedPath)
         assertEquals("""{"mealType":"lunch","recipeId":"r1","servings":1.5}""", requestBody())
         assertEquals("Soup", meal.recipe?.name)
+    }
+
+    @Test
+    fun `update meal patches only the fields that are set`() = runTest {
+        val repository = serve(body = """{"id":"m9","mealType":"lunch","servings":1.5,"dayIndex":2}""")
+
+        val meal = repository.updateMeal("p1", "m9", UpdateMealRequest(dayIndex = 2))
+
+        assertEquals(HttpMethod.Patch, lastRequest!!.method)
+        assertEquals("/dietary/v1/meal-plans/p1/meals/m9", lastRequest!!.url.encodedPath)
+        // Absent fields mean "unchanged": they must not be sent, not even as null.
+        assertEquals("""{"dayIndex":2}""", requestBody())
+        assertEquals(2, meal.dayIndex)
+    }
+
+    @Test
+    fun `update meal with several fields sends each of them`() = runTest {
+        val repository = serve(body = """{"id":"m9","mealType":"lunch","servings":2.0}""")
+
+        repository.updateMeal("p1", "m9", UpdateMealRequest(servings = 2.0, satisfactionLevel = 4))
+
+        assertEquals("""{"servings":2.0,"satisfactionLevel":4}""", requestBody())
+    }
+
+    @Test
+    fun `update meal escapes the meal id and classifies a 422 as rejected`() = runTest {
+        val repository = serve(status = HttpStatusCode.UnprocessableEntity, body = PROBLEM_JSON, headers = problemHeaders)
+
+        val error = assertFailsWith<ApiException.HttpError> {
+            repository.updateMeal("p1", "a/b", UpdateMealRequest(dayIndex = 99))
+        }
+
+        assertEquals("/dietary/v1/meal-plans/p1/meals/a%2Fb", lastRequest!!.url.encodedPath)
+        assertEquals(ApiFailure.REJECTED, error.toApiFailure())
     }
 
     // --- failures ---

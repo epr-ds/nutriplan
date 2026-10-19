@@ -86,6 +86,7 @@ class RecipeSearchScreenTest {
         onLoadMore: () -> Unit = {},
         onRecipeClick: (String) -> Unit = {},
         onBack: () -> Unit = {},
+        isPicking: Boolean = false,
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -100,9 +101,17 @@ class RecipeSearchScreenTest {
                     onLoadMore = onLoadMore,
                     onRecipeClick = onRecipeClick,
                     onBack = onBack,
+                    isPicking = isPicking,
                 )
             }
         }
+    }
+
+    @Test
+    fun `when choosing a recipe for a plan the title says so`() {
+        render(RecipeSearchUiState(), isPicking = true)
+
+        compose.onNode(isHeading() and hasText(str(R.string.recipes_pick_title))).assertIsDisplayed()
     }
 
     @Test

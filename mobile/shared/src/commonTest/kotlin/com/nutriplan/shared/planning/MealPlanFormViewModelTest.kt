@@ -1,6 +1,7 @@
 package com.nutriplan.shared.planning
 
 import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.DietaryMacroTargets
 import com.nutriplan.shared.data.model.DietaryPreferences
@@ -46,6 +47,7 @@ class MealPlanFormViewModelTest {
         override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> = error("unused")
         override suspend fun getMealPlan(planId: String): MealPlan = error("unused")
         override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
+        override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal = error("unused")
         override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal = error("unused")
         override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = error("unused")
         override suspend fun getRecipe(recipeId: String): Recipe = error("unused")

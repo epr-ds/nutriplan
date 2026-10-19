@@ -1,6 +1,7 @@
 package com.nutriplan.shared.recipes
 
 import com.nutriplan.shared.data.model.AddMealRequest
+import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
@@ -52,6 +53,7 @@ class RecipeDetailViewModelTest {
         override suspend fun getMealPlan(planId: String): MealPlan = error("unused")
         override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan = error("unused")
         override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
+        override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal = error("unused")
         override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal = error("unused")
     }
 
