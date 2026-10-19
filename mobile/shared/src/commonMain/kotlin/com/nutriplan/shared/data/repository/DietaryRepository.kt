@@ -6,9 +6,10 @@ import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
 import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.model.NutritionDisclaimer
 import com.nutriplan.shared.data.model.PlanMeal
 import com.nutriplan.shared.data.model.Recipe
-import com.nutriplan.shared.data.model.RecipeQuery
+import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.model.UpdateMealPlanStatusRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
@@ -20,6 +21,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.encodeURLPathPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.Dispatchers
@@ -54,12 +56,19 @@ interface DietaryRepository {
     suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal
 
     /**
-     * List recipes with optional filters.
-     *
-     * Not yet aligned with the contract's `GET /recipes` (query names and the recipe model); that
-     * comes with the recipe screens (DPL-405, DPL-601).
+     * Search the recipe catalog (`GET /recipes`): by ingredient (a recipe matches when it has at
+     * least one, best matches first), diet type, calories and protein. 20 per page by default.
      */
-    suspend fun getRecipes(query: RecipeQuery? = null): List<Recipe>
+    suspend fun searchRecipes(query: RecipeSearchQuery = RecipeSearchQuery()): List<Recipe>
+
+    /** One recipe with ingredients, steps and per-serving nutrition (`GET /recipes/{recipeId}`). */
+    suspend fun getRecipe(recipeId: String): Recipe
+
+    /**
+     * Where the catalog's nutrition values come from, and the disclaimer every screen that shows
+     * them must surface (`GET /nutrition/disclaimer`).
+     */
+    suspend fun getNutritionDisclaimer(): NutritionDisclaimer
 }
 
 /**
@@ -100,15 +109,27 @@ class DietaryRepositoryImpl : DietaryRepository {
             client.post("${ApiConfig.DIETARY}/meal-plans/$planId/meals") { setBody(request) }.readOrThrow()
         }
 
-    override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> =
+    override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> =
         withContext(Dispatchers.IO) {
             client.get("${ApiConfig.DIETARY}/recipes") {
-                query?.dietaryPreference?.let { parameter("dietaryPreference", it) }
-                query?.calorieRangeMin?.let { parameter("calorieRangeMin", it) }
-                query?.calorieRangeMax?.let { parameter("calorieRangeMax", it) }
-                query?.limit?.let { parameter("limit", it) }
-                query?.offset?.let { parameter("offset", it) }
+                // The ingredient filter is a repeated parameter: ingredients=a&ingredients=b.
+                query.ingredients.forEach { parameter("ingredients", it) }
+                query.dietType?.let { parameter("dietType", it) }
+                query.maxCalories?.let { parameter("maxCalories", it) }
+                query.minProtein?.let { parameter("minProtein", it) }
+                parameter("page", query.page)
+                parameter("limit", query.limit)
             }.readOrThrow()
+        }
+
+    override suspend fun getRecipe(recipeId: String): Recipe =
+        withContext(Dispatchers.IO) {
+            client.get("${ApiConfig.DIETARY}/recipes/${recipeId.encodeURLPathPart()}").readOrThrow()
+        }
+
+    override suspend fun getNutritionDisclaimer(): NutritionDisclaimer =
+        withContext(Dispatchers.IO) {
+            client.get("${ApiConfig.DIETARY}/nutrition/disclaimer").readOrThrow()
         }
 
     /**

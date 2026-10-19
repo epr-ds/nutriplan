@@ -8,8 +8,9 @@ import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
 import com.nutriplan.shared.data.model.MealPlanSummary
 import com.nutriplan.shared.data.model.PlanMeal
+import com.nutriplan.shared.data.model.NutritionDisclaimer
 import com.nutriplan.shared.data.model.Recipe
-import com.nutriplan.shared.data.model.RecipeQuery
+import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.repository.DietaryRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -46,7 +47,9 @@ class MealPlanFormViewModelTest {
         override suspend fun getMealPlan(planId: String): MealPlan = error("unused")
         override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
         override suspend fun addMeal(planId: String, request: AddMealRequest): PlanMeal = error("unused")
-        override suspend fun getRecipes(query: RecipeQuery?): List<Recipe> = error("unused")
+        override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = error("unused")
+        override suspend fun getRecipe(recipeId: String): Recipe = error("unused")
+        override suspend fun getNutritionDisclaimer(): NutritionDisclaimer = error("unused")
     }
 
     private val repository = FakeDietary()

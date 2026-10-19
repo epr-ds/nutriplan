@@ -20,47 +20,67 @@ data class NutritionEstimate(
     val sugar: Double,
 )
 
-/** Recipe response from the Dietary service. */
+/**
+ * A catalog recipe (`RecipeResponse` in `contracts/dietary.openapi.yaml`).
+ *
+ * [nutritionalInfo] is per serving. Times are in minutes. Optional fields the server may leave out
+ * are nullable; the lists default to empty.
+ */
 @Serializable
-data class RecipeResponse(
+data class Recipe(
     val id: String,
     val name: String,
-    val description: String,
-    val servings: Int,
-    val prepTimeMinutes: Int,
-    val cookTimeMinutes: Int,
-    val nutritionPerServing: NutritionPerServing,
-    val ingredients: List<RecipeIngredient>,
-    val instructions: List<String>,
-    val tags: List<String>,
-    val dietType: String?,
-    val imageUrl: String?,
-    val createdAt: String,
+    val description: String? = null,
+    val ingredients: List<RecipeIngredient> = emptyList(),
+    val instructions: List<String> = emptyList(),
+    val prepTime: Int? = null,
+    val cookTime: Int? = null,
+    val servings: Int? = null,
+    val imageUrl: String? = null,
+    val nutritionalInfo: NutritionalInfo? = null,
+    /** Any of `omnivore`, `vegetarian`, `vegan`, `keto`, `paleo`. */
+    val dietaryTypes: List<String> = emptyList(),
 )
 
-/** Nutrition per serving for a recipe. */
-@Serializable
-data class NutritionPerServing(
-    val calories: Int,
-    val protein: Double,
-    val carbs: Double,
-    val fat: Double,
-    val sugar: Double,
-)
-
-/** Single ingredient in a recipe. */
+/** One ingredient line of a recipe (`IngredientResponse`); a null value means unknown. */
 @Serializable
 data class RecipeIngredient(
     val name: String,
-    val quantity: Double,
-    val unit: String,
-    val calories: Int?,
-    val protein: Double?,
-    val carbs: Double?,
-    val fat: Double?,
+    val quantity: Double? = null,
+    val unit: String? = null,
+    val calories: Int? = null,
+    val protein: Double? = null,
+    val carbs: Double? = null,
+    val fat: Double? = null,
+    val sugar: Double? = null,
 )
 
-/** Recipe search query parameters. */
+/**
+ * Catalog-wide nutrition provenance and the medical disclaimer the UI must show
+ * (`NutritionDisclaimerResponse`, `GET /nutrition/disclaimer`).
+ */
+@Serializable
+data class NutritionDisclaimer(
+    val disclaimer: String,
+    /** Always false: the payload makes no medical or health claims. */
+    val medicalAdvice: Boolean = false,
+    val sources: List<NutritionSource> = emptyList(),
+    val lastReviewed: String? = null,
+)
+
+/** A verified dataset the catalog's nutrition values are traceable to (`NutritionSource`). */
+@Serializable
+data class NutritionSource(
+    val id: String,
+    val name: String,
+    val url: String,
+    val verified: Boolean = false,
+)
+
+/**
+ * Query for `GET /recipes`. A recipe matches when it contains at least one of [ingredients]
+ * (case-insensitive); results are ranked by how many match. [page] is 1-based.
+ */
 data class RecipeSearchQuery(
     val ingredients: List<String> = emptyList(),
     val dietType: String? = null,
@@ -106,7 +126,7 @@ data class AIRecommendationResponse(
 /** A recommended recipe with context. */
 @Serializable
 data class RecommendedRecipe(
-    val recipe: RecipeResponse,
+    val recipe: Recipe,
     val reason: String,
     val mealType: String,
 )
