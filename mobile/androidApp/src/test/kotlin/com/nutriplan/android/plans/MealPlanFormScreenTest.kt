@@ -2,6 +2,10 @@ package com.nutriplan.android.plans
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
@@ -96,14 +100,31 @@ class MealPlanFormScreenTest {
     }
 
     @Test
-    fun `typing reports each field change`() {
-        val calls = render(MealPlanFormUiState())
+    fun `typing updates the fields and reports each change`() {
+        val calls = Calls()
+        compose.setContent {
+            // Hosted with real state, as in the app: a controlled field only shows what the state holds.
+            var state by remember { mutableStateOf(MealPlanFormUiState()) }
+            NutriPlanTheme {
+                MealPlanFormScreenContent(
+                    state = state,
+                    onNameChange = { state = state.copy(name = it); calls.names += it },
+                    onStartDateChange = { calls.starts += it },
+                    onEndDateChange = { calls.ends += it },
+                    onCaloriesChange = { state = state.copy(calories = it); calls.calories += it },
+                    onSubmit = { calls.submitted++ },
+                    onBack = { calls.backed++ },
+                )
+            }
+        }
 
         compose.onNodeWithTag(MealPlanFormTestTags.NAME).performTextInput("Plan")
         compose.onNodeWithTag(MealPlanFormTestTags.CALORIES).performTextInput("1800")
 
-        assertEquals(listOf("Plan"), calls.names)
-        assertEquals(listOf("1800"), calls.calories)
+        compose.onNodeWithTag(MealPlanFormTestTags.NAME).assert(hasText("Plan"))
+        compose.onNodeWithTag(MealPlanFormTestTags.CALORIES).assert(hasText("1800"))
+        assertEquals("Plan", calls.names.lastOrNull())
+        assertEquals("1800", calls.calories.lastOrNull())
     }
 
     @Test
