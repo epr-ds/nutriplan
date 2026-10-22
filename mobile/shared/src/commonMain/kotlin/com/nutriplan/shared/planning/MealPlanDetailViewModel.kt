@@ -3,6 +3,7 @@ package com.nutriplan.shared.planning
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
+import com.nutriplan.shared.data.local.PendingChange
 import com.nutriplan.shared.data.local.PendingMeal
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.PendingMealSync
@@ -44,6 +45,8 @@ data class MealPlanDetailUiState(
     val error: MealPlanDetailError? = null,
     /** Meals added while offline that the server then refused: they left the plan and the user is told. */
     val failedAdds: List<PendingMeal> = emptyList(),
+    /** Edits and removals made while offline that the server then refused: the plan shows the server's version. */
+    val failedChanges: List<PendingChange> = emptyList(),
 ) {
     /** The plan loaded but has no meals yet. */
     val hasNoMeals: Boolean get() = plan != null && days.isEmpty()
@@ -92,6 +95,12 @@ class MealPlanDetailViewModel(
         fetch(id)
     }
 
+    /** Stop telling the user about an edit or removal that could not be saved. */
+    fun dismissFailedChange(id: Long) {
+        sync?.dismissChangeFailure(id)
+        _state.update { state -> state.copy(failedChanges = state.failedChanges.filter { it.id != id }) }
+    }
+
     /** Stop telling the user about a meal that could not be added. */
     fun dismissFailedAdd(id: Long) {
         sync?.dismissFailure(id)
@@ -122,6 +131,7 @@ class MealPlanDetailViewModel(
                     days = groupMealsByDay(plan.startDate, plan.meals),
                     isLoading = false,
                     failedAdds = sync?.failures(planId).orEmpty(),
+                    failedChanges = sync?.changeFailures(planId).orEmpty(),
                 )
             }
         } catch (e: CancellationException) {
@@ -138,6 +148,7 @@ class MealPlanDetailViewModel(
                     isLoading = false,
                     error = error,
                     failedAdds = sync?.failures(planId).orEmpty(),
+                    failedChanges = sync?.changeFailures(planId).orEmpty(),
                 )
             }
         }

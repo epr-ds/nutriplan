@@ -1,11 +1,15 @@
 package com.nutriplan.shared.data.repository
 
+import com.nutriplan.shared.data.local.ChangeKind
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.PendingChange
+import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingFailure
 import com.nutriplan.shared.data.local.PendingMeal
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.model.AddMealRequest
-import com.nutriplan.shared.data.model.NutritionalInfo
+import com.nutriplan.shared.data.model.PlanMeal
+import com.nutriplan.shared.data.model.scaledBy
 import com.nutriplan.shared.data.model.PlanMealRecipe
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.UpdateMealRequest
@@ -14,7 +18,6 @@ import com.nutriplan.shared.data.network.toApiFailure
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.roundToInt
 
 /** What one [PendingMealSync.flush] did. */
 data class FlushResult(
@@ -49,6 +52,8 @@ class PendingMealSync(
     private val cache: MealPlanCache,
     /** Asked to send the queue once the server can be reached, even if the app is closed by then. */
     private val scheduler: SyncScheduler = SyncScheduler.None,
+    /** Edits and removals of meals made while offline; without it those still need a connection. */
+    private val changes: PendingChangeStore? = null,
 ) : MealQueueFlusher {
 
     private val flushing = Mutex()
@@ -60,14 +65,27 @@ class PendingMealSync(
             request = request,
             dayIndex = dayIndex,
             recipe = PlanMealRecipe(id = recipe.id, name = recipe.name, imageUrl = recipe.imageUrl),
-            nutritionalInfo = recipe.nutritionalInfo?.times(request.servings),
+            nutritionalInfo = recipe.nutritionalInfo?.scaledBy(request.servings),
         ).also { scheduler.requestSync() }
 
     /** Ask the platform to send the queue when the server can be reached (for example when the app starts). */
     fun requestSync() = scheduler.requestSync()
 
+    /** Queue the edit [request] of [meal] (or merge it into the one already waiting). */
+    fun queueUpdate(planId: String, meal: PlanMeal, request: UpdateMealRequest): PendingChange? =
+        changes?.queueUpdate(planId, meal, request)?.also { scheduler.requestSync() }
+
+    /** Queue the removal of [meal], replacing anything waiting for it. */
+    fun queueRemove(planId: String, meal: PlanMeal): PendingChange? =
+        changes?.queueRemove(planId, meal)?.also { scheduler.requestSync() }
+
+    /** Whether edits and removals can be queued at all. */
+    val canQueueChanges: Boolean get() = changes != null
+
     /** Whether anything is waiting to be sent. */
-    fun hasWaiting(): Boolean = store.waiting().isNotEmpty()
+    fun hasWaiting(): Boolean = waitingCount() > 0
+
+    private fun waitingCount(): Int = store.waiting().size + changes?.waiting().orEmpty().size
 
     /** The meals that can never be added, optionally only those of [planId]. */
     fun failures(planId: String? = null): List<PendingMeal> =
@@ -75,6 +93,15 @@ class PendingMealSync(
 
     /** Stop telling the user about a failed meal. */
     fun dismissFailure(id: Long) = store.remove(id)
+
+    /** The edits and removals that can never be applied, optionally only those of [planId]. */
+    fun changeFailures(planId: String? = null): List<PendingChange> =
+        changes?.failed().orEmpty().filter { planId == null || it.planId == planId }
+
+    /** Stop telling the user about a failed edit or removal. */
+    fun dismissChangeFailure(id: Long) {
+        changes?.remove(id)
+    }
 
     /** Send what is waiting, oldest first. Safe to call often: it does nothing when the queue is empty. */
     override suspend fun flush(): FlushResult = flushing.withLock {
@@ -91,13 +118,47 @@ class PendingMealSync(
                 if (failure.isTemporary()) {
                     // Not the request's fault: keep it, and keep the order by not trying later ones.
                     store.bumpAttempts(pending.id)
-                    return@withLock FlushResult(added, failed, waiting = store.waiting().size)
+                    return@withLock FlushResult(added, failed, waiting = waitingCount())
                 }
                 store.markFailed(pending.id, failure.toPendingFailure())
                 failed++
             }
         }
+        // Edits and removals of meals that are already on the server go after the new meals.
+        for (change in changes?.waiting().orEmpty()) {
+            try {
+                send(change)
+                added++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                val failure = e.toApiFailure()
+                if (failure.isTemporary()) {
+                    changes?.bumpAttempts(change.id)
+                    return@withLock FlushResult(added, failed, waiting = waitingCount())
+                }
+                if (change.kind == ChangeKind.REMOVE && failure == ApiFailure.NOT_FOUND) {
+                    // Already gone is what the user wanted.
+                    changes?.remove(change.id)
+                    cache.invalidateDetail(change.planId)
+                    added++
+                } else {
+                    changes?.markFailed(change.id, failure.toPendingFailure())
+                    failed++
+                }
+            }
+        }
         FlushResult(added, failed, waiting = 0)
+    }
+
+    /** Apply one queued edit or removal on the server, then forget it. */
+    private suspend fun send(change: PendingChange) {
+        when (change.kind) {
+            ChangeKind.UPDATE -> remote.updateMeal(change.planId, change.mealId, change.toRequest())
+            ChangeKind.REMOVE -> remote.removeMeal(change.planId, change.mealId)
+        }
+        cache.invalidateDetail(change.planId)
+        changes?.remove(change.id)
     }
 
     /** Create the meal on the server (unless it already is there), set its day, and forget the request. */
@@ -122,12 +183,3 @@ class PendingMealSync(
         else -> PendingFailure.UNKNOWN
     }
 }
-
-/** A recipe's per-serving nutrition for [servings] servings (what the server shows for a meal). */
-private operator fun NutritionalInfo.times(servings: Double) = NutritionalInfo(
-    calories = calories?.let { (it * servings).roundToInt() },
-    protein = protein?.let { it * servings },
-    carbs = carbs?.let { it * servings },
-    fat = fat?.let { it * servings },
-    sugar = sugar?.let { it * servings },
-)

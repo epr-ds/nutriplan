@@ -1,6 +1,7 @@
 package com.nutriplan.shared.session
 
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
@@ -14,6 +15,7 @@ class SignOut(
     private val mealPlanCache: MealPlanCache,
     private val favorites: FavoriteRecipesViewModel,
     private val pendingMeals: PendingMealStore? = null,
+    private val pendingChanges: PendingChangeStore? = null,
 ) {
     operator fun invoke() {
         // Tokens first: if wiping the cache fails the session is still over.
@@ -21,6 +23,7 @@ class SignOut(
         runCatching { mealPlanCache.clear() }
         runCatching { favorites.reset() }
         runCatching { pendingMeals?.clear() }
+        runCatching { pendingChanges?.clear() }
         SessionEvents.emitSignedOut()
     }
 }

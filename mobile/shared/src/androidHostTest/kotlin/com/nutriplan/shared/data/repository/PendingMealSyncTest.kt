@@ -331,4 +331,128 @@ class PendingMealSyncTest {
 
         assertEquals(1, result.added)
     }
-}
+
+    // --- queued edits and removals ---
+
+    private val serverMeal = com.nutriplan.shared.testing.meal("m1", dayIndex = 0)
+
+    @Test
+    fun `a queued edit is sent as a partial update and forgotten`() = runTest {
+        sync.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 3.0, satisfactionLevel = 5))
+
+        val result = sync.flush()
+
+        assertEquals(FlushResult(added = 1, failed = 0, waiting = 0), result)
+        val (plan, meal, request) = remote.updated.single()
+        assertEquals("p1", plan)
+        assertEquals("m1", meal)
+        assertEquals(com.nutriplan.shared.data.model.UpdateMealRequest(servings = 3.0, satisfactionLevel = 5), request)
+        assertFalse(sync.hasWaiting())
+    }
+
+    @Test
+    fun `a queued removal is sent and forgotten`() = runTest {
+        sync.queueRemove("p1", serverMeal)
+
+        sync.flush()
+
+        assertEquals(listOf("p1" to "m1"), remote.removed)
+        assertFalse(sync.hasWaiting())
+    }
+
+    @Test
+    fun `queueing a change asks for a background sync and reports it is waiting`() {
+        sync.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0))
+
+        assertEquals(1, fixture.scheduler.requests)
+        assertTrue(sync.hasWaiting())
+    }
+
+    @Test
+    fun `new meals go first, then the changes`() = runTest {
+        sync.queueRemove("p1", serverMeal)
+        queue("a")
+
+        sync.flush()
+
+        assertEquals(1, remote.added.size)
+        assertEquals(1, remote.removed.size)
+    }
+
+    @Test
+    fun `offline keeps a change queued and counts it as waiting`() = runTest {
+        sync.queueRemove("p1", serverMeal)
+        remote.changeFailures = mutableListOf(ApiException.NetworkError())
+
+        val result = sync.flush()
+
+        assertEquals(FlushResult(added = 0, failed = 0, waiting = 1), result)
+        assertEquals(1, fixture.changes.waiting().single().attempts)
+    }
+
+    @Test
+    fun `a change the server refuses is flagged, reported and does not hold back the next`() = runTest {
+        sync.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(dayIndex = 99))
+        sync.queueRemove("p1", com.nutriplan.shared.testing.meal("m2"))
+        remote.changeFailures = mutableListOf(ApiException.HttpError(422, null))
+
+        val result = sync.flush()
+
+        assertEquals(FlushResult(added = 1, failed = 1, waiting = 0), result)
+        val failed = sync.changeFailures("p1").single()
+        assertEquals(PendingFailure.REJECTED, failed.failure)
+        assertEquals("m1", failed.mealId)
+        assertEquals(listOf("p1" to "m2"), remote.removed)
+    }
+
+    @Test
+    fun `an edit of a meal that no longer exists is a not found failure`() = runTest {
+        sync.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0))
+        remote.changeFailures = mutableListOf(ApiException.HttpError(404, null))
+
+        sync.flush()
+
+        assertEquals(PendingFailure.NOT_FOUND, sync.changeFailures().single().failure)
+    }
+
+    @Test
+    fun `removing a meal that is already gone counts as removed`() = runTest {
+        sync.queueRemove("p1", serverMeal)
+        remote.changeFailures = mutableListOf(ApiException.HttpError(404, null))
+
+        val result = sync.flush()
+
+        assertEquals(FlushResult(added = 1, failed = 0, waiting = 0), result)
+        assertTrue(sync.changeFailures().isEmpty())
+    }
+
+    @Test
+    fun `change failures can be dismissed`() = runTest {
+        sync.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0))
+        remote.changeFailures = mutableListOf(ApiException.HttpError(422, null))
+        sync.flush()
+
+        sync.dismissChangeFailure(sync.changeFailures().single().id)
+
+        assertTrue(sync.changeFailures().isEmpty())
+    }
+
+    @Test
+    fun `a sent change makes the saved plan stale`() = runTest {
+        fixture.cache.upsertPlan(fullPlan("p1", meals = listOf(serverMeal)))
+        sync.queueRemove("p1", serverMeal)
+
+        sync.flush()
+
+        assertNull(fixture.cache.getPlan("p1"))
+    }
+
+    @Test
+    fun `without a change store edits cannot be queued`() {
+        val plain = PendingMealSync(remote, store, fixture.cache)
+
+        assertFalse(plain.canQueueChanges)
+        assertNull(plain.queueRemove("p1", serverMeal))
+        assertNull(plain.queueUpdate("p1", serverMeal, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0)))
+        assertTrue(sync.canQueueChanges)
+    }}

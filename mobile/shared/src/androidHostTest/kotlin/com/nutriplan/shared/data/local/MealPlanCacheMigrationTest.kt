@@ -18,8 +18,8 @@ import kotlin.test.assertNotNull
 class MealPlanCacheMigrationTest {
 
     @Test
-    fun `the schema is version 4 now that offline meals are queued too`() {
-        assertEquals(4L, NutriPlanDatabase.Schema.version)
+    fun `the schema is version 5 now that offline edits are queued too`() {
+        assertEquals(5L, NutriPlanDatabase.Schema.version)
     }
 
     @Test
@@ -148,4 +148,35 @@ class MealPlanCacheMigrationTest {
         queue.enqueue("kept", addRequest(), null, PlanMealRecipe(id = "r1", name = "Soup"), null)
         assertEquals(1, queue.waiting().size)
     }
-}
+
+    @Test
+    fun `a version 4 database gains the queue of changes and keeps the queue of added meals`() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        // The tables as version 4 created them (no pending_change yet).
+        driver.execute(
+            null,
+            """
+            CREATE TABLE pending_meal (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, plan_id TEXT NOT NULL, meal_type TEXT NOT NULL,
+                recipe_id TEXT NOT NULL, servings REAL NOT NULL, day_index INTEGER, recipe TEXT NOT NULL,
+                nutritional_info TEXT, attempts INTEGER NOT NULL DEFAULT 0, remote_meal_id TEXT, failure TEXT
+            )
+            """.trimIndent(),
+            0,
+        )
+        driver.execute(
+            null,
+            "INSERT INTO pending_meal(plan_id, meal_type, recipe_id, servings, recipe) " +
+                "VALUES ('p1', 'lunch', 'r1', 1.0, '{\"id\":\"r1\",\"name\":\"Soup\"}')",
+            0,
+        )
+
+        NutriPlanDatabase.Schema.migrate(driver, 4L, 5L)
+
+        val database = NutriPlanDatabase(driver)
+        assertEquals(listOf("r1"), PendingMealStore(database).waiting().map { it.recipeId }, "queued meals survive")
+        val changes = PendingChangeStore(database)
+        assertEquals(emptyList(), changes.waiting())
+        changes.queueRemove("p1", com.nutriplan.shared.testing.meal("m1"))
+        assertEquals(1, changes.waiting().size)
+    }}

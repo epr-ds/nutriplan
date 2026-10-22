@@ -2,6 +2,7 @@ package com.nutriplan.shared.testing
 
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
@@ -23,9 +24,10 @@ import kotlinx.coroutines.CompletableDeferred
 class QueueFixture(val database: NutriPlanDatabase = newDatabase()) {
     val cache = MealPlanCache(database)
     val store = PendingMealStore(database)
+    val changes = PendingChangeStore(database)
     val remote = FakePlanRemote()
     val scheduler = RecordingScheduler()
-    val sync = PendingMealSync(remote, store, cache, scheduler)
+    val sync = PendingMealSync(remote, store, cache, scheduler, changes)
 }
 
 /** A [SyncScheduler] that only counts how often a background sync was asked for. */
@@ -56,6 +58,10 @@ class FakePlanRemote : DietaryRepository {
     /** Thrown by the next add-meal calls; a list is consumed one call at a time, then calls succeed. */
     var addFailures: MutableList<Throwable?> = mutableListOf()
     var updateFailure: Throwable? = null
+
+    /** Thrown by the next update/remove calls, one per call, before [updateFailure] applies. */
+    var changeFailures: MutableList<Throwable?> = mutableListOf()
+    var removeFailure: Throwable? = null
     var gate: CompletableDeferred<Unit>? = null
 
     /** Every add-meal call, including the ones that failed. */
@@ -64,6 +70,7 @@ class FakePlanRemote : DietaryRepository {
     /** The meals the server really has, from the add-meal calls that succeeded. */
     private val created = mutableListOf<Pair<String, AddMealRequest>>()
     val updated = mutableListOf<Triple<String, String, UpdateMealRequest>>()
+    val removed = mutableListOf<Pair<String, String>>()
     private var counter = 0
 
     override suspend fun getMealPlan(planId: String): MealPlan {
@@ -85,6 +92,7 @@ class FakePlanRemote : DietaryRepository {
 
     override suspend fun updateMeal(planId: String, mealId: String, request: UpdateMealRequest): PlanMeal {
         updated += Triple(planId, mealId, request)
+        changeFailures.removeFirstOrNull()?.let { throw it }
         updateFailure?.let { throw it }
         return PlanMeal(id = mealId, mealType = "lunch", servings = 1.0, dayIndex = request.dayIndex)
     }
@@ -94,7 +102,11 @@ class FakePlanRemote : DietaryRepository {
     override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan = error("unused")
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> = error("unused")
     override suspend fun updateMealPlanStatus(planId: String, status: String): MealPlan = error("unused")
-    override suspend fun removeMeal(planId: String, mealId: String): Unit = error("unused")
+    override suspend fun removeMeal(planId: String, mealId: String) {
+        removed += planId to mealId
+        changeFailures.removeFirstOrNull()?.let { throw it }
+        removeFailure?.let { throw it }
+    }
     override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = error("unused")
     override suspend fun getNutritionDisclaimer(): NutritionDisclaimer = error("unused")
 }

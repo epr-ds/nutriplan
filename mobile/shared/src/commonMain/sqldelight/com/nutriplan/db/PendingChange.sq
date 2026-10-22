@@ -1,0 +1,56 @@
+-- Changes to meals that are already on the server (edit servings/day/rating, or remove), made while
+-- the server could not be reached (DPL-407). Like pending_meal, each row is one request waiting to
+-- be sent, in order, and ends by being sent and deleted, or kept with a `failure` for the user to
+-- see. At most one waiting row exists per meal: a newer edit is merged into it and a removal
+-- replaces it (see PendingChangeStore).
+
+CREATE TABLE pending_change (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    plan_id TEXT NOT NULL,
+    meal_id TEXT NOT NULL,
+    meal_type TEXT NOT NULL,                -- to say which meal in a message
+    kind TEXT NOT NULL,                     -- 'update' or 'remove'
+    servings REAL,                          -- update only: null leaves it unchanged
+    day_index INTEGER,                      -- update only
+    satisfaction_level INTEGER,             -- update only
+    attempts INTEGER NOT NULL DEFAULT 0,
+    failure TEXT                            -- null while waiting; the reason once it can never succeed
+);
+
+selectWaiting:
+SELECT * FROM pending_change WHERE failure IS NULL ORDER BY id;
+
+selectWaitingForPlan:
+SELECT * FROM pending_change WHERE plan_id = ? AND failure IS NULL ORDER BY id;
+
+selectWaitingForMeal:
+SELECT * FROM pending_change WHERE plan_id = ? AND meal_id = ? AND failure IS NULL ORDER BY id;
+
+selectFailed:
+SELECT * FROM pending_change WHERE failure IS NOT NULL ORDER BY id;
+
+insertChange:
+INSERT INTO pending_change(plan_id, meal_id, meal_type, kind, servings, day_index, satisfaction_level)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- The id of the newest row, read right after an insert inside the same transaction.
+selectLastId:
+SELECT id FROM pending_change ORDER BY id DESC LIMIT 1;
+
+updateFields:
+UPDATE pending_change SET servings = ?, day_index = ?, satisfaction_level = ? WHERE id = ?;
+
+bumpAttempts:
+UPDATE pending_change SET attempts = attempts + 1 WHERE id = ?;
+
+markFailed:
+UPDATE pending_change SET failure = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM pending_change WHERE id = ?;
+
+deleteWaitingForMeal:
+DELETE FROM pending_change WHERE plan_id = ? AND meal_id = ? AND failure IS NULL;
+
+deleteAll:
+DELETE FROM pending_change;

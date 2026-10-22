@@ -3,6 +3,8 @@ package com.nutriplan.shared.data.model
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import kotlin.math.roundToInt
 
 /*
  * Meal plan models, aligned with contracts/dietary.openapi.yaml (the source of truth the Dietary
@@ -99,6 +101,11 @@ data class PlanMeal(
     val satisfactionLevel: Int? = null,
     val recipe: PlanMealRecipe? = null,
     val nutritionalInfo: NutritionalInfo? = null,
+    /**
+     * An edit of this meal is shown but has not reached the server yet (DPL-407). Local only: it is
+     * never sent or read, so it is not part of the API model.
+     */
+    @Transient val syncPending: Boolean = false,
 )
 
 /** The part of a recipe the plan screens need; the full `RecipeResponse` has much more. */
@@ -117,6 +124,15 @@ data class NutritionalInfo(
     val carbs: Double? = null,
     val fat: Double? = null,
     val sugar: Double? = null,
+)
+
+/** These values times [factor] (calories rounded), for example for a different number of servings. */
+fun NutritionalInfo.scaledBy(factor: Double) = NutritionalInfo(
+    calories = calories?.let { (it * factor).roundToInt() },
+    protein = protein?.let { it * factor },
+    carbs = carbs?.let { it * factor },
+    fat = fat?.let { it * factor },
+    sugar = sugar?.let { it * factor },
 )
 
 /** Totals, daily averages and targets-vs-progress for a plan (`NutritionalSummary`). */
