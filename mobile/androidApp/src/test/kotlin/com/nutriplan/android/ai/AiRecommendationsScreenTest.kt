@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -68,7 +69,7 @@ class AiRecommendationsScreenTest {
         val calls = Calls()
         compose.setContent {
             // Real state so typing is reflected in the field.
-            var state by mutableStateOf(initial)
+            var state by remember { mutableStateOf(initial) }
             NutriPlanTheme {
                 AiRecommendationsScreenContent(
                     state = state,
