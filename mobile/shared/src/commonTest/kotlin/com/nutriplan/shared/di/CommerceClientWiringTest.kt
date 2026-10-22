@@ -13,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import org.koin.core.Koin
+import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -29,17 +30,29 @@ import kotlin.test.assertSame
 class CommerceClientWiringTest {
 
     private val requests = mutableListOf<HttpRequestData>()
+    private var app: KoinApplication? = null
 
     @AfterTest
     fun tearDown() {
-        HttpClientProvider.reset()
+        stopApp()
         ApiConfig.reset()
+    }
+
+    /**
+     * Close the Koin application and the HTTP client. Closing matters: Koin keeps `single` instances
+     * on the shared [dataModule] definitions, so an unclosed application would hand this test's
+     * repositories (and its closed client) to every later test that loads the module.
+     */
+    private fun stopApp() {
+        app?.close()
+        app = null
+        HttpClientProvider.reset()
     }
 
     /** Wire like the app does and return the Koin container, signed in with [accessToken]. */
     private fun startApp(environment: ApiEnvironment, accessToken: String = "access-1"): Koin {
         ApiConfig.configure(environment)
-        val koin = koinApplication { modules(dataModule) }.koin
+        val koin = koinApplication { modules(dataModule) }.also { app = it }.koin
         val auth = koin.get<AuthRepository>().apply { updateTokens(accessToken, "refresh-1") }
         HttpClientProvider.create(
             MockEngine { request ->
@@ -71,7 +84,7 @@ class CommerceClientWiringTest {
 
             val url = requests.single().url
             assertEquals("${environment.baseUrl}/commerce/v1/payment-methods", url.toString(), environment.name)
-            HttpClientProvider.reset()
+            stopApp()
         }
     }
 
