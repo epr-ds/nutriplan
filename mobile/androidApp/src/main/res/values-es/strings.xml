@@ -375,4 +375,33 @@
     <string name="error_optimize_accept_network">No tienes conexión, así que algunos cambios no se guardaron. Acepta de nuevo para guardar el resto.</string>
     <string name="error_optimize_accept_not_found">Mientras tanto se quitó una comida de este plan, así que algunos cambios no se guardaron.</string>
     <string name="error_optimize_accept_unknown">Algunos cambios no se pudieron guardar. Acepta de nuevo para guardar el resto.</string>
+
+    <!-- AIA-607: analizar una comida -->
+    <string name="home_quick_actions">Accesos rápidos</string>
+    <string name="home_action_recipes">Recetas</string>
+    <string name="home_action_ai_recommendations">Consejos de IA</string>
+    <string name="home_action_analyze_meal">Analizar una comida</string>
+    <string name="analyze_meal_title">Analizar una comida</string>
+    <string name="analyze_meal_intro">Describe lo que has comido o vas a comer, y el asesor de IA estima su nutrición y avisa de lo que conviene vigilar.</string>
+    <string name="analyze_meal_description_label">Tu comida</string>
+    <string name="analyze_meal_description_hint">p. ej. Dos huevos revueltos, una tostada y una naranja</string>
+    <string name="analyze_meal_description_count">%1$d/%2$d</string>
+    <string name="analyze_meal_submit">Analizar</string>
+    <string name="cd_analyze_meal_loading">Analizando la comida</string>
+    <string name="analyze_meal_nutrition_title">Nutrición estimada</string>
+    <string name="analyze_meal_nutrition_unknown">No se pudo estimar la nutrición de esta comida.</string>
+    <string name="analyze_meal_calories">Calorías</string>
+    <string name="analyze_meal_protein">Proteína</string>
+    <string name="analyze_meal_carbs">Hidratos de carbono</string>
+    <string name="analyze_meal_fat">Grasa</string>
+    <string name="analyze_meal_sugar">Azúcar</string>
+    <string name="analyze_meal_grams">%1$s g</string>
+    <string name="analyze_meal_warnings_heading">Avisos</string>
+    <string name="analyze_meal_no_warnings">Nada que vigilar en esta comida.</string>
+    <string name="cd_analyze_meal_warning">Aviso</string>
+    <string name="analyze_meal_disclaimer_fallback">Este análisis se genera automáticamente y es una estimación solo de información general. No es consejo médico ni dietético. Consulta a un profesional cualificado antes de cambiar tu dieta, sobre todo si tienes una condición médica o alergias.</string>
+    <string name="error_analyze_meal_description_missing">Describe primero la comida.</string>
+    <string name="error_analyze_meal_network">No tienes conexión. Conéctate a internet para analizar la comida.</string>
+    <string name="error_analyze_meal_rejected">No se pudo analizar esta descripción. Prueba a describir la comida de otra forma.</string>
+    <string name="error_analyze_meal_unknown">Algo salió mal al analizar la comida. Inténtalo de nuevo.</string>
 </resources>

@@ -252,7 +252,10 @@ fun AiRecommendationsScreenContent(
                 }
                 // Required with every AI answer: what is shown is not medical advice.
                 item(key = "disclaimer") {
-                    Disclaimer(result.disclaimer?.takeIf { it.isNotBlank() } ?: stringResource(R.string.ai_disclaimer_fallback))
+                    AiDisclaimer(
+                        result.disclaimer?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.ai_disclaimer_fallback),
+                    )
                 }
             }
         }
@@ -346,14 +349,15 @@ private fun ReasoningCard(reasoning: String) {
     }
 }
 
+/** How well an AI answer fits the user's targets: the 0-100 score with a bar, and the details. */
 @Composable
-private fun AlignmentCard(alignment: NutritionalAlignment) {
+internal fun AlignmentCard(alignment: NutritionalAlignment, testTag: String = AiRecommendationsTestTags.ALIGNMENT) {
     // The contract gives the score from 0 to 100.
     val score = alignment.score?.roundToInt()?.coerceIn(0, 100)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(AiRecommendationsTestTags.ALIGNMENT)
+            .testTag(testTag)
             .semantics(mergeDescendants = true) {},
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -381,13 +385,14 @@ private fun AlignmentCard(alignment: NutritionalAlignment) {
     }
 }
 
+/** The medical disclaimer every AI answer must be shown with. */
 @Composable
-private fun Disclaimer(text: String) {
+internal fun AiDisclaimer(text: String, testTag: String = AiRecommendationsTestTags.DISCLAIMER) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(AiRecommendationsTestTags.DISCLAIMER),
+            .testTag(testTag),
     ) {
         Text(
             text = text,

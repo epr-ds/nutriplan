@@ -8,7 +8,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.nutriplan.shared.analytics.AnalyticsTracker
-import com.nutriplan.shared.domain.Resource
 import com.nutriplan.shared.navigation.Route
 
 /**
@@ -208,8 +207,7 @@ fun AppNavigationGraph(
         composable<Route.AiMealAnalysis> {
             analyticsTracker?.logScreenView("ai_meal_analysis", "AiMealAnalysisScreen")
             screens.AiMealAnalysisScreen(
-                onNavigate = { route -> navigate(navController, route) },
-                onResult = { /* handle analysis result */ },
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -392,10 +390,7 @@ interface AppNavigationScreens {
         recipeId: String,
         onBack: () -> Unit,
     )
-    @Composable fun AiMealAnalysisScreen(
-        onNavigate: (Any) -> Unit,
-        onResult: (Resource<*>) -> Unit,
-    )
+    @Composable fun AiMealAnalysisScreen(onBack: () -> Unit)
     @Composable fun AiRecommendationsScreen(onNavigate: (Any) -> Unit, savedState: SavedStateHandle)
     @Composable fun OrderListScreen(
         onNavigate: (Any) -> Unit,

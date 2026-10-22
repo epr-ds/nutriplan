@@ -377,4 +377,33 @@
     <string name="error_optimize_accept_network">You\'re offline, so some changes weren\'t saved. Accept again to save the rest.</string>
     <string name="error_optimize_accept_not_found">A meal in this plan was removed meanwhile, so some changes weren\'t saved.</string>
     <string name="error_optimize_accept_unknown">Some changes couldn\'t be saved. Accept again to save the rest.</string>
+
+    <!-- AIA-607: analyze a meal -->
+    <string name="home_quick_actions">Quick actions</string>
+    <string name="home_action_recipes">Recipes</string>
+    <string name="home_action_ai_recommendations">AI tips</string>
+    <string name="home_action_analyze_meal">Analyze a meal</string>
+    <string name="analyze_meal_title">Analyze a meal</string>
+    <string name="analyze_meal_intro">Describe what you ate or plan to eat, and the AI Advisor estimates its nutrition and flags anything to watch.</string>
+    <string name="analyze_meal_description_label">Your meal</string>
+    <string name="analyze_meal_description_hint">e.g. Two scrambled eggs, a slice of toast and an orange</string>
+    <string name="analyze_meal_description_count">%1$d/%2$d</string>
+    <string name="analyze_meal_submit">Analyze</string>
+    <string name="cd_analyze_meal_loading">Analyzing the meal</string>
+    <string name="analyze_meal_nutrition_title">Estimated nutrition</string>
+    <string name="analyze_meal_nutrition_unknown">The nutrition of this meal couldn\'t be estimated.</string>
+    <string name="analyze_meal_calories">Calories</string>
+    <string name="analyze_meal_protein">Protein</string>
+    <string name="analyze_meal_carbs">Carbohydrates</string>
+    <string name="analyze_meal_fat">Fat</string>
+    <string name="analyze_meal_sugar">Sugar</string>
+    <string name="analyze_meal_grams">%1$s g</string>
+    <string name="analyze_meal_warnings_heading">Warnings</string>
+    <string name="analyze_meal_no_warnings">Nothing to watch out for in this meal.</string>
+    <string name="cd_analyze_meal_warning">Warning</string>
+    <string name="analyze_meal_disclaimer_fallback">This analysis is generated automatically and is an estimate for general information only. It is not medical or dietary advice. Talk to a qualified professional before changing your diet, especially if you have a medical condition or allergies.</string>
+    <string name="error_analyze_meal_description_missing">Describe the meal first.</string>
+    <string name="error_analyze_meal_network">You\'re offline. Connect to the internet to analyze the meal.</string>
+    <string name="error_analyze_meal_rejected">This description couldn\'t be analyzed. Try describing the meal differently.</string>
+    <string name="error_analyze_meal_unknown">Something went wrong analyzing the meal. Please try again.</string>
 </resources>

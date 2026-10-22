@@ -38,6 +38,7 @@ fun HomeScreen(
     onNavigateToRecipeSearch: () -> Unit,
     onNavigateToAiRecommendations: () -> Unit,
     onNavigateToMealPlans: () -> Unit = {},
+    onNavigateToAnalyzeMeal: () -> Unit = {},
 ) {
     // DPL-501: Home shows the same plans as the full list, from the shared view-model.
     val viewModel = koinInject<MealPlanListViewModel>()
@@ -129,13 +130,14 @@ fun HomeScreen(
                     
                     // Quick actions
                     Text(
-                        text = "Quick Actions",
+                        text = stringResource(R.string.home_quick_actions),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
+                    // Two per row, so the labels fit on a phone.
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -148,15 +150,29 @@ fun HomeScreen(
 
                         QuickActionCard(
                             icon = Icons.Default.Search,
-                            label = "Recipes",
+                            label = stringResource(R.string.home_action_recipes),
                             onClick = onNavigateToRecipeSearch,
                             modifier = Modifier.weight(1f)
                         )
-                        
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         QuickActionCard(
                             icon = Icons.Default.AutoAwesome,
-                            label = "AI Tips",
+                            label = stringResource(R.string.home_action_ai_recommendations),
                             onClick = onNavigateToAiRecommendations,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // AIA-607: describe a meal and get its nutrition and warnings.
+                        QuickActionCard(
+                            icon = Icons.Default.Restaurant,
+                            label = stringResource(R.string.home_action_analyze_meal),
+                            onClick = onNavigateToAnalyzeMeal,
                             modifier = Modifier.weight(1f)
                         )
                     }
