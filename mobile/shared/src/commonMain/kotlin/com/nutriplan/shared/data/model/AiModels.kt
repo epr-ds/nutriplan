@@ -52,7 +52,21 @@ data class AiRecommendations(
     val nutritionalAlignment: NutritionalAlignment? = null,
     /** The medical disclaimer every AI response carries (AIA-505); the UI must show it. */
     val disclaimer: String? = null,
-)
+    /**
+     * Where the recipes came from: [SOURCE_MODEL], or [SOURCE_CURATED_FALLBACK] when the AI could not
+     * produce a usable answer and curated catalogue recipes were served instead (AIA-503). Older
+     * servers leave it out, which means the model.
+     */
+    val source: String? = null,
+) {
+    /** True when these are curated catalogue recipes rather than the AI's own answer. */
+    val isCuratedFallback: Boolean get() = source == SOURCE_CURATED_FALLBACK
+
+    companion object {
+        const val SOURCE_MODEL = "model"
+        const val SOURCE_CURATED_FALLBACK = "curated_fallback"
+    }
+}
 
 /** How well a recommendation or meal fits the caller's targets: a 0-100 score and an explanation. */
 @Serializable

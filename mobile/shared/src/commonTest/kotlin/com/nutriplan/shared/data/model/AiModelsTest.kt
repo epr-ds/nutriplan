@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -131,6 +132,21 @@ class AiModelsTest {
         assertNull(result.reasoning)
         assertNull(result.nutritionalAlignment)
         assertNull(result.disclaimer)
+        // An older server sends no source: the answer is taken as the model's.
+        assertNull(result.source)
+        assertFalse(result.isCuratedFallback)
+    }
+
+    @Test
+    fun `recommendations say when they are the curated fallback`() {
+        val fallback = json.decodeFromString(
+            AiRecommendations.serializer(),
+            """{"recommendations":[],"source":"curated_fallback"}""",
+        )
+        val model = json.decodeFromString(AiRecommendations.serializer(), """{"recommendations":[],"source":"model"}""")
+
+        assertTrue(fallback.isCuratedFallback)
+        assertFalse(model.isCuratedFallback)
     }
 
     @Test

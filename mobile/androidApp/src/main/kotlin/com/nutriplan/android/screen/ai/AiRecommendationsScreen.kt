@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -71,6 +73,7 @@ object AiRecommendationsTestTags {
     const val SUBMIT = "ai_recommendations_submit"
     const val LOADING = "ai_recommendations_loading"
     const val ERROR_BANNER = "ai_recommendations_error_banner"
+    const val CURATED_FALLBACK_NOTE = "ai_recommendations_curated_fallback_note"
     const val REASONING = "ai_recommendations_reasoning"
     const val ALIGNMENT = "ai_recommendations_alignment"
     const val DISCLAIMER = "ai_recommendations_disclaimer"
@@ -87,6 +90,9 @@ object AiRecommendationsTestTags {
  *
  * AIA-604: [onAddToPlan] starts adding a recommendation to a plan, for the meal the answer was asked
  * for. [mealAdded] confirms that one was added; [onMealAddedShown] is called when the user asks again.
+ *
+ * When the AI could not produce a usable answer and curated catalogue recipes were served instead
+ * (AIA-503), a note says so above the recipes.
  */
 @Composable
 fun AiRecommendationsScreen(
@@ -223,6 +229,10 @@ fun AiRecommendationsScreenContent(
                     )
                 }
             } else if (result != null) {
+                // Say so when the AI could not answer and curated recipes stand in (AIA-503).
+                if (result.isCuratedFallback && result.recommendations.isNotEmpty()) {
+                    item(key = "curated-fallback") { CuratedFallbackNote() }
+                }
                 result.reasoning?.takeIf { it.isNotBlank() }?.let { reasoning ->
                     item(key = "reasoning") { ReasoningCard(reasoning) }
                 }
@@ -347,6 +357,42 @@ private fun ReasoningCard(reasoning: String) {
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(text = reasoning, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/** Tells the user these are curated catalogue recipes, not the AI's own answer. */
+@Composable
+private fun CuratedFallbackNote() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Decorative: the label next to it says the same.
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(R.string.ai_recommendations_curated_fallback_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = stringResource(R.string.ai_recommendations_curated_fallback_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
         }
     }
 }

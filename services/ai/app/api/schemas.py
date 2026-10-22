@@ -194,11 +194,19 @@ class NutritionalAlignmentResponse(_Camel):
         return cls(score=alignment.percentage, details=alignment.details)
 
 
+class RecommendationSource(StrEnum):
+    """Where a recommendation answer came from: the model, or the AIA-503 curated fallback."""
+
+    MODEL = "model"
+    CURATED_FALLBACK = "curated_fallback"
+
+
 class AIRecommendationResponse(_Camel):
     recommendations: list[RecipeResponse] = Field(default_factory=list)
     reasoning: str | None = None
     nutritional_alignment: NutritionalAlignmentResponse | None = None
     disclaimer: str | None = None
+    source: RecommendationSource = RecommendationSource.MODEL
 
 
 class AnalyzeMealRequest(_Camel):

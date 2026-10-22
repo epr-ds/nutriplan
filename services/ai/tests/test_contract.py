@@ -52,6 +52,7 @@ from app.optimization.service import PlanOptimizationService
 from app.recommendations.assembler import build_recommendation_prompt_assembler
 from app.recommendations.catalogue import InMemoryRecipeCatalogue
 from app.recommendations.draft import RecommendationDraft
+from app.recommendations.fallback import CuratedRecipeFallback, InMemoryCuratedRecipeSource
 from app.recommendations.mapper import RecipeMapper
 from app.recommendations.recipes import (
     RecipeSource,
@@ -168,6 +169,31 @@ def _recommendation_service() -> RecommendationService:
     return RecommendationService(build_recommendation_prompt_assembler(), completion, mapper)
 
 
+def _curated_fallback_service() -> RecommendationService:
+    """A recommendation service whose model returns nothing, so the curated fallback answers."""
+    provider = FakeLLMProvider([LLMResponse(content='{"recipes": []}', model="fake")])
+    completion = StructuredCompletion(
+        LLMClient(provider, RetryPolicy(max_retries=0)),
+        StructuredOutputParser(RecommendationDraft),
+        max_attempts=1,
+    )
+    curated = RecommendedRecipe(
+        id="curated-oatmeal",
+        name="Curated Oatmeal",
+        servings=1,
+        ingredients=(RecommendedIngredient(name="oats", quantity=60, unit="g"),),
+        instructions=("Cook the oats.",),
+        nutrition=RecommendedNutrition(calories=380, protein=12, carbs=60, fat=7),
+        source=RecipeSource.CATALOGUE,
+    )
+    return RecommendationService(
+        build_recommendation_prompt_assembler(),
+        completion,
+        RecipeMapper(InMemoryRecipeCatalogue()),
+        fallback=CuratedRecipeFallback(InMemoryCuratedRecipeSource((curated,))),
+    )
+
+
 class _FakeAnalysisService:
     """Returns a canned :class:`MealAnalysis` regardless of the command."""
 
@@ -268,7 +294,32 @@ def test_recommendations_conforms(openapi, client):
         "Tostada de Aguacate",
     ]
     assert body["nutritionalAlignment"] is not None
+    assert body["source"] == "model"
     assert_conforms(openapi, "post", "/ai/recommendations", resp)
+
+
+def test_recommendations_curated_fallback_conforms(openapi, client):
+    # AIA-503: the model returns nothing, so curated recipes are served and the response says so.
+    app.dependency_overrides[get_recommendation_service] = _curated_fallback_service
+    resp = client.post("/ai/recommendations", json={"context": "meal_plan"}, headers=_AUTH)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [r["name"] for r in body["recommendations"]] == ["Curated Oatmeal"]
+    assert body["source"] == "curated_fallback"
+    assert_conforms(openapi, "post", "/ai/recommendations", resp)
+
+
+def test_an_undocumented_source_fails_validation(openapi, client):
+    """The ``source`` enum is enforced: a value the contract does not list must not conform."""
+    resp = client.post("/ai/recommendations", json={"context": "meal_plan"}, headers=_AUTH)
+    drifted = MockResponse(
+        data=json.dumps({**resp.json(), "source": "guesswork"}).encode(),
+        status_code=200,
+        content_type="application/json",
+    )
+    request = MockRequest(host_url=HOST, method="post", path="/ai/recommendations")
+    with pytest.raises(Exception):  # noqa: B017 - any openapi-core validation error is a pass here
+        openapi.validate_response(request, drifted)
 
 
 def test_recommendations_unauthenticated_conforms(openapi, client):

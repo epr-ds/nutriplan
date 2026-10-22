@@ -5,7 +5,7 @@ package com.nutriplan.shared.contract
  *
  * This is what the spec-derived mock ([SpecDerivedAiMock]) serves: the AI Advisor operations the
  * app's client calls, with their request/response schemas and success status, and the allowed values
- * of the request fields that are enums. `scripts/check_mobile_ai_contract.py` parses this file, the
+ * of the request fields that are enums (and of the response enums the app branches on). `scripts/check_mobile_ai_contract.py` parses this file, the
  * OpenAPI document and the client models, and fails CI if any of the three drifts from the others.
  *
  * The health probes in the same document are for the platform, not the app, so they are left out.
@@ -92,7 +92,8 @@ internal object AiContract {
         ),
         "AIRecommendationResponse" to Schema(
             required = setOf("recommendations"),
-            properties = setOf("recommendations", "reasoning", "nutritionalAlignment", "disclaimer"),
+            properties = setOf("recommendations", "reasoning", "nutritionalAlignment", "disclaimer", "source"),
+            enums = mapOf("source" to setOf("model", "curated_fallback")),
         ),
         "AnalyzeMealRequest" to Schema(
             required = setOf("description"),

@@ -35,6 +35,7 @@ from app.recommendations.catalogue import InMemoryRecipeCatalogue
 from app.recommendations.commands import RecommendationCommand, RecommendationContext
 from app.recommendations.draft import RecommendationDraft
 from app.recommendations.fallback import (
+    AnswerSource,
     CuratedRecipeFallback,
     InMemoryCuratedRecipeSource,
     InMemoryFallbackTelemetry,
@@ -403,6 +404,7 @@ def test_recommend_falls_back_to_curated_when_model_returns_nothing() -> None:
     result = service.recommend(RecommendationCommand(context=RecommendationContext.MEAL_PLAN))
 
     assert [recipe.name for recipe in result.recipes] == ["Curated Oatmeal"]
+    assert result.source is AnswerSource.CURATED_FALLBACK
     assert telemetry.fallback_count == 1
     assert telemetry.rate == 1.0
 
@@ -420,6 +422,7 @@ def test_recommend_does_not_fall_back_when_the_model_succeeds() -> None:
     result = service.recommend(_COMMAND)
 
     assert [recipe.name for recipe in result.recipes] == ["Avena con Frutas"]
+    assert result.source is AnswerSource.MODEL
     assert telemetry.fallback_count == 0
 
 
@@ -445,6 +448,7 @@ def test_recommend_screens_curated_fallback_for_allergies() -> None:
     result = service.recommend(command)
 
     assert [recipe.name for recipe in result.recipes] == ["Oat Bar"]
+    assert result.source is AnswerSource.CURATED_FALLBACK
 
 
 _UNSAFE_RECIPE_DRAFT = {

@@ -326,6 +326,8 @@
     <string name="ai_recommendations_recipes_heading">Recetas</string>
     <string name="ai_recommendations_empty_title">Sin recomendaciones</string>
     <string name="ai_recommendations_empty_description">Nada encaja con esta petición. Prueba otra comida u otros ingredientes.</string>
+    <string name="ai_recommendations_curated_fallback_title">Recetas seleccionadas</string>
+    <string name="ai_recommendations_curated_fallback_body">La IA no pudo personalizar esta respuesta, así que estas son recetas seleccionadas que encajan con tus preferencias.</string>
     <string name="ai_disclaimer_fallback">Estas recomendaciones se generan automáticamente y son solo información general. No son consejo médico ni dietético. Consulta a un profesional cualificado antes de cambiar tu dieta, sobre todo si tienes una condición médica o alergias.</string>
     <string name="error_ai_network">No tienes conexión. Conéctate a internet para obtener recomendaciones.</string>
     <string name="error_ai_server">El servicio de recomendaciones tuvo un problema. Inténtalo más tarde.</string>

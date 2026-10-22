@@ -150,6 +150,12 @@ def test_reasoning_is_returned() -> None:
     assert body["reasoning"] == _DRAFT["reasoning"]
 
 
+def test_source_is_the_model_when_its_recipes_are_served() -> None:
+    body = client.post("/ai/recommendations", json=_body(), headers=_AUTH).json()
+
+    assert body["source"] == "model"
+
+
 def test_alignment_is_null_without_targets_or_preferences() -> None:
     body = client.post("/ai/recommendations", json=_body(), headers=_AUTH).json()
 
