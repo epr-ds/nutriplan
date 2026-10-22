@@ -8,7 +8,7 @@ package com.nutriplan.shared.contract
  * parameters. `scripts/check_mobile_dietary_contract.py` parses this file, the OpenAPI document and
  * the client models, and fails CI if any of the three drifts from the others.
  *
- * The `/ai/*` operations in the same document are served by the AI service and consumed by the AI
+ * The AI operations (paths under `/ai/`) in the same document are served by the AI service and consumed by the AI
  * client; they are covered by their own consumer contract tests (AIA-703), not here.
  */
 internal object DietaryContract {
