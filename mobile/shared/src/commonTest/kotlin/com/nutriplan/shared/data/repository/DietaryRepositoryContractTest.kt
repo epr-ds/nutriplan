@@ -235,7 +235,7 @@ class DietaryRepositoryContractTest {
     }
 
     @Test
-    fun `a response that does not match the model is a serialization error, not a crash`() = runTest {
+    fun `a response that does not match the model is a serialization error not a crash`() = runTest {
         val repository = serve(body = """{"unexpected":true}""")
 
         val error = assertFailsWith<ApiException.SerializationError> { repository.getMealPlan("p1") }

@@ -231,7 +231,7 @@ class AddMealViewModelTest {
     // --- saving ---
 
     @Test
-    fun `save adds the meal with the chosen type and servings, and finishes`() = runTest {
+    fun `save adds the meal with the chosen type and servings and finishes`() = runTest {
         started()
         viewModel.onMealTypeChange("dinner")
         viewModel.onServingsChange("1.5")

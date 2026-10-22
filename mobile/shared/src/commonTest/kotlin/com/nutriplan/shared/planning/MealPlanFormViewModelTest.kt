@@ -129,7 +129,7 @@ class MealPlanFormViewModelTest {
     }
 
     @Test
-    fun `moving the start past the end moves the end along, keeping the length`() {
+    fun `moving the start past the end moves the end along keeping the length`() {
         viewModel.start("2026-10-01") // Oct 1 to Oct 7: a 6 day span
 
         viewModel.onStartDateChange("2026-10-20")

@@ -121,7 +121,7 @@ class PlanningJourneyE2ETest {
                 planningModule,
                 recipesModule,
                 module {
-                    single<TokenStorage> { InMemoryTokenStorage() }
+                    single<TokenStorage> { PlanningTokenStorage() }
                     single<OnboardingDraftStorage> { NoDraftStorage() }
                 },
                 cacheModule(DatabaseDriverFactory(context)),
@@ -211,7 +211,7 @@ class PlanningJourneyE2ETest {
 }
 
 /** In-memory [TokenStorage] so the E2E does not touch the Android Keystore. */
-private class InMemoryTokenStorage : TokenStorage {
+private class PlanningTokenStorage : TokenStorage {
     private var tokens: StoredTokens? = null
     override fun load(): StoredTokens? = tokens
     override fun save(accessToken: String, refreshToken: String) {

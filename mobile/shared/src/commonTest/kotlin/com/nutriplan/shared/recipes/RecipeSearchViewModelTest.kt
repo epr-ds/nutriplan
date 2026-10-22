@@ -167,7 +167,7 @@ class RecipeSearchViewModelTest {
     }
 
     @Test
-    fun `no results is flagged as an empty result, not an error`() = runTest {
+    fun `no results is flagged as an empty result not an error`() = runTest {
         viewModel.search()
 
         val state = viewModel.state.value
@@ -190,7 +190,7 @@ class RecipeSearchViewModelTest {
     }
 
     @Test
-    fun `load more uses the filters that were searched, not ones edited since`() = runTest {
+    fun `load more uses the filters that were searched not ones edited since`() = runTest {
         repository.respond = { page("a", 20) }
         viewModel.onIngredientsChange("rice")
         viewModel.search()

@@ -68,7 +68,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `saveName trims, updates the profile, and flags success`() = runTest {
+    fun `saveName trims updates the profile and flags success`() = runTest {
         val fx = fixture(backgroundScope)
 
         assertTrue(fx.model.saveName("  Ana María  "))

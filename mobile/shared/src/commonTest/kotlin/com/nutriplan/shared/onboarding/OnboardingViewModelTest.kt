@@ -102,7 +102,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `finishing persists preferences, clears the draft, and flips the session`() = runTest {
+    fun `finishing persists preferences clears the draft and flips the session`() = runTest {
         val storage = InMemoryOnboardingDraftStorage()
         val fx = fixture(backgroundScope)
         val model = OnboardingViewModel(storage, fx.complete)
@@ -129,7 +129,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `a failed save stays on the step, keeps the draft, and reports the error`() = runTest {
+    fun `a failed save stays on the step keeps the draft and reports the error`() = runTest {
         val storage = InMemoryOnboardingDraftStorage()
         val fx = fixture(backgroundScope, putError = ApiException.HttpError(statusCode = 500, body = null))
         val model = OnboardingViewModel(storage, fx.complete)
