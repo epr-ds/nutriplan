@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.nutriplan.android.R
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
+import com.nutriplan.shared.data.local.PendingFailure
 import com.nutriplan.shared.onboarding.OnboardingError
 import com.nutriplan.shared.planning.AddMealError
 import com.nutriplan.shared.planning.AddMealFieldError
@@ -16,6 +17,14 @@ import com.nutriplan.shared.planning.PlanFieldError
 import com.nutriplan.shared.recipes.FavoriteError
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeListError
+
+/** DPL-407: why a meal added while offline could not be added in the end. */
+@StringRes
+fun PendingFailure.messageRes(): Int = when (this) {
+    PendingFailure.NOT_FOUND -> R.string.pending_meal_failed_not_found
+    PendingFailure.REJECTED -> R.string.pending_meal_failed_rejected
+    PendingFailure.UNKNOWN -> R.string.pending_meal_failed_unknown
+}
 
 /** DPL-607: message for a favorites list that could not be loaded. */
 @StringRes

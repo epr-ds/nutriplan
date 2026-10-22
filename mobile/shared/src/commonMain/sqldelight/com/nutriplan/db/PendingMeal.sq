@@ -1,0 +1,52 @@
+-- Meals the user added to a plan while the server could not be reached (DPL-407). Each row is one
+-- add-meal request waiting to be sent, in the order it was made. A row ends in one of three ways:
+-- it is sent and deleted; it can never succeed (the plan or recipe is gone, or the server refuses
+-- it) and is kept with a `failure` so the user can be told; or it keeps waiting.
+
+CREATE TABLE pending_meal (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    plan_id TEXT NOT NULL,
+    meal_type TEXT NOT NULL,
+    recipe_id TEXT NOT NULL,
+    servings REAL NOT NULL,
+    day_index INTEGER,
+    recipe TEXT NOT NULL,                   -- JSON of PlanMealRecipe, to show the meal in the plan meanwhile
+    nutritional_info TEXT,                  -- JSON of NutritionalInfo for those servings, same reason
+    attempts INTEGER NOT NULL DEFAULT 0,
+    remote_meal_id TEXT,                    -- set once the server created the meal but its day is still to be set
+    failure TEXT                            -- null while waiting; the reason once it can never succeed
+);
+
+selectWaiting:
+SELECT * FROM pending_meal WHERE failure IS NULL ORDER BY id;
+
+-- What the plan shows meanwhile: a row whose meal already exists on the server is no longer a
+-- stand-in, because the plan read returns the real meal.
+selectShownForPlan:
+SELECT * FROM pending_meal WHERE plan_id = ? AND failure IS NULL AND remote_meal_id IS NULL ORDER BY id;
+
+selectFailed:
+SELECT * FROM pending_meal WHERE failure IS NOT NULL ORDER BY id;
+
+insertPending:
+INSERT INTO pending_meal(plan_id, meal_type, recipe_id, servings, day_index, recipe, nutritional_info)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- The id of the newest row, read right after an insert inside the same transaction.
+selectLastId:
+SELECT id FROM pending_meal ORDER BY id DESC LIMIT 1;
+
+markAdded:
+UPDATE pending_meal SET remote_meal_id = ? WHERE id = ?;
+
+bumpAttempts:
+UPDATE pending_meal SET attempts = attempts + 1 WHERE id = ?;
+
+markFailed:
+UPDATE pending_meal SET failure = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM pending_meal WHERE id = ?;
+
+deleteAll:
+DELETE FROM pending_meal;

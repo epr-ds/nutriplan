@@ -13,7 +13,10 @@ import com.nutriplan.shared.di.cacheModuleFor
 import com.nutriplan.shared.data.repository.FavoriteRecipesRepository
 import com.nutriplan.shared.di.dataModule
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
+import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.testing.FakeFavoriteRemote
+import com.nutriplan.shared.testing.addRequest
+import com.nutriplan.shared.testing.newDatabase
 import com.nutriplan.shared.testing.favoriteRecipe
 import com.nutriplan.shared.testing.newFavoriteCache
 import com.nutriplan.shared.testing.fullPlan
@@ -65,7 +68,10 @@ class SignOutTest {
         val favoriteCache = newFavoriteCache().apply { replaceAll(listOf(favoriteRecipe("f1"))) }
         val favorites = FavoriteRecipesViewModel(FavoriteRecipesRepository(FakeFavoriteRemote(), favoriteCache))
 
-        SignOut(auth, cache, favorites)()
+        val queue = PendingMealStore(newDatabase())
+        queue.enqueue("p1", addRequest(), null, com.nutriplan.shared.data.model.PlanMealRecipe(id = "r1", name = "Soup"), null)
+
+        SignOut(auth, cache, favorites, queue)()
 
         assertFalse(auth.isAuthenticated)
         assertNull(storage.stored)
@@ -73,6 +79,7 @@ class SignOutTest {
         assertNull(cache.getPlan("p1"))
         assertEquals(emptyList(), favoriteCache.getAll(), "favorites are wiped too")
         assertEquals(emptyList(), favorites.state.value.recipes)
+        assertTrue(queue.waiting().isEmpty(), "meals waiting to be sent belong to the signed-out user")
     }
 
     @Test

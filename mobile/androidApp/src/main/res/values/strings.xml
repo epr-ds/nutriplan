@@ -298,4 +298,13 @@
     <string name="error_favorite_change_network">You\'re offline. Connect to the internet to change your favorites.</string>
     <string name="error_favorite_change_server">The server had a problem, so your favorite was not changed. Please try again later.</string>
     <string name="error_favorite_change_unknown">Something went wrong, so your favorite was not changed. Please try again.</string>
+
+    <!-- DPL-407: meals added while offline -->
+    <string name="plan_detail_meal_pending">Waiting to sync</string>
+    <string name="pending_meal_failed_title">%1$s couldn\'t be added</string>
+    <string name="pending_meal_failed_not_found">The plan or the recipe no longer exists.</string>
+    <string name="pending_meal_failed_rejected">The server didn\'t accept this meal.</string>
+    <string name="pending_meal_failed_unknown">Something went wrong.</string>
+    <string name="pending_meal_dismiss">Dismiss</string>
+    <string name="cd_pending_meal_dismiss">Dismiss the message about %1$s</string>
 </resources>

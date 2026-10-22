@@ -4,6 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
+import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.CachedDietaryRepository
@@ -11,6 +12,7 @@ import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRemoteImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRepository
+import com.nutriplan.shared.data.repository.PendingMealSync
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
 import com.nutriplan.shared.session.SignOut
 import org.koin.core.module.Module
@@ -32,9 +34,20 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { NutriPlanDatabase(createDriver()) }
     single { MealPlanCache(get()) }
     single { FavoriteRecipeCache(get()) }
-    single<DietaryRepository> { CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get()) }
+    single { PendingMealStore(get()) }
+    single<DietaryRepository> {
+        CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get())
+    }
+    single { PendingMealSync(remote = DietaryRepositoryImpl(), store = get(), cache = get()) }
     single { FavoriteRecipesRepository(remote = FavoriteRecipesRemoteImpl(), cache = get()) }
     // One instance for the whole app: a heart toggled on one screen is already filled on the others.
     single { FavoriteRecipesViewModel(repository = get()) }
-    single { SignOut(authRepository = get<AuthRepository>(), mealPlanCache = get(), favorites = get()) }
+    single {
+        SignOut(
+            authRepository = get<AuthRepository>(),
+            mealPlanCache = get(),
+            favorites = get(),
+            pendingMeals = get(),
+        )
+    }
 }

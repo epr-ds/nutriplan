@@ -2,6 +2,8 @@ package com.nutriplan.shared.data.local
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.nutriplan.db.NutriPlanDatabase
+import com.nutriplan.shared.data.model.PlanMealRecipe
+import com.nutriplan.shared.testing.addRequest
 import com.nutriplan.shared.testing.favoriteRecipe
 import com.nutriplan.shared.testing.fullPlan
 import com.nutriplan.shared.testing.meal
@@ -16,8 +18,8 @@ import kotlin.test.assertNotNull
 class MealPlanCacheMigrationTest {
 
     @Test
-    fun `the schema is version 3 now that favorites are cached too`() {
-        assertEquals(3L, NutriPlanDatabase.Schema.version)
+    fun `the schema is version 4 now that offline meals are queued too`() {
+        assertEquals(4L, NutriPlanDatabase.Schema.version)
     }
 
     @Test
@@ -102,5 +104,48 @@ class MealPlanCacheMigrationTest {
         assertEquals(emptyList(), favorites.getAll())
         favorites.addFirst(favoriteRecipe("f1"))
         assertEquals(listOf("f1"), favorites.getAll().map { it.id })
+    }
+
+    @Test
+    fun `a version 3 database gains the offline queue and keeps its plans and favorites`() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        // The tables as version 3 created them (no pending_meal yet).
+        driver.execute(
+            null,
+            """
+            CREATE TABLE meal_plan (
+                id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL,
+                status TEXT NOT NULL, daily_calorie_target INTEGER, nutritional_summary TEXT,
+                has_detail INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+            0,
+        )
+        driver.execute(
+            null,
+            "CREATE TABLE favorite_recipe (recipe_id TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL, recipe TEXT NOT NULL)",
+            0,
+        )
+        driver.execute(
+            null,
+            "INSERT INTO meal_plan(id, name, start_date, end_date, status) " +
+                "VALUES ('kept', 'Kept plan', '2026-10-01', '2026-10-07', 'active')",
+            0,
+        )
+        driver.execute(
+            null,
+            "INSERT INTO favorite_recipe(recipe_id, position, recipe) VALUES ('f1', 0, '{\"id\":\"f1\",\"name\":\"Soup\"}')",
+            0,
+        )
+
+        NutriPlanDatabase.Schema.migrate(driver, 3L, 4L)
+
+        val database = NutriPlanDatabase(driver)
+        assertEquals(listOf("kept"), MealPlanCache(database).getPlans().map { it.id }, "plans survive the upgrade")
+        assertEquals(listOf("f1"), FavoriteRecipeCache(database).getAll().map { it.id }, "favorites survive too")
+        val queue = PendingMealStore(database)
+        assertEquals(emptyList(), queue.waiting())
+        queue.enqueue("kept", addRequest(), null, PlanMealRecipe(id = "r1", name = "Soup"), null)
+        assertEquals(1, queue.waiting().size)
     }
 }

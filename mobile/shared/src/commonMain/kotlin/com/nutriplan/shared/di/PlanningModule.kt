@@ -16,8 +16,10 @@ import org.koin.dsl.module
  */
 val planningModule = module {
     factory { MealPlanListViewModel(repository = get()) }
-    factory { MealPlanDetailViewModel(repository = get()) }
-    factory { AddMealViewModel(repository = get()) }
+    // The queue of meals added while offline lives in the cache module; without it the screens
+    // simply do not queue.
+    factory { MealPlanDetailViewModel(repository = get(), sync = getOrNull()) }
+    factory { AddMealViewModel(repository = get(), sync = getOrNull()) }
     factory { EditMealViewModel(repository = get()) }
     factory {
         val session = get<SessionManager>()

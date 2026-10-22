@@ -296,4 +296,13 @@
     <string name="error_favorite_change_network">Estás sin conexión. Conéctate a internet para cambiar tus favoritas.</string>
     <string name="error_favorite_change_server">El servidor tuvo un problema y tu favorita no se cambió. Inténtalo de nuevo más tarde.</string>
     <string name="error_favorite_change_unknown">Algo salió mal y tu favorita no se cambió. Inténtalo de nuevo.</string>
+
+    <!-- DPL-407: comidas añadidas sin conexión -->
+    <string name="plan_detail_meal_pending">Esperando para sincronizar</string>
+    <string name="pending_meal_failed_title">No se pudo añadir %1$s</string>
+    <string name="pending_meal_failed_not_found">El plan o la receta ya no existe.</string>
+    <string name="pending_meal_failed_rejected">El servidor no aceptó esta comida.</string>
+    <string name="pending_meal_failed_unknown">Algo salió mal.</string>
+    <string name="pending_meal_dismiss">Descartar</string>
+    <string name="cd_pending_meal_dismiss">Descartar el aviso sobre %1$s</string>
 </resources>
