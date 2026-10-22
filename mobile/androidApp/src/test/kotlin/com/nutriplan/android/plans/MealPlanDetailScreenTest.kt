@@ -33,6 +33,8 @@ import com.nutriplan.shared.data.model.PlanMealRecipe
 import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanDetailUiState
 import com.nutriplan.shared.planning.groupMealsByDay
+import com.nutriplan.shared.data.local.PendingFailure
+import com.nutriplan.shared.data.local.PendingMeal
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -105,6 +107,7 @@ class MealPlanDetailScreenTest {
         onBack: () -> Unit = {},
         onAddMeal: () -> Unit = {},
         onEditMeal: (String) -> Unit = {},
+        onDismissFailedAdd: (Long) -> Unit = {},
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -115,6 +118,7 @@ class MealPlanDetailScreenTest {
                     onBack = onBack,
                     onAddMeal = onAddMeal,
                     onEditMeal = onEditMeal,
+                    onDismissFailedAdd = onDismissFailedAdd,
                 )
             }
         }
@@ -319,5 +323,83 @@ class MealPlanDetailScreenTest {
             1,
             compose.onAllNodesWithText(str(R.string.plan_detail_meal_rated, 4)).fetchSemanticsNodes().size,
         )
+    }
+
+    // --- meals added while offline (DPL-407) ---
+
+    private fun pendingMeal() = PlanMeal(
+        id = "pending-7",
+        mealType = "dinner",
+        servings = 2.0,
+        dayIndex = 0,
+        recipe = PlanMealRecipe(id = "r1", name = "Soup"),
+        nutritionalInfo = NutritionalInfo(calories = 600),
+    )
+
+    private fun failedAdd(failure: PendingFailure?) = PendingMeal(
+        id = 3,
+        planId = "p1",
+        mealType = "dinner",
+        recipeId = "r1",
+        servings = 2.0,
+        dayIndex = null,
+        recipe = PlanMealRecipe(id = "r1", name = "Soup"),
+        nutritionalInfo = null,
+        attempts = 1,
+        remoteMealId = null,
+        failure = failure,
+    )
+
+    @Test
+    fun `a meal that has not reached the server says it is waiting to sync`() {
+        render(loaded(plan(pendingMeal())))
+
+        // The card merges its texts into one element, so the label is looked up in the unmerged tree.
+        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL, useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.plan_detail_meal_pending)).assertIsDisplayed()
+        compose.onNodeWithText("Soup").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a meal that is on the server has no waiting label`() {
+        render(loaded(plan(meal("1", 0, "lunch", calories = 500))))
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a waiting meal cannot be opened for editing`() {
+        var edited: String? = null
+        render(loaded(plan(pendingMeal())), onEditMeal = { edited = it })
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.MEAL_CARD).performClick()
+
+        assertEquals(null, edited)
+    }
+
+    @Test
+    fun `a meal the server refused is explained and can be dismissed`() {
+        var dismissed: Long? = null
+        compose.setContent {
+            NutriPlanTheme {
+                MealPlanDetailScreenContent(
+                    state = loaded(plan(meal("1", 0, "lunch"))).copy(
+                        failedAdds = listOf(failedAdd(PendingFailure.REJECTED)),
+                    ),
+                    onRefresh = {},
+                    onRetry = {},
+                    onBack = {},
+                    onAddMeal = {},
+                    onDismissFailedAdd = { dismissed = it },
+                )
+            }
+        }
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.FAILED_ADD).assertIsDisplayed().assert(hasLiveRegion())
+        compose.onNodeWithText(str(R.string.pending_meal_failed_title, "Soup")).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.pending_meal_failed_rejected)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(str(R.string.cd_pending_meal_dismiss, "Soup")).performClick()
+
+        assertEquals(3L, dismissed)
     }
 }

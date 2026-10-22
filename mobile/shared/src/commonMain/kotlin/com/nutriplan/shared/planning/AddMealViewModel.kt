@@ -6,6 +6,7 @@ import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.DietaryRepository
+import com.nutriplan.shared.data.repository.PendingMealSync
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +73,8 @@ data class AddMealUiState(
     val error: AddMealError? = null,
     /** Set as soon as the server created the meal. */
     val addedMealId: String? = null,
+    /** The meal was saved on this device because the server could not be reached; it is sent later. */
+    val queued: Boolean = false,
     val isDone: Boolean = false,
 ) {
     /** The meal exists but the chosen day could not be set on it. */
@@ -104,6 +107,8 @@ fun Throwable.toAddMealError(): AddMealError = when (toApiFailure()) {
  */
 class AddMealViewModel(
     private val repository: DietaryRepository,
+    /** When given, an add that cannot reach the server is queued instead of failing (DPL-407). */
+    private val sync: PendingMealSync? = null,
 ) {
 
     private val _state = MutableStateFlow(AddMealUiState())
@@ -197,8 +202,32 @@ class AddMealViewModel(
             _state.update { it.copy(isSaving = false) }
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            if (queueInstead(e, planId, recipeId, servings)) return
             _state.update { it.copy(isSaving = false, error = e.toAddMealError()) }
         }
+    }
+
+    /**
+     * When the server could not be reached for the add itself, save the meal on the device so the
+     * form can finish now and the meal is sent later. Returns whether it did.
+     */
+    private fun queueInstead(e: Exception, planId: String, recipeId: String, servings: Double): Boolean {
+        val state = _state.value
+        val recipe = state.recipe
+        val mealType = state.mealType
+        val canQueue = sync != null && recipe != null && mealType != null &&
+            // Only the add itself: once the server created the meal, a retry just sets its day.
+            state.addedMealId == null &&
+            e.toApiFailure().let { it == ApiFailure.OFFLINE || it == ApiFailure.SERVER }
+        if (!canQueue) return false
+        sync!!.queueAdd(
+            planId = planId,
+            request = AddMealRequest(mealType = mealType!!, recipeId = recipeId, servings = servings),
+            dayIndex = state.dayIndex,
+            recipe = recipe!!,
+        )
+        _state.update { it.copy(isSaving = false, queued = true, isDone = true) }
+        return true
     }
 
     private fun servingsError(text: String): AddMealFieldError? {

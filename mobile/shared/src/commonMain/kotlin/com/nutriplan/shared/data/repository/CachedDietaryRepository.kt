@@ -1,6 +1,7 @@
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
@@ -27,6 +28,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class CachedDietaryRepository(
     private val remote: DietaryRepository,
     private val cache: MealPlanCache,
+    private val pending: PendingMealStore? = null,
 ) : DietaryRepository by remote {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
@@ -47,7 +49,8 @@ class CachedDietaryRepository(
 
     override suspend fun getMealPlan(planId: String): MealPlan =
         try {
-            remote.getMealPlan(planId).also(cache::upsertPlan)
+            // The server's plan is what is saved; the queued meals are applied on top of it afterwards.
+            remote.getMealPlan(planId).also(cache::upsertPlan).withQueuedMeals()
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
@@ -56,7 +59,7 @@ class CachedDietaryRepository(
                     cache.delete(planId)
                     throw e
                 }
-                e.canFallBackToCache() -> cache.getPlan(planId) ?: throw e
+                e.canFallBackToCache() -> cache.getPlan(planId)?.withQueuedMeals() ?: throw e
                 else -> throw e
             }
         }
@@ -77,6 +80,15 @@ class CachedDietaryRepository(
     override suspend fun removeMeal(planId: String, mealId: String) {
         remote.removeMeal(planId, mealId)
         cache.invalidateDetail(planId)
+    }
+
+    /**
+     * The plan with the meals added while offline shown as waiting meals (DPL-407). The server's data
+     * wins on every refresh, and these are the later writes that have not reached it yet.
+     */
+    private fun MealPlan.withQueuedMeals(): MealPlan {
+        val queued = pending?.shownFor(id).orEmpty()
+        return if (queued.isEmpty()) this else copy(meals = meals + queued.map { it.toPlanMeal() })
     }
 
     /** After a listing that returned every plan, drop cached plans that no longer exist on the server. */

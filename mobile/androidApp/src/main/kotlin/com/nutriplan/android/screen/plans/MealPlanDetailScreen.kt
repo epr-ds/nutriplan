@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -22,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -45,6 +47,8 @@ import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.mealTypeLabelRes
 import com.nutriplan.android.i18n.messageRes
+import com.nutriplan.shared.data.local.PendingMeal
+import com.nutriplan.shared.data.local.isPending
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.PlanMeal
 import com.nutriplan.shared.planning.MealPlanDay
@@ -62,6 +66,8 @@ object MealPlanDetailTestTags {
     const val ADD_MEAL = "plan_detail_add_meal"
     const val ERROR_BANNER = "plan_detail_error_banner"
     const val MEAL_CARD = "plan_detail_meal_card"
+    const val PENDING_LABEL = "plan_detail_pending_label"
+    const val FAILED_ADD = "plan_detail_failed_add"
 }
 
 /**
@@ -96,6 +102,7 @@ fun MealPlanDetailScreen(
         onBack = onBack,
         onAddMeal = onAddMeal,
         onEditMeal = onEditMeal,
+        onDismissFailedAdd = viewModel::dismissFailedAdd,
     )
 }
 
@@ -108,6 +115,7 @@ fun MealPlanDetailScreenContent(
     onBack: () -> Unit,
     onAddMeal: () -> Unit,
     onEditMeal: (mealId: String) -> Unit = {},
+    onDismissFailedAdd: (id: Long) -> Unit = {},
 ) {
     val plan = state.plan
     val error = state.error
@@ -173,6 +181,8 @@ fun MealPlanDetailScreenContent(
                     hasNoMeals = state.hasNoMeals,
                     onAddMeal = onAddMeal,
                     onEditMeal = onEditMeal,
+                    failedAdds = state.failedAdds,
+                    onDismissFailedAdd = onDismissFailedAdd,
                 )
             }
         }
@@ -187,6 +197,8 @@ private fun PlanDetailList(
     hasNoMeals: Boolean,
     onAddMeal: () -> Unit,
     onEditMeal: (mealId: String) -> Unit,
+    failedAdds: List<PendingMeal>,
+    onDismissFailedAdd: (id: Long) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -206,6 +218,10 @@ private fun PlanDetailList(
                         .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
+        }
+
+        items(failedAdds, key = { "failed-${it.id}" }) { failed ->
+            FailedAddNotice(failed, onDismiss = { onDismissFailedAdd(failed.id) })
         }
 
         item(key = "summary") { PlanSummary(plan) }
@@ -304,10 +320,47 @@ private fun SectionLabel(section: MealSection) {
     )
 }
 
+/**
+ * A meal that was added while offline and then refused by the server (DPL-407): it is no longer in
+ * the plan, so the user is told which one and why, and can dismiss the message.
+ */
+@Composable
+private fun FailedAddNotice(failed: PendingMeal, onDismiss: () -> Unit) {
+    val name = failed.recipe.name.ifBlank { failed.recipeId }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(MealPlanDetailTestTags.FAILED_ADD)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text(
+            text = stringResource(R.string.pending_meal_failed_title, name),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+        failed.failure?.let {
+            Text(
+                text = stringResource(it.messageRes()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        val dismissLabel = stringResource(R.string.cd_pending_meal_dismiss, name)
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.semantics { contentDescription = dismissLabel },
+        ) {
+            Text(stringResource(R.string.pending_meal_dismiss))
+        }
+    }
+}
+
 @Composable
 private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
     Card(
         onClick = onClick,
+        // A meal that has not reached the server yet has nothing to edit.
+        enabled = !meal.isPending,
         modifier = Modifier
             .fillMaxWidth()
             .testTag(MealPlanDetailTestTags.MEAL_CARD)
@@ -319,6 +372,14 @@ private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
                 text = meal.recipe?.name ?: stringResource(R.string.plan_detail_meal_unnamed),
                 style = MaterialTheme.typography.titleSmall,
             )
+            if (meal.isPending) {
+                Text(
+                    text = stringResource(R.string.plan_detail_meal_pending),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.testTag(MealPlanDetailTestTags.PENDING_LABEL),
+                )
+            }
             val servings = stringResource(R.string.plan_detail_meal_servings, formatQuantity(meal.servings))
             val calories = meal.nutritionalInfo?.calories?.let { stringResource(R.string.plan_detail_meal_calories, it) }
             Text(
