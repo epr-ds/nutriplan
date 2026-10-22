@@ -47,10 +47,16 @@ paths:
                 $ref: '#/components/schemas/OrderResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+        '404':
+          $ref: '#/components/responses/MealPlanNotFound'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     get:
       tags: [Orders]
       operationId: listOrders
@@ -349,6 +355,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AvailabilityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /fulfillment/grocery/search:
     post:
@@ -372,6 +382,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProviderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /fulfillment/grocery/providers:
     get:
@@ -389,6 +403,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProviderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
 components:
   securitySchemes:
@@ -441,6 +457,21 @@ components:
       description: >-
         A downstream provider could not be reached or returned an unusable response. The request
         itself was valid, so retrying later is appropriate.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PaymentRequired:
+      description: >-
+        The card was declined by the payment provider (COM-202). No order is created; the customer
+        can retry with another payment method.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    MealPlanNotFound:
+      description: >-
+        The meal plan the order is for does not exist in Dietary, or is not visible to the caller.
       content:
         application/problem+json:
           schema:
@@ -553,7 +584,12 @@ components:
           type: string
           enum: [dark_kitchen, grocery_delivery, pickup]
         provider:
-          $ref: '#/components/schemas/ProviderResponse'
+          description: The fulfilment provider, or `null` when none is assigned.
+          anyOf:
+            - $ref: '#/components/schemas/ProviderResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         items:
           type: array
           items:
@@ -567,19 +603,46 @@ components:
         estimatedDelivery:
           type: string
           format: date-time
+          nullable: true
         trackingUrl:
           type: string
           format: uri
+          nullable: true
         voucher:
-          $ref: '#/components/schemas/VoucherResponse'
+          description: The OXXO voucher, or `null` unless the order is paid with one.
+          anyOf:
+            - $ref: '#/components/schemas/VoucherResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         transfer:
-          $ref: '#/components/schemas/TransferResponse'
+          description: The SPEI transfer instructions, or `null` unless the order is paid with one.
+          anyOf:
+            - $ref: '#/components/schemas/TransferResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         approval:
-          $ref: '#/components/schemas/ApprovalResponse'
+          description: The PayPal approval, or `null` unless the order is paid with PayPal.
+          anyOf:
+            - $ref: '#/components/schemas/ApprovalResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         refund:
-          $ref: '#/components/schemas/RefundResponse'
+          description: The refund, or `null` until a paid order was cancelled and refunded.
+          anyOf:
+            - $ref: '#/components/schemas/RefundResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
         groceryOrder:
-          $ref: '#/components/schemas/GroceryOrderResponse'
+          description: The provider's grocery order, or `null` until one was placed.
+          anyOf:
+            - $ref: '#/components/schemas/GroceryOrderResponse'
+            - type: object
+              nullable: true
+              maxProperties: 0
 
     VoucherResponse:
       type: object
@@ -597,9 +660,11 @@ components:
           format: date-time
         provider:
           type: string
+          nullable: true
         barcodeUrl:
           type: string
           format: uri
+          nullable: true
 
     TransferResponse:
       type: object
@@ -620,6 +685,7 @@ components:
           format: date-time
         provider:
           type: string
+          nullable: true
 
     ApprovalResponse:
       type: object
@@ -641,6 +707,7 @@ components:
           format: date-time
         provider:
           type: string
+          nullable: true
 
     RefundResponse:
       type: object
@@ -658,6 +725,7 @@ components:
           $ref: '#/components/schemas/MoneyResponse'
         provider:
           type: string
+          nullable: true
 
     GroceryOrderResponse:
       type: object
@@ -721,12 +789,16 @@ components:
           enum: [credit_card, debit_card, paypal, oxxo, spei]
         brand:
           type: string
+          nullable: true
         last4:
           type: string
+          nullable: true
         expMonth:
           type: integer
+          nullable: true
         expYear:
           type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -865,19 +937,27 @@ components:
 
     ProviderResponse:
       type: object
+      description: >
+        A fulfilment provider. Listed providers carry every field; the provider embedded in an
+        `OrderResponse` is a reference that may carry only its `id`, with the rest `null`.
       properties:
         id:
           type: string
+          nullable: true
         name:
           type: string
+          nullable: true
         type:
           type: string
-          enum: [dark_kitchen, grocery]
+          nullable: true
+          enum: [dark_kitchen, grocery, null]
         logoUrl:
           type: string
           format: uri
+          nullable: true
         estimatedDelivery:
           type: string
+          nullable: true
 
     Problem:
       type: object

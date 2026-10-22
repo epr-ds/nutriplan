@@ -94,7 +94,10 @@ def test_grocery_order_response_is_documented():
 def test_the_order_response_carries_the_grocery_order():
     schemas = _spec()["components"]["schemas"]
     grocery_order = schemas["OrderResponse"]["properties"].get("groceryOrder")
-    assert grocery_order == {"$ref": "#/components/schemas/GroceryOrderResponse"}
+    # Nullable (COM-802): ``null`` until the order was placed with a provider.
+    ref, null = grocery_order["anyOf"]
+    assert ref == {"$ref": "#/components/schemas/GroceryOrderResponse"}
+    assert null["nullable"] is True
 
 
 def test_the_service_unavailable_response_is_reusable():
