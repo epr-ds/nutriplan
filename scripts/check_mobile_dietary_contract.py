@@ -11,7 +11,7 @@ Parses ``contracts/dietary.openapi.yaml`` and checks it against:
   the schema does not define, and a query class must use exactly the operation's query parameters.
 
 The ``/ai/*`` operations in the same document are served by the AI service and consumed by the AI
-client (AIA-703), so they are left out here, as are the AI models in ``RecipeModels.kt``. A new data
+client and checked by ``check_mobile_ai_contract.py`` (AIA-703), so they are left out here. A new data
 class in the checked files must be classified below, so nothing escapes the check silently.
 
 Run locally with::
@@ -73,19 +73,8 @@ QUERY_CLASSES: dict[str, tuple[str, str]] = {
     "RecipeSearchQuery": ("GET", "/recipes"),
 }
 
-# Classes in the checked files that belong to the AI contract (checked by AIA-703).
-AI_CLASSES = {
-    "NutritionInfo",
-    "MacroTargets",
-    "NutritionEstimate",
-    "AIRecommendationRequest",
-    "DietaryPreferencesSchema",
-    "AIRecommendationResponse",
-    "RecommendedRecipe",
-    "NutritionalAlignment",
-    "MealIngredient",
-    "NutritionalAnalysisResponse",
-}
+# The AI models live in AiModels.kt and are checked by check_mobile_ai_contract.py (AIA-703).
+AI_CLASSES: set[str] = set()
 
 _CLASS_RE = re.compile(r"data class\s+(\w+)\s*\((.*?)\n\)", re.DOTALL)
 _FIELD_RE = re.compile(r"\bval\s+(\w+)\s*:")
