@@ -76,6 +76,7 @@ from app.recommendations.catalogue import InMemoryRecipeCatalogue, RecipeCatalog
 from app.recommendations.commands import RecommendationCommand
 from app.recommendations.draft import RecommendationDraft
 from app.recommendations.fallback import (
+    AnswerSource,
     CuratedRecipeFallback,
     CuratedRecipeSource,
     FallbackTelemetry,
@@ -98,13 +99,15 @@ class RecommendationResult:
 
     ``alignment`` is ``None`` when there is nothing to score against (no targets and no hard
     preferences); ``reasoning`` is ``None`` when the model did not provide one (or it was dropped by
-    a guardrail); ``disclaimer`` is the AIA-505 medical disclaimer attached to every response.
+    a guardrail); ``disclaimer`` is the AIA-505 medical disclaimer attached to every response;
+    ``source`` says whether ``recipes`` are the model's or the AIA-503 curated fallback's.
     """
 
     recipes: tuple[RecommendedRecipe, ...]
     reasoning: str | None = None
     alignment: RecommendationAlignment | None = None
     disclaimer: str | None = None
+    source: AnswerSource = AnswerSource.MODEL
 
 
 class RecommendationService:
@@ -149,7 +152,7 @@ class RecommendationService:
         draft = self._completion.complete(prompt.to_request())
         mapped = self._mapper.map(draft)
         screened = self._screen(tuple(mapped), command)
-        resolved = self._fallback.resolve(
+        resolution = self._fallback.resolve_with_source(
             screened,
             command,
             mapped_count=len(mapped),
@@ -158,7 +161,7 @@ class RecommendationService:
         recipes = tuple(
             self._strip_claims(recipe)
             for recipe in self._diversifier.diversify(
-                resolved,
+                resolution.recipes,
                 previous_meals=command.previous_meals,
                 limit=command.count,
             )
@@ -171,6 +174,7 @@ class RecommendationService:
             ),
             alignment=alignment,
             disclaimer=self._post_processor.disclaimer(locale),
+            source=resolution.source,
         )
 
     def _strip_claims(self, recipe: RecommendedRecipe) -> RecommendedRecipe:

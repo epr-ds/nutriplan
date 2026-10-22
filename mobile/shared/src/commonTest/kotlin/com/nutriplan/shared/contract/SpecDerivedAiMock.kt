@@ -123,7 +123,7 @@ internal object AiResponses {
         "AIRecommendationResponse" ->
             """{"recommendations":[$recipe],"reasoning":"High protein and plant based.",""" +
                 """"nutritionalAlignment":{"score":87.5,"details":"Close to your protein target."},""" +
-                """"disclaimer":"This is not medical advice."}"""
+                """"disclaimer":"This is not medical advice.","source":"model"}"""
         "NutritionalAnalysisResponse" ->
             """{"nutritionalInfo":{"calories":540,"protein":32.0,"carbs":55.0,"fat":18.0,"sugar":null},""" +
                 """"alignment":{"score":72.0,"details":"A little over your fat target."},""" +

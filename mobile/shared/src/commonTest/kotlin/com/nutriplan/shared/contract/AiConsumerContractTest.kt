@@ -22,6 +22,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -65,6 +66,8 @@ class AiConsumerContractTest {
         assertEquals(320, recipe.nutritionalInfo?.calories)
         assertEquals(87.5, result.nutritionalAlignment?.score)
         assertEquals("This is not medical advice.", result.disclaimer)
+        assertEquals("model", result.source)
+        assertFalse(result.isCuratedFallback)
         assertNoViolations()
     }
 

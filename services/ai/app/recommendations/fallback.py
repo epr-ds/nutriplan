@@ -44,6 +44,24 @@ class FallbackReason(StrEnum):
     """The model returned recipes, but none survived the validity / safety / bounds checks."""
 
 
+class AnswerSource(StrEnum):
+    """Where the recipes in a recommendation answer came from (surfaced to clients, AIA-503)."""
+
+    MODEL = "model"
+    """The model's own recipes, after screening."""
+
+    CURATED_FALLBACK = "curated_fallback"
+    """Curated catalogue recipes substituted because the model produced nothing usable."""
+
+
+@dataclass(frozen=True, slots=True)
+class FallbackResolution:
+    """The recipes the fallback settled on, and whether they are the model's or curated."""
+
+    recipes: tuple[RecommendedRecipe, ...]
+    source: AnswerSource
+
+
 @dataclass(frozen=True, slots=True)
 class FallbackEvent:
     """A single fallback occurrence -- the unit the telemetry counts toward the fallback rate."""
@@ -169,11 +187,28 @@ class CuratedRecipeFallback:
         genuinely empty draft vs. recipes that were all rejected). ``screen`` is applied to any
         curated substitutes so they are held to the same safety/bounds standard as the model output.
         """
+        return self.resolve_with_source(
+            model_recipes, command, mapped_count=mapped_count, screen=screen
+        ).recipes
+
+    def resolve_with_source(
+        self,
+        model_recipes: tuple[RecommendedRecipe, ...],
+        command: RecommendationCommand,
+        *,
+        mapped_count: int,
+        screen: RecipeScreen,
+    ) -> FallbackResolution:
+        """Like :meth:`resolve`, but also say whether the answer is the model's or the fallback's.
+
+        The source is :attr:`AnswerSource.CURATED_FALLBACK` whenever the fallback path ran, even if
+        no curated recipe survived the screen -- the model's answer was not used either way.
+        """
         self._telemetry.record_request()
 
         usable = tuple(recipe for recipe in model_recipes if _is_well_formed(recipe))
         if usable:
-            return usable
+            return FallbackResolution(recipes=usable, source=AnswerSource.MODEL)
 
         candidates = self._source.search(command, limit=command.count)
         curated = tuple(recipe for recipe in screen(candidates) if _is_well_formed(recipe))[
@@ -185,4 +220,4 @@ class CuratedRecipeFallback:
         self._telemetry.record_fallback(
             FallbackEvent(reason=reason, model_count=mapped_count, curated_count=len(curated))
         )
-        return curated
+        return FallbackResolution(recipes=curated, source=AnswerSource.CURATED_FALLBACK)

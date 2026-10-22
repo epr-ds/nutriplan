@@ -328,6 +328,8 @@
     <string name="ai_recommendations_recipes_heading">Recipes</string>
     <string name="ai_recommendations_empty_title">No recommendations</string>
     <string name="ai_recommendations_empty_description">Nothing fits this request. Try another meal or different ingredients.</string>
+    <string name="ai_recommendations_curated_fallback_title">Curated recipes</string>
+    <string name="ai_recommendations_curated_fallback_body">The AI couldn\'t personalize this answer, so these are curated recipes that fit your preferences.</string>
     <string name="ai_disclaimer_fallback">These recommendations are generated automatically for general information only. They are not medical or dietary advice. Talk to a qualified professional before changing your diet, especially if you have a medical condition or allergies.</string>
     <string name="error_ai_network">You\'re offline. Connect to the internet to get recommendations.</string>
     <string name="error_ai_server">The recommendation service had a problem. Please try again later.</string>

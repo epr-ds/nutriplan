@@ -15,6 +15,7 @@ import logging
 
 from app.recommendations.commands import RecommendationCommand, RecommendationContext
 from app.recommendations.fallback import (
+    AnswerSource,
     CuratedRecipeFallback,
     FallbackEvent,
     FallbackReason,
@@ -218,6 +219,49 @@ def test_default_fallback_needs_no_arguments() -> None:
     result = CuratedRecipeFallback().resolve((), _command(), mapped_count=0, screen=_identity)
 
     assert result == ()
+
+
+# --- the answer's source is reported so clients can tell the user ---------------------------------
+
+
+def test_source_is_the_model_when_its_recipes_are_kept() -> None:
+    model = (_recipe("Model Bowl"),)
+
+    resolution = _fallback().resolve_with_source(
+        model, _command(), mapped_count=1, screen=_identity
+    )
+
+    assert resolution.recipes == model
+    assert resolution.source is AnswerSource.MODEL
+
+
+def test_source_is_the_curated_fallback_when_curated_recipes_are_served() -> None:
+    source = InMemoryCuratedRecipeSource((_recipe("Curated Oats"),))
+
+    resolution = _fallback(source=source).resolve_with_source(
+        (), _command(), mapped_count=0, screen=_identity
+    )
+
+    assert [recipe.name for recipe in resolution.recipes] == ["Curated Oats"]
+    assert resolution.source is AnswerSource.CURATED_FALLBACK
+
+
+def test_source_is_the_curated_fallback_even_when_nothing_curated_survives() -> None:
+    # The model's answer was not used either way, so the answer is still the fallback's.
+    resolution = _fallback().resolve_with_source((), _command(), mapped_count=2, screen=_identity)
+
+    assert resolution.recipes == ()
+    assert resolution.source is AnswerSource.CURATED_FALLBACK
+
+
+def test_resolve_returns_the_same_recipes_as_resolve_with_source() -> None:
+    source = InMemoryCuratedRecipeSource((_recipe("Curated Oats"),))
+    fallback = _fallback(source=source)
+
+    assert (
+        fallback.resolve((), _command(), mapped_count=0, screen=_identity)
+        == fallback.resolve_with_source((), _command(), mapped_count=0, screen=_identity).recipes
+    )
 
 
 # --- in-memory curated source ---------------------------------------------------------------------

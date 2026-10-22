@@ -267,6 +267,14 @@ components:
           type: string
           nullable: true
           description: Medical disclaimer attached to every AI response (AIA-505)
+        source:
+          type: string
+          enum: [model, curated_fallback]
+          description: >-
+            Where the recommendations came from: `model` when they are the AI's own answer, or
+            `curated_fallback` when the AI's output was empty, unsafe or unusable and curated
+            catalogue recipes were substituted (AIA-503). Optional; a client that does not get it
+            should assume `model`.
 
     AnalyzeMealRequest:
       type: object

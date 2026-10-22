@@ -154,6 +154,38 @@ class AiRecommendationsScreenTest {
     }
 
     @Test
+    fun `curated fallback recipes are labelled as such`() {
+        render(answered(answer.copy(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.ai_recommendations_curated_fallback_title)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.ai_recommendations_curated_fallback_body)).assertIsDisplayed()
+        compose.onAllNodesWithTag(RecipeSearchTestTags.RECIPE_CARD).assertCountEquals(2)
+    }
+
+    @Test
+    fun `the model's own answer has no curated note`() {
+        render(answered(answer.copy(source = AiRecommendations.SOURCE_MODEL)))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an answer without a source has no curated note`() {
+        render(answered(answer.copy(source = null)))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an empty curated fallback shows the empty state without the note`() {
+        render(answered(AiRecommendations(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.EMPTY).assertIsDisplayed()
+        compose.onNodeWithTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE).assertDoesNotExist()
+    }
+
+    @Test
     fun `no alignment card when there were no targets`() {
         render(answered(answer.copy(nutritionalAlignment = null)))
 
