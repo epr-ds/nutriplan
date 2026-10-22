@@ -97,7 +97,7 @@ class MealPlanDetailViewModelTest {
     }
 
     @Test
-    fun `a plan without meals is flagged, not treated as an error`() = runTest {
+    fun `a plan without meals is flagged not treated as an error`() = runTest {
         repository.plan = plan()
 
         viewModel.load("p1")
@@ -202,7 +202,7 @@ class MealPlanDetailViewModelTest {
     }
 
     @Test
-    fun `a plan deleted elsewhere is removed from the screen, not kept as current`() = runTest {
+    fun `a plan deleted elsewhere is removed from the screen not kept as current`() = runTest {
         repository.plan = plan(meal("1", 0, "lunch"))
         viewModel.load("p1")
 

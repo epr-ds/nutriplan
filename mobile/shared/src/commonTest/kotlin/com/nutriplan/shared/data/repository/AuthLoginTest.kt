@@ -87,7 +87,7 @@ class AuthLoginTest {
     }
 
     @Test
-    fun `auth errors distinguish rate limits, server and network failures`() {
+    fun `auth errors distinguish rate limits server and network failures`() {
         assertEquals(AuthError.TOO_MANY_ATTEMPTS, ApiException.HttpError(429, null).toAuthError())
         assertEquals(AuthError.SERVER_PROBLEM, ApiException.HttpError(503, null).toAuthError())
         assertEquals(AuthError.NETWORK, ApiException.NetworkError().toAuthError())

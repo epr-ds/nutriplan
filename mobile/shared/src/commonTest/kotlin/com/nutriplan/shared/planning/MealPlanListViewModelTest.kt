@@ -75,7 +75,7 @@ class MealPlanListViewModelTest {
     }
 
     @Test
-    fun `no plans is the empty state, not an error`() = runTest {
+    fun `no plans is the empty state not an error`() = runTest {
         viewModel.load()
 
         assertTrue(viewModel.state.value.isEmpty)
@@ -98,7 +98,7 @@ class MealPlanListViewModelTest {
     }
 
     @Test
-    fun `a 401 reported through the repositories' create helper is a session problem, not offline`() = runTest {
+    fun `a 401 reported through the repositories' create helper is a session problem not offline`() = runTest {
         // The repositories used to throw ApiException.create(..., UNAUTHORIZED), a NetworkError by class.
         suspend fun errorFor(failure: Throwable): MealPlanListError? {
             val vm = MealPlanListViewModel(FakeDietary().apply { this.failure = failure })

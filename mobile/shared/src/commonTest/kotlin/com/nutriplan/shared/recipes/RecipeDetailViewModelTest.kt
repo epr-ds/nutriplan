@@ -92,7 +92,7 @@ class RecipeDetailViewModelTest {
     }
 
     @Test
-    fun `the disclaimer is fetched once, even across retries`() = runTest {
+    fun `the disclaimer is fetched once even across retries`() = runTest {
         viewModel.load("r1")
         viewModel.load("r1")
 
@@ -132,7 +132,7 @@ class RecipeDetailViewModelTest {
     }
 
     @Test
-    fun `a failed load has an error, no recipe and no disclaimer request`() = runTest {
+    fun `a failed load has an error no recipe and no disclaimer request`() = runTest {
         repository.recipeFailure = ApiException.NetworkError()
 
         viewModel.load("r1")

@@ -146,6 +146,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.work.testing)
+    // DPL-704: the planning E2E's backend stand-in builds its JSON replies.
+    testImplementation(libs.kotlinx.serialization.json)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
 

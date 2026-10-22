@@ -32,7 +32,7 @@ class ApiFailureTest {
     }
 
     @Test
-    fun `the create helper's misnamed NetworkError is classified by its code, not its class`() {
+    fun `the create helper's misnamed NetworkError is classified by its code not its class`() {
         // ApiException.create returns a NetworkError even for 401/403/404, so a 401 must not look offline.
         assertEquals(ApiFailure.SESSION_EXPIRED, ApiException.create("x", ApiException.Code.UNAUTHORIZED).toApiFailure())
         assertEquals(ApiFailure.FORBIDDEN, ApiException.create("x", ApiException.Code.FORBIDDEN).toApiFailure())

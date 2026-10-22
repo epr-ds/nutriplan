@@ -48,7 +48,7 @@ class RecipeModelsTest {
     }
 
     @Test
-    fun `decodes ingredients, keeping unknown quantities as null rather than zero`() {
+    fun `decodes ingredients keeping unknown quantities as null rather than zero`() {
         val ingredients = json.decodeFromString<Recipe>(FULL_RECIPE).ingredients
 
         assertEquals(2, ingredients.size)

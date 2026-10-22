@@ -80,7 +80,7 @@ class MealPlanGroupingTest {
     }
 
     @Test
-    fun `unknown meal types come last, alphabetically`() {
+    fun `unknown meal types come last alphabetically`() {
         val day = groupMealsByDay(
             start,
             listOf(meal("1", 0, "supper"), meal("2", 0, "brunch"), meal("3", 0, "dinner")),
@@ -126,7 +126,7 @@ class MealPlanGroupingTest {
     }
 
     @Test
-    fun `day calories are unknown, not zero, when no meal has them`() {
+    fun `day calories are unknown not zero when no meal has them`() {
         val day = groupMealsByDay(start, listOf(meal("1", 0, "lunch"))).single()
 
         assertNull(day.totalCalories)

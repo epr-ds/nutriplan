@@ -58,7 +58,7 @@ class NutritionProgressTest {
     }
 
     @Test
-    fun `under, on target and over are told apart`() {
+    fun `under on target and over are told apart`() {
         val ui = full.toNutritionSummaryUi()
 
         assertEquals(ProgressStatus.UNDER, ui.row(Nutrient.FAT)!!.status)
@@ -104,7 +104,7 @@ class NutritionProgressTest {
     }
 
     @Test
-    fun `exactly at the target is on target, like the server`() {
+    fun `exactly at the target is on target like the server`() {
         val summary = NutritionalSummary(
             dailyAverage = NutritionalInfo(calories = 2000),
             targets = NutritionalTargets(calories = 2000),
@@ -123,7 +123,7 @@ class NutritionProgressTest {
     }
 
     @Test
-    fun `an average without a target is unknown, not 0 percent`() {
+    fun `an average without a target is unknown not 0 percent`() {
         val summary = NutritionalSummary(dailyAverage = NutritionalInfo(protein = 80.0))
 
         val protein = summary.toNutritionSummaryUi().row(Nutrient.PROTEIN)!!

@@ -67,7 +67,7 @@ class MealPlanModelsTest {
     }
 
     @Test
-    fun `decodes a list of summaries, which carry no calorie target or meals`() {
+    fun `decodes a list of summaries which carry no calorie target or meals`() {
         val plans = json.decodeFromString<List<MealPlanSummary>>(
             """
             [
