@@ -116,7 +116,7 @@ fun CheckoutScreen(
                 }
                 
                 // Cart items
-                items(cartItems, key = { it.recipeId }) { item ->
+                items(cartItems) { item ->
                     CartItemRow(cartItem = item)
                 }
                 
@@ -234,19 +234,20 @@ fun CartItemRow(
     ) {
         Column {
             Text(
-                text = cartItem.recipeName,
+                text = cartItem.name.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "${cartItem.quantity}x $${cartItem.unitPrice}",
+                // The server formats money (COM-501); quantities may be fractional (e.g. 0.5 kg).
+                text = "${cartItem.quantity ?: 1}x ${cartItem.unitPrice?.formatted.orEmpty()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
             )
         }
-        
+
         Text(
-            text = "$${String.format("%.2f", cartItem.quantity * cartItem.unitPrice)}",
+            text = cartItem.lineTotal?.formatted.orEmpty(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
         )
