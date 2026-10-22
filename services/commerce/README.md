@@ -44,3 +44,32 @@ docker run --rm nutriplan-commerce-test
 # CI-parity run (Postgres-backed, contract mounted for the drift-guard)
 cd infra && docker compose --profile test run --rm --build commerce-test
 ```
+
+### Ephemeral test environment (COM-801)
+
+`COMMERCE_TEST_DB=postgres` brings up a clean, throwaway Postgres (`postgres:16-alpine`) through
+Testcontainers for the run and removes it afterwards. It needs only a Docker daemon, with no
+hand-managed server and no `COMMERCE_DATABASE_URL`. If the container can't be started the run fails
+instead of falling back to SQLite. The `Commerce ephemeral Postgres (Testcontainers)` CI job runs
+the whole suite this way.
+
+```sh
+cd services/commerce
+pip install -r requirements-dev.txt
+COMMERCE_TEST_DB=postgres pytest
+```
+
+Seed and teardown helpers live in `tests/seed.py`:
+- `seed_orders` stores a pending dark-kitchen order and a confirmed grocery order (FreshBasket) for
+  `SEED_USER_ID`.
+- `seed_payment_methods` stores a saved Visa card and a PayPal wallet for `SEED_USER_ID`.
+- Both are also available as the `seeded_orders` / `seeded_payment_methods` fixtures, and write
+  through the service's own SQL repositories.
+- `create_schema` / `drop_schema` rebuild the tables (the autouse fixture runs them around every
+  test).
+- `clear_data` empties every table while keeping the schema.
+
+The fixtures `db_source` (`testcontainers`, `env` or `sqlite`) and `db_backend` (`postgres` or
+`sqlite`) say which database a run is using. `tests/test_harness.py` covers the harness itself, plus
+an integration pass through the real API and repositories that checks the responses against
+`contracts/commerce.openapi.yaml`.
