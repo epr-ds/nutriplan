@@ -406,4 +406,13 @@
     <string name="error_analyze_meal_network">You\'re offline. Connect to the internet to analyze the meal.</string>
     <string name="error_analyze_meal_rejected">This description couldn\'t be analyzed. Try describing the meal differently.</string>
     <string name="error_analyze_meal_unknown">Something went wrong analyzing the meal. Please try again.</string>
+
+    <!-- AIA-606: AI loading, timeout and fallback states -->
+    <string name="ai_loading_started">Asking the AI Advisor…</string>
+    <string name="ai_loading_slow">Still working. AI answers can take a few seconds.</string>
+    <string name="ai_loading_very_slow">This is taking longer than usual. You can wait or try again later.</string>
+    <string name="ai_retry">Try again</string>
+    <string name="ai_recommendations_browse_recipes">Browse recipes instead (without AI)</string>
+    <string name="error_ai_timeout">The AI Advisor took too long to answer. Please try again in a moment.</string>
+    <string name="error_optimize_accept_timeout">The server took too long, so some changes may not be saved. Accept again to save the rest.</string>
 </resources>

@@ -404,6 +404,8 @@ class MainNavigationScreens(
             onAddToPlan = { recipeId, mealType -> navController.navigate(Route.PickPlan(recipeId, mealType)) },
             mealAdded = mealAdded,
             onMealAddedShown = { savedState[AI_MEAL_ADDED] = false },
+            // AIA-606: when the AI cannot answer, the regular recipe search is the way out.
+            onBrowseRecipes = { navController.navigate(Route.RecipeSearch) },
         )
     }
 

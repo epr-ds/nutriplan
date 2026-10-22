@@ -9,6 +9,7 @@ import com.nutriplan.shared.data.model.MealAnalysis
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.OptimizePlanRequest
 import com.nutriplan.shared.data.network.ApiFailure
+import com.nutriplan.shared.data.network.isResponseTimeout
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.AiRepository
 import kotlin.coroutines.cancellation.CancellationException
@@ -17,6 +18,9 @@ import kotlin.coroutines.cancellation.CancellationException
 enum class AiError {
     /** The device could not reach the server. */
     NETWORK,
+
+    /** The server was reached but took too long to answer, as AI answers sometimes do (AIA-606). */
+    TIMEOUT,
 
     /** The server failed (HTTP 5xx), for example the AI model is unavailable. */
     SERVER_PROBLEM,
@@ -40,14 +44,17 @@ sealed interface AiResult<out T> {
     data class Failure(val error: AiError) : AiResult<Nothing>
 }
 
-/** Maps a thrown repository failure to a stable, localizable [AiError]. */
-fun Throwable.toAiError(): AiError = when (toApiFailure()) {
-    ApiFailure.OFFLINE -> AiError.NETWORK
-    ApiFailure.SERVER -> AiError.SERVER_PROBLEM
-    ApiFailure.SESSION_EXPIRED -> AiError.SESSION_EXPIRED
-    ApiFailure.NOT_FOUND -> AiError.NOT_FOUND
-    ApiFailure.REJECTED -> AiError.REJECTED
-    else -> AiError.UNKNOWN
+/** Maps a thrown repository failure to a stable, localizable [AiError]; a slow answer is not "offline". */
+fun Throwable.toAiError(): AiError {
+    if (isResponseTimeout()) return AiError.TIMEOUT
+    return when (toApiFailure()) {
+        ApiFailure.OFFLINE -> AiError.NETWORK
+        ApiFailure.SERVER -> AiError.SERVER_PROBLEM
+        ApiFailure.SESSION_EXPIRED -> AiError.SESSION_EXPIRED
+        ApiFailure.NOT_FOUND -> AiError.NOT_FOUND
+        ApiFailure.REJECTED -> AiError.REJECTED
+        else -> AiError.UNKNOWN
+    }
 }
 
 /**

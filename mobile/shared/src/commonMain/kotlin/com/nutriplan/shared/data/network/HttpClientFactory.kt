@@ -30,6 +30,19 @@ internal fun Throwable.isTransportFailure(): Boolean =
         this is ConnectTimeoutException ||
         this is SocketTimeoutException
 
+/**
+ * True when the server was reached but took too long to answer (AIA-606): the request or the socket
+ * timed out, or a gateway gave up (HTTP 504). Not when it could not be reached at all, which is
+ * being offline.
+ */
+internal fun Throwable.isResponseTimeout(): Boolean {
+    if (this is ApiException.HttpError) return statusCode == HTTP_GATEWAY_TIMEOUT
+    val cause = (this as? ApiException.NetworkError)?.errorCause ?: this
+    return cause is HttpRequestTimeoutException || cause is SocketTimeoutException
+}
+
+private const val HTTP_GATEWAY_TIMEOUT = 504
+
 /** Sends Ktor's HTTP logs to stdout so each platform's log pipeline can capture them. */
 private val httpLogger = object : Logger {
     override fun log(message: String) {
