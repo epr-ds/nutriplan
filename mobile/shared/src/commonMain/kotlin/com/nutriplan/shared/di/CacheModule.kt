@@ -5,10 +5,12 @@ import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
 import com.nutriplan.shared.data.local.PendingChangeStore
+import com.nutriplan.shared.data.local.PendingFavoriteStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.CachedDietaryRepository
+import com.nutriplan.shared.data.repository.CombinedQueueFlusher
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRemoteImpl
@@ -39,6 +41,7 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { FavoriteRecipeCache(get()) }
     single { PendingMealStore(get()) }
     single { PendingChangeStore(get()) }
+    single { PendingFavoriteStore(get()) }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }
@@ -52,8 +55,16 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
             changes = get(),
         )
     }
-    single<MealQueueFlusher> { get<PendingMealSync>() }
-    single { FavoriteRecipesRepository(remote = FavoriteRecipesRemoteImpl(), cache = get()) }
+    single {
+        FavoriteRecipesRepository(
+            remote = FavoriteRecipesRemoteImpl(),
+            cache = get(),
+            pending = get(),
+            scheduler = getOrNull<SyncScheduler>() ?: SyncScheduler.None,
+        )
+    }
+    // The background job sends both offline queues: meals and favorite toggles.
+    single<MealQueueFlusher> { CombinedQueueFlusher(meals = get<PendingMealSync>(), favorites = get()) }
     // One instance for the whole app: a heart toggled on one screen is already filled on the others.
     single { FavoriteRecipesViewModel(repository = get()) }
     single {

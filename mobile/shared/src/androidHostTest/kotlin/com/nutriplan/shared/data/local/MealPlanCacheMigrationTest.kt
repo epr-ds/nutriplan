@@ -18,8 +18,8 @@ import kotlin.test.assertNotNull
 class MealPlanCacheMigrationTest {
 
     @Test
-    fun `the schema is version 5 now that offline edits are queued too`() {
-        assertEquals(5L, NutriPlanDatabase.Schema.version)
+    fun `the schema is version 6 now that offline favorite toggles are queued too`() {
+        assertEquals(6L, NutriPlanDatabase.Schema.version)
     }
 
     @Test
@@ -179,4 +179,28 @@ class MealPlanCacheMigrationTest {
         assertEquals(emptyList(), changes.waiting())
         changes.queueRemove("p1", com.nutriplan.shared.testing.meal("m1"))
         assertEquals(1, changes.waiting().size)
-    }}
+    }
+
+    @Test
+    fun `a version 5 database gains the queue of favorite toggles and keeps its favorites`() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        driver.execute(
+            null,
+            "CREATE TABLE favorite_recipe (recipe_id TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL, recipe TEXT NOT NULL)",
+            0,
+        )
+        driver.execute(
+            null,
+            "INSERT INTO favorite_recipe(recipe_id, position, recipe) VALUES ('f1', 0, '{\"id\":\"f1\",\"name\":\"Soup\"}')",
+            0,
+        )
+
+        NutriPlanDatabase.Schema.migrate(driver, 5L, 6L)
+
+        val database = NutriPlanDatabase(driver)
+        assertEquals(listOf("f1"), FavoriteRecipeCache(database).getAll().map { it.id }, "favorites survive")
+        val queue = PendingFavoriteStore(database)
+        queue.queue(favoriteRecipe("f2"), favorite = true)
+        assertEquals(listOf("f2"), queue.waiting().map { it.recipe.id })
+    }
+}

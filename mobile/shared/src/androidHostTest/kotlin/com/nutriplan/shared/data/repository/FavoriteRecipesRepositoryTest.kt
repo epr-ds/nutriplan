@@ -135,7 +135,7 @@ class FavoriteRecipesRepositoryTest {
     fun `remove deletes on the server and then on the device`() = runTest {
         cache.replaceAll(recipes(2))
 
-        repository.remove("r0")
+        repository.remove(favoriteRecipe("r0"))
 
         assertEquals(listOf("r0"), remote.removed)
         assertEquals(listOf("r1"), cache.getAll().map { it.id })
@@ -146,7 +146,7 @@ class FavoriteRecipesRepositoryTest {
         cache.replaceAll(recipes(2))
         remote.removeFailure = ApiException.HttpError(500, null)
 
-        assertFailsWith<ApiException.HttpError> { repository.remove("r0") }
+        assertFailsWith<ApiException.HttpError> { repository.remove(favoriteRecipe("r0")) }
 
         assertEquals(2, cache.getAll().size)
     }
