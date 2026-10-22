@@ -5,13 +5,34 @@ import com.nutriplan.shared.data.model.Order
 import kotlinx.serialization.json.Json
 
 /**
+ * Where the order repository keeps its offline copy of the user's orders (COM-504): [OrderCache] on
+ * the device, an in-memory map in tests.
+ */
+interface OrderStore {
+    /** The stored orders, newest first; only those with [status] when given. */
+    fun getOrders(status: String? = null): List<Order>
+
+    /** One stored order, or null. */
+    fun getOrder(orderId: String): Order?
+
+    /** Replace everything with [orders] (the server's full list, newest first). */
+    fun replaceAll(orders: List<Order>)
+
+    /** Refresh one order in place; a new one goes in front. */
+    fun upsert(order: Order)
+
+    /** Forget one order. */
+    fun remove(orderId: String)
+}
+
+/**
  * On-device copy of the user's orders (COM-503), so orders can be shown when the Commerce service
  * cannot be reached. It holds exactly what the server last sent, in the server's order (newest
  * first): a full list refresh replaces it ([replaceAll]), and any single order the server returns --
  * a detail read, a new order, a cancellation, a grocery sync -- refreshes that order in place
  * ([upsert]).
  */
-class OrderCache(private val database: NutriPlanDatabase) {
+class OrderCache(private val database: NutriPlanDatabase) : OrderStore {
 
     private val queries = database.cachedOrderQueries
 
@@ -22,16 +43,16 @@ class OrderCache(private val database: NutriPlanDatabase) {
     }
 
     /** The cached orders, newest first; only those with [status] when given. Unreadable rows are skipped. */
-    fun getOrders(status: String? = null): List<Order> {
+    override fun getOrders(status: String?): List<Order> {
         val rows = if (status == null) queries.selectAll() else queries.selectByStatus(status)
         return rows.executeAsList().mapNotNull(::decode)
     }
 
     /** One cached order, or null when it is not cached (or cannot be read). */
-    fun getOrder(orderId: String): Order? = queries.selectById(orderId).executeAsOneOrNull()?.let(::decode)
+    override fun getOrder(orderId: String): Order? = queries.selectById(orderId).executeAsOneOrNull()?.let(::decode)
 
     /** Replace everything with [orders] (the server's full list, newest first) atomically. */
-    fun replaceAll(orders: List<Order>) {
+    override fun replaceAll(orders: List<Order>) {
         database.transaction {
             queries.deleteAll()
             orders.forEachIndexed { position, order -> insert(order, position.toLong()) }
@@ -42,7 +63,7 @@ class OrderCache(private val database: NutriPlanDatabase) {
      * Refresh one order with what the server just returned. An order already cached keeps its place
      * in the list; a new one (just created) goes in front, where the server lists it too.
      */
-    fun upsert(order: Order) {
+    override fun upsert(order: Order) {
         database.transaction {
             val position = queries.selectPosition(order.id).executeAsOneOrNull()
                 ?: ((queries.selectFirstPosition().executeAsOneOrNull() ?: 0L) - 1L)
@@ -51,7 +72,7 @@ class OrderCache(private val database: NutriPlanDatabase) {
     }
 
     /** Forget one order (for example when the server no longer has it). */
-    fun remove(orderId: String) {
+    override fun remove(orderId: String) {
         queries.deleteOrder(orderId)
     }
 

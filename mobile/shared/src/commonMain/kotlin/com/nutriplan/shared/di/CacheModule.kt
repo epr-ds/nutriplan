@@ -13,11 +13,13 @@ import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.CachedDietaryRepository
 import com.nutriplan.shared.data.repository.CombinedQueueFlusher
+import com.nutriplan.shared.data.repository.CommerceRepository
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRemoteImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRepository
 import com.nutriplan.shared.data.repository.MealQueueFlusher
+import com.nutriplan.shared.data.repository.OrderRepository
 import com.nutriplan.shared.data.repository.PendingMealSync
 import com.nutriplan.shared.data.repository.SyncScheduler
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
@@ -47,6 +49,8 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     // COM-503: the offline copy of the user's orders and the on-device address book.
     single { OrderCache(get()) }
     single { SavedAddressStore(get()) }
+    // COM-504: orders cache-first, then refreshed from the Commerce service; writes go through.
+    single { OrderRepository(remote = get<CommerceRepository>(), store = get<OrderCache>(), addresses = get()) }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }
