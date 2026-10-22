@@ -1,0 +1,29 @@
+-- Favorite toggles made while the server could not be reached (DPL-407). One row per recipe: the
+-- latest wish wins (saving then removing again just leaves "remove"). The API's PUT and DELETE are
+-- idempotent, so a row can be replayed safely; it is deleted once the server has it.
+
+CREATE TABLE pending_favorite (
+    recipe_id TEXT NOT NULL PRIMARY KEY,
+    favorite INTEGER AS kotlin.Boolean NOT NULL,    -- 1: save it, 0: remove it
+    recipe TEXT NOT NULL,                           -- JSON of Recipe, to show a saved one meanwhile
+    queued_at INTEGER NOT NULL,                     -- order of the wishes, oldest first
+    attempts INTEGER NOT NULL DEFAULT 0
+);
+
+selectAll:
+SELECT * FROM pending_favorite ORDER BY queued_at;
+
+selectNextOrder:
+SELECT queued_at FROM pending_favorite ORDER BY queued_at DESC LIMIT 1;
+
+upsert:
+INSERT OR REPLACE INTO pending_favorite(recipe_id, favorite, recipe, queued_at, attempts) VALUES (?, ?, ?, ?, 0);
+
+bumpAttempts:
+UPDATE pending_favorite SET attempts = attempts + 1 WHERE recipe_id = ?;
+
+deleteByRecipe:
+DELETE FROM pending_favorite WHERE recipe_id = ?;
+
+deleteAll:
+DELETE FROM pending_favorite;

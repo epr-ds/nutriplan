@@ -63,9 +63,10 @@ fun Throwable.toFavoriteError(): FavoriteError = when (toApiFailure()) {
  * whole app, so a heart toggled on the recipe page is already filled in the search results.
  *
  * - [load] reads the favorites (from the device when the server cannot be reached).
- * - [toggle] flips a recipe's heart **immediately** and sends the change; if the server refuses (or
- *   cannot be reached) the heart goes back and [FavoriteRecipesUiState.changeError] says why. A
- *   recipe whose change is still in flight ignores further taps.
+ * - [toggle] flips a recipe's heart **immediately** and sends the change. When the server cannot be
+ *   reached the repository queues it (DPL-407) and the heart stays; if the server refuses it the
+ *   heart goes back and [FavoriteRecipesUiState.changeError] says why. A recipe whose change is
+ *   still in flight ignores further taps.
  * - [reset] forgets everything (on sign-out).
  *
  * The functions are `suspend` so the UI owns the coroutine scope; [CancellationException] is
@@ -114,7 +115,7 @@ class FavoriteRecipesViewModel(
             )
         }
         try {
-            if (wasFavorite) repository.remove(recipe.id) else repository.add(recipe)
+            if (wasFavorite) repository.remove(recipe) else repository.add(recipe)
             _state.update { it.copy(pendingIds = it.pendingIds - recipe.id) }
         } catch (e: CancellationException) {
             undo(recipe, wasFavorite, oldIndex, error = null)
