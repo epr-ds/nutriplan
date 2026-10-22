@@ -305,4 +305,9 @@
     <string name="pending_meal_failed_unknown">Algo salió mal.</string>
     <string name="pending_meal_dismiss">Descartar</string>
     <string name="cd_pending_meal_dismiss">Descartar el aviso sobre %1$s</string>
+
+    <!-- DPL-407: cambios y eliminaciones hechos sin conexión -->
+    <string name="pending_change_failed_title">No se pudo guardar tu cambio en la comida de %1$s</string>
+    <string name="pending_change_remove_failed_title">No se pudo quitar la comida de %1$s</string>
+    <string name="cd_pending_change_dismiss">Descartar el aviso sobre la comida de %1$s</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.nutriplan.shared.planning
 
+import com.nutriplan.shared.data.local.ChangeKind
 import com.nutriplan.shared.data.local.PendingFailure
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.repository.CachedDietaryRepository
@@ -20,7 +21,7 @@ import kotlin.test.assertTrue
 class QueuedMealViewModelsTest {
 
     private val fixture = QueueFixture()
-    private val repository = CachedDietaryRepository(fixture.remote, fixture.cache, fixture.store)
+    private val repository = CachedDietaryRepository(fixture.remote, fixture.cache, fixture.store, fixture.changes)
 
     private fun addForm() = AddMealViewModel(repository, fixture.sync)
 
@@ -234,4 +235,181 @@ class QueuedMealViewModelsTest {
         assertEquals(listOf("m1"), screen.state.value.plan!!.meals.map { it.id })
         assertTrue(screen.state.value.failedAdds.isEmpty())
     }
-}
+
+    // --- edit-meal form: edits and removals ---
+
+    private suspend fun startedEditor(sync: com.nutriplan.shared.data.repository.PendingMealSync? = fixture.sync): EditMealViewModel {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(meal("m1", dayIndex = 1)))
+        return EditMealViewModel(repository, sync).also { it.start("p1", "m1") }
+    }
+
+    @Test
+    fun `offline an edit is queued and the form finishes at once`() = runTest {
+        val editor = startedEditor()
+        editor.onSatisfactionChange(5)
+        editor.onServingsChange("3")
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+
+        editor.save()
+
+        val state = editor.state.value
+        assertTrue(state.isDone)
+        assertTrue(state.queued)
+        assertNull(state.error)
+        val change = fixture.changes.waiting().single()
+        assertEquals("m1", change.mealId)
+        assertEquals(3.0, change.servings)
+        assertEquals(5, change.satisfactionLevel)
+        assertNull(change.dayIndex, "only what changed is queued")
+    }
+
+    @Test
+    fun `a server error queues the edit too`() = runTest {
+        val editor = startedEditor()
+        editor.onSatisfactionChange(2)
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(503, null))
+
+        editor.save()
+
+        assertTrue(editor.state.value.queued)
+    }
+
+    @Test
+    fun `a refused edit is an error, not a queued change`() = runTest {
+        val editor = startedEditor()
+        editor.onSatisfactionChange(2)
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(422, null))
+
+        editor.save()
+
+        assertEquals(EditMealError.REJECTED, editor.state.value.error)
+        assertFalse(editor.state.value.isDone)
+        assertTrue(fixture.changes.waiting().isEmpty())
+    }
+
+    @Test
+    fun `an ended session is an error, not a queued change`() = runTest {
+        val editor = startedEditor()
+        editor.onSatisfactionChange(2)
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(401, null))
+
+        editor.save()
+
+        assertEquals(EditMealError.SESSION_EXPIRED, editor.state.value.error)
+        assertTrue(fixture.changes.waiting().isEmpty())
+    }
+
+    @Test
+    fun `offline a removal is queued and the form finishes at once`() = runTest {
+        val editor = startedEditor()
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+
+        editor.remove()
+
+        assertTrue(editor.state.value.isDone)
+        assertTrue(editor.state.value.queued)
+        assertEquals(ChangeKind.REMOVE, fixture.changes.waiting().single().kind)
+    }
+
+    @Test
+    fun `removing a meal that is already gone is still just done`() = runTest {
+        val editor = startedEditor()
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(404, null))
+
+        editor.remove()
+
+        assertTrue(editor.state.value.isDone)
+        assertFalse(editor.state.value.queued)
+        assertTrue(fixture.changes.waiting().isEmpty())
+    }
+
+    @Test
+    fun `without a queue the edit form fails as before`() = runTest {
+        val editor = startedEditor(sync = null)
+        editor.onSatisfactionChange(2)
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+
+        editor.save()
+
+        assertEquals(EditMealError.NETWORK, editor.state.value.error)
+        assertTrue(fixture.changes.waiting().isEmpty())
+    }
+
+    @Test
+    fun `reopening a meal with a waiting edit shows the edit`() = runTest {
+        val first = startedEditor()
+        first.onServingsChange("4")
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+        first.save()
+
+        val second = EditMealViewModel(repository, fixture.sync)
+        second.start("p1", "m1")
+
+        assertEquals("4", second.state.value.servings)
+    }
+
+    @Test
+    fun `editing a meal again while its change waits merges into it`() = runTest {
+        val first = startedEditor()
+        first.onServingsChange("4")
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+        first.save()
+        val second = EditMealViewModel(repository, fixture.sync)
+        second.start("p1", "m1")
+        second.onSatisfactionChange(5)
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+
+        second.save()
+
+        val change = fixture.changes.waiting().single()
+        assertEquals(4.0, change.servings)
+        assertEquals(5, change.satisfactionLevel)
+    }
+
+    // --- plan detail: refused edits and removals ---
+
+    @Test
+    fun `an edit the server refused is reported on the plan, and can be dismissed`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(meal("m1", dayIndex = 1)))
+        fixture.sync.queueUpdate("p1", meal("m1"), com.nutriplan.shared.data.model.UpdateMealRequest(dayIndex = 99))
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(422, null))
+        val screen = detail()
+
+        screen.load("p1")
+
+        val failed = screen.state.value.failedChanges.single()
+        assertEquals(PendingFailure.REJECTED, failed.failure)
+        assertEquals("m1", failed.mealId)
+        assertEquals(1, screen.state.value.plan!!.meals.single().dayIndex, "back to the server's version")
+
+        screen.dismissFailedChange(failed.id)
+
+        assertTrue(screen.state.value.failedChanges.isEmpty())
+        assertTrue(fixture.sync.changeFailures().isEmpty())
+    }
+
+    @Test
+    fun `opening the plan sends queued changes before reading it`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(meal("m1", dayIndex = 1)))
+        fixture.sync.queueRemove("p1", meal("m1"))
+        val screen = detail()
+
+        screen.load("p1")
+
+        assertEquals(listOf("p1" to "m1"), fixture.remote.removed)
+        assertTrue(fixture.changes.waiting().isEmpty())
+    }
+
+    @Test
+    fun `offline the plan opens with the queued removal already applied`() = runTest {
+        fixture.cache.upsertPlan(fullPlan("p1", meals = listOf(meal("m1"), meal("m2"))))
+        fixture.sync.queueRemove("p1", meal("m1"))
+        fixture.remote.planFailure = ApiException.NetworkError()
+        fixture.remote.changeFailures = mutableListOf(ApiException.NetworkError())
+        val screen = detail()
+
+        screen.load("p1")
+
+        assertEquals(listOf("m2"), screen.state.value.plan!!.meals.map { it.id })
+        assertEquals(1, fixture.changes.waiting().size)
+    }}

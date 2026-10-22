@@ -13,6 +13,9 @@ const val PENDING_MEAL_ID_PREFIX = "pending-"
 /** Whether this meal is a stand-in for one that has not reached the server yet. */
 val PlanMeal.isPending: Boolean get() = id.startsWith(PENDING_MEAL_ID_PREFIX)
 
+/** Whether the plan shows something about this meal that the server does not know yet. */
+val PlanMeal.isWaitingToSync: Boolean get() = isPending || syncPending
+
 /** Why a queued meal can never be added. Locale-neutral: each platform maps these to its own copy. */
 enum class PendingFailure {
     /** The plan or the recipe does not exist (any more). */

@@ -71,7 +71,10 @@ class SignOutTest {
         val queue = PendingMealStore(newDatabase())
         queue.enqueue("p1", addRequest(), null, com.nutriplan.shared.data.model.PlanMealRecipe(id = "r1", name = "Soup"), null)
 
-        SignOut(auth, cache, favorites, queue)()
+        val changes = com.nutriplan.shared.data.local.PendingChangeStore(newDatabase())
+        changes.queueRemove("p1", com.nutriplan.shared.testing.meal("m1"))
+
+        SignOut(auth, cache, favorites, queue, changes)()
 
         assertFalse(auth.isAuthenticated)
         assertNull(storage.stored)
@@ -80,6 +83,7 @@ class SignOutTest {
         assertEquals(emptyList(), favoriteCache.getAll(), "favorites are wiped too")
         assertEquals(emptyList(), favorites.state.value.recipes)
         assertTrue(queue.waiting().isEmpty(), "meals waiting to be sent belong to the signed-out user")
+        assertTrue(changes.waiting().isEmpty(), "so do edits and removals")
     }
 
     @Test

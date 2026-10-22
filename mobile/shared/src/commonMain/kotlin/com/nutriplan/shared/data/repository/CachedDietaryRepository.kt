@@ -1,6 +1,8 @@
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.ChangeKind
+import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.UpdateMealRequest
@@ -29,6 +31,7 @@ class CachedDietaryRepository(
     private val remote: DietaryRepository,
     private val cache: MealPlanCache,
     private val pending: PendingMealStore? = null,
+    private val changes: PendingChangeStore? = null,
 ) : DietaryRepository by remote {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
@@ -88,7 +91,14 @@ class CachedDietaryRepository(
      */
     private fun MealPlan.withQueuedMeals(): MealPlan {
         val queued = pending?.shownFor(id).orEmpty()
-        return if (queued.isEmpty()) this else copy(meals = meals + queued.map { it.toPlanMeal() })
+        val edits = changes?.waitingFor(id).orEmpty().groupBy { it.mealId }
+        if (queued.isEmpty() && edits.isEmpty()) return this
+        val shown = meals.mapNotNull { meal ->
+            val mine = edits[meal.id] ?: return@mapNotNull meal
+            // A queued removal hides the meal; queued edits (at most one per meal) change what it shows.
+            if (mine.any { it.kind == ChangeKind.REMOVE }) null else mine.fold(meal) { m, change -> change.applyTo(m) }
+        }
+        return copy(meals = shown + queued.map { it.toPlanMeal() })
     }
 
     /** After a listing that returned every plan, drop cached plans that no longer exist on the server. */

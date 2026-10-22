@@ -20,7 +20,7 @@ val planningModule = module {
     // simply do not queue.
     factory { MealPlanDetailViewModel(repository = get(), sync = getOrNull()) }
     factory { AddMealViewModel(repository = get(), sync = getOrNull()) }
-    factory { EditMealViewModel(repository = get()) }
+    factory { EditMealViewModel(repository = get(), sync = getOrNull()) }
     factory {
         val session = get<SessionManager>()
         MealPlanFormViewModel(

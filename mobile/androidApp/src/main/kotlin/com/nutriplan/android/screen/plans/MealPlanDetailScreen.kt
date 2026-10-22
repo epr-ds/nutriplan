@@ -47,8 +47,11 @@ import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.mealTypeLabelRes
 import com.nutriplan.android.i18n.messageRes
+import com.nutriplan.shared.data.local.ChangeKind
+import com.nutriplan.shared.data.local.PendingChange
 import com.nutriplan.shared.data.local.PendingMeal
 import com.nutriplan.shared.data.local.isPending
+import com.nutriplan.shared.data.local.isWaitingToSync
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.PlanMeal
 import com.nutriplan.shared.planning.MealPlanDay
@@ -68,6 +71,7 @@ object MealPlanDetailTestTags {
     const val MEAL_CARD = "plan_detail_meal_card"
     const val PENDING_LABEL = "plan_detail_pending_label"
     const val FAILED_ADD = "plan_detail_failed_add"
+    const val FAILED_CHANGE = "plan_detail_failed_change"
 }
 
 /**
@@ -103,6 +107,7 @@ fun MealPlanDetailScreen(
         onAddMeal = onAddMeal,
         onEditMeal = onEditMeal,
         onDismissFailedAdd = viewModel::dismissFailedAdd,
+        onDismissFailedChange = viewModel::dismissFailedChange,
     )
 }
 
@@ -116,6 +121,7 @@ fun MealPlanDetailScreenContent(
     onAddMeal: () -> Unit,
     onEditMeal: (mealId: String) -> Unit = {},
     onDismissFailedAdd: (id: Long) -> Unit = {},
+    onDismissFailedChange: (id: Long) -> Unit = {},
 ) {
     val plan = state.plan
     val error = state.error
@@ -183,6 +189,8 @@ fun MealPlanDetailScreenContent(
                     onEditMeal = onEditMeal,
                     failedAdds = state.failedAdds,
                     onDismissFailedAdd = onDismissFailedAdd,
+                    failedChanges = state.failedChanges,
+                    onDismissFailedChange = onDismissFailedChange,
                 )
             }
         }
@@ -199,6 +207,8 @@ private fun PlanDetailList(
     onEditMeal: (mealId: String) -> Unit,
     failedAdds: List<PendingMeal>,
     onDismissFailedAdd: (id: Long) -> Unit,
+    failedChanges: List<PendingChange>,
+    onDismissFailedChange: (id: Long) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -222,6 +232,10 @@ private fun PlanDetailList(
 
         items(failedAdds, key = { "failed-${it.id}" }) { failed ->
             FailedAddNotice(failed, onDismiss = { onDismissFailedAdd(failed.id) })
+        }
+
+        items(failedChanges, key = { "failed-change-${it.id}" }) { failed ->
+            FailedChangeNotice(failed, onDismiss = { onDismissFailedChange(failed.id) })
         }
 
         item(key = "summary") { PlanSummary(plan) }
@@ -355,6 +369,34 @@ private fun FailedAddNotice(failed: PendingMeal, onDismiss: () -> Unit) {
     }
 }
 
+/**
+ * An edit or removal made while offline that the server then refused (DPL-407): the plan shows the
+ * server's version again, so the user is told which meal and why, and can dismiss the message.
+ */
+@Composable
+private fun FailedChangeNotice(failed: PendingChange, onDismiss: () -> Unit) {
+    val mealType = mealTypeLabelRes(failed.mealType)?.let { stringResource(it) } ?: failed.mealType
+    val title = stringResource(
+        if (failed.kind == ChangeKind.REMOVE) R.string.pending_change_remove_failed_title else R.string.pending_change_failed_title,
+        mealType,
+    )
+    val dismissLabel = stringResource(R.string.cd_pending_change_dismiss, mealType)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(MealPlanDetailTestTags.FAILED_CHANGE)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text(text = title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
+        failed.failure?.let {
+            Text(text = stringResource(it.messageRes()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+        }
+        TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = dismissLabel }) {
+            Text(stringResource(R.string.pending_meal_dismiss))
+        }
+    }
+}
+
 @Composable
 private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
     Card(
@@ -372,7 +414,7 @@ private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
                 text = meal.recipe?.name ?: stringResource(R.string.plan_detail_meal_unnamed),
                 style = MaterialTheme.typography.titleSmall,
             )
-            if (meal.isPending) {
+            if (meal.isWaitingToSync) {
                 Text(
                     text = stringResource(R.string.plan_detail_meal_pending),
                     style = MaterialTheme.typography.labelMedium,

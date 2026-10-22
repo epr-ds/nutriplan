@@ -33,6 +33,8 @@ import com.nutriplan.shared.data.model.PlanMealRecipe
 import com.nutriplan.shared.planning.MealPlanDetailError
 import com.nutriplan.shared.planning.MealPlanDetailUiState
 import com.nutriplan.shared.planning.groupMealsByDay
+import com.nutriplan.shared.data.local.ChangeKind
+import com.nutriplan.shared.data.local.PendingChange
 import com.nutriplan.shared.data.local.PendingFailure
 import com.nutriplan.shared.data.local.PendingMeal
 import org.junit.Assert.assertEquals
@@ -108,6 +110,7 @@ class MealPlanDetailScreenTest {
         onAddMeal: () -> Unit = {},
         onEditMeal: (String) -> Unit = {},
         onDismissFailedAdd: (Long) -> Unit = {},
+        onDismissFailedChange: (Long) -> Unit = {},
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -119,6 +122,7 @@ class MealPlanDetailScreenTest {
                     onAddMeal = onAddMeal,
                     onEditMeal = onEditMeal,
                     onDismissFailedAdd = onDismissFailedAdd,
+                    onDismissFailedChange = onDismissFailedChange,
                 )
             }
         }
@@ -401,5 +405,83 @@ class MealPlanDetailScreenTest {
         compose.onNodeWithContentDescription(str(R.string.cd_pending_meal_dismiss, "Soup")).performClick()
 
         assertEquals(3L, dismissed)
+    }
+
+    // --- edits and removals made while offline (DPL-407) ---
+
+    private fun failedChange(kind: ChangeKind, failure: PendingFailure?) = PendingChange(
+        id = 8,
+        planId = "p1",
+        mealId = "m1",
+        mealType = "lunch",
+        kind = kind,
+        servings = 2.0,
+        dayIndex = null,
+        satisfactionLevel = null,
+        attempts = 1,
+        failure = failure,
+    )
+
+    @Test
+    fun `a meal with an edit that has not reached the server says it is waiting to sync`() {
+        val edited = meal("1", 0, "lunch", calories = 500).copy(syncPending = true)
+        render(loaded(plan(edited)))
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a meal with a waiting edit can still be opened for editing`() {
+        var edited: String? = null
+        render(loaded(plan(meal("m1", 0, "lunch").copy(syncPending = true))), onEditMeal = { edited = it })
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.MEAL_CARD).performClick()
+
+        assertEquals("m1", edited)
+    }
+
+    @Test
+    fun `an edit the server refused is explained and can be dismissed`() {
+        var dismissed: Long? = null
+        compose.setContent {
+            NutriPlanTheme {
+                MealPlanDetailScreenContent(
+                    state = loaded(plan(meal("1", 0, "lunch"))).copy(
+                        failedChanges = listOf(failedChange(ChangeKind.UPDATE, PendingFailure.REJECTED)),
+                    ),
+                    onRefresh = {},
+                    onRetry = {},
+                    onBack = {},
+                    onAddMeal = {},
+                    onDismissFailedChange = { dismissed = it },
+                )
+            }
+        }
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.FAILED_CHANGE).assertIsDisplayed().assert(hasLiveRegion())
+        compose.onNodeWithText(str(R.string.pending_change_failed_title, str(R.string.meal_type_lunch))).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.pending_meal_failed_rejected)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(str(R.string.cd_pending_change_dismiss, str(R.string.meal_type_lunch))).performClick()
+
+        assertEquals(8L, dismissed)
+    }
+
+    @Test
+    fun `a removal the server refused says the meal could not be removed`() {
+        compose.setContent {
+            NutriPlanTheme {
+                MealPlanDetailScreenContent(
+                    state = loaded(plan(meal("1", 0, "lunch"))).copy(
+                        failedChanges = listOf(failedChange(ChangeKind.REMOVE, PendingFailure.UNKNOWN)),
+                    ),
+                    onRefresh = {},
+                    onRetry = {},
+                    onBack = {},
+                    onAddMeal = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText(str(R.string.pending_change_remove_failed_title, str(R.string.meal_type_lunch))).assertIsDisplayed()
     }
 }

@@ -307,4 +307,9 @@
     <string name="pending_meal_failed_unknown">Something went wrong.</string>
     <string name="pending_meal_dismiss">Dismiss</string>
     <string name="cd_pending_meal_dismiss">Dismiss the message about %1$s</string>
+
+    <!-- DPL-407: edits and removals made while offline -->
+    <string name="pending_change_failed_title">Your change to the %1$s meal couldn\'t be saved</string>
+    <string name="pending_change_remove_failed_title">The %1$s meal couldn\'t be removed</string>
+    <string name="cd_pending_change_dismiss">Dismiss the message about the %1$s meal</string>
 </resources>

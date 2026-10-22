@@ -4,6 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
+import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.repository.AuthRepository
@@ -37,8 +38,9 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { MealPlanCache(get()) }
     single { FavoriteRecipeCache(get()) }
     single { PendingMealStore(get()) }
+    single { PendingChangeStore(get()) }
     single<DietaryRepository> {
-        CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get())
+        CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }
     single {
         PendingMealSync(
@@ -47,6 +49,7 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
             cache = get(),
             // The platform module may provide a scheduler that sends the queue in the background.
             scheduler = getOrNull<SyncScheduler>() ?: SyncScheduler.None,
+            changes = get(),
         )
     }
     single<MealQueueFlusher> { get<PendingMealSync>() }
@@ -59,6 +62,7 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
             mealPlanCache = get(),
             favorites = get(),
             pendingMeals = get(),
+            pendingChanges = get(),
         )
     }
 }

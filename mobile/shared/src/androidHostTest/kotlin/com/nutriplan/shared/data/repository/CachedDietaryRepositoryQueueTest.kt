@@ -9,6 +9,7 @@ import com.nutriplan.shared.testing.queuedRecipe
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -18,7 +19,7 @@ import kotlin.test.assertTrue
 class CachedDietaryRepositoryQueueTest {
 
     private val fixture = QueueFixture()
-    private val repository = CachedDietaryRepository(fixture.remote, fixture.cache, fixture.store)
+    private val repository = CachedDietaryRepository(fixture.remote, fixture.cache, fixture.store, fixture.changes)
 
     private fun queue(recipeId: String = "r1", plan: String = "p1", day: Int? = 1) =
         fixture.sync.queueAdd(plan, addRequest(recipeId = recipeId), day, queuedRecipe(recipeId))
@@ -104,4 +105,108 @@ class CachedDietaryRepositoryQueueTest {
 
         assertEquals(listOf("m1"), plain.getMealPlan("p1").meals.map { it.id })
     }
-}
+
+    // --- queued edits and removals ---
+
+    private val server = meal("m1", dayIndex = 0, calories = 500)
+
+    @Test
+    fun `a queued edit is shown on the meal and marked as waiting`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate(
+            "p1",
+            server,
+            com.nutriplan.shared.data.model.UpdateMealRequest(dayIndex = 3, satisfactionLevel = 2),
+        )
+
+        val shown = repository.getMealPlan("p1").meals.single()
+
+        assertEquals(3, shown.dayIndex)
+        assertEquals(2, shown.satisfactionLevel)
+        assertEquals(1.5, shown.servings, "untouched fields stay as the server has them")
+        assertTrue(shown.syncPending)
+    }
+
+    @Test
+    fun `new servings scale the nutrition shown`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 3.0))
+
+        val shown = repository.getMealPlan("p1").meals.single()
+
+        // 1.5 servings -> 3 servings doubles it.
+        assertEquals(1000, shown.nutritionalInfo?.calories)
+        assertEquals(51.0, shown.nutritionalInfo?.protein)
+    }
+
+    @Test
+    fun `a queued removal hides the meal`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server, meal("m2")))
+        fixture.sync.queueRemove("p1", server)
+
+        assertEquals(listOf("m2"), repository.getMealPlan("p1").meals.map { it.id })
+    }
+
+    @Test
+    fun `an edit and a removal of the same meal leave it removed`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0))
+        fixture.sync.queueRemove("p1", server)
+
+        assertTrue(repository.getMealPlan("p1").meals.isEmpty())
+        assertEquals(1, fixture.changes.waiting().size, "only the removal is queued")
+    }
+
+    @Test
+    fun `later edits of the same meal merge, the last write winning`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 2.0, dayIndex = 1))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(servings = 4.0))
+
+        val shown = repository.getMealPlan("p1").meals.single()
+
+        assertEquals(4.0, shown.servings)
+        assertEquals(1, shown.dayIndex)
+        assertEquals(1, fixture.changes.waiting().size)
+    }
+
+    @Test
+    fun `offline the saved plan is shown with the queued changes applied`() = runTest {
+        fixture.cache.upsertPlan(fullPlan("p1", meals = listOf(server, meal("m2"))))
+        fixture.remote.planFailure = ApiException.NetworkError()
+        fixture.sync.queueRemove("p1", server)
+
+        assertEquals(listOf("m2"), repository.getMealPlan("p1").meals.map { it.id })
+    }
+
+    @Test
+    fun `the saved copy keeps the server's meals, not the queued changes`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueRemove("p1", server)
+
+        repository.getMealPlan("p1")
+
+        assertEquals(listOf("m1"), fixture.cache.getPlan("p1")!!.meals.map { it.id })
+    }
+
+    @Test
+    fun `after the change is sent the server's own version is shown`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(dayIndex = 3))
+        fixture.sync.flush()
+
+        val shown = repository.getMealPlan("p1").meals.single()
+
+        assertEquals(0, shown.dayIndex, "the fake server did not store the edit; the point is the overlay is gone")
+        assertFalse(shown.syncPending)
+    }
+
+    @Test
+    fun `a refused change disappears from the plan`() = runTest {
+        fixture.remote.plan = fullPlan("p1", meals = listOf(server))
+        fixture.sync.queueUpdate("p1", server, com.nutriplan.shared.data.model.UpdateMealRequest(dayIndex = 99))
+        fixture.remote.changeFailures = mutableListOf(ApiException.HttpError(422, null))
+        fixture.sync.flush()
+
+        assertEquals(0, repository.getMealPlan("p1").meals.single().dayIndex)
+    }}

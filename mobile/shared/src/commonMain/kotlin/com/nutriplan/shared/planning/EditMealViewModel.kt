@@ -5,6 +5,7 @@ import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.DietaryRepository
+import com.nutriplan.shared.data.repository.PendingMealSync
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,6 +60,8 @@ data class EditMealUiState(
     val isSaving: Boolean = false,
     val isRemoving: Boolean = false,
     val error: EditMealError? = null,
+    /** The change was saved on this device because the server could not be reached; it is sent later. */
+    val queued: Boolean = false,
     val isDone: Boolean = false,
 ) {
     /** The API can place a meal on a day but not take it off one again. */
@@ -100,6 +103,8 @@ fun Throwable.toEditMealError(): EditMealError = when (toApiFailure()) {
  */
 class EditMealViewModel(
     private val repository: DietaryRepository,
+    /** When given, a change that cannot reach the server is queued instead of failing (DPL-407). */
+    private val sync: PendingMealSync? = null,
 ) {
 
     private val _state = MutableStateFlow(EditMealUiState())
@@ -191,7 +196,11 @@ class EditMealViewModel(
             _state.update { it.copy(isSaving = false) }
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            _state.update { it.copy(isSaving = false, error = e.toEditMealError()) }
+            if (canQueue(e) && sync?.queueUpdate(planId, meal, request) != null) {
+                _state.update { it.copy(isSaving = false, queued = true, isDone = true) }
+            } else {
+                _state.update { it.copy(isSaving = false, error = e.toEditMealError()) }
+            }
         }
     }
 
@@ -211,14 +220,20 @@ class EditMealViewModel(
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             val error = e.toEditMealError()
-            // Already gone is what the user wanted.
-            if (error == EditMealError.NOT_FOUND) {
+            if (canQueue(e) && sync?.queueRemove(planId, meal) != null) {
+                _state.update { it.copy(isRemoving = false, queued = true, isDone = true) }
+            } else if (error == EditMealError.NOT_FOUND) {
+                // Already gone is what the user wanted.
                 _state.update { it.copy(isRemoving = false, isDone = true) }
             } else {
                 _state.update { it.copy(isRemoving = false, error = error) }
             }
         }
     }
+
+    /** The server could not be reached (offline or a 5xx) and changes can be queued for later. */
+    private fun canQueue(e: Exception): Boolean =
+        sync?.canQueueChanges == true && e.toApiFailure().let { it == ApiFailure.OFFLINE || it == ApiFailure.SERVER }
 
     private fun servingsError(text: String): EditMealFieldError? {
         if (text.isBlank()) return EditMealFieldError.SERVINGS_REQUIRED
