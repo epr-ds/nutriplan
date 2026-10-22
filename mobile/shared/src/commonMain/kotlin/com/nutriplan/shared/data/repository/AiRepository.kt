@@ -1,106 +1,81 @@
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.ApiConfig
+import com.nutriplan.shared.data.model.AiRecommendationRequest
+import com.nutriplan.shared.data.model.AiRecommendations
 import com.nutriplan.shared.data.model.AnalyzeMealRequest
-import com.nutriplan.shared.data.model.AnalyzeMealResponse
+import com.nutriplan.shared.data.model.MealAnalysis
+import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.OptimizePlanRequest
-import com.nutriplan.shared.data.model.OptimizePlanResponse
-import com.nutriplan.shared.data.model.RecommendationResult
-import com.nutriplan.shared.data.model.RecommendationsRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
+import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 
 /**
- * Repository for AI-related API operations.
- *
- * Covers meal analysis, recipe recommendations, and plan optimization.
+ * Client of the AI Advisor service (`contracts/ai.openapi.yaml`, AIA-601): recipe recommendations,
+ * meal analysis and plan optimization. Failures are thrown as [ApiException]; use
+ * [com.nutriplan.shared.data.network.toApiFailure] to classify them, or [com.nutriplan.shared.ai.AiAdvisor]
+ * for typed results.
  */
 interface AiRepository {
 
-    /** Analyze a meal (text description or image). */
-    suspend fun analyzeMeal(request: AnalyzeMealRequest): AnalyzeMealResponse
+    /** Recipes recommended for the request (`POST /ai/recommendations`), with the reasoning. */
+    suspend fun recommendations(request: AiRecommendationRequest): AiRecommendations
 
-    /** Get AI-powered recipe recommendations. */
-    suspend fun getRecommendations(request: RecommendationsRequest): List<RecommendationResult>
+    /** The estimated nutrition of a described meal (`POST /ai/analyze-meal`). */
+    suspend fun analyzeMeal(request: AnalyzeMealRequest): MealAnalysis
 
-    /** Optimize an existing meal plan. */
-    suspend fun optimizePlan(request: OptimizePlanRequest): OptimizePlanResponse
+    /**
+     * An optimized copy of the caller's plan as a reviewable draft (`POST /ai/optimize-plan`); the
+     * stored plan is not changed. A plan that does not exist or is not the caller's is a 404.
+     */
+    suspend fun optimizePlan(request: OptimizePlanRequest): MealPlan
 }
 
-/**
- * AI service API client implementation.
- */
 class AiRepositoryImpl : AiRepository {
 
     private val client = HttpClientProvider.client
 
-    override suspend fun analyzeMeal(request: AnalyzeMealRequest): AnalyzeMealResponse {
-        return withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.AI}/ai/analyze-meal") {
-                setBody(request)
-            }
-            handleResponse(response)
+    override suspend fun recommendations(request: AiRecommendationRequest): AiRecommendations =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.AI}/ai/recommendations") { setBody(request) }.readOrThrow()
         }
-    }
 
-    override suspend fun getRecommendations(request: RecommendationsRequest): List<RecommendationResult> {
-        return withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.AI}/ai/recommendations") {
-                setBody(request)
-            }
-            handleListResponse(response)
+    override suspend fun analyzeMeal(request: AnalyzeMealRequest): MealAnalysis =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.AI}/ai/analyze-meal") { setBody(request) }.readOrThrow()
         }
-    }
 
-    override suspend fun optimizePlan(request: OptimizePlanRequest): OptimizePlanResponse {
-        return withContext(Dispatchers.IO) {
-            val response = client.post("${ApiConfig.AI}/ai/optimize-plan") {
-                setBody(request)
-            }
-            handleResponse(response)
+    override suspend fun optimizePlan(request: OptimizePlanRequest): MealPlan =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.AI}/ai/optimize-plan") { setBody(request) }.readOrThrow()
         }
-    }
 
-    private suspend inline fun <reified T> handleResponse(response: io.ktor.client.statement.HttpResponse): T {
-        return when (response.status) {
-            HttpStatusCode.OK, HttpStatusCode.Created -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException.create(
-                message = "Unauthorized. Please log in again.",
-                code = ApiException.Code.UNAUTHORIZED,
-            )
-            HttpStatusCode.Forbidden -> throw ApiException.create(
-                message = "Forbidden. You don't have permission.",
-                code = ApiException.Code.FORBIDDEN,
-            )
-            HttpStatusCode.NotFound -> throw ApiException.create(
-                message = "Resource not found.",
-                code = ApiException.Code.NOT_FOUND,
-            )
-            else -> throw ApiException.HttpError(
-                statusCode = response.status.value,
-                body = response.body<String>(),
-            )
+    /**
+     * Decodes a 2xx response into [T]; anything else becomes an [ApiException.HttpError] carrying
+     * the status and the (problem+json) body, so it classifies by status. A body that does not match
+     * the model becomes an [ApiException.SerializationError] instead of an unexplained crash.
+     */
+    private suspend inline fun <reified T> HttpResponse.readOrThrow(): T {
+        if (!status.isSuccess()) {
+            throw ApiException.HttpError(statusCode = status.value, body = bodyAsText())
         }
-    }
-
-    private suspend inline fun <reified T> handleListResponse(response: io.ktor.client.statement.HttpResponse): List<T> {
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            HttpStatusCode.Unauthorized -> throw ApiException.create(
-                message = "Unauthorized. Please log in again.",
-                code = ApiException.Code.UNAUTHORIZED,
-            )
-            else -> throw ApiException.HttpError(
-                statusCode = response.status.value,
-                body = response.body<String>(),
-            )
+        return try {
+            body()
+        } catch (e: SerializationException) {
+            throw ApiException.SerializationError(errorCause = e)
+        } catch (e: ContentConvertException) {
+            throw ApiException.SerializationError(errorCause = e)
         }
     }
 }

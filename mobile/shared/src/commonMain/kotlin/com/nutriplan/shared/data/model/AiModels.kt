@@ -1,82 +1,91 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.nutriplan.shared.data.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
-/** Request to analyze a meal. */
+/*
+ * AI Advisor models (AIA-601), aligned with contracts/ai.openapi.yaml, the source of truth the AI
+ * service is verified against. Optional request fields the user did not set are left out of the JSON
+ * altogether (never sent as null), and responses reuse the recipe, meal plan and nutrition models
+ * where the contract reuses their shapes.
+ */
+
+/** Body of `POST /ai/recommendations` (`AIRecommendationRequest`). */
+@Serializable
+data class AiRecommendationRequest(
+    /** `meal_plan`, `single_meal` or `ingredient_based`. */
+    val context: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val dietaryPreferences: AiDietaryPreferences? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val availableIngredients: List<String>? = null,
+    /** `breakfast`, `lunch`, `dinner` or `snack`. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val mealType: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val calorieTarget: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val previousMeals: List<String>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val constraints: List<String>? = null,
+    /** `es` or `en`: the language of the reasoning and disclaimer. */
+    val language: String = "es",
+)
+
+/**
+ * The caller's dietary preferences as the AI service reads them (`DietaryPreferencesRequest` in the
+ * AI contract): the Identity preferences without the appetite rating, which the AI service does not
+ * take.
+ */
+@Serializable
+data class AiDietaryPreferences(
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val dietType: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val allergies: List<String>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val dailyCalorieTarget: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val macroTargets: DietaryMacroTargets? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val excludedIngredients: List<String>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val cuisinePreferences: List<String>? = null,
+)
+
+/** Response of `POST /ai/recommendations` (`AIRecommendationResponse`). */
+@Serializable
+data class AiRecommendations(
+    val recommendations: List<Recipe> = emptyList(),
+    val reasoning: String? = null,
+    val nutritionalAlignment: NutritionalAlignment? = null,
+    /** The medical disclaimer every AI response carries (AIA-505); the UI must show it. */
+    val disclaimer: String? = null,
+)
+
+/** How well a recommendation or meal fits the caller's targets: a 0-100 score and an explanation. */
+@Serializable
+data class NutritionalAlignment(
+    val score: Double? = null,
+    val details: String? = null,
+)
+
+/** Body of `POST /ai/analyze-meal` (`AnalyzeMealRequest`). */
 @Serializable
 data class AnalyzeMealRequest(
-    val mealDescription: String,
-    val imageUrl: String? = null,
+    /** Free-text description of the meal. */
+    val description: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val ingredients: List<RecipeIngredient>? = null,
 )
 
-/** Response from meal analysis. */
+/** Response of `POST /ai/analyze-meal` (`NutritionalAnalysisResponse`). */
 @Serializable
-data class AnalyzeMealResponse(
-    val detectedFoods: List<DetectedFood>? = null,
-    val nutritionEstimate: NutritionInfo? = null,
-    val confidence: Double? = null,
+data class MealAnalysis(
+    val nutritionalInfo: NutritionalInfo? = null,
+    val alignment: NutritionalAlignment? = null,
+    val warnings: List<String> = emptyList(),
+    /** The medical disclaimer every AI response carries (AIA-505); the UI must show it. */
+    val disclaimer: String? = null,
 )
 
-/** A detected food item. */
-@Serializable
-data class DetectedFood(
-    val name: String,
-    val estimatedAmount: String? = null,
-    val calories: Int? = null,
-)
-
-/** Request for AI recommendations. */
-@Serializable
-data class RecommendationsRequest(
-    val dietaryPreferences: List<String>? = null,
-    val calorieTarget: Int? = null,
-    val mealType: String? = null,
-    val excludeIngredients: List<String>? = null,
-    val maxResults: Int? = null,
-)
-
-/** AI recommendation result. */
-@Serializable
-data class RecommendationResult(
-    val recipeId: String,
-    val recipeName: String,
-    val reason: String? = null,
-    val nutritionInfo: NutritionInfo? = null,
-    val matchScore: Double? = null,
-)
-
-/** Request to optimize a meal plan. */
+/**
+ * Body of `POST /ai/optimize-plan` (`OptimizePlanRequest`). The response is the optimized plan as a
+ * reviewable draft ([MealPlan]); the stored original is left untouched.
+ */
 @Serializable
 data class OptimizePlanRequest(
     val planId: String,
-    val constraints: PlanConstraints? = null,
-)
-
-/** Constraints for plan optimization. */
-@Serializable
-data class PlanConstraints(
-    val targetCalories: Int? = null,
-    val dietaryPreferences: List<String>? = null,
-    val maxMealsPerDay: Int? = null,
-    val minVariety: Boolean? = null,
-)
-
-/** Response from plan optimization. */
-@Serializable
-data class OptimizePlanResponse(
-    val planId: String,
-    val optimizedMeals: List<OptimizedMeal>? = null,
-    val changesSummary: String? = null,
-    val estimatedCalorieChange: Int? = null,
-)
-
-/** An optimized meal suggestion. */
-@Serializable
-data class OptimizedMeal(
-    val recipeId: String,
-    val recipeName: String,
-    val mealType: String,
-    val scheduledDate: String,
-    val reason: String? = null,
-    val nutritionInfo: NutritionInfo? = null,
+    /** `balance_macros`, `increase_protein`, `reduce_calories` or `increase_satisfaction`. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val goal: String? = null,
 )
