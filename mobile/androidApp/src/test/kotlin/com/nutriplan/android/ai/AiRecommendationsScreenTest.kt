@@ -27,6 +27,7 @@ import com.nutriplan.android.a11y.TestApplication
 import com.nutriplan.android.a11y.hasLiveRegion
 import com.nutriplan.android.screen.ai.AiRecommendationsScreenContent
 import com.nutriplan.android.screen.ai.AiRecommendationsTestTags
+import com.nutriplan.android.screen.ai.AiStateTestTags
 import com.nutriplan.android.screen.recipes.RecipeSearchTestTags
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.shared.ai.AiError
@@ -335,5 +336,58 @@ class AiRecommendationsScreenTest {
         renderAdding(answered(answer))
 
         compose.onNodeWithTag(AiRecommendationsTestTags.ADDED_NOTICE).assertDoesNotExist()
+    }
+
+    // --- AIA-606: loading, timeout and fallback states ---
+
+    @Test
+    fun `while asking it shows the status above placeholder cards`() {
+        render(AiRecommendationsUiState(isLoading = true, hasRequested = true))
+
+        compose.onNodeWithTag(AiStateTestTags.STATUS).assertIsDisplayed()
+        compose.onAllNodesWithTag(AiStateTestTags.SKELETON).assertCountEquals(3)
+    }
+
+    @Test
+    fun `a timeout says the AI took too long`() {
+        render(AiRecommendationsUiState(error = AiError.TIMEOUT, hasRequested = true))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.ERROR_BANNER).assert(hasText(str(R.string.error_ai_timeout)))
+    }
+
+    private fun renderWithFallback(state: AiRecommendationsUiState): Calls {
+        val calls = Calls()
+        compose.setContent {
+            NutriPlanTheme {
+                AiRecommendationsScreenContent(
+                    state = state,
+                    onMealTypeChange = {},
+                    onIngredientsChange = {},
+                    onRecommend = { calls.requests++ },
+                    onRecipeClick = {},
+                    onBack = {},
+                    onBrowseRecipes = { calls.backed++ },
+                )
+            }
+        }
+        return calls
+    }
+
+    @Test
+    fun `when the AI cannot answer it offers a retry and the recipe search without AI`() {
+        val calls = renderWithFallback(AiRecommendationsUiState(error = AiError.SERVER_PROBLEM, hasRequested = true))
+
+        compose.onNodeWithTag(AiStateTestTags.RETRY).performClick()
+        compose.onNodeWithText(str(R.string.ai_recommendations_browse_recipes)).performClick()
+
+        assertEquals(1, calls.requests)
+        assertEquals(1, calls.backed)
+    }
+
+    @Test
+    fun `an expired session offers no fallback`() {
+        renderWithFallback(AiRecommendationsUiState(error = AiError.SESSION_EXPIRED, hasRequested = true))
+
+        compose.onNodeWithTag(AiStateTestTags.FALLBACK).assertDoesNotExist()
     }
 }

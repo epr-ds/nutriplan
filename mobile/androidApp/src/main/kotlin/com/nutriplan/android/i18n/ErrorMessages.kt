@@ -23,6 +23,7 @@ import com.nutriplan.shared.recipes.RecipeListError
 @StringRes
 fun AiError.recommendationsMessageRes(): Int = when (this) {
     AiError.NETWORK -> R.string.error_ai_network
+    AiError.TIMEOUT -> R.string.error_ai_timeout
     AiError.SERVER_PROBLEM -> R.string.error_ai_server
     AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
     AiError.REJECTED -> R.string.error_ai_rejected
@@ -33,6 +34,7 @@ fun AiError.recommendationsMessageRes(): Int = when (this) {
 @StringRes
 fun AiError.optimizeMessageRes(): Int = when (this) {
     AiError.NETWORK -> R.string.error_optimize_network
+    AiError.TIMEOUT -> R.string.error_ai_timeout
     AiError.SERVER_PROBLEM -> R.string.error_ai_server
     AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
     AiError.NOT_FOUND -> R.string.error_optimize_not_found
@@ -44,6 +46,7 @@ fun AiError.optimizeMessageRes(): Int = when (this) {
 @StringRes
 fun AiError.acceptMessageRes(): Int = when (this) {
     AiError.NETWORK -> R.string.error_optimize_accept_network
+    AiError.TIMEOUT -> R.string.error_optimize_accept_timeout
     AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
     AiError.NOT_FOUND -> R.string.error_optimize_accept_not_found
     AiError.SERVER_PROBLEM, AiError.REJECTED, AiError.UNKNOWN -> R.string.error_optimize_accept_unknown
@@ -53,6 +56,7 @@ fun AiError.acceptMessageRes(): Int = when (this) {
 @StringRes
 fun AiError.analyzeMessageRes(): Int = when (this) {
     AiError.NETWORK -> R.string.error_analyze_meal_network
+    AiError.TIMEOUT -> R.string.error_ai_timeout
     AiError.SERVER_PROBLEM -> R.string.error_ai_server
     AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
     AiError.REJECTED -> R.string.error_analyze_meal_rejected

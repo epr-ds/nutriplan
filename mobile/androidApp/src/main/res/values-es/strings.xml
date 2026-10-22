@@ -406,4 +406,13 @@
     <string name="error_analyze_meal_network">No tienes conexión. Conéctate a internet para analizar la comida.</string>
     <string name="error_analyze_meal_rejected">No se pudo analizar esta descripción. Prueba a describir la comida de otra forma.</string>
     <string name="error_analyze_meal_unknown">Algo salió mal al analizar la comida. Inténtalo de nuevo.</string>
+
+    <!-- AIA-606: estados de carga, tiempo de espera y alternativa de la IA -->
+    <string name="ai_loading_started">Consultando al asesor de IA…</string>
+    <string name="ai_loading_slow">Sigue trabajando. Las respuestas de la IA pueden tardar unos segundos.</string>
+    <string name="ai_loading_very_slow">Está tardando más de lo habitual. Puedes esperar o volver a intentarlo más tarde.</string>
+    <string name="ai_retry">Reintentar</string>
+    <string name="ai_recommendations_browse_recipes">Buscar recetas por tu cuenta (sin IA)</string>
+    <string name="error_ai_timeout">El asesor de IA tardó demasiado en responder. Inténtalo de nuevo en un momento.</string>
+    <string name="error_optimize_accept_timeout">El servidor tardó demasiado, así que puede que algunos cambios no se guardaran. Acepta de nuevo para guardar el resto.</string>
 </resources>

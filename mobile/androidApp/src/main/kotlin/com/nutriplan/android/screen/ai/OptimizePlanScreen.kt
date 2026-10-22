@@ -59,6 +59,7 @@ import com.nutriplan.android.screen.plans.formatPlanDay
 import com.nutriplan.android.screen.recipes.formatQuantity
 import com.nutriplan.shared.ai.AiAdvisor
 import com.nutriplan.shared.ai.AiError
+import com.nutriplan.shared.ai.AiLoadingStage
 import com.nutriplan.shared.ai.MealServingChange
 import com.nutriplan.shared.ai.OptimizePlanUiState
 import com.nutriplan.shared.ai.OptimizePlanViewModel
@@ -115,6 +116,7 @@ fun OptimizePlanScreen(
         onAccept = { scope.launch { viewModel.accept() } },
         onRetryLoad = { scope.launch { viewModel.start(planId) } },
         onBack = onBack,
+        loadingStage = rememberAiLoadingStage(state.isOptimizing),
     )
 }
 
@@ -127,6 +129,8 @@ fun OptimizePlanScreenContent(
     onAccept: () -> Unit,
     onRetryLoad: () -> Unit,
     onBack: () -> Unit,
+    /** How long the optimization has been running (AIA-606). */
+    loadingStage: AiLoadingStage = AiLoadingStage.STARTED,
 ) {
     val planLoadingDescription = stringResource(R.string.cd_optimize_plan_loading)
     val loadingDescription = stringResource(R.string.cd_optimize_loading)
@@ -182,30 +186,23 @@ fun OptimizePlanScreenContent(
 
                 state.optimizeError?.let { error ->
                     item(key = "error") {
-                        Text(
-                            text = stringResource(error.optimizeMessageRes()),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier
-                                .testTag(OptimizePlanTestTags.ERROR_BANNER)
-                                .semantics { liveRegion = LiveRegionMode.Polite },
+                        AiErrorCard(
+                            message = stringResource(error.optimizeMessageRes()),
+                            onRetry = onOptimize,
+                            messageTestTag = OptimizePlanTestTags.ERROR_BANNER,
+                            retryEnabled = !state.isOptimizing,
                         )
                     }
                 }
 
                 if (state.isOptimizing) {
                     item(key = "loading") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                                .testTag(OptimizePlanTestTags.LOADING),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.semantics { contentDescription = loadingDescription },
-                            )
-                        }
+                        AiLoadingSkeleton(
+                            stage = loadingStage,
+                            description = loadingDescription,
+                            modifier = Modifier.testTag(OptimizePlanTestTags.LOADING),
+                            cards = 2,
+                        )
                     }
                 } else if (state.isUnchanged) {
                     item(key = "unchanged") {
