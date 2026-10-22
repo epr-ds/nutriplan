@@ -310,4 +310,26 @@
     <string name="pending_change_failed_title">No se pudo guardar tu cambio en la comida de %1$s</string>
     <string name="pending_change_remove_failed_title">No se pudo quitar la comida de %1$s</string>
     <string name="cd_pending_change_dismiss">Descartar el aviso sobre la comida de %1$s</string>
+
+    <!-- AIA-602: recomendaciones de IA -->
+    <string name="ai_recommendations_title">Recomendado para ti</string>
+    <string name="ai_recommendations_intro">Recetas elegidas según tus preferencias alimentarias. Elige una comida o añade lo que tienes en casa para afinarlas.</string>
+    <string name="ai_recommendations_meal_type_label">Comida</string>
+    <string name="ai_recommendations_meal_type_any">Todo el día</string>
+    <string name="ai_recommendations_ingredients_label">Ingredientes que tienes</string>
+    <string name="ai_recommendations_ingredients_hint">Sepáralos con comas, p. ej. arroz, pollo</string>
+    <string name="ai_recommendations_submit">Obtener recomendaciones</string>
+    <string name="cd_ai_recommendations_loading">Obteniendo recomendaciones</string>
+    <string name="ai_recommendations_reasoning_title">Por qué estas recetas</string>
+    <string name="ai_recommendations_alignment_title">Ajuste a tus objetivos</string>
+    <string name="ai_recommendations_alignment_score">%1$d/100</string>
+    <string name="ai_recommendations_recipes_heading">Recetas</string>
+    <string name="ai_recommendations_empty_title">Sin recomendaciones</string>
+    <string name="ai_recommendations_empty_description">Nada encaja con esta petición. Prueba otra comida u otros ingredientes.</string>
+    <string name="ai_disclaimer_fallback">Estas recomendaciones se generan automáticamente y son solo información general. No son consejo médico ni dietético. Consulta a un profesional cualificado antes de cambiar tu dieta, sobre todo si tienes una condición médica o alergias.</string>
+    <string name="error_ai_network">No tienes conexión. Conéctate a internet para obtener recomendaciones.</string>
+    <string name="error_ai_server">El servicio de recomendaciones tuvo un problema. Inténtalo más tarde.</string>
+    <string name="error_ai_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
+    <string name="error_ai_rejected">No se pudo procesar esta petición. Prueba con otros ingredientes.</string>
+    <string name="error_ai_unknown">Algo salió mal al obtener recomendaciones. Inténtalo de nuevo.</string>
 </resources>

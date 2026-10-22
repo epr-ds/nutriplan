@@ -312,4 +312,26 @@
     <string name="pending_change_failed_title">Your change to the %1$s meal couldn\'t be saved</string>
     <string name="pending_change_remove_failed_title">The %1$s meal couldn\'t be removed</string>
     <string name="cd_pending_change_dismiss">Dismiss the message about the %1$s meal</string>
+
+    <!-- AIA-602: AI recommendations -->
+    <string name="ai_recommendations_title">Recommended for you</string>
+    <string name="ai_recommendations_intro">Recipes picked for your dietary preferences. Choose a meal or add what you have at home to narrow them down.</string>
+    <string name="ai_recommendations_meal_type_label">Meal</string>
+    <string name="ai_recommendations_meal_type_any">Whole day</string>
+    <string name="ai_recommendations_ingredients_label">Ingredients you have</string>
+    <string name="ai_recommendations_ingredients_hint">Separate them with commas, e.g. rice, chicken</string>
+    <string name="ai_recommendations_submit">Get recommendations</string>
+    <string name="cd_ai_recommendations_loading">Getting recommendations</string>
+    <string name="ai_recommendations_reasoning_title">Why these recipes</string>
+    <string name="ai_recommendations_alignment_title">Fit with your targets</string>
+    <string name="ai_recommendations_alignment_score">%1$d/100</string>
+    <string name="ai_recommendations_recipes_heading">Recipes</string>
+    <string name="ai_recommendations_empty_title">No recommendations</string>
+    <string name="ai_recommendations_empty_description">Nothing fits this request. Try another meal or different ingredients.</string>
+    <string name="ai_disclaimer_fallback">These recommendations are generated automatically for general information only. They are not medical or dietary advice. Talk to a qualified professional before changing your diet, especially if you have a medical condition or allergies.</string>
+    <string name="error_ai_network">You\'re offline. Connect to the internet to get recommendations.</string>
+    <string name="error_ai_server">The recommendation service had a problem. Please try again later.</string>
+    <string name="error_ai_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="error_ai_rejected">This request couldn\'t be processed. Try different ingredients.</string>
+    <string name="error_ai_unknown">Something went wrong getting recommendations. Please try again.</string>
 </resources>
