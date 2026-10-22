@@ -191,6 +191,37 @@ jobs:
       - name: Test (pytest)
         run: pytest --ignore=tests/test_contract.py
 
+  # DPL-701: the QA harness -- the Mongo-backed suite (repositories, schema validation, indexes, the
+  # seeded fixtures and an integration pass through the API checked against the contract) runs
+  # against a throwaway MongoDB brought up by Testcontainers, with no service container and no
+  # DIETARY_MONGO_URL.
+  dietary-testcontainers:
+    name: Dietary ephemeral MongoDB (Testcontainers)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/dietary
+    env:
+      DIETARY_TEST_DB: mongo
+      # The runner is torn down after the job; skip Ryuk's privileged sidecar.
+      TESTCONTAINERS_RYUK_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/dietary/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Test against an ephemeral MongoDB container
+        run: >-
+          pytest -q tests/test_harness.py tests/test_meal_plan_repository.py
+          tests/test_recipe_repository.py tests/test_recipe_search_repository.py
+          tests/test_schema_validation.py tests/test_recipe_schema_validation.py
+          tests/test_indexes.py tests/test_recipe_indexes.py tests/test_favorite_repository.py
+          tests/test_recipe_seed.py
+
   notification-service:
     name: Notification service
     runs-on: ubuntu-latest

@@ -281,6 +281,23 @@ The schema-validation tests insert **raw dicts** (bypassing Pydantic) to exercis
 `$jsonSchema` validators directly; the index tests assert the expected `meal_plans` and `recipes`
 indexes exist.
 
+### Ephemeral MongoDB and seed fixtures (DPL-701)
+
+With `DIETARY_TEST_DB=mongo` the suite brings up its own throwaway MongoDB through
+[Testcontainers](https://testcontainers.com/) (it needs a Docker daemon, not a hand-managed
+database), so no `DIETARY_MONGO_URL` is needed:
+
+```bash
+DIETARY_TEST_DB=mongo pytest -q tests/test_harness.py
+```
+
+The `seeded_recipes` and `seeded_plan` fixtures (built by `tests/seed.py`) load the reference
+catalog and a one-week plan with three meals for `tests.seed.SEED_USER_ID`, written through the
+service's own code paths so the `$jsonSchema` validators accept them. Repository, API, provider
+contract and integration tests can all use them; `tests/test_harness.py` shows the integration
+use (the real API and Mongo repositories, with responses checked against the contract). CI runs
+the Mongo-backed tests this way in the `Dietary ephemeral MongoDB (Testcontainers)` job.
+
 ### Provider contract tests (DPL-702)
 
 `tests/test_contract.py` drives every implemented operation to each response it documents (happy
