@@ -31,7 +31,11 @@ import kotlin.math.floor
  * the plan's days; progress compares that average with the plan's targets: under 100% is under,
  * exactly 100% on target, above it over). Responses follow `contracts/dietary.openapi.yaml`.
  */
-class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
+class FakeDietaryBackend(
+    recipes: List<CatalogRecipe>,
+    /** When given, AI Advisor requests are answered by it (AIA-705); the app uses one HTTP client. */
+    private val ai: FakeAiAdvisor? = null,
+) {
 
     /** A catalog recipe with its per-serving nutrition. */
     data class CatalogRecipe(
@@ -42,6 +46,8 @@ class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
         val carbs: Double,
         val fat: Double,
         val sugar: Double,
+        val ingredients: List<String> = listOf(name),
+        val dietaryTypes: List<String> = listOf("omnivore"),
     )
 
     private class Meal(val id: String, val mealType: String, val recipe: CatalogRecipe, val servings: Double) {
@@ -71,6 +77,10 @@ class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
     val engine: MockEngine = MockEngine { request -> handle(request) }
 
     private fun MockRequestHandleScope.handle(request: HttpRequestData): HttpResponseData {
+        if (ai != null && ai.handles(request.url.encodedPath)) {
+            requests += "${request.method.value} ${request.url.encodedPath}"
+            return with(ai) { handle(request, ::recipeJson) }
+        }
         val path = request.url.encodedPath.removePrefix(PREFIX)
         val method = request.method.value
         requests += "$method $path"
@@ -124,6 +134,9 @@ class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
         plan.meals += meal
         return respond(mealJson(meal, withRecipe = true).toString(), HttpStatusCode.Created, jsonHeaders)
     }
+
+    /** The recipes of the meals in the plan [planId], in the order they were added. */
+    fun mealRecipes(planId: String): List<CatalogRecipe> = plans[planId]?.meals?.map { it.recipe }.orEmpty()
 
     // --- nutrition, the way the service computes it ---
 
@@ -199,10 +212,10 @@ class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
         put("nutritionalInfo", nutritionJson(mealNutrition(meal)))
     }
 
-    private fun recipeJson(recipe: CatalogRecipe) = buildJsonObject {
+    fun recipeJson(recipe: CatalogRecipe): JsonObject = buildJsonObject {
         put("id", recipe.id)
         put("name", recipe.name)
-        put("ingredients", JsonArray(listOf(buildJsonObject { put("name", recipe.name) })))
+        put("ingredients", JsonArray(recipe.ingredients.map { buildJsonObject { put("name", it) } }))
         put("instructions", JsonArray(listOf(JsonPrimitive("Prepare and serve."))))
         put("servings", 1)
         put(
@@ -217,7 +230,7 @@ class FakeDietaryBackend(recipes: List<CatalogRecipe>) {
                 ),
             ),
         )
-        put("dietaryTypes", JsonArray(listOf(JsonPrimitive("omnivore"))))
+        put("dietaryTypes", JsonArray(recipe.dietaryTypes.map { JsonPrimitive(it) }))
     }
 
     private fun nutritionJson(values: Map<String, Double>): JsonObject = buildJsonObject {
