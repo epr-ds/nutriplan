@@ -2,6 +2,7 @@ package com.nutriplan.android.i18n
 
 import androidx.annotation.StringRes
 import com.nutriplan.android.R
+import com.nutriplan.shared.ai.AiError
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.data.local.PendingFailure
@@ -17,6 +18,16 @@ import com.nutriplan.shared.planning.PlanFieldError
 import com.nutriplan.shared.recipes.FavoriteError
 import com.nutriplan.shared.recipes.RecipeDetailError
 import com.nutriplan.shared.recipes.RecipeListError
+
+/** AIA-602: message for AI recommendations that could not be fetched. */
+@StringRes
+fun AiError.recommendationsMessageRes(): Int = when (this) {
+    AiError.NETWORK -> R.string.error_ai_network
+    AiError.SERVER_PROBLEM -> R.string.error_ai_server
+    AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
+    AiError.REJECTED -> R.string.error_ai_rejected
+    AiError.NOT_FOUND, AiError.UNKNOWN -> R.string.error_ai_unknown
+}
 
 /** DPL-407: why a meal added while offline could not be added in the end. */
 @StringRes

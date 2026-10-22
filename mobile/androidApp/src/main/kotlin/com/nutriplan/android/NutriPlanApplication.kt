@@ -4,6 +4,7 @@ import android.app.Application
 import com.nutriplan.android.analytics.FirebaseAnalyticsTracker
 import com.nutriplan.android.auth.AndroidOAuthTokenProvider
 import com.nutriplan.android.sync.WorkManagerSyncScheduler
+import com.nutriplan.shared.ai.AiAdvisor
 import com.nutriplan.shared.auth.OAuthTokenProvider
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.ApiEnvironment
@@ -20,6 +21,7 @@ import com.nutriplan.shared.onboarding.OnboardingDraftStorage
 import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
+import java.util.Locale
 
 /**
  * NutriPlan Android application entry point.
@@ -56,6 +58,8 @@ class NutriPlanApplication : Application() {
                 single<OAuthTokenProvider> {
                     AndroidOAuthTokenProvider(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID)
                 }
+                // AIA-602: AI answers (reasoning, disclaimer) in the device language.
+                factory { AiAdvisor(repository = get(), language = { Locale.getDefault().language }) }
             },
             cacheModule(DatabaseDriverFactory(applicationContext)),
         )

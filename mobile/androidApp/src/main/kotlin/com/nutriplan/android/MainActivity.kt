@@ -346,7 +346,13 @@ class MainNavigationScreens(
 
     @Composable
     override fun AiRecommendationsScreen(onNavigate: (Any) -> Unit) {
-        AiRecommendationsScreenContent(onNavigate)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.ai.AiRecommendationsScreen(
+            onBack = { navController.popBackStack() },
+            // Pushed on top of the recommendations so Back returns to them.
+            onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -504,16 +510,6 @@ private fun AiMealAnalysisScreenContent(
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("AI Analysis", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun AiRecommendationsScreenContent(onNavigate: (Any) -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("AI Recommendations", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
