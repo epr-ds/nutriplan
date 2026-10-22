@@ -6,7 +6,6 @@
 package com.nutriplan.android.screen.ai
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -58,6 +55,7 @@ import com.nutriplan.android.i18n.mealTypeLabelRes
 import com.nutriplan.android.i18n.recommendationsMessageRes
 import com.nutriplan.android.screen.recipes.RecipeCard
 import com.nutriplan.shared.ai.AiError
+import com.nutriplan.shared.ai.AiLoadingStage
 import com.nutriplan.shared.ai.AiRecommendationsUiState
 import com.nutriplan.shared.ai.AiRecommendationsViewModel
 import com.nutriplan.shared.data.model.NutritionalAlignment
@@ -98,6 +96,8 @@ fun AiRecommendationsScreen(
     onAddToPlan: (recipeId: String, mealType: String?) -> Unit,
     mealAdded: Boolean = false,
     onMealAddedShown: () -> Unit = {},
+    /** AIA-606: the non-AI way to find recipes, offered when the AI cannot answer. */
+    onBrowseRecipes: (() -> Unit)? = null,
 ) {
     // Kept while the user adds a recommendation to a plan, so coming back does not ask again.
     val viewModel = koinInjectRetained<AiRecommendationsViewModel>()
@@ -121,6 +121,8 @@ fun AiRecommendationsScreen(
         onBack = onBack,
         onAddToPlan = { recipe -> onAddToPlan(recipe.id, state.resultMealType) },
         mealAdded = mealAdded,
+        loadingStage = rememberAiLoadingStage(state.isLoading),
+        onBrowseRecipes = onBrowseRecipes,
     )
 }
 
@@ -137,6 +139,10 @@ fun AiRecommendationsScreenContent(
     onAddToPlan: ((Recipe) -> Unit)? = null,
     /** Confirms that a recommendation was just added to a plan. */
     mealAdded: Boolean = false,
+    /** How long the request has been running (AIA-606). */
+    loadingStage: AiLoadingStage = AiLoadingStage.STARTED,
+    /** Offered next to the retry when the AI cannot answer (AIA-606). */
+    onBrowseRecipes: (() -> Unit)? = null,
 ) {
     val loadingDescription = stringResource(R.string.cd_ai_recommendations_loading)
     val result = state.result
@@ -194,13 +200,15 @@ fun AiRecommendationsScreenContent(
             val error = state.error
             if (error != null) {
                 item(key = "error") {
-                    Text(
-                        text = stringResource(error.recommendationsMessageRes()),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .testTag(AiRecommendationsTestTags.ERROR_BANNER)
-                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    AiErrorCard(
+                        message = stringResource(error.recommendationsMessageRes()),
+                        onRetry = onRecommend,
+                        messageTestTag = AiRecommendationsTestTags.ERROR_BANNER,
+                        retryEnabled = !state.isLoading,
+                        // The session error sends the user to sign in; browsing would not help there.
+                        fallbackLabel = stringResource(R.string.ai_recommendations_browse_recipes)
+                            .takeIf { error != AiError.SESSION_EXPIRED },
+                        onFallback = onBrowseRecipes,
                     )
                 }
             }
@@ -208,17 +216,11 @@ fun AiRecommendationsScreenContent(
             // Also the moment before the first request has started: the screen asks on opening.
             if (state.isLoading || (!state.hasRequested && error == null)) {
                 item(key = "loading") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                            .testTag(AiRecommendationsTestTags.LOADING),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.semantics { contentDescription = loadingDescription },
-                        )
-                    }
+                    AiLoadingSkeleton(
+                        stage = loadingStage,
+                        description = loadingDescription,
+                        modifier = Modifier.testTag(AiRecommendationsTestTags.LOADING),
+                    )
                 }
             } else if (result != null) {
                 result.reasoning?.takeIf { it.isNotBlank() }?.let { reasoning ->

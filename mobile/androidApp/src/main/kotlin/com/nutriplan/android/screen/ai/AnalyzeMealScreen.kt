@@ -3,7 +3,6 @@
 package com.nutriplan.android.screen.ai
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,7 +20,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,11 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -51,6 +47,7 @@ import com.nutriplan.android.di.koinInjectRetained
 import com.nutriplan.android.i18n.analyzeMessageRes
 import com.nutriplan.android.screen.recipes.formatQuantity
 import com.nutriplan.shared.ai.AiError
+import com.nutriplan.shared.ai.AiLoadingStage
 import com.nutriplan.shared.ai.AnalyzeMealUiState
 import com.nutriplan.shared.ai.AnalyzeMealViewModel
 import com.nutriplan.shared.data.model.NutritionalInfo
@@ -94,6 +91,7 @@ fun AnalyzeMealScreen(
         onDescriptionChange = viewModel::onDescriptionChange,
         onAnalyze = { scope.launch { viewModel.analyze() } },
         onBack = onBack,
+        loadingStage = rememberAiLoadingStage(state.isAnalyzing),
     )
 }
 
@@ -104,6 +102,8 @@ fun AnalyzeMealScreenContent(
     onDescriptionChange: (String) -> Unit,
     onAnalyze: () -> Unit,
     onBack: () -> Unit,
+    /** How long the request has been running (AIA-606). */
+    loadingStage: AiLoadingStage = AiLoadingStage.STARTED,
 ) {
     val loadingDescription = stringResource(R.string.cd_analyze_meal_loading)
     val result = state.result
@@ -140,30 +140,23 @@ fun AnalyzeMealScreenContent(
 
             state.error?.let { error ->
                 item(key = "error") {
-                    Text(
-                        text = stringResource(error.analyzeMessageRes()),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .testTag(AnalyzeMealTestTags.ERROR_BANNER)
-                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    AiErrorCard(
+                        message = stringResource(error.analyzeMessageRes()),
+                        onRetry = onAnalyze,
+                        messageTestTag = AnalyzeMealTestTags.ERROR_BANNER,
+                        retryEnabled = !state.isAnalyzing,
                     )
                 }
             }
 
             if (state.isAnalyzing) {
                 item(key = "loading") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                            .testTag(AnalyzeMealTestTags.LOADING),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.semantics { contentDescription = loadingDescription },
-                        )
-                    }
+                    AiLoadingSkeleton(
+                        stage = loadingStage,
+                        description = loadingDescription,
+                        modifier = Modifier.testTag(AnalyzeMealTestTags.LOADING),
+                        cards = 2,
+                    )
                 }
             } else if (result != null) {
                 item(key = "nutrition") { NutritionCard(result.nutritionalInfo, state.analyzedDescription) }

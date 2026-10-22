@@ -10,6 +10,8 @@ import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.OptimizePlanRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.repository.AiRepository
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
@@ -175,6 +177,23 @@ class AiAdvisorTest {
             ai.failure = failure
             assertEquals(AiResult.Failure(error), advisor.optimizePlan("p1"), "for $failure")
             assertEquals(AiResult.Failure(error), advisor.analyzeMeal("Soup"), "for $failure")
+            assertEquals(AiResult.Failure(error), advisor.recommend(null), "for $failure")
+        }
+    }
+
+    @Test
+    fun `a slow answer is a timeout not being offline`() = runTest {
+        val timedOut = HttpRequestTimeoutException("https://x/ai", 30_000)
+        val expected = mapOf<Throwable, AiError>(
+            ApiException.NetworkError(errorCause = timedOut) to AiError.TIMEOUT,
+            timedOut to AiError.TIMEOUT,
+            ApiException.HttpError(504, null) to AiError.TIMEOUT,
+            ApiException.NetworkError(errorCause = ConnectTimeoutException("no route")) to AiError.NETWORK,
+            ApiException.NetworkError() to AiError.NETWORK,
+        )
+
+        expected.forEach { (failure, error) ->
+            ai.failure = failure
             assertEquals(AiResult.Failure(error), advisor.recommend(null), "for $failure")
         }
     }
