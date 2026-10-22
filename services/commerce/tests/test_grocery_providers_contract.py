@@ -92,4 +92,5 @@ def test_contract_documents_authenticated_providers_operation():
 def test_contract_provider_response_shape():
     schema = _spec_or_skip()["components"]["schemas"]["ProviderResponse"]
     assert set(schema["properties"]) == {"id", "name", "type", "logoUrl", "estimatedDelivery"}
-    assert set(schema["properties"]["type"]["enum"]) == {"dark_kitchen", "grocery"}
+    # ``null`` is listed because the type is nullable (an order's provider may be a bare id).
+    assert set(schema["properties"]["type"]["enum"]) == {"dark_kitchen", "grocery", None}

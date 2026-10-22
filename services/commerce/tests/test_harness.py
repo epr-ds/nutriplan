@@ -11,11 +11,9 @@ API and SQL repositories -- only the token check is stubbed -- whose responses a
 
 from __future__ import annotations
 
-import json
 import os
 import uuid
 from pathlib import Path
-from typing import Any
 
 import pytest
 from openapi_core import OpenAPI
@@ -166,25 +164,12 @@ def api(client):
     app.dependency_overrides.pop(get_token_verifier, None)
 
 
-def _without_nulls(value: Any) -> Any:
-    """Drop ``null`` members, which the service emits for absent optional fields.
-
-    The contract leaves those fields optional but not ``nullable``; whether the service should omit
-    them or the contract should allow ``null`` is for the provider contract tests (COM-802) to
-    settle. The harness checks everything else -- every member present, its type, format and enum.
-    """
-    if isinstance(value, dict):
-        return {key: _without_nulls(item) for key, item in value.items() if item is not None}
-    if isinstance(value, list):
-        return [_without_nulls(item) for item in value]
-    return value
-
-
 def _assert_conforms(openapi: OpenAPI, path: str, response) -> None:
+    # Strict: the contract documents which members may be ``null`` (settled in COM-802).
     openapi.validate_response(
         MockRequest(host_url=HOST, method="get", path=path),
         MockResponse(
-            data=json.dumps(_without_nulls(response.json())).encode(),
+            data=response.content,
             status_code=response.status_code,
             content_type="application/json",
         ),

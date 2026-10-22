@@ -153,8 +153,11 @@ jobs:
           ruff format --check .
       - name: Validate migrations (alembic upgrade)
         run: alembic upgrade head
+      # COM-802: the service's real responses must conform to contracts/commerce.openapi.yaml.
+      - name: Provider contract tests (vs OpenAPI)
+        run: pytest tests/test_contract.py -q
       - name: Test (pytest)
-        run: pytest
+        run: pytest --ignore=tests/test_contract.py
 
   # COM-801: the QA harness -- the whole Commerce suite (including the seeded fixtures and an
   # integration pass through the API checked against the contract) runs against a clean, throwaway

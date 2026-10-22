@@ -75,7 +75,10 @@ def test_contract_cancel_documents_optional_refund_body_and_422():
 def test_contract_order_response_has_refund():
     schemas = _spec()["components"]["schemas"]
     refund = schemas["OrderResponse"]["properties"]["refund"]
-    assert refund["$ref"].split("/")[-1] == "RefundResponse"
+    # Nullable (COM-802): ``null`` until a paid order was cancelled and refunded.
+    ref, null = refund["anyOf"]
+    assert ref["$ref"].split("/")[-1] == "RefundResponse"
+    assert null["nullable"] is True
 
 
 def test_contract_publishes_refund_schemas():
