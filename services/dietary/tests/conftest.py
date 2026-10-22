@@ -1,16 +1,45 @@
 """Test configuration for the Dietary service.
 
 The model / repository / schema-validation tests need a real MongoDB (there is no embedded
-equivalent for ``$jsonSchema`` validation and indexes). They connect to ``DIETARY_MONGO_URL``
-using a throwaway database, and any test requesting the ``mongo_db`` fixture is **skipped** with
-a clear message when no server is reachable — so a bare in-image run still passes the Mongo-free
-tests (health). In CI and the compose ``dietary-test`` runner a Mongo service is always present.
+equivalent for ``$jsonSchema`` validation and indexes). Where it comes from, in order:
+
+1. An ephemeral MongoDB started by **Testcontainers** when ``DIETARY_TEST_DB=mongo`` (DPL-701, the
+   QA harness): a throwaway server comes up for the run and goes away after it, no hand-managed
+   database needed. ``DB_SOURCE`` becomes ``"testcontainers"``.
+2. ``DIETARY_MONGO_URL`` from the environment (CI's service container, the compose
+   ``dietary-test`` runner). ``DB_SOURCE`` becomes ``"env"``.
+3. ``mongodb://localhost:27017`` otherwise. ``DB_SOURCE`` becomes ``"default"``.
+
+Each run uses a throwaway database name, and any test requesting the ``mongo_db`` fixture is
+**skipped** with a clear message when no server is reachable — so a bare in-image run still passes
+the Mongo-free tests (health). The ``seeded_recipes`` / ``seeded_plan`` fixtures (built by
+``tests/seed.py``) give every Mongo-backed test the same plans and recipes.
 """
 
+import atexit
 import os
 import uuid
 
-# Must be set before importing application modules (settings are read at import time).
+_requested = os.environ.get("DIETARY_TEST_DB", "").lower()
+
+
+def _start_mongo_container() -> str:
+    """Start an ephemeral MongoDB via Testcontainers and return its connection URL."""
+    from testcontainers.mongodb import MongoDbContainer
+
+    container = MongoDbContainer("mongo:7")
+    container.start()
+    atexit.register(container.stop)
+    return container.get_connection_url()
+
+
+if _requested in {"mongo", "testcontainers"}:
+    # Must be set before importing application modules (settings are read at import time).
+    os.environ["DIETARY_MONGO_URL"] = _start_mongo_container()
+    DB_SOURCE = "testcontainers"
+else:
+    DB_SOURCE = "env" if os.environ.get("DIETARY_MONGO_URL") else "default"
+
 os.environ.setdefault("DIETARY_MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DIETARY_MONGO_DB", f"dietary_test_{uuid.uuid4().hex}")
 
@@ -26,6 +55,7 @@ from app.db.mongo import (  # noqa: E402
     ensure_recipes_collection,
 )
 from app.main import app  # noqa: E402
+from tests.seed import seed_catalog, seed_plan  # noqa: E402
 
 
 def _mongo_available() -> bool:
@@ -39,6 +69,17 @@ def _mongo_available() -> bool:
 
 
 _MONGO_UP = _mongo_available()
+
+if DB_SOURCE == "testcontainers" and not _MONGO_UP:
+    # The harness was asked for explicitly: a container that cannot be reached is a failure,
+    # not a reason to skip every Mongo-backed test.
+    raise RuntimeError(f"The Testcontainers MongoDB at {settings.mongo_url} is not reachable")
+
+
+@pytest.fixture
+def db_source() -> str:
+    """Where the database came from: ``"testcontainers"``, ``"env"`` or ``"default"``."""
+    return DB_SOURCE
 
 
 @pytest.fixture
@@ -66,3 +107,16 @@ def mongo_db():
     finally:
         client.drop_database(settings.mongo_db)
         client.close()
+
+
+@pytest.fixture
+def seeded_recipes(mongo_db):
+    """The reference recipe catalog, loaded into ``mongo_db`` (DPL-701 fixtures)."""
+    return seed_catalog(mongo_db)
+
+
+@pytest.fixture
+def seeded_plan(mongo_db, seeded_recipes):
+    """A one-week draft plan with three meals for ``tests.seed.SEED_USER_ID``, stored in
+    ``mongo_db`` (DPL-701 fixtures)."""
+    return seed_plan(mongo_db, seeded_recipes)
