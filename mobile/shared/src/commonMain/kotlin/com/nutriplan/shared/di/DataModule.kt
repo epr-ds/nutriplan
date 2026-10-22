@@ -32,6 +32,8 @@ val dataModule = module {
     single<AiRepository> { AiRepositoryImpl() }
     // AIA-601: the AI use cases with typed results.
     factory { AiAdvisor(repository = get()) }
+    // COM-502: the Commerce client, on the shared HTTP client (gateway of the active ApiConfig
+    // environment + the session's bearer token).
     single<CommerceRepository> { CommerceRepositoryImpl() }
     single<NotificationRepository> { NotificationRepositoryImpl() }
 }
