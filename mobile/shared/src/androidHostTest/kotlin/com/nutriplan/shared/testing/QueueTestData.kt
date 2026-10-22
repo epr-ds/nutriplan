@@ -16,6 +16,7 @@ import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.PendingMealSync
+import com.nutriplan.shared.data.repository.SyncScheduler
 import kotlinx.coroutines.CompletableDeferred
 
 /** A database with the plan cache and the queue on it, the way the app wires them. */
@@ -23,7 +24,17 @@ class QueueFixture(val database: NutriPlanDatabase = newDatabase()) {
     val cache = MealPlanCache(database)
     val store = PendingMealStore(database)
     val remote = FakePlanRemote()
-    val sync = PendingMealSync(remote, store, cache)
+    val scheduler = RecordingScheduler()
+    val sync = PendingMealSync(remote, store, cache, scheduler)
+}
+
+/** A [SyncScheduler] that only counts how often a background sync was asked for. */
+class RecordingScheduler : SyncScheduler {
+    var requests = 0
+
+    override fun requestSync() {
+        requests++
+    }
 }
 
 /** A recipe with nutrition, for a meal that is added while offline. */

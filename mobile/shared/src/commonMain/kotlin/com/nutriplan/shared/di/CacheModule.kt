@@ -12,7 +12,9 @@ import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRemoteImpl
 import com.nutriplan.shared.data.repository.FavoriteRecipesRepository
+import com.nutriplan.shared.data.repository.MealQueueFlusher
 import com.nutriplan.shared.data.repository.PendingMealSync
+import com.nutriplan.shared.data.repository.SyncScheduler
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
 import com.nutriplan.shared.session.SignOut
 import org.koin.core.module.Module
@@ -38,7 +40,16 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get())
     }
-    single { PendingMealSync(remote = DietaryRepositoryImpl(), store = get(), cache = get()) }
+    single {
+        PendingMealSync(
+            remote = DietaryRepositoryImpl(),
+            store = get(),
+            cache = get(),
+            // The platform module may provide a scheduler that sends the queue in the background.
+            scheduler = getOrNull<SyncScheduler>() ?: SyncScheduler.None,
+        )
+    }
+    single<MealQueueFlusher> { get<PendingMealSync>() }
     single { FavoriteRecipesRepository(remote = FavoriteRecipesRemoteImpl(), cache = get()) }
     // One instance for the whole app: a heart toggled on one screen is already filled on the others.
     single { FavoriteRecipesViewModel(repository = get()) }

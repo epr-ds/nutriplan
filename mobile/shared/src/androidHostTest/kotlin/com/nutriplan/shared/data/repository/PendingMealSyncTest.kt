@@ -275,4 +275,60 @@ class PendingMealSyncTest {
         assertEquals(FlushResult(added = 0, failed = 0, waiting = 0), secondResult, "the queue was already empty")
         assertNotNull(first)
     }
+
+    // --- background sync (DPL-407 follow-up) ---
+
+    @Test
+    fun `queueing a meal asks the platform for a background sync`() {
+        queue()
+
+        assertEquals(1, fixture.scheduler.requests)
+    }
+
+    @Test
+    fun `every queued meal asks again, which is harmless because requests are merged`() {
+        queue("a")
+        queue("b")
+
+        assertEquals(2, fixture.scheduler.requests)
+    }
+
+    @Test
+    fun `flushing and reading the queue do not ask for a sync`() = runTest {
+        queue()
+        val asked = fixture.scheduler.requests
+
+        sync.flush()
+        sync.hasWaiting()
+        sync.failures()
+
+        assertEquals(asked, fixture.scheduler.requests)
+    }
+
+    @Test
+    fun `an explicit request is passed on, for example when the app starts`() {
+        sync.requestSync()
+
+        assertEquals(1, fixture.scheduler.requests)
+    }
+
+    @Test
+    fun `without a platform scheduler queueing still works`() {
+        val plain = PendingMealSync(remote, store, fixture.cache)
+
+        plain.queueAdd("p1", addRequest(), null, queuedRecipe())
+        plain.requestSync()
+
+        assertTrue(plain.hasWaiting())
+    }
+
+    @Test
+    fun `the sync can be driven through the flusher interface the background job uses`() = runTest {
+        queue()
+        val flusher: MealQueueFlusher = sync
+
+        val result = flusher.flush()
+
+        assertEquals(1, result.added)
+    }
 }

@@ -22,6 +22,7 @@ coil = "2.7.0"
 junit = "4.13.2"
 robolectric = "4.17"
 androidxTestExtJunit = "1.2.1"
+androidxWork = "2.10.0"
 
 androidMinSdk = "24"
 androidTargetSdk = "34"
@@ -66,6 +67,10 @@ compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+
+# DPL-407: background send of the offline queue
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidxWork" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidxWork" }
 
 # Koin (dependency injection)
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
