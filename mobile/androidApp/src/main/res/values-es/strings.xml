@@ -332,4 +332,12 @@
     <string name="error_ai_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
     <string name="error_ai_rejected">No se pudo procesar esta petición. Prueba con otros ingredientes.</string>
     <string name="error_ai_unknown">Algo salió mal al obtener recomendaciones. Inténtalo de nuevo.</string>
+
+    <!-- AIA-604: añadir una recomendación a un plan -->
+    <string name="ai_recommendations_add_to_plan">Añadir al plan</string>
+    <string name="cd_ai_recommendations_add_to_plan">Añadir %1$s a un plan</string>
+    <string name="ai_recommendations_added">Añadida a tu plan.</string>
+    <string name="pick_plan_title">¿A qué plan la añades?</string>
+    <string name="pick_plan_empty_title">No hay ningún plan al que añadirla</string>
+    <string name="pick_plan_empty_description">Crea primero un plan de comidas desde Planes de comidas y luego añade la receta.</string>
 </resources>

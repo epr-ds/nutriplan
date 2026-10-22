@@ -96,3 +96,12 @@ class MealPlanListViewModel(
         }
     }
 }
+
+/**
+ * AIA-604: the plans a meal can be added to, i.e. still being planned (`draft`) or under way
+ * (`active`); `completed` and `saved` plans are finished.
+ */
+val MealPlanListUiState.plansOpenForMeals: List<MealPlanSummary>
+    get() = plans.filter { it.status.lowercase() in OPEN_FOR_MEALS }
+
+private val OPEN_FOR_MEALS = setOf("draft", "active")

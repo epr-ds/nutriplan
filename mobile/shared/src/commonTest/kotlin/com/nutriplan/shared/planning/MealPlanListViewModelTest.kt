@@ -188,4 +188,22 @@ class MealPlanListViewModelTest {
         assertFalse(viewModel.state.value.isLoading)
         assertNull(viewModel.state.value.error)
     }
+
+    @Test
+    fun `only draft and active plans take a new meal`() {
+        val state = MealPlanListUiState(
+            plans = listOf("draft", "ACTIVE", "completed", "saved").mapIndexed { index, status ->
+                MealPlanSummary(
+                    id = "p$index",
+                    name = status,
+                    startDate = "2026-10-01",
+                    endDate = "2026-10-07",
+                    status = status,
+                )
+            },
+            isLoading = false,
+        )
+
+        assertEquals(listOf("p0", "p1"), state.plansOpenForMeals.map { it.id })
+    }
 }

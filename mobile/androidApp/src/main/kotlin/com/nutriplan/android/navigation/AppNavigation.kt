@@ -1,5 +1,6 @@
 package com.nutriplan.android.navigation
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
@@ -159,6 +160,18 @@ fun AppNavigationGraph(
             screens.AddMealScreen(
                 planId = route.planId,
                 recipeId = route.recipeId,
+                mealType = route.mealType,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Choose the plan to add an AI recommendation to (AIA-604)
+        composable<Route.PickPlan> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.PickPlan>()
+            analyticsTracker?.logScreenView("pick_plan", "PickPlanScreen")
+            screens.PickPlanScreen(
+                recipeId = route.recipeId,
+                mealType = route.mealType,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -191,10 +204,11 @@ fun AppNavigationGraph(
         }
 
         // AI recommendations
-        composable<Route.AiRecommendations> {
+        composable<Route.AiRecommendations> { backStackEntry ->
             analyticsTracker?.logScreenView("ai_recommendations", "AiRecommendationsScreen")
             screens.AiRecommendationsScreen(
                 onNavigate = { route -> navigate(navController, route) },
+                savedState = backStackEntry.savedStateHandle,
             )
         }
 
@@ -352,6 +366,12 @@ interface AppNavigationScreens {
     @Composable fun AddMealScreen(
         planId: String,
         recipeId: String,
+        mealType: String?,
+        onBack: () -> Unit,
+    )
+    @Composable fun PickPlanScreen(
+        recipeId: String,
+        mealType: String?,
         onBack: () -> Unit,
     )
     @Composable fun RecipeDetailScreen(
@@ -362,7 +382,7 @@ interface AppNavigationScreens {
         onNavigate: (Any) -> Unit,
         onResult: (Resource<*>) -> Unit,
     )
-    @Composable fun AiRecommendationsScreen(onNavigate: (Any) -> Unit)
+    @Composable fun AiRecommendationsScreen(onNavigate: (Any) -> Unit, savedState: SavedStateHandle)
     @Composable fun OrderListScreen(
         onNavigate: (Any) -> Unit,
         onOrderClick: (String) -> Unit,

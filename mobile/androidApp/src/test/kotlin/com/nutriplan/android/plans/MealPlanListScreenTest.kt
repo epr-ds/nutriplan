@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -66,6 +67,7 @@ class MealPlanListScreenTest {
         onPlanClick: (String) -> Unit = {},
         onCreatePlan: () -> Unit = {},
         onBack: (() -> Unit)? = null,
+        isPicking: Boolean = false,
     ) {
         compose.setContent {
             NutriPlanTheme {
@@ -76,6 +78,7 @@ class MealPlanListScreenTest {
                     onPlanClick = onPlanClick,
                     onCreatePlan = onCreatePlan,
                     onBack = onBack,
+                    isPicking = isPicking,
                 )
             }
         }
@@ -179,5 +182,44 @@ class MealPlanListScreenTest {
         render(loaded("a"), onBack = null)
 
         compose.onNodeWithContentDescription(str(R.string.cd_meal_plans_back)).assertDoesNotExist()
+    }
+
+    // --- AIA-604: choosing the plan to add a recipe to ---
+
+    @Test
+    fun `picking lists only the plans that still take meals`() {
+        val picked = mutableListOf<String>()
+        render(
+            MealPlanListUiState(
+                plans = listOf(plan("a"), plan("b").copy(status = "completed"), plan("c").copy(status = "draft")),
+                isLoading = false,
+            ),
+            onPlanClick = { picked += it },
+            isPicking = true,
+        )
+
+        compose.onNode(isHeading() and hasText(str(R.string.pick_plan_title))).assertIsDisplayed()
+        compose.onNodeWithText("Plan b").assertDoesNotExist()
+        compose.onNodeWithText("Plan c").performClick()
+
+        assertEquals(listOf("c"), picked)
+    }
+
+    @Test
+    fun `picking offers no plan creation`() {
+        render(loaded("a"), isPicking = true)
+
+        compose.onNodeWithTag(MealPlanListTestTags.CREATE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `picking with no open plan explains where to create one`() {
+        render(
+            MealPlanListUiState(plans = listOf(plan("a").copy(status = "completed")), isLoading = false),
+            isPicking = true,
+        )
+
+        compose.onNodeWithText(str(R.string.pick_plan_empty_title)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.meal_plans_empty_action)).assertDoesNotExist()
     }
 }

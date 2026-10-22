@@ -89,12 +89,14 @@ fun AddMealScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
     onSessionExpired: () -> Unit,
+    /** Chosen in advance when known (an AI recommendation for one meal, AIA-604). */
+    mealType: String? = null,
 ) {
     val viewModel = koinInject<AddMealViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(viewModel, planId, recipeId) { viewModel.start(planId, recipeId) }
+    LaunchedEffect(viewModel, planId, recipeId) { viewModel.start(planId, recipeId, mealType) }
     LaunchedEffect(state.isDone) { if (state.isDone) onDone() }
     LaunchedEffect(state.error, state.loadError) {
         if (state.error == AddMealError.SESSION_EXPIRED || state.loadError == AddMealError.SESSION_EXPIRED) {
@@ -108,7 +110,7 @@ fun AddMealScreen(
         onServingsChange = viewModel::onServingsChange,
         onDayChange = viewModel::onDayChange,
         onSubmit = { scope.launch { viewModel.save() } },
-        onRetryLoad = { scope.launch { viewModel.start(planId, recipeId) } },
+        onRetryLoad = { scope.launch { viewModel.start(planId, recipeId, mealType) } },
         onSkipDay = onDone,
         onBack = onBack,
     )

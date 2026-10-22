@@ -325,4 +325,12 @@ class RouteDeepLinkTest {
         assertNull(Route.fromNotificationData(mapOf("deepLink" to "https://example.com")))
         assertNull(Route.fromNotificationData(mapOf("deepLink" to "nutriplan://unknown")))
     }
+
+    @Test
+    fun `choosing a plan for a recommendation cannot be opened from outside`() {
+        val route = Route.PickPlan(recipeId = "r1", mealType = "dinner")
+
+        assertEquals("nutriplan://add-to-plan/r1", route.toDeepLink())
+        assertNull(Route.fromDeepLink(route.toDeepLink()))
+    }
 }

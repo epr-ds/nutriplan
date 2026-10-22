@@ -390,4 +390,41 @@ class AddMealViewModelTest {
 
         assertTrue(repository.added.isEmpty())
     }
+
+    // --- AIA-604: a meal type known in advance ---
+
+    @Test
+    fun `a meal type given at start is already chosen`() = runTest {
+        viewModel.start("p1", "r1", mealType = "DINNER")
+
+        assertEquals("dinner", viewModel.state.value.mealType)
+    }
+
+    @Test
+    fun `an unknown meal type given at start is ignored`() = runTest {
+        viewModel.start("p1", "r1", mealType = "brunch")
+
+        assertNull(viewModel.state.value.mealType)
+    }
+
+    @Test
+    fun `a retry keeps the meal type the user chose`() = runTest {
+        repository.recipeFailure = ApiException.NetworkError()
+        viewModel.start("p1", "r1", mealType = "dinner")
+        viewModel.onMealTypeChange("lunch")
+
+        repository.recipeFailure = null
+        viewModel.start("p1", "r1", mealType = "dinner")
+
+        assertEquals("lunch", viewModel.state.value.mealType)
+    }
+
+    @Test
+    fun `a meal type given at start is the one added`() = runTest {
+        viewModel.start("p1", "r1", mealType = "snack")
+
+        viewModel.save()
+
+        assertEquals("snack", repository.added.single().second.mealType)
+    }
 }
