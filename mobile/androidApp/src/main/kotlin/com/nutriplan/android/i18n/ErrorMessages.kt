@@ -49,6 +49,16 @@ fun AiError.acceptMessageRes(): Int = when (this) {
     AiError.SERVER_PROBLEM, AiError.REJECTED, AiError.UNKNOWN -> R.string.error_optimize_accept_unknown
 }
 
+/** AIA-607: message for a meal that could not be analyzed. */
+@StringRes
+fun AiError.analyzeMessageRes(): Int = when (this) {
+    AiError.NETWORK -> R.string.error_analyze_meal_network
+    AiError.SERVER_PROBLEM -> R.string.error_ai_server
+    AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
+    AiError.REJECTED -> R.string.error_analyze_meal_rejected
+    AiError.NOT_FOUND, AiError.UNKNOWN -> R.string.error_analyze_meal_unknown
+}
+
 /** DPL-407: why a meal added while offline could not be added in the end. */
 @StringRes
 fun PendingFailure.messageRes(): Int = when (this) {

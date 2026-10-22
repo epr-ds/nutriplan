@@ -194,6 +194,7 @@ class MainNavigationScreens(
             onNavigateToCreateMealPlan = { onNavigate(Route.CreateMealPlan(null)) },
             onNavigateToRecipeSearch = { onNavigate(Route.RecipeSearch) },
             onNavigateToAiRecommendations = { onNavigate(Route.AiRecommendations) },
+            onNavigateToAnalyzeMeal = { onNavigate(Route.AiMealAnalysis) },
             onNavigateToMealPlans = { onNavigate(Route.MealPlanList) },
         )
     }
@@ -382,11 +383,12 @@ class MainNavigationScreens(
     }
 
     @Composable
-    override fun AiMealAnalysisScreen(
-        onNavigate: (Any) -> Unit,
-        onResult: (com.nutriplan.shared.domain.Resource<*>) -> Unit,
-    ) {
-        AiMealAnalysisScreenContent(onNavigate, onResult)
+    override fun AiMealAnalysisScreen(onBack: () -> Unit) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.ai.AnalyzeMealScreen(
+            onBack = onBack,
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -550,19 +552,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun AiMealAnalysisScreenContent(
-    onNavigate: (Any) -> Unit,
-    onResult: (com.nutriplan.shared.domain.Resource<*>) -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("AI Analysis", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
