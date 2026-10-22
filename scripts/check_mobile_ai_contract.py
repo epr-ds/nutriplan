@@ -188,12 +188,13 @@ def check() -> list[str]:
         for field in ("required", "properties"):
             if mock[field] != spec[field]:
                 errors.append(f"schema drift in {name}.{field}: spec {sorted(spec[field])}; mock {sorted(mock[field])}")
-        if mock["enums"] != spec["enums"]:
-            errors.append(f"enum drift in {name}: spec {spec['enums']}; mock {mock['enums']}")
-        # Request bodies are validated all the way down, so every nested object must be projected.
+        # Request bodies are validated all the way down (enum values and nested objects included), so
+        # for them the mock must project those exactly; responses are only shaped, not validated.
         request_side = any(op["request"] == name for op in mock_ops.values()) or any(
             name in schema["nested"].values() for schema in mock_schemas.values()
         )
+        if request_side and mock["enums"] != spec["enums"]:
+            errors.append(f"enum drift in {name}: spec {spec['enums']}; mock {mock['enums']}")
         if request_side and mock["nested"] != spec["nested"]:
             errors.append(f"nested-object drift in {name}: spec {spec['nested']}; mock {mock['nested']}")
 
