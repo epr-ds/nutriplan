@@ -1,0 +1,17 @@
+-- Version 6 -> 7: the offline cache of orders and the on-device address book (COM-503). New tables
+-- only; nothing already stored changes.
+
+CREATE TABLE cached_order (
+    order_id TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,
+    status TEXT,
+    order_json TEXT NOT NULL
+);
+
+CREATE TABLE saved_address (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT,
+    address TEXT NOT NULL UNIQUE,
+    is_default INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    last_used INTEGER NOT NULL
+);

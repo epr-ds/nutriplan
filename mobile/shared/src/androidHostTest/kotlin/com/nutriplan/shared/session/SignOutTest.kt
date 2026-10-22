@@ -74,7 +74,20 @@ class SignOutTest {
         val changes = com.nutriplan.shared.data.local.PendingChangeStore(newDatabase())
         changes.queueRemove("p1", com.nutriplan.shared.testing.meal("m1"))
 
-        SignOut(auth, cache, favorites, queue, changes)()
+        val orders = com.nutriplan.shared.data.local.OrderCache(newDatabase())
+        orders.upsert(com.nutriplan.shared.data.model.Order(id = "o1", status = "pending"))
+        val addresses = com.nutriplan.shared.data.local.SavedAddressStore(newDatabase())
+        addresses.save(
+            com.nutriplan.shared.data.model.OrderAddress(
+                street = "Reforma 222",
+                city = "CDMX",
+                state = "CDMX",
+                zipCode = "06600",
+                country = "MX",
+            ),
+        )
+
+        SignOut(auth, cache, favorites, queue, changes, orders, addresses)()
 
         assertFalse(auth.isAuthenticated)
         assertNull(storage.stored)
@@ -84,6 +97,8 @@ class SignOutTest {
         assertEquals(emptyList(), favorites.state.value.recipes)
         assertTrue(queue.waiting().isEmpty(), "meals waiting to be sent belong to the signed-out user")
         assertTrue(changes.waiting().isEmpty(), "so do edits and removals")
+        assertEquals(emptyList(), orders.getOrders(), "orders belong to the signed-out user (COM-503)")
+        assertEquals(emptyList(), addresses.getAll(), "and so do their delivery addresses")
     }
 
     @Test

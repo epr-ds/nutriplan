@@ -18,8 +18,8 @@ import kotlin.test.assertNotNull
 class MealPlanCacheMigrationTest {
 
     @Test
-    fun `the schema is version 6 now that offline favorite toggles are queued too`() {
-        assertEquals(6L, NutriPlanDatabase.Schema.version)
+    fun `the schema is version 7 now that orders and addresses are kept too`() {
+        assertEquals(7L, NutriPlanDatabase.Schema.version)
     }
 
     @Test
@@ -202,5 +202,39 @@ class MealPlanCacheMigrationTest {
         val queue = PendingFavoriteStore(database)
         queue.queue(favoriteRecipe("f2"), favorite = true)
         assertEquals(listOf("f2"), queue.waiting().map { it.recipe.id })
+    }
+
+    @Test
+    fun `a version 6 database gains the order cache and the address book and keeps its favorites`() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        driver.execute(
+            null,
+            "CREATE TABLE favorite_recipe (recipe_id TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL, recipe TEXT NOT NULL)",
+            0,
+        )
+        driver.execute(
+            null,
+            "INSERT INTO favorite_recipe(recipe_id, position, recipe) VALUES ('f1', 0, '{\"id\":\"f1\",\"name\":\"Soup\"}')",
+            0,
+        )
+
+        NutriPlanDatabase.Schema.migrate(driver, 6L, 7L)
+
+        val database = NutriPlanDatabase(driver)
+        assertEquals(listOf("f1"), FavoriteRecipeCache(database).getAll().map { it.id }, "favorites survive")
+        val orders = OrderCache(database)
+        orders.upsert(com.nutriplan.shared.data.model.Order(id = "o1", status = "pending"))
+        assertEquals(listOf("o1"), orders.getOrders().map { it.id })
+        val addresses = SavedAddressStore(database)
+        addresses.save(
+            com.nutriplan.shared.data.model.OrderAddress(
+                street = "Reforma 222",
+                city = "CDMX",
+                state = "CDMX",
+                zipCode = "06600",
+                country = "MX",
+            ),
+        )
+        assertEquals(1, addresses.getAll().size)
     }
 }
