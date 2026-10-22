@@ -29,6 +29,26 @@ fun AiError.recommendationsMessageRes(): Int = when (this) {
     AiError.NOT_FOUND, AiError.UNKNOWN -> R.string.error_ai_unknown
 }
 
+/** AIA-605: message for a plan that could not be loaded or optimized. */
+@StringRes
+fun AiError.optimizeMessageRes(): Int = when (this) {
+    AiError.NETWORK -> R.string.error_optimize_network
+    AiError.SERVER_PROBLEM -> R.string.error_ai_server
+    AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
+    AiError.NOT_FOUND -> R.string.error_optimize_not_found
+    AiError.REJECTED -> R.string.error_optimize_rejected
+    AiError.UNKNOWN -> R.string.error_optimize_unknown
+}
+
+/** AIA-605: message for optimized servings that could not all be saved (the retry saves the rest). */
+@StringRes
+fun AiError.acceptMessageRes(): Int = when (this) {
+    AiError.NETWORK -> R.string.error_optimize_accept_network
+    AiError.SESSION_EXPIRED -> R.string.error_ai_session_expired
+    AiError.NOT_FOUND -> R.string.error_optimize_accept_not_found
+    AiError.SERVER_PROBLEM, AiError.REJECTED, AiError.UNKNOWN -> R.string.error_optimize_accept_unknown
+}
+
 /** DPL-407: why a meal added while offline could not be added in the end. */
 @StringRes
 fun PendingFailure.messageRes(): Int = when (this) {

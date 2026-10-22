@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +68,7 @@ object MealPlanDetailTestTags {
     const val LIST = "plan_detail_list"
     const val LOADING = "plan_detail_loading"
     const val ADD_MEAL = "plan_detail_add_meal"
+    const val OPTIMIZE = "plan_detail_optimize"
     const val ERROR_BANNER = "plan_detail_error_banner"
     const val MEAL_CARD = "plan_detail_meal_card"
     const val PENDING_LABEL = "plan_detail_pending_label"
@@ -89,6 +91,8 @@ fun MealPlanDetailScreen(
     onAddMeal: () -> Unit,
     onEditMeal: (mealId: String) -> Unit,
     onSessionExpired: () -> Unit,
+    /** Opens the AI optimization of the plan (AIA-605); the action is offered when set. */
+    onOptimize: (() -> Unit)? = null,
 ) {
     val viewModel = koinInject<MealPlanDetailViewModel>()
     val state by viewModel.state.collectAsState()
@@ -108,6 +112,7 @@ fun MealPlanDetailScreen(
         onEditMeal = onEditMeal,
         onDismissFailedAdd = viewModel::dismissFailedAdd,
         onDismissFailedChange = viewModel::dismissFailedChange,
+        onOptimize = onOptimize,
     )
 }
 
@@ -122,6 +127,7 @@ fun MealPlanDetailScreenContent(
     onEditMeal: (mealId: String) -> Unit = {},
     onDismissFailedAdd: (id: Long) -> Unit = {},
     onDismissFailedChange: (id: Long) -> Unit = {},
+    onOptimize: (() -> Unit)? = null,
 ) {
     val plan = state.plan
     val error = state.error
@@ -142,6 +148,20 @@ fun MealPlanDetailScreenContent(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_meal_plans_back),
                         )
+                    }
+                },
+                actions = {
+                    // AIA-605: only a plan with meals that is still being planned or under way.
+                    if (onOptimize != null && plan != null && plan.canBeOptimized()) {
+                        IconButton(
+                            onClick = onOptimize,
+                            modifier = Modifier.testTag(MealPlanDetailTestTags.OPTIMIZE),
+                        ) {
+                            Icon(
+                                Icons.Filled.AutoAwesome,
+                                contentDescription = stringResource(R.string.cd_plan_detail_optimize),
+                            )
+                        }
                     }
                 },
             )
@@ -456,3 +476,7 @@ private fun MealCard(meal: PlanMeal, onClick: () -> Unit) {
 /** "2" for 2.0 and "1.5" for 1.5, so whole quantities have no trailing ".0". */
 private fun formatQuantity(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
+
+/** AIA-605: the AI can optimize a plan that has meals and is still being planned or under way. */
+internal fun MealPlan.canBeOptimized(): Boolean =
+    meals.isNotEmpty() && status.lowercase() in setOf("draft", "active")

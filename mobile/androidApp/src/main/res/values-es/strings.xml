@@ -340,4 +340,39 @@
     <string name="pick_plan_title">¿A qué plan la añades?</string>
     <string name="pick_plan_empty_title">No hay ningún plan al que añadirla</string>
     <string name="pick_plan_empty_description">Crea primero un plan de comidas desde Planes de comidas y luego añade la receta.</string>
+
+    <!-- AIA-605: optimizar un plan con IA -->
+    <string name="cd_plan_detail_optimize">Optimizar este plan con IA</string>
+    <string name="optimize_title">Optimizar con IA</string>
+    <string name="optimize_intro">El asesor de IA ajusta las raciones de este plan hacia un objetivo. Nada cambia hasta que aceptes.</string>
+    <string name="optimize_goal_label">Objetivo</string>
+    <string name="optimize_goal_balance_macros">Equilibrar macros</string>
+    <string name="optimize_goal_increase_protein">Más proteína</string>
+    <string name="optimize_goal_reduce_calories">Menos calorías</string>
+    <string name="optimize_goal_increase_satisfaction">Más saciante</string>
+    <string name="optimize_submit">Sugerir cambios</string>
+    <string name="cd_optimize_plan_loading">Cargando el plan</string>
+    <string name="cd_optimize_loading">Optimizando el plan</string>
+    <string name="optimize_unchanged_title">No hace falta cambiar nada</string>
+    <string name="optimize_unchanged_description">Este plan ya es lo mejor posible para este objetivo.</string>
+    <string name="optimize_daily_heading">Media diaria</string>
+    <string name="optimize_daily_calories">Calorías</string>
+    <string name="optimize_daily_protein">Proteína</string>
+    <string name="optimize_unit_kcal">kcal</string>
+    <string name="optimize_unit_grams">g</string>
+    <string name="optimize_before_after">%1$s → %2$s %3$s</string>
+    <string name="cd_optimize_before_after">%1$s: de %2$s a %3$s %4$s al día</string>
+    <string name="optimize_changes_heading">Cambios sugeridos</string>
+    <string name="optimize_change_servings">%1$s → %2$s raciones</string>
+    <string name="cd_optimize_change">%1$s, %2$s: de %3$s a %4$s raciones</string>
+    <string name="optimize_accept">Aceptar cambios</string>
+    <string name="optimize_discard">Descartar</string>
+    <string name="optimize_disclaimer">Las sugerencias del asesor de IA son estimaciones y solo información general. No son consejo médico ni dietético.</string>
+    <string name="error_optimize_network">No tienes conexión. Conéctate a internet para optimizar el plan.</string>
+    <string name="error_optimize_not_found">Este plan ya no existe.</string>
+    <string name="error_optimize_rejected">Este plan no se puede optimizar. Añade primero algunas comidas.</string>
+    <string name="error_optimize_unknown">Algo salió mal al optimizar el plan. Inténtalo de nuevo.</string>
+    <string name="error_optimize_accept_network">No tienes conexión, así que algunos cambios no se guardaron. Acepta de nuevo para guardar el resto.</string>
+    <string name="error_optimize_accept_not_found">Mientras tanto se quitó una comida de este plan, así que algunos cambios no se guardaron.</string>
+    <string name="error_optimize_accept_unknown">Algunos cambios no se pudieron guardar. Acepta de nuevo para guardar el resto.</string>
 </resources>

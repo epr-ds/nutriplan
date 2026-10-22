@@ -247,6 +247,22 @@ class MainNavigationScreens(
             onAddMeal = { navController.navigate(Route.PickRecipe(planId)) },
             onEditMeal = { mealId -> navController.navigate(Route.EditMeal(planId, mealId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
+            onOptimize = { navController.navigate(Route.OptimizePlan(planId)) },
+        )
+    }
+
+    @Composable
+    override fun OptimizePlanScreen(
+        planId: String,
+        onBack: () -> Unit,
+    ) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.ai.OptimizePlanScreen(
+            planId = planId,
+            onBack = onBack,
+            // Back to the plan, which reloads to show the new servings.
+            onDone = { navController.popBackStack() },
+            onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
 

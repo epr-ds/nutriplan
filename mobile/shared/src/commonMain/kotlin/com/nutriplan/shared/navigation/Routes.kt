@@ -65,6 +65,13 @@ sealed class Route {
     @Serializable
     data class PickPlan(val recipeId: String, val mealType: String? = null) : Route()
 
+    /**
+     * Optimize the plan [planId] with the AI Advisor: pick a goal, review the changes, accept or
+     * discard (AIA-605). In-app only.
+     */
+    @Serializable
+    data class OptimizePlan(val planId: String) : Route()
+
     /** Edit, rate or remove the meal [mealId] of the plan [planId]. In-app only. */
     @Serializable
     data class EditMeal(val planId: String, val mealId: String) : Route()
@@ -151,6 +158,7 @@ sealed class Route {
         is PickRecipe -> "nutriplan://add-meal/$planId"
         is AddMeal -> "nutriplan://add-meal/$planId/$recipeId"
         is PickPlan -> "nutriplan://add-to-plan/$recipeId"
+        is OptimizePlan -> "nutriplan://optimize-plan/$planId"
         is EditMeal -> "nutriplan://edit-meal/$planId/$mealId"
         is FavoriteRecipes -> "nutriplan://recipes/favorites"
         is RecipeSearch -> "nutriplan://recipes"
