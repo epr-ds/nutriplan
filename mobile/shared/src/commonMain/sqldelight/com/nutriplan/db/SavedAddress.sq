@@ -1,0 +1,49 @@
+-- The user's delivery addresses, kept on the device (COM-503). The Commerce API has no address
+-- resource -- an address travels inside each create-order request -- so this is the address book
+-- checkout offers from. The address is stored as the JSON of data.model.OrderAddress (the contract's
+-- AddressRequest); `address` is unique, so saving the same address again only moves it up.
+
+CREATE TABLE saved_address (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT,                                      -- e.g. "Home", "Office"; optional
+    address TEXT NOT NULL UNIQUE,                    -- JSON of OrderAddress
+    is_default INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    last_used INTEGER NOT NULL                       -- larger is more recent
+);
+
+-- The default address first, then the most recently used.
+selectAll:
+SELECT * FROM saved_address ORDER BY is_default DESC, last_used DESC;
+
+selectById:
+SELECT * FROM saved_address WHERE id = ?;
+
+selectByAddress:
+SELECT * FROM saved_address WHERE address = ?;
+
+selectLastUsed:
+SELECT last_used FROM saved_address ORDER BY last_used DESC LIMIT 1;
+
+insertAddress:
+INSERT INTO saved_address(label, address, is_default, last_used) VALUES (?, ?, 0, ?);
+
+lastInsertedId:
+SELECT last_insert_rowid();
+
+touch:
+UPDATE saved_address SET last_used = ? WHERE id = ?;
+
+relabel:
+UPDATE saved_address SET label = ? WHERE id = ?;
+
+clearDefault:
+UPDATE saved_address SET is_default = 0 WHERE is_default = 1;
+
+markDefault:
+UPDATE saved_address SET is_default = 1 WHERE id = ?;
+
+deleteAddress:
+DELETE FROM saved_address WHERE id = ?;
+
+deleteAll:
+DELETE FROM saved_address;

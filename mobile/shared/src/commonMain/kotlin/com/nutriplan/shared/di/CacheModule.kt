@@ -4,7 +4,9 @@ import app.cash.sqldelight.db.SqlDriver
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
+import com.nutriplan.shared.data.local.OrderCache
 import com.nutriplan.shared.data.local.PendingChangeStore
+import com.nutriplan.shared.data.local.SavedAddressStore
 import com.nutriplan.shared.data.local.PendingFavoriteStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.local.MealPlanCache
@@ -42,6 +44,9 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { PendingMealStore(get()) }
     single { PendingChangeStore(get()) }
     single { PendingFavoriteStore(get()) }
+    // COM-503: the offline copy of the user's orders and the on-device address book.
+    single { OrderCache(get()) }
+    single { SavedAddressStore(get()) }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }
@@ -74,6 +79,8 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
             favorites = get(),
             pendingMeals = get(),
             pendingChanges = get(),
+            orders = get(),
+            addresses = get(),
         )
     }
 }

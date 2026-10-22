@@ -1,0 +1,38 @@
+-- Offline cache of the user's orders (COM-503). It is a read cache of what the server sent
+-- (GET /orders, GET /orders/{orderId} and every order operation's reply): the order is stored as the
+-- JSON of data.model.Order, which follows contracts/commerce.openapi.yaml, so orders can be shown
+-- without a connection. `position` keeps the server's order (newest first); `status` is copied out
+-- of the JSON so the list can be filtered by status offline too.
+
+CREATE TABLE cached_order (
+    order_id TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,
+    status TEXT,
+    order_json TEXT NOT NULL
+);
+
+selectAll:
+SELECT order_json FROM cached_order ORDER BY position;
+
+selectByStatus:
+SELECT order_json FROM cached_order WHERE status = ? ORDER BY position;
+
+selectById:
+SELECT order_json FROM cached_order WHERE order_id = ?;
+
+-- Where an order already sits (none when it is not cached), so a refresh keeps it in place.
+selectPosition:
+SELECT position FROM cached_order WHERE order_id = ?;
+
+-- The smallest position (none when empty), so a new order can be put in front of the others.
+selectFirstPosition:
+SELECT position FROM cached_order ORDER BY position LIMIT 1;
+
+insertOrder:
+INSERT OR REPLACE INTO cached_order(order_id, position, status, order_json) VALUES (?, ?, ?, ?);
+
+deleteOrder:
+DELETE FROM cached_order WHERE order_id = ?;
+
+deleteAll:
+DELETE FROM cached_order;
