@@ -1,5 +1,6 @@
 package com.nutriplan.android.navigation
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
@@ -203,10 +204,11 @@ fun AppNavigationGraph(
         }
 
         // AI recommendations
-        composable<Route.AiRecommendations> {
+        composable<Route.AiRecommendations> { backStackEntry ->
             analyticsTracker?.logScreenView("ai_recommendations", "AiRecommendationsScreen")
             screens.AiRecommendationsScreen(
                 onNavigate = { route -> navigate(navController, route) },
+                savedState = backStackEntry.savedStateHandle,
             )
         }
 
@@ -380,7 +382,7 @@ interface AppNavigationScreens {
         onNavigate: (Any) -> Unit,
         onResult: (Resource<*>) -> Unit,
     )
-    @Composable fun AiRecommendationsScreen(onNavigate: (Any) -> Unit)
+    @Composable fun AiRecommendationsScreen(onNavigate: (Any) -> Unit, savedState: SavedStateHandle)
     @Composable fun OrderListScreen(
         onNavigate: (Any) -> Unit,
         onOrderClick: (String) -> Unit,

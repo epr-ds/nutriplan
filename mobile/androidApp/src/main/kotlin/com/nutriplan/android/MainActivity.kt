@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -373,11 +374,10 @@ class MainNavigationScreens(
     }
 
     @Composable
-    override fun AiRecommendationsScreen(onNavigate: (Any) -> Unit) {
+    override fun AiRecommendationsScreen(onNavigate: (Any) -> Unit, savedState: SavedStateHandle) {
         val sessionManager = koinInject<SessionManager>()
         // Set by the add-meal form when a recommendation was added to a plan (AIA-604).
-        val entry = remember(navController) { navController.getBackStackEntry<Route.AiRecommendations>() }
-        val mealAdded by entry.savedStateHandle.getStateFlow(AI_MEAL_ADDED, false).collectAsState()
+        val mealAdded by savedState.getStateFlow(AI_MEAL_ADDED, false).collectAsState()
         com.nutriplan.android.screen.ai.AiRecommendationsScreen(
             onBack = { navController.popBackStack() },
             // Pushed on top of the recommendations so Back returns to them.
@@ -385,7 +385,7 @@ class MainNavigationScreens(
             onSessionExpired = { sessionManager.onSignedOut() },
             onAddToPlan = { recipeId, mealType -> navController.navigate(Route.PickPlan(recipeId, mealType)) },
             mealAdded = mealAdded,
-            onMealAddedShown = { entry.savedStateHandle[AI_MEAL_ADDED] = false },
+            onMealAddedShown = { savedState[AI_MEAL_ADDED] = false },
         )
     }
 
