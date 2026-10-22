@@ -45,6 +45,7 @@ import com.nutriplan.android.screen.home.MealPlanCard
 import com.nutriplan.shared.planning.MealPlanListError
 import com.nutriplan.shared.planning.MealPlanListUiState
 import com.nutriplan.shared.planning.MealPlanListViewModel
+import com.nutriplan.shared.planning.plansOpenForMeals
 import kotlinx.coroutines.launch
 
 /** Test tags for the meal plan list (used by the Robolectric UI tests). */
@@ -61,6 +62,9 @@ object MealPlanListTestTags {
  * Backed by the shared [MealPlanListViewModel]; plans come from the on-device cache when the server
  * cannot be reached. [onSessionExpired] is called when the server rejects the session so the app
  * can send the user back to sign-in.
+ *
+ * With [isPicking] (AIA-604) it is the step that chooses the plan to add a recipe to: only plans that
+ * still take meals are listed, and there is no button to create one.
  */
 @Composable
 fun MealPlanListScreen(
@@ -68,6 +72,7 @@ fun MealPlanListScreen(
     onCreatePlan: () -> Unit,
     onBack: () -> Unit,
     onSessionExpired: () -> Unit,
+    isPicking: Boolean = false,
 ) {
     val viewModel = koinInject<MealPlanListViewModel>()
     val state by viewModel.state.collectAsState()
@@ -85,6 +90,7 @@ fun MealPlanListScreen(
         onPlanClick = onPlanClick,
         onCreatePlan = onCreatePlan,
         onBack = onBack,
+        isPicking = isPicking,
     )
 }
 
@@ -97,8 +103,10 @@ fun MealPlanListScreenContent(
     onPlanClick: (String) -> Unit,
     onCreatePlan: () -> Unit,
     onBack: (() -> Unit)? = null,
+    isPicking: Boolean = false,
 ) {
     val error = state.error
+    val plans = if (isPicking) state.plansOpenForMeals else state.plans
     val loadingDescription = stringResource(R.string.cd_meal_plans_loading)
 
     Scaffold(
@@ -106,7 +114,7 @@ fun MealPlanListScreenContent(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.meal_plans_title),
+                        text = stringResource(if (isPicking) R.string.pick_plan_title else R.string.meal_plans_title),
                         modifier = Modifier.semantics { heading() },
                     )
                 },
@@ -123,7 +131,7 @@ fun MealPlanListScreenContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            if (!isPicking) FloatingActionButton(
                 onClick = onCreatePlan,
                 modifier = Modifier.testTag(MealPlanListTestTags.CREATE),
             ) {
@@ -136,7 +144,7 @@ fun MealPlanListScreenContent(
             .padding(paddingValues)
 
         when {
-            state.isLoading && state.plans.isEmpty() -> Box(
+            state.isLoading && plans.isEmpty() -> Box(
                 modifier = content.testTag(MealPlanListTestTags.LOADING),
                 contentAlignment = Alignment.Center,
             ) {
@@ -145,20 +153,28 @@ fun MealPlanListScreenContent(
                 )
             }
 
-            error != null && state.plans.isEmpty() -> ErrorState(
+            error != null && plans.isEmpty() -> ErrorState(
                 message = stringResource(error.messageRes(hasSavedPlans = false)),
                 onRetry = onRetry,
                 modifier = content,
                 actionLabel = stringResource(R.string.meal_plans_retry),
             )
 
-            state.isEmpty -> EmptyState(
-                title = stringResource(R.string.meal_plans_empty_title),
-                description = stringResource(R.string.meal_plans_empty_description),
-                modifier = content,
-                actionLabel = stringResource(R.string.meal_plans_empty_action),
-                onAction = onCreatePlan,
-            )
+            !state.isLoading && error == null && plans.isEmpty() -> if (isPicking) {
+                EmptyState(
+                    title = stringResource(R.string.pick_plan_empty_title),
+                    description = stringResource(R.string.pick_plan_empty_description),
+                    modifier = content,
+                )
+            } else {
+                EmptyState(
+                    title = stringResource(R.string.meal_plans_empty_title),
+                    description = stringResource(R.string.meal_plans_empty_description),
+                    modifier = content,
+                    actionLabel = stringResource(R.string.meal_plans_empty_action),
+                    onAction = onCreatePlan,
+                )
+            }
 
             else -> PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
@@ -184,7 +200,7 @@ fun MealPlanListScreenContent(
                             )
                         }
                     }
-                    items(state.plans, key = { it.id }) { plan ->
+                    items(plans, key = { it.id }) { plan ->
                         MealPlanCard(mealPlan = plan, onClick = { onPlanClick(plan.id) })
                     }
                 }

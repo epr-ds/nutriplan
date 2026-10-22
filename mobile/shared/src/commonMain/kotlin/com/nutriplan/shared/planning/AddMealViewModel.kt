@@ -117,11 +117,21 @@ class AddMealViewModel(
     private var planId: String? = null
     private var recipeId: String? = null
 
-    /** Load [recipeId] and the days of [planId]; also the retry after a failed load. */
-    suspend fun start(planId: String, recipeId: String) {
+    /**
+     * Load [recipeId] and the days of [planId]; also the retry after a failed load. A known
+     * [mealType] (an AI recommendation for one meal, AIA-604) is chosen unless the user already
+     * picked one.
+     */
+    suspend fun start(planId: String, recipeId: String, mealType: String? = null) {
         this.planId = planId
         this.recipeId = recipeId
-        _state.update { it.copy(isLoading = it.recipe == null, loadError = null) }
+        _state.update { state ->
+            state.copy(
+                isLoading = state.recipe == null,
+                loadError = null,
+                mealType = state.mealType ?: mealType?.lowercase()?.takeIf { it in MEAL_TYPES },
+            )
+        }
         try {
             val recipe = repository.getRecipe(recipeId)
             _state.update { it.copy(recipe = recipe, isLoading = false) }

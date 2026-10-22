@@ -249,4 +249,59 @@ class AiRecommendationsScreenTest {
 
         assertEquals(1, calls.backed)
     }
+
+    // --- AIA-604: add a recommendation to a plan ---
+
+    private fun renderAdding(state: AiRecommendationsUiState, mealAdded: Boolean = false): MutableList<String> {
+        val added = mutableListOf<String>()
+        compose.setContent {
+            NutriPlanTheme {
+                AiRecommendationsScreenContent(
+                    state = state,
+                    onMealTypeChange = {},
+                    onIngredientsChange = {},
+                    onRecommend = {},
+                    onRecipeClick = {},
+                    onBack = {},
+                    onAddToPlan = { added += it.id },
+                    mealAdded = mealAdded,
+                )
+            }
+        }
+        return added
+    }
+
+    @Test
+    fun `every recommendation can be added to a plan`() {
+        val added = renderAdding(answered(answer))
+
+        compose.onAllNodesWithTag(AiRecommendationsTestTags.ADD_TO_PLAN).assertCountEquals(2)
+        val addSoup = str(R.string.cd_ai_recommendations_add_to_plan, "Lentil soup")
+        compose.onNodeWithContentDescription(addSoup).performClick()
+
+        assertEquals(listOf("r2"), added)
+    }
+
+    @Test
+    fun `without the add action there is no add button`() {
+        render(answered(answer))
+
+        compose.onAllNodesWithTag(AiRecommendationsTestTags.ADD_TO_PLAN).assertCountEquals(0)
+    }
+
+    @Test
+    fun `an added recommendation is confirmed and announced`() {
+        renderAdding(answered(answer), mealAdded = true)
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.ADDED_NOTICE)
+            .assert(hasText(str(R.string.ai_recommendations_added)))
+            .assert(hasLiveRegion())
+    }
+
+    @Test
+    fun `no confirmation until something was added`() {
+        renderAdding(answered(answer))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.ADDED_NOTICE).assertDoesNotExist()
+    }
 }

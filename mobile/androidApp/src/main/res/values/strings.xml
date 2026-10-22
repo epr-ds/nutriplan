@@ -334,4 +334,12 @@
     <string name="error_ai_session_expired">Your session has expired. Please sign in again.</string>
     <string name="error_ai_rejected">This request couldn\'t be processed. Try different ingredients.</string>
     <string name="error_ai_unknown">Something went wrong getting recommendations. Please try again.</string>
+
+    <!-- AIA-604: add a recommendation to a plan -->
+    <string name="ai_recommendations_add_to_plan">Add to plan</string>
+    <string name="cd_ai_recommendations_add_to_plan">Add %1$s to a plan</string>
+    <string name="ai_recommendations_added">Added to your plan.</string>
+    <string name="pick_plan_title">Add to which plan?</string>
+    <string name="pick_plan_empty_title">No plan to add to</string>
+    <string name="pick_plan_empty_description">Create a meal plan from Meal plans first, then add the recipe to it.</string>
 </resources>

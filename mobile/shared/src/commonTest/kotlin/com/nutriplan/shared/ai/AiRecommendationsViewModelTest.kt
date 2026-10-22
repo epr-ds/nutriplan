@@ -84,6 +84,19 @@ class AiRecommendationsViewModelTest {
     }
 
     @Test
+    fun `the answer remembers the meal it was asked for`() = runTest {
+        viewModel.onMealTypeChange("dinner")
+        viewModel.recommend()
+        viewModel.onMealTypeChange("lunch")
+
+        assertEquals("dinner", viewModel.state.value.resultMealType)
+
+        ai.failure = ApiException.NetworkError()
+        viewModel.recommend()
+        assertNull(viewModel.state.value.resultMealType)
+    }
+
+    @Test
     fun `preferences are read at each request`() = runTest {
         viewModel.recommend()
         preferences = null

@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,7 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.R
 import com.nutriplan.android.component.EmptyState
-import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.di.koinInjectRetained
 import com.nutriplan.android.i18n.mealTypeLabelRes
 import com.nutriplan.android.i18n.recommendationsMessageRes
 import com.nutriplan.android.screen.recipes.RecipeCard
@@ -60,6 +61,7 @@ import com.nutriplan.shared.ai.AiError
 import com.nutriplan.shared.ai.AiRecommendationsUiState
 import com.nutriplan.shared.ai.AiRecommendationsViewModel
 import com.nutriplan.shared.data.model.NutritionalAlignment
+import com.nutriplan.shared.data.model.Recipe
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -75,6 +77,8 @@ object AiRecommendationsTestTags {
     const val ALIGNMENT = "ai_recommendations_alignment"
     const val DISCLAIMER = "ai_recommendations_disclaimer"
     const val EMPTY = "ai_recommendations_empty"
+    const val ADD_TO_PLAN = "ai_recommendations_add_to_plan"
+    const val ADDED_NOTICE = "ai_recommendations_added_notice"
 }
 
 /**
@@ -82,14 +86,21 @@ object AiRecommendationsTestTags {
  * for one meal and the ingredients on hand, with why they fit, how well they match the targets and
  * the medical disclaimer. Asks straight away on opening. [onRecipeClick] opens a recipe;
  * [onSessionExpired] is called when the server rejects the session.
+ *
+ * AIA-604: [onAddToPlan] starts adding a recommendation to a plan, for the meal the answer was asked
+ * for. [mealAdded] confirms that one was added; [onMealAddedShown] is called when the user asks again.
  */
 @Composable
 fun AiRecommendationsScreen(
     onBack: () -> Unit,
     onRecipeClick: (recipeId: String) -> Unit,
     onSessionExpired: () -> Unit,
+    onAddToPlan: (recipeId: String, mealType: String?) -> Unit,
+    mealAdded: Boolean = false,
+    onMealAddedShown: () -> Unit = {},
 ) {
-    val viewModel = koinInject<AiRecommendationsViewModel>()
+    // Kept while the user adds a recommendation to a plan, so coming back does not ask again.
+    val viewModel = koinInjectRetained<AiRecommendationsViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -102,9 +113,14 @@ fun AiRecommendationsScreen(
         state = state,
         onMealTypeChange = viewModel::onMealTypeChange,
         onIngredientsChange = viewModel::onIngredientsChange,
-        onRecommend = { scope.launch { viewModel.recommend() } },
+        onRecommend = {
+            onMealAddedShown()
+            scope.launch { viewModel.recommend() }
+        },
         onRecipeClick = onRecipeClick,
         onBack = onBack,
+        onAddToPlan = { recipe -> onAddToPlan(recipe.id, state.resultMealType) },
+        mealAdded = mealAdded,
     )
 }
 
@@ -117,6 +133,10 @@ fun AiRecommendationsScreenContent(
     onRecommend: () -> Unit,
     onRecipeClick: (String) -> Unit,
     onBack: () -> Unit,
+    /** Shows an "Add to plan" button under each recommendation when set (AIA-604). */
+    onAddToPlan: ((Recipe) -> Unit)? = null,
+    /** Confirms that a recommendation was just added to a plan. */
+    mealAdded: Boolean = false,
 ) {
     val loadingDescription = stringResource(R.string.cd_ai_recommendations_loading)
     val result = state.result
@@ -156,6 +176,19 @@ fun AiRecommendationsScreenContent(
                     onIngredientsChange = onIngredientsChange,
                     onRecommend = onRecommend,
                 )
+            }
+
+            if (mealAdded) {
+                item(key = "added") {
+                    Text(
+                        text = stringResource(R.string.ai_recommendations_added),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .testTag(AiRecommendationsTestTags.ADDED_NOTICE)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
             }
 
             val error = state.error
@@ -212,7 +245,10 @@ fun AiRecommendationsScreenContent(
                     }
                 }
                 items(result.recommendations, key = { it.id }) { recipe ->
-                    RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
+                        if (onAddToPlan != null) AddToPlanButton(recipe, onClick = { onAddToPlan(recipe) })
+                    }
                 }
                 // Required with every AI answer: what is shown is not medical advice.
                 item(key = "disclaimer") {
@@ -359,5 +395,20 @@ private fun Disclaimer(text: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(12.dp),
         )
+    }
+}
+
+@Composable
+private fun AddToPlanButton(recipe: Recipe, onClick: () -> Unit) {
+    val description = stringResource(R.string.cd_ai_recommendations_add_to_plan, recipe.name)
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(AiRecommendationsTestTags.ADD_TO_PLAN)
+            // Says which recipe: every recommendation has the same button.
+            .semantics { contentDescription = description },
+    ) {
+        Text(stringResource(R.string.ai_recommendations_add_to_plan))
     }
 }

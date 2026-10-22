@@ -310,16 +310,44 @@ class MainNavigationScreens(
     override fun AddMealScreen(
         planId: String,
         recipeId: String,
+        mealType: String?,
         onBack: () -> Unit,
     ) {
         val sessionManager = koinInject<SessionManager>()
         com.nutriplan.android.screen.plans.AddMealScreen(
             planId = planId,
             recipeId = recipeId,
+            mealType = mealType,
             onBack = onBack,
-            // Back to the plan: drop the picker and the form, so Back does not return to them.
-            onDone = { navController.popBackStack<Route.MealPlanDetail>(inclusive = false) },
+            onDone = {
+                val previous = navController.previousBackStackEntry?.destination
+                val fromRecommendations = previous?.hasRoute<Route.PickPlan>() == true
+                if (fromRecommendations) {
+                    // AIA-604: back to the recommendations, which confirm the add, to pick another.
+                    navController.getBackStackEntry<Route.AiRecommendations>().savedStateHandle[AI_MEAL_ADDED] = true
+                    navController.popBackStack<Route.AiRecommendations>(inclusive = false)
+                } else {
+                    // Back to the plan: drop the picker and the form, so Back does not return to them.
+                    navController.popBackStack<Route.MealPlanDetail>(inclusive = false)
+                }
+            },
             onSessionExpired = { sessionManager.onSignedOut() },
+        )
+    }
+
+    @Composable
+    override fun PickPlanScreen(
+        recipeId: String,
+        mealType: String?,
+        onBack: () -> Unit,
+    ) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.plans.MealPlanListScreen(
+            onPlanClick = { planId -> navController.navigate(Route.AddMeal(planId, recipeId, mealType)) },
+            onCreatePlan = {},
+            onBack = onBack,
+            onSessionExpired = { sessionManager.onSignedOut() },
+            isPicking = true,
         )
     }
 
@@ -347,11 +375,17 @@ class MainNavigationScreens(
     @Composable
     override fun AiRecommendationsScreen(onNavigate: (Any) -> Unit) {
         val sessionManager = koinInject<SessionManager>()
+        // Set by the add-meal form when a recommendation was added to a plan (AIA-604).
+        val entry = remember(navController) { navController.getBackStackEntry<Route.AiRecommendations>() }
+        val mealAdded by entry.savedStateHandle.getStateFlow(AI_MEAL_ADDED, false).collectAsState()
         com.nutriplan.android.screen.ai.AiRecommendationsScreen(
             onBack = { navController.popBackStack() },
             // Pushed on top of the recommendations so Back returns to them.
             onRecipeClick = { recipeId -> navController.navigate(Route.RecipeDetail(recipeId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
+            onAddToPlan = { recipeId, mealType -> navController.navigate(Route.PickPlan(recipeId, mealType)) },
+            mealAdded = mealAdded,
+            onMealAddedShown = { entry.savedStateHandle[AI_MEAL_ADDED] = false },
         )
     }
 
@@ -457,6 +491,9 @@ class MainNavigationScreens(
         DeepLinkOrderScreenContent(orderId, onBack)
     }
 }
+
+/** Saved-state key: a recommendation was just added to a plan (AIA-604). */
+private const val AI_MEAL_ADDED = "ai_meal_added"
 
 // --- Placeholder screen composables ---
 

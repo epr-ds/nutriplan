@@ -23,6 +23,8 @@ data class AiRecommendationsUiState(
     val ingredients: String = "",
     val isLoading: Boolean = false,
     val result: AiRecommendations? = null,
+    /** The meal type [result] was asked for (null for a whole day), used when adding one to a plan. */
+    val resultMealType: String? = null,
     val error: AiError? = null,
     val hasRequested: Boolean = false,
 ) {
@@ -77,8 +79,19 @@ class AiRecommendationsViewModel(
             if (token != generation) return
             _state.update { state ->
                 when (outcome) {
-                    is AiResult.Success -> state.copy(result = outcome.value, isLoading = false, hasRequested = true)
-                    is AiResult.Failure -> state.copy(result = null, isLoading = false, hasRequested = true, error = outcome.error)
+                    is AiResult.Success -> state.copy(
+                        result = outcome.value,
+                        resultMealType = request.mealType,
+                        isLoading = false,
+                        hasRequested = true,
+                    )
+                    is AiResult.Failure -> state.copy(
+                        result = null,
+                        resultMealType = null,
+                        isLoading = false,
+                        hasRequested = true,
+                        error = outcome.error,
+                    )
                 }
             }
         } catch (e: CancellationException) {

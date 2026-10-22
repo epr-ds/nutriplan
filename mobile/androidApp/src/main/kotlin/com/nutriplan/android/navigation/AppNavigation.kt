@@ -159,6 +159,18 @@ fun AppNavigationGraph(
             screens.AddMealScreen(
                 planId = route.planId,
                 recipeId = route.recipeId,
+                mealType = route.mealType,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Choose the plan to add an AI recommendation to (AIA-604)
+        composable<Route.PickPlan> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.PickPlan>()
+            analyticsTracker?.logScreenView("pick_plan", "PickPlanScreen")
+            screens.PickPlanScreen(
+                recipeId = route.recipeId,
+                mealType = route.mealType,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -352,6 +364,12 @@ interface AppNavigationScreens {
     @Composable fun AddMealScreen(
         planId: String,
         recipeId: String,
+        mealType: String?,
+        onBack: () -> Unit,
+    )
+    @Composable fun PickPlanScreen(
+        recipeId: String,
+        mealType: String?,
         onBack: () -> Unit,
     )
     @Composable fun RecipeDetailScreen(
