@@ -88,6 +88,39 @@ jobs:
             mobile/androidApp/build/reports/tests/testDebugUnitTest
             mobile/androidApp/build/test-results/testDebugUnitTest
 
+  # DPL-704: headless planning-journey E2E — create a plan -> add a meal -> see the nutrition.
+  # The UI journey runs on the JVM (Robolectric); the same journey through the shared layer runs
+  # here on the JVM and in the iOS job on the simulator. On failure the job uploads a screenshot and
+  # a step-by-step trace (with every request the app made) next to the JUnit reports.
+  android-planning-e2e:
+    name: Android planning E2E (headless)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Planning journey through the shared layer (JVM)
+        run: ./gradlew :shared:testAndroidHostTest --tests "com.nutriplan.shared.e2e.PlanningJourneyTest" --stacktrace
+      - name: Planning journey through the app's UI (JVM, Robolectric)
+        run: ./gradlew :androidApp:testDebugUnitTest --tests "com.nutriplan.android.e2e.PlanningJourneyE2ETest" --stacktrace
+      - name: Upload E2E screenshot, trace and reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-planning-e2e-report
+          path: |
+            mobile/androidApp/build/reports/e2e
+            mobile/androidApp/build/reports/tests/testDebugUnitTest
+            mobile/androidApp/build/test-results/testDebugUnitTest
+            mobile/shared/build/reports/tests
+            mobile/shared/build/test-results
+
   android-release:
     name: Android release build (Play App Signing)
     runs-on: ubuntu-latest
@@ -166,6 +199,34 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Link shared iOS framework
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+
+  # DPL-704: the planning journey through the shared layer on the iOS simulator (the same
+  # view-models the SwiftUI screens use). There is no SwiftUI UI harness yet, so the iOS half runs
+  # one level below the screens; the failure artifact is the test report.
+  ios-planning-e2e:
+    name: iOS planning E2E (headless, shared layer)
+    runs-on: macos-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Planning journey on the iOS simulator
+        run: ./gradlew :shared:iosSimulatorArm64Test --tests "com.nutriplan.shared.e2e.PlanningJourneyTest" --stacktrace
+      - name: Upload iOS E2E report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-planning-e2e-report
+          path: |
+            mobile/shared/build/reports/tests
+            mobile/shared/build/test-results
 
   # HRD-602: Upload dSYM symbols for iOS crash reporting.
   ios-symbols:
