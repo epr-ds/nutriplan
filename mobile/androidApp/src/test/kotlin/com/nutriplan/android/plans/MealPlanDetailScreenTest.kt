@@ -354,7 +354,8 @@ class MealPlanDetailScreenTest {
     fun `a meal that has not reached the server says it is waiting to sync`() {
         render(loaded(plan(pendingMeal())))
 
-        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL).assertIsDisplayed()
+        // The card merges its texts into one element, so the label is looked up in the unmerged tree.
+        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.plan_detail_meal_pending)).assertIsDisplayed()
         compose.onNodeWithText("Soup").assertIsDisplayed()
     }
@@ -363,7 +364,7 @@ class MealPlanDetailScreenTest {
     fun `a meal that is on the server has no waiting label`() {
         render(loaded(plan(meal("1", 0, "lunch", calories = 500))))
 
-        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL).assertDoesNotExist()
+        compose.onNodeWithTag(MealPlanDetailTestTags.PENDING_LABEL, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test

@@ -173,7 +173,7 @@ class PendingMealSyncTest {
     // --- when the server refuses it ---
 
     @Test
-    fun `a refused meal is rolled back: gone from the plan, kept as a failure`() = runTest {
+    fun `a refused meal is rolled back, gone from the plan and kept as a failure`() = runTest {
         val pending = queue()
         remote.addFailures = mutableListOf(ApiException.HttpError(422, null))
 
