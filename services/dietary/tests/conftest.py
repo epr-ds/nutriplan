@@ -18,6 +18,7 @@ the Mongo-free tests (health). The ``seeded_recipes`` / ``seeded_plan`` fixtures
 
 import atexit
 import os
+import time
 import uuid
 
 _requested = os.environ.get("DIETARY_TEST_DB", "").lower()
@@ -58,22 +59,40 @@ from app.main import app  # noqa: E402
 from tests.seed import seed_catalog, seed_plan  # noqa: E402
 
 
-def _mongo_available() -> bool:
+def _ping(timeout_ms: int = 1500) -> PyMongoError | None:
+    """Ping the server; return the failure, or ``None`` when it answered."""
+    client = MongoClient(settings.mongo_url, serverSelectionTimeoutMS=timeout_ms)
     try:
-        client = MongoClient(settings.mongo_url, serverSelectionTimeoutMS=1500)
         client.admin.command("ping")
+        return None
+    except PyMongoError as exc:
+        return exc
+    finally:
         client.close()
-        return True
-    except PyMongoError:
-        return False
 
 
-_MONGO_UP = _mongo_available()
+def _wait_for_mongo(attempts: int = 30, timeout_ms: int = 2000) -> PyMongoError | None:
+    """Ping until the server answers. The official image starts mongod once to create the root
+    user and then restarts it, so a container reported as started may not accept connections
+    for a few seconds yet."""
+    error = _ping(timeout_ms)
+    for _ in range(attempts - 1):
+        if error is None:
+            break
+        time.sleep(1)
+        error = _ping(timeout_ms)
+    return error
 
-if DB_SOURCE == "testcontainers" and not _MONGO_UP:
-    # The harness was asked for explicitly: a container that cannot be reached is a failure,
-    # not a reason to skip every Mongo-backed test.
-    raise RuntimeError(f"The Testcontainers MongoDB at {settings.mongo_url} is not reachable")
+
+if DB_SOURCE == "testcontainers":
+    _error = _wait_for_mongo()
+    if _error is not None:
+        # The harness was asked for explicitly: a container that cannot be reached is a failure,
+        # not a reason to skip every Mongo-backed test.
+        raise RuntimeError(f"The Testcontainers MongoDB is not reachable: {_error}")
+    _MONGO_UP = True
+else:
+    _MONGO_UP = _ping() is None
 
 
 @pytest.fixture
