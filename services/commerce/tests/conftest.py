@@ -54,9 +54,7 @@ elif os.environ.get("COMMERCE_DATABASE_URL"):
     _DB_URL = os.environ["COMMERCE_DATABASE_URL"]
     _DB_SOURCE = "env"
 else:
-    _DB_URL = (
-        f"sqlite+pysqlite:///{tempfile.gettempdir()}/commerce_test_{uuid.uuid4().hex}.sqlite3"
-    )
+    _DB_URL = f"sqlite+pysqlite:///{tempfile.gettempdir()}/commerce_test_{uuid.uuid4().hex}.sqlite3"
     _DB_SOURCE = "sqlite"
 
 # Must be set before importing application modules (settings are read at import time).
