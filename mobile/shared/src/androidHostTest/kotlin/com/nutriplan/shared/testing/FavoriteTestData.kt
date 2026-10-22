@@ -47,11 +47,14 @@ class FakeFavoriteRemote(initial: List<Recipe> = emptyList()) : FavoriteRecipesR
         added += recipeId
         gate?.await()
         addFailure?.let { throw it }
+        // Like the service: saving is idempotent and puts the recipe first.
+        if (server.none { it.id == recipeId }) server.add(0, favoriteRecipe(recipeId))
     }
 
     override suspend fun remove(recipeId: String) {
         removed += recipeId
         gate?.await()
         removeFailure?.let { throw it }
+        server.removeAll { it.id == recipeId }
     }
 }
