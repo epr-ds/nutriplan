@@ -1,5 +1,6 @@
 package com.nutriplan.shared.di
 
+import com.nutriplan.shared.ai.AiAdvisor
 import com.nutriplan.shared.data.repository.AiRepository
 import com.nutriplan.shared.data.repository.AiRepositoryImpl
 import com.nutriplan.shared.data.repository.AuthRepository
@@ -29,6 +30,8 @@ val dataModule = module {
     single<IdentityRepository> { IdentityRepositoryImpl() }
     single<DietaryRepository> { DietaryRepositoryImpl() }
     single<AiRepository> { AiRepositoryImpl() }
+    // AIA-601: the AI use cases with typed results.
+    factory { AiAdvisor(repository = get()) }
     single<CommerceRepository> { CommerceRepositoryImpl() }
     single<NotificationRepository> { NotificationRepositoryImpl() }
 }

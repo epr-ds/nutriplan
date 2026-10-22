@@ -181,16 +181,3 @@ data class MealPlanQuery(
     val page: Int? = null,
     val limit: Int? = null,
 )
-
-/**
- * Nutrition values as the AI models use them (see `AiModels.kt`). Recipes and meals use
- * [NutritionalInfo], which follows the Dietary contract.
- */
-@Serializable
-data class NutritionInfo(
-    val calories: Int? = null,
-    val protein: Double? = null,
-    val carbohydrates: Double? = null,
-    val fat: Double? = null,
-    val fiber: Double? = null,
-)
