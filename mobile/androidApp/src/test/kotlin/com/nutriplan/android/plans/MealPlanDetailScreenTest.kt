@@ -484,4 +484,46 @@ class MealPlanDetailScreenTest {
 
         compose.onNodeWithText(str(R.string.pending_change_remove_failed_title, str(R.string.meal_type_lunch))).assertIsDisplayed()
     }
+
+    // --- AIA-605: optimize the plan with AI ---
+
+    private fun renderOptimizable(state: MealPlanDetailUiState): MutableList<Unit> {
+        val opened = mutableListOf<Unit>()
+        compose.setContent {
+            NutriPlanTheme {
+                MealPlanDetailScreenContent(
+                    state = state,
+                    onRefresh = {},
+                    onRetry = {},
+                    onBack = {},
+                    onAddMeal = {},
+                    onOptimize = { opened += Unit },
+                )
+            }
+        }
+        return opened
+    }
+
+    @Test
+    fun `a plan with meals offers the AI optimization`() {
+        val opened = renderOptimizable(loaded(plan(meal("m1", 0, "lunch"))))
+
+        compose.onNodeWithContentDescription(str(R.string.cd_plan_detail_optimize)).performClick()
+
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `an empty plan has nothing to optimize`() {
+        renderOptimizable(loaded(plan()))
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.OPTIMIZE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a finished plan is not optimized`() {
+        renderOptimizable(loaded(plan(meal("m1", 0, "lunch")).copy(status = "completed")))
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.OPTIMIZE).assertDoesNotExist()
+    }
 }

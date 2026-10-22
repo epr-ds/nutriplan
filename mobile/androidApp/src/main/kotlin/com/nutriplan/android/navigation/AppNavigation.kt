@@ -176,6 +176,16 @@ fun AppNavigationGraph(
             )
         }
 
+        // Optimize a plan with AI (AIA-605)
+        composable<Route.OptimizePlan> { backStackEntry ->
+            val planId = backStackEntry.toRoute<Route.OptimizePlan>().planId
+            analyticsTracker?.logScreenView("optimize_plan", "OptimizePlanScreen")
+            screens.OptimizePlanScreen(
+                planId = planId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // Favorite recipes
         composable<Route.FavoriteRecipes> {
             analyticsTracker?.logScreenView("favorite_recipes", "FavoriteRecipesScreen")
@@ -372,6 +382,10 @@ interface AppNavigationScreens {
     @Composable fun PickPlanScreen(
         recipeId: String,
         mealType: String?,
+        onBack: () -> Unit,
+    )
+    @Composable fun OptimizePlanScreen(
+        planId: String,
         onBack: () -> Unit,
     )
     @Composable fun RecipeDetailScreen(

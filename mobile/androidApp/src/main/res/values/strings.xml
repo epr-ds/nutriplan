@@ -342,4 +342,39 @@
     <string name="pick_plan_title">Add to which plan?</string>
     <string name="pick_plan_empty_title">No plan to add to</string>
     <string name="pick_plan_empty_description">Create a meal plan from Meal plans first, then add the recipe to it.</string>
+
+    <!-- AIA-605: optimize a plan with AI -->
+    <string name="cd_plan_detail_optimize">Optimize this plan with AI</string>
+    <string name="optimize_title">Optimize with AI</string>
+    <string name="optimize_intro">The AI Advisor adjusts the servings in this plan toward a goal. Nothing changes until you accept.</string>
+    <string name="optimize_goal_label">Goal</string>
+    <string name="optimize_goal_balance_macros">Balance macros</string>
+    <string name="optimize_goal_increase_protein">More protein</string>
+    <string name="optimize_goal_reduce_calories">Fewer calories</string>
+    <string name="optimize_goal_increase_satisfaction">More filling</string>
+    <string name="optimize_submit">Suggest changes</string>
+    <string name="cd_optimize_plan_loading">Loading the plan</string>
+    <string name="cd_optimize_loading">Optimizing the plan</string>
+    <string name="optimize_unchanged_title">No changes needed</string>
+    <string name="optimize_unchanged_description">This plan is already as good as it gets for this goal.</string>
+    <string name="optimize_daily_heading">Daily average</string>
+    <string name="optimize_daily_calories">Calories</string>
+    <string name="optimize_daily_protein">Protein</string>
+    <string name="optimize_unit_kcal">kcal</string>
+    <string name="optimize_unit_grams">g</string>
+    <string name="optimize_before_after">%1$s → %2$s %3$s</string>
+    <string name="cd_optimize_before_after">%1$s: from %2$s to %3$s %4$s a day</string>
+    <string name="optimize_changes_heading">Suggested changes</string>
+    <string name="optimize_change_servings">%1$s → %2$s servings</string>
+    <string name="cd_optimize_change">%1$s, %2$s: from %3$s to %4$s servings</string>
+    <string name="optimize_accept">Accept changes</string>
+    <string name="optimize_discard">Discard</string>
+    <string name="optimize_disclaimer">Suggestions from the AI Advisor are estimates for general information only. They are not medical or dietary advice.</string>
+    <string name="error_optimize_network">You\'re offline. Connect to the internet to optimize the plan.</string>
+    <string name="error_optimize_not_found">This plan no longer exists.</string>
+    <string name="error_optimize_rejected">This plan can\'t be optimized. Add some meals first.</string>
+    <string name="error_optimize_unknown">Something went wrong optimizing the plan. Please try again.</string>
+    <string name="error_optimize_accept_network">You\'re offline, so some changes weren\'t saved. Accept again to save the rest.</string>
+    <string name="error_optimize_accept_not_found">A meal in this plan was removed meanwhile, so some changes weren\'t saved.</string>
+    <string name="error_optimize_accept_unknown">Some changes couldn\'t be saved. Accept again to save the rest.</string>
 </resources>
