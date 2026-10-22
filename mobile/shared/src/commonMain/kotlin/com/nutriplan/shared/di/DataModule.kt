@@ -8,6 +8,7 @@ import com.nutriplan.shared.data.repository.CommerceRepository
 import com.nutriplan.shared.data.repository.CommerceRepositoryImpl
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
+import com.nutriplan.shared.data.repository.FulfillmentRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
 import com.nutriplan.shared.data.repository.IdentityRepositoryImpl
 import com.nutriplan.shared.data.repository.NotificationRepository
@@ -35,5 +36,7 @@ val dataModule = module {
     // COM-502: the Commerce client, on the shared HTTP client (gateway of the active ApiConfig
     // environment + the session's bearer token).
     single<CommerceRepository> { CommerceRepositoryImpl() }
+    // COM-505: fulfillment options (kitchen availability, grocery providers and search), typed results.
+    factory { FulfillmentRepository(remote = get()) }
     single<NotificationRepository> { NotificationRepositoryImpl() }
 }

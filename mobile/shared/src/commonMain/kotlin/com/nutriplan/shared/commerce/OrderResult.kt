@@ -4,7 +4,10 @@ import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 
-/** Why an order operation did not give a result. Locale-neutral: each platform maps these to its own copy. */
+/**
+ * Why a Commerce operation -- an order (COM-504) or a fulfillment query (COM-505) -- did not give a
+ * result. Locale-neutral: each platform maps these to its own copy.
+ */
 enum class OrderError {
     /** The device could not reach the server. */
     NETWORK,
@@ -31,7 +34,7 @@ enum class OrderError {
     UNKNOWN,
 }
 
-/** The typed result of an order operation: a value, or why there is none. */
+/** The typed result of a Commerce operation (orders and fulfillment): a value, or why there is none. */
 sealed interface OrderResult<out T> {
     data class Success<out T>(val value: T) : OrderResult<T>
     data class Failure(val error: OrderError) : OrderResult<Nothing>
