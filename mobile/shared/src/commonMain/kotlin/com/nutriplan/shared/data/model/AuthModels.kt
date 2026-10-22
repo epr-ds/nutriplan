@@ -1,5 +1,7 @@
 package com.nutriplan.shared.data.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /** Request body for registration (`POST /auth/register`). */
@@ -51,13 +53,18 @@ data class DietaryPreferences(
     val appetiteSatisfactionLevel: Int? = null,
 )
 
-/** Macro targets embedded in [DietaryPreferences] (`MacroTargets` in the Identity contract). */
+/**
+ * Macro targets embedded in [DietaryPreferences] (`MacroTargets` in the Identity, Dietary and AI
+ * contracts). The contracts define these as integers, not nullable ones, so a target that is not
+ * set is left out of the JSON rather than sent as null.
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class DietaryMacroTargets(
-    val proteinGrams: Int? = null,
-    val carbsGrams: Int? = null,
-    val fatGrams: Int? = null,
-    val sugarGrams: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val proteinGrams: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val carbsGrams: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val fatGrams: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val sugarGrams: Int? = null,
 )
 
 /** User profile returned from identity endpoints (`UserProfileResponse`). */
