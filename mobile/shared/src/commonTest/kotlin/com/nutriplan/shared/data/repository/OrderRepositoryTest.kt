@@ -130,7 +130,7 @@ class OrderRepositoryTest {
     }
 
     @Test
-    fun `the cached orders come first, then the server's, which replace them`() = runTest {
+    fun `the cached orders come first and then the server's which replace them`() = runTest {
         remote.list = listOf(order("o3"), order("o2"))
         val (store, orders) = repository(order("o2"), order("o1"))
 
@@ -153,7 +153,7 @@ class OrderRepositoryTest {
     }
 
     @Test
-    fun `offline, the cached orders stay with the reason they are not fresh`() = runTest {
+    fun `offline the cached orders stay with the reason they are not fresh`() = runTest {
         remote.list = offline
         val (_, orders) = repository(order("o1"))
 
@@ -214,7 +214,7 @@ class OrderRepositoryTest {
     // --- order(): cache-first, then refresh ---
 
     @Test
-    fun `one order comes from the cache first, then from the server, which refreshes it`() = runTest {
+    fun `one order comes from the cache first and then from the server which refreshes it`() = runTest {
         remote.detail = order("o1", "confirmed")
         val (store, orders) = repository(order("o1", "pending"))
 
@@ -235,7 +235,7 @@ class OrderRepositoryTest {
     }
 
     @Test
-    fun `offline, the cached order stays`() = runTest {
+    fun `offline the cached order stays`() = runTest {
         remote.detail = offline
         val (_, orders) = repository(order("o1"))
 
@@ -277,7 +277,7 @@ class OrderRepositoryTest {
     }
 
     @Test
-    fun `creating an order offline is a failure, never a fake order`() = runTest {
+    fun `creating an order offline is a failure and never a fake order`() = runTest {
         remote.write = offline
         val (store, orders) = repository()
 
