@@ -47,7 +47,9 @@ class PendingMealSync(
     private val remote: DietaryRepository,
     private val store: PendingMealStore,
     private val cache: MealPlanCache,
-) {
+    /** Asked to send the queue once the server can be reached, even if the app is closed by then. */
+    private val scheduler: SyncScheduler = SyncScheduler.None,
+) : MealQueueFlusher {
 
     private val flushing = Mutex()
 
@@ -59,7 +61,10 @@ class PendingMealSync(
             dayIndex = dayIndex,
             recipe = PlanMealRecipe(id = recipe.id, name = recipe.name, imageUrl = recipe.imageUrl),
             nutritionalInfo = recipe.nutritionalInfo?.times(request.servings),
-        )
+        ).also { scheduler.requestSync() }
+
+    /** Ask the platform to send the queue when the server can be reached (for example when the app starts). */
+    fun requestSync() = scheduler.requestSync()
 
     /** Whether anything is waiting to be sent. */
     fun hasWaiting(): Boolean = store.waiting().isNotEmpty()
@@ -72,7 +77,7 @@ class PendingMealSync(
     fun dismissFailure(id: Long) = store.remove(id)
 
     /** Send what is waiting, oldest first. Safe to call often: it does nothing when the queue is empty. */
-    suspend fun flush(): FlushResult = flushing.withLock {
+    override suspend fun flush(): FlushResult = flushing.withLock {
         var added = 0
         var failed = 0
         for (pending in store.waiting()) {

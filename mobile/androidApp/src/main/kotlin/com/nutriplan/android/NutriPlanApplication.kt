@@ -3,6 +3,7 @@ package com.nutriplan.android
 import android.app.Application
 import com.nutriplan.android.analytics.FirebaseAnalyticsTracker
 import com.nutriplan.android.auth.AndroidOAuthTokenProvider
+import com.nutriplan.android.sync.WorkManagerSyncScheduler
 import com.nutriplan.shared.auth.OAuthTokenProvider
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.ApiEnvironment
@@ -11,6 +12,7 @@ import com.nutriplan.shared.data.local.SecureTokenStorage
 import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.network.HttpClientProvider
 import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.data.repository.SyncScheduler
 import com.nutriplan.shared.di.KoinInitializer
 import com.nutriplan.shared.di.cacheModule
 import com.nutriplan.shared.onboarding.DeviceOnboardingDraftStorage
@@ -48,6 +50,8 @@ class NutriPlanApplication : Application() {
             module {
                 single<TokenStorage> { SecureTokenStorage(applicationContext) }
                 single<OnboardingDraftStorage> { DeviceOnboardingDraftStorage(applicationContext) }
+                // DPL-407: meals added offline are sent in the background once there is a network.
+                single<SyncScheduler> { WorkManagerSyncScheduler(applicationContext) }
                 // IDN-505: Google OAuth via Credential Manager (server client ID from the build).
                 single<OAuthTokenProvider> {
                     AndroidOAuthTokenProvider(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID)
@@ -60,5 +64,10 @@ class NutriPlanApplication : Application() {
         // Get AuthRepository from Koin and initialize Ktor HTTP client
         val authRepository = GlobalContext.get().get<AuthRepository>()
         HttpClientProvider.create(OkHttp, authRepository)
+
+        // DPL-407: meals queued in an earlier run are sent as soon as the device is online. This only
+        // schedules a background job (which does nothing when the queue is empty), so it never opens
+        // the database during startup.
+        GlobalContext.get().get<SyncScheduler>().requestSync()
     }
 }

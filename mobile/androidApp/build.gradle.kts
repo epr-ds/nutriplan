@@ -115,6 +115,7 @@ dependencies {
 
     // IDN-606: load the remote avatar
     implementation(libs.coil.compose)
+    implementation(libs.androidx.work.runtime.ktx)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -144,6 +145,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.work.testing)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
 
