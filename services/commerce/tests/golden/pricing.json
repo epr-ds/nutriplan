@@ -1,0 +1,191 @@
+{
+  "description": "COM-806 golden pricing fixtures. Each scenario is priced with the shipped rate card below; every amount is MXN with two decimals, rounded ROUND_HALF_UP per line, and the subtotal is the sum of the rounded lines. Changing a price or a rounding rule must change this file on purpose.",
+  "rateCard": {
+    "perServing": {
+      "breakfast": "45.00",
+      "lunch": "75.00",
+      "dinner": "85.00",
+      "snack": "30.00",
+      "default": "60.00"
+    },
+    "deliveryFee": {
+      "dark_kitchen": "35.00",
+      "grocery_delivery": "49.00",
+      "pickup": "0.00"
+    },
+    "freeDeliveryThreshold": "500.00"
+  },
+  "scenarios": [
+    {
+      "name": "a dark kitchen day of meals",
+      "fulfillmentType": "dark_kitchen",
+      "meals": [
+        {"mealType": "breakfast", "servings": "1", "recipeName": "Oatmeal Bowl"},
+        {"mealType": "lunch", "servings": "1", "recipeName": "Chicken Bowl"},
+        {"mealType": "dinner", "servings": "1", "recipeName": "Salmon"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Oatmeal Bowl", "unitPrice": "45.00", "lineTotal": "45.00"},
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "75.00"},
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "85.00"}
+        ],
+        "subtotal": "205.00",
+        "deliveryFee": "35.00",
+        "total": "240.00",
+        "formattedTotal": "$240.00 MXN"
+      }
+    },
+    {
+      "name": "grocery delivery pays its own fee",
+      "fulfillmentType": "grocery_delivery",
+      "meals": [
+        {"mealType": "dinner", "servings": "4", "recipeName": "Lentil Soup"},
+        {"mealType": "snack", "servings": "2", "recipeName": "Hummus"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Lentil Soup", "unitPrice": "85.00", "lineTotal": "340.00"},
+          {"name": "Hummus", "unitPrice": "30.00", "lineTotal": "60.00"}
+        ],
+        "subtotal": "400.00",
+        "deliveryFee": "49.00",
+        "total": "449.00",
+        "formattedTotal": "$449.00 MXN"
+      }
+    },
+    {
+      "name": "pickup is free",
+      "fulfillmentType": "pickup",
+      "meals": [
+        {"mealType": "lunch", "servings": "2", "recipeName": "Chicken Bowl"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "150.00"}
+        ],
+        "subtotal": "150.00",
+        "deliveryFee": "0.00",
+        "total": "150.00",
+        "formattedTotal": "$150.00 MXN"
+      }
+    },
+    {
+      "name": "a subtotal exactly at the threshold ships free",
+      "fulfillmentType": "dark_kitchen",
+      "meals": [
+        {"mealType": "dinner", "servings": "2", "recipeName": "Salmon"},
+        {"mealType": "lunch", "servings": "2", "recipeName": "Chicken Bowl"},
+        {"mealType": "brunch", "servings": "3", "recipeName": "Chilaquiles"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "170.00"},
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "150.00"},
+          {"name": "Chilaquiles", "unitPrice": "60.00", "lineTotal": "180.00"}
+        ],
+        "subtotal": "500.00",
+        "deliveryFee": "0.00",
+        "total": "500.00",
+        "formattedTotal": "$500.00 MXN"
+      }
+    },
+    {
+      "name": "a centavo below the threshold pays delivery",
+      "fulfillmentType": "dark_kitchen",
+      "meals": [
+        {"mealType": "dinner", "servings": "4", "recipeName": "Lentil Soup"},
+        {"mealType": "lunch", "servings": "2", "recipeName": "Chicken Bowl"},
+        {"mealType": "snack", "servings": "0.333", "recipeName": "Almonds"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Lentil Soup", "unitPrice": "85.00", "lineTotal": "340.00"},
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "150.00"},
+          {"name": "Almonds", "unitPrice": "30.00", "lineTotal": "9.99"}
+        ],
+        "subtotal": "499.99",
+        "deliveryFee": "35.00",
+        "total": "534.99",
+        "formattedTotal": "$534.99 MXN"
+      }
+    },
+    {
+      "name": "each line rounds half up before the lines are summed",
+      "fulfillmentType": "grocery_delivery",
+      "meals": [
+        {"mealType": "dinner", "servings": "0.333", "recipeName": "Salmon"},
+        {"mealType": "breakfast", "servings": "0.333", "recipeName": "Oatmeal Bowl"},
+        {"mealType": "lunch", "servings": "0.333", "recipeName": "Chicken Bowl"}
+      ],
+      "comment": "28.305 -> 28.31, 14.985 -> 14.99, 24.975 -> 24.98; the lines sum to 68.28, where rounding the raw sum (68.265) would give 68.27.",
+      "expected": {
+        "items": [
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "28.31"},
+          {"name": "Oatmeal Bowl", "unitPrice": "45.00", "lineTotal": "14.99"},
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "24.98"}
+        ],
+        "subtotal": "68.28",
+        "deliveryFee": "49.00",
+        "total": "117.28",
+        "formattedTotal": "$117.28 MXN"
+      }
+    },
+    {
+      "name": "half servings",
+      "fulfillmentType": "dark_kitchen",
+      "meals": [
+        {"mealType": "snack", "servings": "0.5", "recipeName": "Hummus"},
+        {"mealType": "dinner", "servings": "1.5", "recipeName": "Salmon"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Hummus", "unitPrice": "30.00", "lineTotal": "15.00"},
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "127.50"}
+        ],
+        "subtotal": "142.50",
+        "deliveryFee": "35.00",
+        "total": "177.50",
+        "formattedTotal": "$177.50 MXN"
+      }
+    },
+    {
+      "name": "unknown and mixed-case meal types",
+      "fulfillmentType": "pickup",
+      "meals": [
+        {"mealType": "BRUNCH", "servings": "1", "recipeName": null},
+        {"mealType": "Dinner", "servings": "1", "recipeName": "Salmon"},
+        {"mealType": "late_snack", "servings": "2", "recipeName": null}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Brunch", "unitPrice": "60.00", "lineTotal": "60.00"},
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "85.00"},
+          {"name": "Late Snack", "unitPrice": "60.00", "lineTotal": "120.00"}
+        ],
+        "subtotal": "265.00",
+        "deliveryFee": "0.00",
+        "total": "265.00",
+        "formattedTotal": "$265.00 MXN"
+      }
+    },
+    {
+      "name": "a large order is formatted with thousands separators",
+      "fulfillmentType": "grocery_delivery",
+      "meals": [
+        {"mealType": "dinner", "servings": "12", "recipeName": "Salmon"},
+        {"mealType": "lunch", "servings": "10", "recipeName": "Chicken Bowl"}
+      ],
+      "expected": {
+        "items": [
+          {"name": "Salmon", "unitPrice": "85.00", "lineTotal": "1020.00"},
+          {"name": "Chicken Bowl", "unitPrice": "75.00", "lineTotal": "750.00"}
+        ],
+        "subtotal": "1770.00",
+        "deliveryFee": "0.00",
+        "total": "1770.00",
+        "formattedTotal": "$1,770.00 MXN"
+      }
+    }
+  ]
+}
