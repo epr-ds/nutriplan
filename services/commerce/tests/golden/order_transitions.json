@@ -1,0 +1,69 @@
+{
+  "description": "COM-806 golden order lifecycle. 'graph' lists, for each status, the statuses it may move to. 'commands' gives the outcome of each order command from each status (with no payment recorded yet): the new status, 'unchanged' for an idempotent no-op, or 'rejected' for an illegal transition, which must leave the order untouched. Changing the lifecycle must change this file on purpose.",
+  "graph": {
+    "pending": ["cancelled", "confirmed"],
+    "confirmed": ["cancelled", "preparing"],
+    "preparing": ["cancelled", "in_transit"],
+    "in_transit": ["delivered"],
+    "delivered": [],
+    "cancelled": []
+  },
+  "commands": {
+    "cancel": {
+      "pending": "cancelled",
+      "confirmed": "cancelled",
+      "preparing": "cancelled",
+      "in_transit": "rejected",
+      "delivered": "rejected",
+      "cancelled": "rejected"
+    },
+    "mark_paid": {
+      "pending": "confirmed",
+      "confirmed": "rejected",
+      "preparing": "rejected",
+      "in_transit": "rejected",
+      "delivered": "rejected",
+      "cancelled": "rejected"
+    },
+    "confirm_payment": {
+      "pending": "confirmed",
+      "confirmed": "rejected",
+      "preparing": "rejected",
+      "in_transit": "rejected",
+      "delivered": "rejected",
+      "cancelled": "rejected"
+    },
+    "fail_payment": {
+      "pending": "cancelled",
+      "confirmed": "rejected",
+      "preparing": "rejected",
+      "in_transit": "rejected",
+      "delivered": "rejected",
+      "cancelled": "rejected"
+    },
+    "report_preparing": {
+      "pending": "rejected",
+      "confirmed": "preparing",
+      "preparing": "unchanged",
+      "in_transit": "unchanged",
+      "delivered": "unchanged",
+      "cancelled": "rejected"
+    },
+    "report_dispatched": {
+      "pending": "rejected",
+      "confirmed": "rejected",
+      "preparing": "in_transit",
+      "in_transit": "unchanged",
+      "delivered": "unchanged",
+      "cancelled": "rejected"
+    },
+    "mark_delivered": {
+      "pending": "rejected",
+      "confirmed": "rejected",
+      "preparing": "rejected",
+      "in_transit": "delivered",
+      "delivered": "rejected",
+      "cancelled": "rejected"
+    }
+  }
+}
