@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from app.domain.enums import OrderStatus
+from app.domain.enums import FulfillmentType, OrderStatus
 
 
 @dataclass(frozen=True)
@@ -75,3 +75,16 @@ class DarkKitchenAvailabilityQuery:
 
     zip_code: str
     delivery_date: date | None = None
+
+
+@dataclass(frozen=True)
+class QuoteOrderQuery:
+    """What an order for one of the caller's meal plans would cost (COM-605).
+
+    The plan is fetched from Dietary with the caller's token, so ownership is enforced there; a
+    ``grocery_delivery`` quote needs ``provider_id``, like the order itself.
+    """
+
+    meal_plan_id: str
+    fulfillment_type: FulfillmentType
+    provider_id: str | None = None

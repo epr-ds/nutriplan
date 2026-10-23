@@ -101,6 +101,40 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /orders/quote:
+    post:
+      tags: [Orders]
+      operationId: quoteOrder
+      summary: Price an order for a meal plan without placing it
+      description: >-
+        Prices an order for one of the caller's meal plans (COM-605): the priced lines, subtotal,
+        delivery fee and total that `createOrder` would give for the same plan and fulfillment type,
+        so a checkout can show them before the order is placed. Nothing is created, reserved or
+        charged.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderQuoteRequest'
+      responses:
+        '200':
+          description: The order's price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderQuoteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/MealPlanNotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
   /orders/{orderId}:
     get:
       tags: [Orders]
@@ -558,6 +592,40 @@ components:
           enum: [credit_card, debit_card, paypal, oxxo, spei]
         token:
           type: string
+
+    OrderQuoteRequest:
+      type: object
+      description: >
+        What to price (COM-605): one of the caller's meal plans and how the order would be
+        fulfilled. Like `CreateOrderRequest`, `providerId` is required for `grocery_delivery`.
+      required: [mealPlanId, fulfillmentType]
+      properties:
+        mealPlanId:
+          type: string
+          format: uuid
+        fulfillmentType:
+          type: string
+          enum: [dark_kitchen, grocery_delivery, pickup]
+        providerId:
+          type: string
+
+    OrderQuoteResponse:
+      type: object
+      description: >
+        What the order would cost (COM-605), priced like `createOrder` prices it: one line per
+        planned meal, the subtotal, the delivery fee for the fulfillment type and the total.
+      required: [items, subtotal, deliveryFee, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        subtotal:
+          $ref: '#/components/schemas/MoneyResponse'
+        deliveryFee:
+          $ref: '#/components/schemas/MoneyResponse'
+        total:
+          $ref: '#/components/schemas/MoneyResponse'
 
     CancelOrderRequest:
       type: object

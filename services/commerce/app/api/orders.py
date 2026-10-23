@@ -16,11 +16,23 @@ from app.api.deps import (
     CurrentPrincipal,
     GetOrderServiceDep,
     ListOrdersServiceDep,
+    QuoteOrderServiceDep,
     SyncGroceryOrderServiceDep,
 )
-from app.api.schemas import CancelOrderRequest, CreateOrderRequest, OrderResponse
+from app.api.schemas import (
+    CancelOrderRequest,
+    CreateOrderRequest,
+    OrderQuoteRequest,
+    OrderQuoteResponse,
+    OrderResponse,
+)
 from app.application.commands import CancelOrderCommand, CreateOrderCommand
-from app.application.queries import GetOrderQuery, ListOrdersQuery, SyncGroceryOrderQuery
+from app.application.queries import (
+    GetOrderQuery,
+    ListOrdersQuery,
+    QuoteOrderQuery,
+    SyncGroceryOrderQuery,
+)
 from app.domain.enums import OrderStatus
 
 router = APIRouter(tags=["Orders"])
@@ -79,6 +91,32 @@ def create_order(
     )
     order = service.create(command, bearer_token=token, idempotency_key=idempotency_key)
     return OrderResponse.from_order(order)
+
+
+@router.post(
+    "/orders/quote",
+    response_model=OrderQuoteResponse,
+    summary="Price an order for a meal plan without placing it",
+)
+def quote_order(
+    body: OrderQuoteRequest,
+    principal: CurrentPrincipal,
+    token: BearerToken,
+    service: QuoteOrderServiceDep,
+) -> OrderQuoteResponse:
+    """Price an order for one of the caller's meal plans, creating and charging nothing (COM-605).
+
+    The lines and totals are the ones ``POST /orders`` would give for the same plan and fulfillment
+    type, so the checkout can show them before the user places the order. Ownership of
+    ``mealPlanId`` is enforced by Dietary; a missing or not-owned plan is ``404``, a
+    ``grocery_delivery`` without ``providerId`` is ``422``, and an unreachable Dietary is ``503``.
+    """
+    query = QuoteOrderQuery(
+        meal_plan_id=str(body.meal_plan_id),
+        fulfillment_type=body.fulfillment_type,
+        provider_id=body.provider_id,
+    )
+    return OrderQuoteResponse.from_quote(service.quote(query, bearer_token=token))
 
 
 @router.get(

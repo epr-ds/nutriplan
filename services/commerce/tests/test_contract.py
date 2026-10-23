@@ -277,6 +277,51 @@ def test_create_order_validation_error_conforms(openapi, api):
     assert_conforms(openapi, "post", "/orders", resp)
 
 
+def _quote_body(**overrides) -> dict:
+    return {"mealPlanId": _PLAN_ID, "fulfillmentType": "dark_kitchen", **overrides}
+
+
+def test_quote_order_conforms(openapi, api):
+    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    assert resp.status_code == 200
+    assert [item["name"] for item in resp.json()["items"]] == ["Oats", "Lentil soup"]
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
+def test_quote_grocery_order_conforms(openapi, api):
+    body = _quote_body(fulfillmentType="grocery_delivery", providerId="freshbasket")
+    resp = api.post("/orders/quote", json=body, headers=_AUTH)
+    assert resp.status_code == 200
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
+def test_quote_order_unknown_meal_plan_conforms(openapi, api, meal_plans):
+    meal_plans.snapshot = None
+    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    assert resp.status_code == 404
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
+def test_quote_order_dietary_unavailable_conforms(openapi, api, meal_plans):
+    meal_plans.unavailable = True
+    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    assert resp.status_code == 503
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
+def test_quote_order_validation_error_conforms(openapi, api):
+    body = _quote_body(fulfillmentType="grocery_delivery")
+    resp = api.post("/orders/quote", json=body, headers=_AUTH)
+    assert resp.status_code == 422
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
+def test_quote_order_unauthenticated_conforms(openapi, api):
+    resp = api.post("/orders/quote", json=_quote_body())
+    assert resp.status_code == 401
+    assert_conforms(openapi, "post", "/orders/quote", resp)
+
+
 def test_create_order_unauthenticated_conforms(openapi, api):
     resp = api.post("/orders", json=_order_body())
     assert resp.status_code == 401

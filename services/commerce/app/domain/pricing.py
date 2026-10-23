@@ -19,7 +19,7 @@ reconcile exactly to the subtotal.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -75,6 +75,16 @@ def _display_name(meal: PlannedMeal) -> str:
     return meal.recipe_name or meal.meal_type.replace("_", " ").title()
 
 
+@dataclass(frozen=True)
+class PriceQuote:
+    """What an order would cost (COM-605): its priced lines and totals, nothing persisted."""
+
+    items: list[OrderItem]
+    subtotal: Money
+    delivery_fee: Money
+    total: Money
+
+
 class OrderPricer:
     """Prices order line items and settles order totals (COM-103)."""
 
@@ -102,11 +112,27 @@ class OrderPricer:
 
     def price_order(self, order: Order) -> None:
         """Set ``subtotal``/``delivery_fee``/``total`` on the order from its (priced) items."""
-        subtotal = self._sum_line_totals(order.items)
-        delivery_fee = self._delivery_fees.fee_for(order.fulfillment_type, subtotal)
+        subtotal, delivery_fee, total = self._totals(order.items, order.fulfillment_type)
         order.subtotal = subtotal
         order.delivery_fee = delivery_fee
-        order.total = subtotal + delivery_fee
+        order.total = total
+
+    def quote(self, meals: Sequence[PlannedMeal], fulfillment_type: FulfillmentType) -> PriceQuote:
+        """Price ``meals`` for ``fulfillment_type`` without creating an order (COM-605).
+
+        The same lines and totals an order for these meals would get, so a checkout can show them
+        before anything is placed or charged.
+        """
+        items = [self.price_item(meal) for meal in meals]
+        subtotal, delivery_fee, total = self._totals(items, fulfillment_type)
+        return PriceQuote(items=items, subtotal=subtotal, delivery_fee=delivery_fee, total=total)
+
+    def _totals(
+        self, items: list[OrderItem], fulfillment_type: FulfillmentType
+    ) -> tuple[Money, Money, Money]:
+        subtotal = self._sum_line_totals(items)
+        delivery_fee = self._delivery_fees.fee_for(fulfillment_type, subtotal)
+        return subtotal, delivery_fee, subtotal + delivery_fee
 
     def _sum_line_totals(self, items: list[OrderItem]) -> Money:
         subtotal = Money.zero(self._currency)

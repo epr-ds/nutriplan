@@ -36,6 +36,7 @@ from app.application.ports import (
 )
 from app.application.process_kitchen_webhook import ProcessKitchenWebhookService
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
+from app.application.quote_order import QuoteOrderService
 from app.application.reserve_slot import ReserveDeliverySlotService
 from app.application.route_to_kitchen import KitchenRouter
 from app.application.search_grocery_products import SearchGroceryProductsService
@@ -364,6 +365,14 @@ def get_get_order_service(
     return GetOrderService(orders)
 
 
+def get_quote_order_service(
+    meal_plans: Annotated[MealPlanProvider, Depends(get_meal_plan_provider)],
+    pricer: Annotated[OrderPricer, Depends(get_order_pricer)],
+) -> QuoteOrderService:
+    """Build the use case that prices an order without placing it (COM-605)."""
+    return QuoteOrderService(meal_plans, pricer)
+
+
 def get_cancel_order_service(
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     payments: Annotated[PaymentProvider, Depends(get_payment_provider)],
@@ -426,6 +435,7 @@ OrderRepositoryDep = Annotated[OrderRepository, Depends(get_order_repository)]
 CreateOrderServiceDep = Annotated[CreateOrderService, Depends(get_create_order_service)]
 ListOrdersServiceDep = Annotated[ListOrdersService, Depends(get_list_orders_service)]
 GetOrderServiceDep = Annotated[GetOrderService, Depends(get_get_order_service)]
+QuoteOrderServiceDep = Annotated[QuoteOrderService, Depends(get_quote_order_service)]
 CancelOrderServiceDep = Annotated[CancelOrderService, Depends(get_cancel_order_service)]
 PaymentMethodServiceDep = Annotated[PaymentMethodService, Depends(get_payment_method_service)]
 DarkKitchenAvailabilityServiceDep = Annotated[
