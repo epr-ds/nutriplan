@@ -218,9 +218,12 @@ def test_create_order_conforms(openapi, api):
 @pytest.mark.parametrize(
     ("payment", "member"),
     [
+        # No token: OXXO, SPEI and PayPal involve no card (COM-608).
+        ({"type": "oxxo"}, "voucher"),
+        ({"type": "spei"}, "transfer"),
+        ({"type": "paypal"}, "approval"),
+        # A token is still accepted from older clients, and ignored.
         ({"type": "oxxo", "token": "tok_oxxo"}, "voucher"),
-        ({"type": "spei", "token": "tok_spei"}, "transfer"),
-        ({"type": "paypal", "token": "tok_paypal"}, "approval"),
     ],
 )
 def test_create_order_with_an_async_payment_conforms(openapi, api, payment, member):
@@ -235,6 +238,14 @@ def test_create_order_paid_by_card_conforms(openapi, api):
     resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
     assert resp.status_code == 201
     assert resp.json()["status"] == "confirmed"
+    assert_conforms(openapi, "post", "/orders", resp)
+
+
+@pytest.mark.parametrize("token", [None, "", "  "])
+def test_create_order_card_without_token_conforms(openapi, api, token):
+    payment = {"type": "credit_card"} if token is None else {"type": "credit_card", "token": token}
+    resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
+    assert resp.status_code == 422
     assert_conforms(openapi, "post", "/orders", resp)
 
 

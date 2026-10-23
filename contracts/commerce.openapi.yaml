@@ -585,7 +585,12 @@ components:
 
     PaymentMethodRequest:
       type: object
-      required: [type, token]
+      description: >
+        How the order is paid. A card (`credit_card`, `debit_card`) carries the `token` its provider
+        minted on the device and is charged at once; without one the request is a `422`. OXXO, SPEI
+        and PayPal need no token (COM-608): they leave the order `pending` with a voucher, transfer
+        instructions or an approval link.
+      required: [type]
       properties:
         type:
           type: string
