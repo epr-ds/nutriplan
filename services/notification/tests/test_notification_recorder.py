@@ -12,7 +12,9 @@ so without swallowing notifications when something goes wrong in between.
 
 from __future__ import annotations
 
+import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -114,6 +116,32 @@ def test_many_replays_still_produce_exactly_one_notification(
     results = [recorder.record(_notification(user), event_id=EVENT) for _ in range(5)]
 
     assert [r.recorded for r in results] == [True, False, False, False, False]
+    assert len(recorder.repository.list_for_user(user)) == 1
+    assert recorder.repository.count_unread(user) == 1
+
+
+def test_concurrent_deliveries_of_one_event_record_exactly_one_notification(
+    recorder: NotificationRecorder,
+) -> None:
+    """The same no-op guarantee, for deliveries that arrive at once rather than in sequence.
+
+    Sequential replays are covered above; this is the race a real redelivery and a slow
+    first write can produce, where both consumers reach the claim before either has written.
+    Every worker builds its own notification, so a broken claim would leave two records
+    rather than one overwritten.
+    """
+    user = uuid.uuid4()
+    workers = 8
+    barrier = threading.Barrier(workers)
+
+    def deliver() -> RecordResult:
+        barrier.wait()
+        return recorder.record(_notification(user), event_id=EVENT)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(lambda _: deliver(), range(workers)))
+
+    assert sum(result.recorded for result in results) == 1
     assert len(recorder.repository.list_for_user(user)) == 1
     assert recorder.repository.count_unread(user) == 1
 

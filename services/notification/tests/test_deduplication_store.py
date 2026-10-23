@@ -13,8 +13,10 @@ and whether the two agree is the entire question.
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.adapters.idempotency import IdempotencyWindow
@@ -87,6 +89,30 @@ def test_re_claiming_with_the_same_holder_reports_ownership(
 
     assert claim.acquired
     assert claim.holder == "notification-1"
+
+
+def test_concurrent_claims_admit_exactly_one_holder(dedupe_store: DedupeStoreFactory) -> None:
+    """The race the in-memory adapter's lock (and Redis's ``SET NX``) exists to win.
+
+    Eight threads leave a barrier together and claim the same key, many rounds over, so a
+    check-then-write that let two of them through would show up here rather than as a
+    duplicate notification in production. Every round must admit exactly one holder.
+    """
+    store = dedupe_store(window=IdempotencyWindow(ttl_seconds=60))
+    workers = 8
+
+    def claim(key: DedupeKey, index: int, barrier: threading.Barrier) -> bool:
+        barrier.wait()
+        return store.claim(key, f"notification-{index}").acquired
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for round_ in range(20):
+            key = _key(f"evt-{round_}")
+            barrier = threading.Barrier(workers)
+
+            outcomes = list(pool.map(lambda i, k=key, b=barrier: claim(k, i, b), range(workers)))
+
+            assert sum(outcomes) == 1, f"round {round_} admitted {sum(outcomes)} holders"
 
 
 def test_distinct_keys_do_not_interfere(dedupe_store: DedupeStoreFactory) -> None:
