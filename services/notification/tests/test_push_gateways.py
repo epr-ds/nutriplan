@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.adapters.apns_adapter import APNsError, APNsMessage
+from app.adapters.apns_adapter import APNS_SANDBOX_URL, APNsError, APNsMessage
 from app.adapters.factory import build_push_delivery, build_push_gateways
 from app.adapters.fcm_adapter import FCMError, FCMMessage
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
@@ -146,3 +146,24 @@ def test_no_delivery_service_without_a_provider() -> None:
 
     assert build_push_delivery(Settings(), notifications=notifications) is None
     assert build_push_delivery(_configured_settings(), notifications=notifications) is not None
+
+
+def test_builds_an_apns_gateway_that_targets_the_sandbox_when_configured() -> None:
+    """NTF-604: the delivery path sends through the provider's sandbox when it is configured.
+
+    The adapter-level sandbox switch is pinned by the adapter tests; this pins the wiring the
+    delivery service would actually use -- the gateway ``build_push_gateways`` hands to
+    ``PushDelivery`` -- so a settings change cannot drift from what the tests believe to be
+    true.
+    """
+    gateways = build_push_gateways(_configured_settings(apns_use_sandbox=True))
+
+    assert DevicePlatform.IOS in gateways
+
+    adapter = gateways[DevicePlatform.IOS]._adapter  # type: ignore[attr-defined]
+    adapter.start()
+    try:
+        assert adapter._client is not None
+        assert str(adapter._client.base_url).rstrip("/") == APNS_SANDBOX_URL
+    finally:
+        adapter.stop()
