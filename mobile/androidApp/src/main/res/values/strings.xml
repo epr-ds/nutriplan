@@ -417,4 +417,37 @@
     <string name="ai_recommendations_browse_recipes">Browse recipes instead (without AI)</string>
     <string name="error_ai_timeout">The AI Advisor took too long to answer. Please try again in a moment.</string>
     <string name="error_optimize_accept_timeout">The server took too long, so some changes may not be saved. Accept again to save the rest.</string>
+
+    <!-- COM-601: delivery addresses -->
+    <string name="address_book_title">Delivery addresses</string>
+    <string name="address_book_add">Add address</string>
+    <string name="address_book_empty_title">No saved addresses</string>
+    <string name="address_book_empty_description">Add the address where you want your orders delivered. It stays on this device.</string>
+    <string name="address_book_default_badge">Default</string>
+    <string name="address_book_set_default">Make default</string>
+    <string name="address_book_delete">Delete</string>
+    <string name="address_book_city_line">%1$s %2$s, %3$s</string>
+    <string name="cd_address_book_edit">Edit %1$s</string>
+    <string name="cd_address_book_delete">Delete %1$s</string>
+    <string name="cd_address_book_set_default">Make %1$s your default address</string>
+    <string name="cd_address_book_loading">Loading your addresses</string>
+    <string name="address_book_error_read">Your saved addresses couldn\'t be loaded.</string>
+    <string name="address_book_error_save">The address couldn\'t be saved. Please try again.</string>
+    <string name="address_book_retry">Try again</string>
+    <string name="address_form_title_new">New address</string>
+    <string name="address_form_title_edit">Edit address</string>
+    <string name="address_form_label">Label (optional)</string>
+    <string name="address_form_label_hint">e.g. Home or Office</string>
+    <string name="address_form_street">Street and number</string>
+    <string name="address_form_apartment">Apartment or suite (optional)</string>
+    <string name="address_form_zip">Postal code</string>
+    <string name="address_form_city">City</string>
+    <string name="address_form_state">State</string>
+    <string name="address_form_country">Country</string>
+    <string name="address_form_instructions">Delivery instructions (optional)</string>
+    <string name="address_form_make_default">Use as my default address</string>
+    <string name="address_form_save">Save address</string>
+    <string name="address_form_cancel">Cancel</string>
+    <string name="address_form_error_required">Required</string>
+    <string name="address_form_error_zip">Enter the 5-digit postal code</string>
 </resources>

@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.nutriplan.android.R
 import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.shared.profile.ProfileViewModel
@@ -36,8 +38,11 @@ fun ProfileScreen(
     onNavigateToDietaryPreferences: () -> Unit,
     onNavigateToOrderHistory: () -> Unit,
     onNavigateToNotificationSettings: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    /** COM-601: the delivery address book. */
+    onNavigateToAddresses: () -> Unit = {},
 ) {
+    val addressesLabel = stringResource(R.string.address_book_title)
     val viewModel = koinInject<ProfileViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -157,6 +162,7 @@ fun ProfileScreen(
                     val menuItems = listOf(
                         MenuItem("Edit Profile", Icons.Default.Person, onNavigateToEditProfile),
                         MenuItem("Dietary Preferences", Icons.Default.Restaurant, onNavigateToDietaryPreferences),
+                        MenuItem(addressesLabel, Icons.Default.LocationOn, onNavigateToAddresses),
                         MenuItem("Order History", Icons.Default.ShoppingBag, onNavigateToOrderHistory),
                         MenuItem("Notifications", Icons.Default.Notifications, onNavigateToNotificationSettings)
                     )

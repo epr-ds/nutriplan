@@ -36,6 +36,10 @@ UPDATE saved_address SET last_used = ? WHERE id = ?;
 relabel:
 UPDATE saved_address SET label = ? WHERE id = ?;
 
+-- Edit an address in place (COM-601): its content and label change, its place in the list does not.
+updateAddress:
+UPDATE saved_address SET address = ?, label = ? WHERE id = ?;
+
 clearDefault:
 UPDATE saved_address SET is_default = 0 WHERE is_default = 1;
 

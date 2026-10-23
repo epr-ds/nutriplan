@@ -105,6 +105,11 @@ class RouteDeepLinkTest {
     }
 
     @Test
+    fun `toDeepLink returns correct URI for AddressBook`() {
+        assertEquals("nutriplan://profile/addresses", Route.AddressBook.toDeepLink())
+    }
+
+    @Test
     fun `toDeepLink returns correct URI for DeepLinkMeal`() {
         val route = Route.DeepLinkMeal("meal-abc")
         assertEquals("nutriplan://meal/meal-abc", route.toDeepLink())
@@ -221,6 +226,11 @@ class RouteDeepLinkTest {
     @Test
     fun `fromDeepLink parses DietaryPreferences correctly`() {
         assertEquals(Route.DietaryPreferences, Route.fromDeepLink("nutriplan://profile/dietary"))
+    }
+
+    @Test
+    fun `fromDeepLink parses AddressBook correctly`() {
+        assertEquals(Route.AddressBook, Route.fromDeepLink("nutriplan://profile/addresses"))
     }
 
     @Test
