@@ -21,9 +21,11 @@ from app.adapters.in_memory_order_progress import InMemoryOrderProgressStore
 from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.application.devices import DeviceRegistrationService
+from app.application.meal_reminder_consumer import MEAL_REMINDER_DUE, MealReminderConsumer
 from app.application.notification_recorder import NotificationRecorder
 from app.application.order_status_consumer import OrderStatusConsumer
 from app.application.push_delivery import PushDelivery
+from app.domain.deep_links import meal_deep_link, order_deep_link
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
@@ -530,3 +532,75 @@ class TestPushAfterRecording:
         assert len(stored) == 1
         assert stored[0].channels == (NotificationChannel.IN_APP,)
         assert stored[0].status is DeliveryStatus.PENDING
+
+    # -- the end-to-end journey (NTF-605) -------------------------------------------
+
+    def test_the_full_order_journey_end_to_end_sends_a_deep_linked_push(self) -> None:
+        """NTF-605: one order event through the wire to a push the user can tap.
+
+        The journey under test is the notification service's own: the event lands, the
+        in-app copy is recorded, the deep link is attached to the payload the client renders
+        from, the push carries it, and the rollup marks the notification sent.
+        """
+        consumer, repository, gateway = self._consumer()
+
+        consumer.handle(event(to_status="delivered"))
+
+        stored = repository.list_for_user(USER)[0]
+        assert stored.status is DeliveryStatus.SENT
+        assert stored.channels == (NotificationChannel.IN_APP, NotificationChannel.PUSH)
+        deep_link = order_deep_link(str(stored.payload["orderId"]))
+        assert stored.payload["deepLink"] == deep_link
+
+        assert len(gateway.sent) == 1
+        assert gateway.sent[0].data["deepLink"] == deep_link
+        assert gateway.sent[0].data["type"] == "order_delivered"
+
+    def test_the_full_plan_reminder_journey_end_to_end_sends_a_deep_linked_push(self) -> None:
+        """NTF-605: the meal-reminder branch of the same journey, on its own consumer."""
+        repository = InMemoryNotificationRepository(policy=TEST_POLICY)
+        recorder = NotificationRecorder(
+            repository,
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+            InMemoryPreferencesRepository(),
+        )
+        devices = DeviceRegistrationService(InMemoryDeviceTokenRepository())
+        devices.register(USER, DevicePlatform.ANDROID, "android-token")
+        gateway = _Gateway()
+        delivery = PushDelivery(
+            repository,
+            devices,
+            {DevicePlatform.ANDROID: gateway},
+            InMemoryPushReceiptStore(),
+            sleep=lambda _: None,
+        )
+        consumer = MealReminderConsumer(
+            recorder,
+            channels=(NotificationChannel.IN_APP, NotificationChannel.PUSH),
+            push=delivery,
+        )
+
+        consumer.handle(
+            EventEnvelope(
+                schema_version=1,
+                event_id=str(uuid.uuid4()),
+                type=MEAL_REMINDER_DUE,
+                occurred_at=datetime.now(UTC),
+                data={
+                    "userId": str(USER),
+                    "mealId": "meal-1",
+                    "mealType": "breakfast",
+                    "mealName": "Oatmeal",
+                    "scheduledTime": datetime.now(UTC).isoformat(),
+                },
+            )
+        )
+
+        stored = repository.list_for_user(USER)[0]
+        deep_link = meal_deep_link("meal-1")
+        assert stored.status is DeliveryStatus.SENT
+        assert stored.channels == (NotificationChannel.IN_APP, NotificationChannel.PUSH)
+        assert stored.payload["deepLink"] == deep_link
+        assert len(gateway.sent) == 1
+        assert gateway.sent[0].data["deepLink"] == deep_link
+        assert gateway.sent[0].data["type"] == "meal_reminder"
