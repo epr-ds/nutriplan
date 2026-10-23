@@ -133,6 +133,10 @@ sealed class Route {
     @Serializable
     object AddressBook : Route()
 
+    /** The user's saved payment methods (COM-603). */
+    @Serializable
+    object PaymentMethods : Route()
+
     // --- Deep links ---
     /** Deep link to a meal. */
     @Serializable
@@ -177,6 +181,7 @@ sealed class Route {
         is EditProfile -> "nutriplan://profile/edit"
         is DietaryPreferences -> "nutriplan://profile/dietary"
         is AddressBook -> "nutriplan://profile/addresses"
+        is PaymentMethods -> "nutriplan://profile/payment-methods"
         is DeepLinkMeal -> "nutriplan://meal/$mealId"
         is DeepLinkPlan -> "nutriplan://plan/$planId" + (action?.let { "/$it" } ?: "")
         is DeepLinkOrder -> "nutriplan://order/$orderId"
@@ -208,6 +213,7 @@ sealed class Route {
             deepLink == "nutriplan://profile/edit" -> EditProfile
             deepLink == "nutriplan://profile/dietary" -> DietaryPreferences
             deepLink == "nutriplan://profile/addresses" -> AddressBook
+            deepLink == "nutriplan://profile/payment-methods" -> PaymentMethods
             deepLink.startsWith("nutriplan://meal/") -> DeepLinkMeal(deepLink.substringAfter("nutriplan://meal/"))
             deepLink.startsWith("nutriplan://plan/") -> parsePlanLink(deepLink.substringAfter("nutriplan://plan/"))
             else -> null

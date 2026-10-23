@@ -46,7 +46,7 @@ class AddressBookViewModelTest {
         override fun setDefault(id: Long) {
             check()
             clearDefault()
-            saved.replaceAll { if (it.id == id) it.copy(isDefault = true) else it }
+            mapInPlace { if (it.id == id) it.copy(isDefault = true) else it }
         }
 
         override fun remove(id: Long) {
@@ -54,7 +54,12 @@ class AddressBookViewModelTest {
             saved.removeAll { it.id == id }
         }
 
-        private fun clearDefault() = saved.replaceAll { it.copy(isDefault = false) }
+        private fun clearDefault() = mapInPlace { it.copy(isDefault = false) }
+
+        // Not MutableList.replaceAll: on Kotlin/Native (the iOS test build) that is an opt-in API.
+        private fun mapInPlace(change: (SavedAddress) -> SavedAddress) {
+            for (index in saved.indices) saved[index] = change(saved[index])
+        }
     }
 
     private val store = MemoryStore()

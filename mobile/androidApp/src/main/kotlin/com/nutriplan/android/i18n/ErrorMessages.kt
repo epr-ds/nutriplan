@@ -5,6 +5,7 @@ import com.nutriplan.android.R
 import com.nutriplan.shared.ai.AiError
 import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
+import com.nutriplan.shared.commerce.OrderError
 import com.nutriplan.shared.data.local.PendingFailure
 import com.nutriplan.shared.onboarding.OnboardingError
 import com.nutriplan.shared.planning.AddMealError
@@ -256,4 +257,14 @@ fun AuthError.messageRes(): Int = when (this) {
 @StringRes
 fun OnboardingError.messageRes(): Int = when (this) {
     OnboardingError.SAVE_FAILED -> R.string.error_onboarding_save_failed
+}
+
+/** COM-603: message for saved payment methods that could not be loaded, added or deleted. */
+@StringRes
+fun OrderError.paymentMethodsMessageRes(): Int = when (this) {
+    OrderError.NETWORK -> R.string.error_payment_methods_network
+    OrderError.SERVER_PROBLEM -> R.string.error_payment_methods_server
+    OrderError.SESSION_EXPIRED -> R.string.error_payment_methods_session_expired
+    OrderError.REJECTED, OrderError.PAYMENT_DECLINED -> R.string.error_payment_methods_rejected
+    OrderError.NOT_FOUND, OrderError.CONFLICT, OrderError.UNKNOWN -> R.string.error_payment_methods_unknown
 }

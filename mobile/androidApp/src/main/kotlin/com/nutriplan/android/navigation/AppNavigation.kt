@@ -294,6 +294,12 @@ fun AppNavigationGraph(
             screens.AddressBookScreen(onBack = { navController.popBackStack() })
         }
 
+        // COM-603: saved payment methods
+        composable<Route.PaymentMethods> {
+            analyticsTracker?.logScreenView("payment_methods", "PaymentMethodsScreen")
+            screens.PaymentMethodsScreen(onBack = { navController.popBackStack() })
+        }
+
         // Deep link handler
         composable<Route.DeepLinkMeal> { backStackEntry ->
             val mealId = backStackEntry.toRoute<Route.DeepLinkMeal>().mealId
@@ -425,6 +431,7 @@ interface AppNavigationScreens {
         onBack: () -> Unit,
     )
     @Composable fun AddressBookScreen(onBack: () -> Unit)
+    @Composable fun PaymentMethodsScreen(onBack: () -> Unit)
     @Composable fun DeepLinkMealScreen(
         mealId: String,
         onBack: () -> Unit,

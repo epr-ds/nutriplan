@@ -41,8 +41,11 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     /** COM-601: the delivery address book. */
     onNavigateToAddresses: () -> Unit = {},
+    /** COM-603: the saved payment methods. */
+    onNavigateToPaymentMethods: () -> Unit = {},
 ) {
     val addressesLabel = stringResource(R.string.address_book_title)
+    val paymentMethodsLabel = stringResource(R.string.payment_methods_title)
     val viewModel = koinInject<ProfileViewModel>()
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -163,6 +166,7 @@ fun ProfileScreen(
                         MenuItem("Edit Profile", Icons.Default.Person, onNavigateToEditProfile),
                         MenuItem("Dietary Preferences", Icons.Default.Restaurant, onNavigateToDietaryPreferences),
                         MenuItem(addressesLabel, Icons.Default.LocationOn, onNavigateToAddresses),
+                        MenuItem(paymentMethodsLabel, Icons.Default.CreditCard, onNavigateToPaymentMethods),
                         MenuItem("Order History", Icons.Default.ShoppingBag, onNavigateToOrderHistory),
                         MenuItem("Notifications", Icons.Default.Notifications, onNavigateToNotificationSettings)
                     )

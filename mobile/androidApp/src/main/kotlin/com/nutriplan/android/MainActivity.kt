@@ -453,6 +453,7 @@ class MainNavigationScreens(
             onNavigateToEditProfile = { onNavigate(Route.EditProfile) },
             onNavigateToDietaryPreferences = { onNavigate(Route.DietaryPreferences) },
             onNavigateToAddresses = { onNavigate(Route.AddressBook) },
+            onNavigateToPaymentMethods = { onNavigate(Route.PaymentMethods) },
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
             onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
             onLogout = {
@@ -491,6 +492,16 @@ class MainNavigationScreens(
     @Composable
     override fun AddressBookScreen(onBack: () -> Unit) {
         com.nutriplan.android.screen.checkout.AddressBookScreen(onBack = onBack)
+    }
+
+    @Composable
+    override fun PaymentMethodsScreen(onBack: () -> Unit) {
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.checkout.PaymentMethodsScreen(
+            onBack = onBack,
+            // The server rejected the session: end it, and SessionGate returns the user to sign-in.
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable

@@ -450,4 +450,34 @@
     <string name="address_form_cancel">Cancel</string>
     <string name="address_form_error_required">Required</string>
     <string name="address_form_error_zip">Enter the 5-digit postal code</string>
+
+    <!-- COM-603: payment methods -->
+    <string name="payment_methods_title">Payment methods</string>
+    <string name="payment_methods_add">Add payment method</string>
+    <string name="payment_methods_empty_title">No saved payment methods</string>
+    <string name="payment_methods_empty_description">Cards and wallets you save will appear here.</string>
+    <string name="payment_methods_empty_add_description">Save a card or wallet to pay faster at checkout.</string>
+    <string name="payment_methods_secure_note">You enter your card in the payment provider\'s secure form. NutriPlan never sees or stores your card number.</string>
+    <string name="payment_methods_card_name">%1$s •••• %2$s</string>
+    <string name="payment_methods_expires">Expires %1$s/%2$s</string>
+    <string name="payment_methods_delete">Delete</string>
+    <string name="payment_methods_keep">Keep</string>
+    <string name="payment_methods_delete_title">Delete this payment method?</string>
+    <string name="payment_methods_delete_message">%1$s will no longer be offered at checkout.</string>
+    <string name="payment_methods_retry">Try again</string>
+    <string name="payment_methods_dismiss">Dismiss</string>
+    <string name="cd_payment_methods_delete">Delete %1$s</string>
+    <string name="cd_payment_methods_loading">Loading your payment methods</string>
+    <string name="payment_type_credit_card">Credit card</string>
+    <string name="payment_type_debit_card">Debit card</string>
+    <string name="payment_type_paypal">PayPal</string>
+    <string name="payment_type_oxxo">OXXO</string>
+    <string name="payment_type_spei">SPEI transfer</string>
+    <string name="payment_type_other">Payment method</string>
+    <string name="error_payment_methods_network">You\'re offline. Connect to the internet to manage your payment methods.</string>
+    <string name="error_payment_methods_server">The payment service had a problem. Please try again later.</string>
+    <string name="error_payment_methods_session_expired">Your session expired. Please sign in again.</string>
+    <string name="error_payment_methods_rejected">This payment method couldn\'t be saved. Please try a different one.</string>
+    <string name="error_payment_methods_unknown">Something went wrong with your payment methods. Please try again.</string>
+    <string name="error_payment_methods_tokenization">The payment provider couldn\'t verify your card. Please try again.</string>
 </resources>

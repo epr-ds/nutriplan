@@ -448,4 +448,34 @@
     <string name="address_form_cancel">Cancelar</string>
     <string name="address_form_error_required">Obligatorio</string>
     <string name="address_form_error_zip">Escribe el código postal de 5 dígitos</string>
+
+    <!-- COM-603: métodos de pago -->
+    <string name="payment_methods_title">Métodos de pago</string>
+    <string name="payment_methods_add">Añadir método de pago</string>
+    <string name="payment_methods_empty_title">No hay métodos de pago guardados</string>
+    <string name="payment_methods_empty_description">Aquí aparecerán las tarjetas y billeteras que guardes.</string>
+    <string name="payment_methods_empty_add_description">Guarda una tarjeta o billetera para pagar más rápido.</string>
+    <string name="payment_methods_secure_note">Escribes tu tarjeta en el formulario seguro del proveedor de pagos. NutriPlan nunca ve ni guarda el número de tu tarjeta.</string>
+    <string name="payment_methods_card_name">%1$s •••• %2$s</string>
+    <string name="payment_methods_expires">Vence %1$s/%2$s</string>
+    <string name="payment_methods_delete">Eliminar</string>
+    <string name="payment_methods_keep">Conservar</string>
+    <string name="payment_methods_delete_title">¿Eliminar este método de pago?</string>
+    <string name="payment_methods_delete_message">%1$s ya no se ofrecerá al pagar.</string>
+    <string name="payment_methods_retry">Reintentar</string>
+    <string name="payment_methods_dismiss">Cerrar</string>
+    <string name="cd_payment_methods_delete">Eliminar %1$s</string>
+    <string name="cd_payment_methods_loading">Cargando tus métodos de pago</string>
+    <string name="payment_type_credit_card">Tarjeta de crédito</string>
+    <string name="payment_type_debit_card">Tarjeta de débito</string>
+    <string name="payment_type_paypal">PayPal</string>
+    <string name="payment_type_oxxo">OXXO</string>
+    <string name="payment_type_spei">Transferencia SPEI</string>
+    <string name="payment_type_other">Método de pago</string>
+    <string name="error_payment_methods_network">No tienes conexión. Conéctate a internet para gestionar tus métodos de pago.</string>
+    <string name="error_payment_methods_server">El servicio de pagos tuvo un problema. Inténtalo más tarde.</string>
+    <string name="error_payment_methods_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
+    <string name="error_payment_methods_rejected">No se pudo guardar este método de pago. Prueba con otro.</string>
+    <string name="error_payment_methods_unknown">Algo salió mal con tus métodos de pago. Inténtalo de nuevo.</string>
+    <string name="error_payment_methods_tokenization">El proveedor de pagos no pudo verificar tu tarjeta. Inténtalo de nuevo.</string>
 </resources>
