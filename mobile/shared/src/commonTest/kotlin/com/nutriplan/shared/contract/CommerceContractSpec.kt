@@ -137,7 +137,7 @@ internal object CommerceContract {
             properties = setOf("street", "apartment", "city", "state", "zipCode", "country", "instructions"),
         ),
         "PaymentMethodRequest" to Schema(
-            required = setOf("type", "token"),
+            required = setOf("type"),
             properties = setOf("type", "token"),
             enums = mapOf("type" to setOf("credit_card", "debit_card", "paypal", "oxxo", "spei")),
         ),

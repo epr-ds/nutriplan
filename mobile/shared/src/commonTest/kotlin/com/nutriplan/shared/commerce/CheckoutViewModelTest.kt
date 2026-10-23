@@ -154,6 +154,7 @@ class CheckoutViewModelTest {
         if (target == CheckoutStep.SLOT) return
         selectSlot(state.value.slots.first())
         next()
+        selectPayment("oxxo")
     }
 
     // --- start ---
@@ -417,7 +418,7 @@ class CheckoutViewModelTest {
         assertEquals("2026-11-02", sent.deliveryDate)
         assertEquals("13:00-15:00", sent.deliveryTimeSlot)
         assertNull(sent.providerId)
-        assertNull(sent.paymentMethod, "payment is chosen in a later story (COM-608)")
+        assertEquals(com.nutriplan.shared.data.model.PaymentMethodRequest(type = "oxxo"), sent.paymentMethod)
         assertEquals("o1", viewModel.state.value.placedOrderId)
     }
 

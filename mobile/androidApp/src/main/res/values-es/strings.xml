@@ -507,7 +507,6 @@
     <string name="checkout_subtotal">Subtotal</string>
     <string name="checkout_delivery_fee">Envío</string>
     <string name="checkout_total">Total</string>
-    <string name="checkout_pending_note">Tu pedido queda pendiente hasta que se pague.</string>
     <string name="checkout_back">Atrás</string>
     <string name="checkout_next">Continuar</string>
     <string name="checkout_place_order">Hacer pedido</string>
@@ -529,4 +528,33 @@
     <string name="error_checkout_conflict">Ese horario ya no está disponible. Elige otro.</string>
     <string name="error_checkout_declined">Se rechazó tu pago. Prueba con otro método.</string>
     <string name="error_checkout_unknown">Algo salió mal con tu pedido. Inténtalo de nuevo.</string>
+
+    <!-- COM-608: pago y confirmación -->
+    <string name="checkout_pay_heading">Pagar con</string>
+    <string name="payment_option_card">Tarjeta</string>
+    <string name="payment_option_card_description">Se cobra ahora. La escribes en el formulario seguro del proveedor de pagos.</string>
+    <string name="payment_option_oxxo_description">Paga en efectivo en una tienda OXXO con una ficha.</string>
+    <string name="payment_option_spei_description">Paga con una transferencia bancaria y una referencia.</string>
+    <string name="payment_option_paypal_description">Aprueba el pago en PayPal.</string>
+    <string name="checkout_save_card">Guardar esta tarjeta para la próxima vez</string>
+    <string name="checkout_error_payment">Elige cómo pagar.</string>
+    <string name="checkout_error_card">El proveedor de pagos no pudo verificar tu tarjeta. Inténtalo de nuevo o elige otra forma de pago.</string>
+    <string name="confirmation_title">Pedido realizado</string>
+    <string name="confirmation_paid">Tu pedido está confirmado y pagado.</string>
+    <string name="confirmation_pending">Tu pedido está guardado y espera el pago.</string>
+    <string name="confirmation_pay_now">Tu pedido está guardado. Págalo como se indica abajo para confirmarlo.</string>
+    <string name="confirmation_summary">Resumen del pedido</string>
+    <string name="confirmation_view_order">Ver pedido</string>
+    <string name="confirmation_done">Listo</string>
+    <string name="instructions_oxxo_title">Paga en OXXO</string>
+    <string name="instructions_oxxo_body">Paga %1$s en efectivo en cualquier tienda OXXO con esta referencia.</string>
+    <string name="instructions_oxxo_barcode">Mostrar el código de barras</string>
+    <string name="instructions_spei_title">Paga con transferencia SPEI</string>
+    <string name="instructions_spei_body">Transfiere %1$s desde tu banco a esta cuenta, con la referencia.</string>
+    <string name="instructions_paypal_title">Aprueba en PayPal</string>
+    <string name="instructions_paypal_body">Aprueba el pago de %1$s en PayPal.</string>
+    <string name="instructions_paypal_open">Abrir PayPal</string>
+    <string name="instructions_reference">Referencia</string>
+    <string name="instructions_clabe">CLABE</string>
+    <string name="instructions_deadline">Paga antes del %1$s</string>
 </resources>

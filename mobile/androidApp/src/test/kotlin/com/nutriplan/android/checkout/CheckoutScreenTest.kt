@@ -193,6 +193,7 @@ class CheckoutScreenTest {
         next() // the default address is already chosen
         compose.onAllNodesWithTag(CheckoutTestTags.SLOT).onFirst().performClick()
         next()
+        choose(str(R.string.payment_type_oxxo))
     }
 
     @Test
