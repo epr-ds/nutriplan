@@ -107,9 +107,9 @@ sealed class Route {
     @Serializable
     data class OrderDetail(val orderId: String) : Route()
 
-    /** Checkout flow. */
+    /** Checkout flow (COM-605), optionally for one meal plan. */
     @Serializable
-    object Checkout : Route()
+    data class Checkout(val planId: String? = null) : Route()
 
     // --- Notification screens ---
     /** Notification center. */
@@ -175,7 +175,7 @@ sealed class Route {
         is AiRecommendations -> "nutriplan://ai/recommend"
         is OrderList -> "nutriplan://orders"
         is OrderDetail -> "nutriplan://order/$orderId"
-        is Checkout -> "nutriplan://checkout"
+        is Checkout -> "nutriplan://checkout" + (planId?.let { "/$it" } ?: "")
         is NotificationCenter -> "nutriplan://notifications"
         is Profile -> "nutriplan://profile"
         is EditProfile -> "nutriplan://profile/edit"
@@ -207,7 +207,8 @@ sealed class Route {
             deepLink == "nutriplan://ai/recommend" -> AiRecommendations
             deepLink == "nutriplan://orders" -> OrderList
             deepLink.startsWith("nutriplan://order/") -> OrderDetail(deepLink.substringAfter("nutriplan://order/"))
-            deepLink == "nutriplan://checkout" -> Checkout
+            deepLink == "nutriplan://checkout" -> Checkout()
+            deepLink.startsWith("nutriplan://checkout/") -> Checkout(deepLink.substringAfter("nutriplan://checkout/"))
             deepLink == "nutriplan://notifications" -> NotificationCenter
             deepLink == "nutriplan://profile" -> Profile
             deepLink == "nutriplan://profile/edit" -> EditProfile

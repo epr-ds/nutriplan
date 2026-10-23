@@ -268,3 +268,15 @@ fun OrderError.paymentMethodsMessageRes(): Int = when (this) {
     OrderError.REJECTED, OrderError.PAYMENT_DECLINED -> R.string.error_payment_methods_rejected
     OrderError.NOT_FOUND, OrderError.CONFLICT, OrderError.UNKNOWN -> R.string.error_payment_methods_unknown
 }
+
+/** COM-605: message for a checkout step that could not load (plans, providers, slots, price) or an order not placed. */
+@StringRes
+fun OrderError.checkoutMessageRes(): Int = when (this) {
+    OrderError.NETWORK -> R.string.error_checkout_network
+    OrderError.SERVER_PROBLEM -> R.string.error_checkout_server
+    OrderError.SESSION_EXPIRED -> R.string.error_payment_methods_session_expired
+    OrderError.NOT_FOUND -> R.string.error_checkout_not_found
+    OrderError.CONFLICT -> R.string.error_checkout_conflict
+    OrderError.PAYMENT_DECLINED -> R.string.error_checkout_declined
+    OrderError.REJECTED, OrderError.UNKNOWN -> R.string.error_checkout_unknown
+}

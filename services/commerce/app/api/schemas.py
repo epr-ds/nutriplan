@@ -27,6 +27,7 @@ from app.domain.grocery_catalog import GroceryOrderStatus, GrocerySearchItem, Gr
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
 from app.domain.payment_method import SavedPaymentMethod
+from app.domain.pricing import PriceQuote
 
 
 class _Camel(BaseModel):
@@ -68,6 +69,14 @@ class CreateOrderRequest(_Camel):
     provider_id: str | None = None
     payment_method: PaymentMethodRequest | None = None
     notes: str | None = None
+
+
+class OrderQuoteRequest(_Camel):
+    """What to price (COM-605): one of the caller's meal plans and how it would be fulfilled."""
+
+    meal_plan_id: uuid.UUID
+    fulfillment_type: FulfillmentType
+    provider_id: str | None = None
 
 
 class CancelOrderRequest(_Camel):
@@ -242,6 +251,24 @@ class GroceryOrderResponse(_Camel):
     provider_id: str
     external_order_id: str
     status: GroceryOrderStatus
+
+
+class OrderQuoteResponse(_Camel):
+    """What an order would cost (COM-605): its priced lines, subtotal, delivery fee and total."""
+
+    items: list[OrderItemResponse]
+    subtotal: MoneyResponse
+    delivery_fee: MoneyResponse
+    total: MoneyResponse
+
+    @classmethod
+    def from_quote(cls, quote: PriceQuote) -> OrderQuoteResponse:
+        return cls(
+            items=[OrderItemResponse.from_item(item) for item in quote.items],
+            subtotal=MoneyResponse.from_money(quote.subtotal),
+            delivery_fee=MoneyResponse.from_money(quote.delivery_fee),
+            total=MoneyResponse.from_money(quote.total),
+        )
 
 
 class OrderResponse(_Camel):

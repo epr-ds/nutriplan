@@ -8,6 +8,8 @@ import com.nutriplan.shared.data.model.GrocerySearchRequest
 import com.nutriplan.shared.data.model.KitchenAvailability
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.network.ApiException
@@ -44,6 +46,12 @@ interface CommerceRepository {
      * key with a different request is a 409.
      */
     suspend fun createOrder(request: CreateOrderRequest, idempotencyKey: String? = null): Order
+
+    /**
+     * What an order for a meal plan would cost (`POST /orders/quote`, COM-605): the same lines and
+     * totals [createOrder] would give, with nothing created or charged.
+     */
+    suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote
 
     /** The caller's orders (`GET /orders`), filtered by [query]. */
     suspend fun listOrders(query: OrderListQuery = OrderListQuery()): List<Order>
@@ -95,6 +103,11 @@ class CommerceRepositoryImpl : CommerceRepository {
                 idempotencyKey?.let { header(IDEMPOTENCY_KEY, it) }
                 setBody(request)
             }.readOrThrow()
+        }
+
+    override suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote =
+        withContext(Dispatchers.IO) {
+            client.post("${ApiConfig.COMMERCE}/orders/quote") { setBody(request) }.readOrThrow()
         }
 
     override suspend fun listOrders(query: OrderListQuery): List<Order> =

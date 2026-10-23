@@ -176,6 +176,10 @@ internal object CommerceResponses {
 
     fun forSchema(name: String): String = when (name) {
         "OrderResponse" -> order
+        "OrderQuoteResponse" ->
+            """{"items":[{"name":"Lentil soup","quantity":2,"unit":"serving","unitPrice":${money("89.0")},""" +
+                """"lineTotal":${money("178.0")}}],""" +
+                """"subtotal":${money("178.0")},"deliveryFee":${money("30.0")},"total":${money("208.0")}}"""
         "PaymentMethodResponse" ->
             """{"id":"22222222-2222-4222-8222-222222222222","type":"credit_card","brand":"visa","last4":"4242",""" +
                 """"expMonth":12,"expYear":2030,"createdAt":"2026-10-01T10:00:00Z"}"""
