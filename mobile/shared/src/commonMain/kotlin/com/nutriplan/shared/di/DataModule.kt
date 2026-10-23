@@ -9,6 +9,7 @@ import com.nutriplan.shared.data.repository.CommerceRepositoryImpl
 import com.nutriplan.shared.data.repository.DietaryRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.FulfillmentRepository
+import com.nutriplan.shared.data.repository.PaymentRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
 import com.nutriplan.shared.data.repository.IdentityRepositoryImpl
 import com.nutriplan.shared.data.repository.NotificationRepository
@@ -38,5 +39,7 @@ val dataModule = module {
     single<CommerceRepository> { CommerceRepositoryImpl() }
     // COM-505: fulfillment options (kitchen availability, grocery providers and search), typed results.
     factory { FulfillmentRepository(remote = get()) }
+    // COM-506: saved payment methods, tokens only and nothing stored on the device.
+    factory { PaymentRepository(remote = get()) }
     single<NotificationRepository> { NotificationRepositoryImpl() }
 }
