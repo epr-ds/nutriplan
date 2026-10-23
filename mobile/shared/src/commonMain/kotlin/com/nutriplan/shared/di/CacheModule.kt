@@ -2,6 +2,7 @@ package com.nutriplan.shared.di
 
 import app.cash.sqldelight.db.SqlDriver
 import com.nutriplan.db.NutriPlanDatabase
+import com.nutriplan.shared.commerce.AddressBookViewModel
 import com.nutriplan.shared.commerce.CommerceUseCases
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
@@ -54,6 +55,8 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { OrderRepository(remote = get<CommerceRepository>(), store = get<OrderCache>(), addresses = get()) }
     // COM-507: the Commerce use cases, one per checkout screen (it remembers unconfirmed orders' keys).
     factory { CommerceUseCases(orders = get(), fulfillment = get(), payments = get()) }
+    // COM-601: the address book screen, on the on-device address store.
+    factory { AddressBookViewModel(store = get<SavedAddressStore>()) }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }

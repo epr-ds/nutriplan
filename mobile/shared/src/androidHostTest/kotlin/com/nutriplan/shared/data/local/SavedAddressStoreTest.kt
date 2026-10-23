@@ -123,6 +123,51 @@ class SavedAddressStoreTest {
     }
 
     @Test
+    fun `an address is edited in place and keeps its position`() {
+        val home = store.save(address("Reforma 222"), label = "Home")
+        store.save(address("Insurgentes 100"))
+
+        val edited = store.update(home.id, address("Reforma 300"), label = "Casa")
+
+        assertEquals(home.id, edited?.id)
+        assertEquals(listOf("Insurgentes 100", "Reforma 300"), store.getAll().map { it.address.street })
+        assertEquals("Casa", store.getAll().last().label)
+    }
+
+    @Test
+    fun `an edit can clear the label and make the address the default`() {
+        val home = store.save(address("Reforma 222"), label = "Home")
+        store.save(address("Insurgentes 100"), makeDefault = true)
+
+        store.update(home.id, address("Reforma 222"), label = null, makeDefault = true)
+
+        val preferred = store.preferred()
+        assertEquals(home.id, preferred?.id)
+        assertNull(preferred?.label)
+        assertEquals(1, store.getAll().count { it.isDefault })
+    }
+
+    @Test
+    fun `an edit that matches another saved address merges the two`() {
+        val home = store.save(address("Reforma 222"))
+        store.save(address("Insurgentes 100"), makeDefault = true)
+
+        store.update(home.id, address("Insurgentes 100"), label = "Office")
+
+        val all = store.getAll()
+        assertEquals(listOf(home.id), all.map { it.id })
+        assertTrue(all.single().isDefault, "the default survives the merge")
+    }
+
+    @Test
+    fun `editing an address that is gone changes nothing`() {
+        store.save(address("Reforma 222"))
+
+        assertNull(store.update(999, address("Madero 1"), label = null))
+        assertEquals(listOf("Reforma 222"), store.getAll().map { it.address.street })
+    }
+
+    @Test
     fun `a row that cannot be read is skipped, not a crash`() {
         store.save(address("Reforma 222"))
         database.savedAddressQueries.insertAddress(label = null, address = "{not json", last_used = 99)

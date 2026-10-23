@@ -129,6 +129,10 @@ sealed class Route {
     @Serializable
     object DietaryPreferences : Route()
 
+    /** The user's delivery addresses (COM-601). */
+    @Serializable
+    object AddressBook : Route()
+
     // --- Deep links ---
     /** Deep link to a meal. */
     @Serializable
@@ -172,6 +176,7 @@ sealed class Route {
         is Profile -> "nutriplan://profile"
         is EditProfile -> "nutriplan://profile/edit"
         is DietaryPreferences -> "nutriplan://profile/dietary"
+        is AddressBook -> "nutriplan://profile/addresses"
         is DeepLinkMeal -> "nutriplan://meal/$mealId"
         is DeepLinkPlan -> "nutriplan://plan/$planId" + (action?.let { "/$it" } ?: "")
         is DeepLinkOrder -> "nutriplan://order/$orderId"
@@ -202,6 +207,7 @@ sealed class Route {
             deepLink == "nutriplan://profile" -> Profile
             deepLink == "nutriplan://profile/edit" -> EditProfile
             deepLink == "nutriplan://profile/dietary" -> DietaryPreferences
+            deepLink == "nutriplan://profile/addresses" -> AddressBook
             deepLink.startsWith("nutriplan://meal/") -> DeepLinkMeal(deepLink.substringAfter("nutriplan://meal/"))
             deepLink.startsWith("nutriplan://plan/") -> parsePlanLink(deepLink.substringAfter("nutriplan://plan/"))
             else -> null

@@ -452,6 +452,7 @@ class MainNavigationScreens(
         ProfileScreen(
             onNavigateToEditProfile = { onNavigate(Route.EditProfile) },
             onNavigateToDietaryPreferences = { onNavigate(Route.DietaryPreferences) },
+            onNavigateToAddresses = { onNavigate(Route.AddressBook) },
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
             onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
             onLogout = {
@@ -485,6 +486,11 @@ class MainNavigationScreens(
             onDone = { navController.popBackStack() },
             onBack = onBack,
         )
+    }
+
+    @Composable
+    override fun AddressBookScreen(onBack: () -> Unit) {
+        com.nutriplan.android.screen.checkout.AddressBookScreen(onBack = onBack)
     }
 
     @Composable

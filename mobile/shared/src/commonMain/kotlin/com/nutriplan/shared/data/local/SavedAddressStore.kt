@@ -13,12 +13,33 @@ data class SavedAddress(
 )
 
 /**
+ * The address book the screens read and write (COM-601): [SavedAddressStore] on the device, an
+ * in-memory list in tests.
+ */
+interface AddressBookStore {
+    /** Every saved address: the default first, then the most recently used. */
+    fun getAll(): List<SavedAddress>
+
+    /** Save a new address (or move an identical one up) and return it. */
+    fun save(address: OrderAddress, label: String? = null, makeDefault: Boolean = false): SavedAddress
+
+    /** Replace the address [id] and its label; null when there is no such address. */
+    fun update(id: Long, address: OrderAddress, label: String?, makeDefault: Boolean = false): SavedAddress?
+
+    /** Make the address [id] the only default. */
+    fun setDefault(id: Long)
+
+    /** Forget one address. */
+    fun remove(id: Long)
+}
+
+/**
  * The user's delivery addresses, kept on the device (COM-503). The Commerce API has no address
  * resource -- each create-order request carries its own address -- so this is the address book
  * checkout offers from, and it works offline. Addresses come back with the default first, then the
  * most recently used; saving an address that is already there only moves it up.
  */
-class SavedAddressStore(private val database: NutriPlanDatabase) {
+class SavedAddressStore(private val database: NutriPlanDatabase) : AddressBookStore {
 
     private val queries = database.savedAddressQueries
 
@@ -29,7 +50,7 @@ class SavedAddressStore(private val database: NutriPlanDatabase) {
     }
 
     /** Every saved address: the default first, then the most recently used. Unreadable rows are skipped. */
-    fun getAll(): List<SavedAddress> =
+    override fun getAll(): List<SavedAddress> =
         queries.selectAll().executeAsList().mapNotNull { row -> decode(row.id, row.label, row.address, row.is_default) }
 
     /** The default address, or the most recently used one when none is marked default; null when empty. */
@@ -39,7 +60,7 @@ class SavedAddressStore(private val database: NutriPlanDatabase) {
      * Save [address] (or, when it is already saved, mark it as just used) and return it. A non-null
      * [label] replaces the saved one; [makeDefault] makes it the only default.
      */
-    fun save(address: OrderAddress, label: String? = null, makeDefault: Boolean = false): SavedAddress {
+    override fun save(address: OrderAddress, label: String?, makeDefault: Boolean): SavedAddress {
         val text = json.encodeToString(OrderAddress.serializer(), address)
         val id = database.transactionWithResult {
             val next = (queries.selectLastUsed().executeAsOneOrNull() ?: 0L) + 1L
@@ -62,8 +83,35 @@ class SavedAddressStore(private val database: NutriPlanDatabase) {
         return SavedAddress(id = row.id, address = address, label = row.label, isDefault = row.is_default)
     }
 
+    /**
+     * Edit the address [id] in place (COM-601): its content and [label] are replaced (a null label
+     * clears it) and it keeps its place in the list; [makeDefault] makes it the only default. Should
+     * the edit make it identical to another saved address, the two become one. Returns null when
+     * there is no address [id].
+     */
+    override fun update(id: Long, address: OrderAddress, label: String?, makeDefault: Boolean): SavedAddress? {
+        val text = json.encodeToString(OrderAddress.serializer(), address)
+        val found = database.transactionWithResult {
+            if (queries.selectById(id).executeAsOneOrNull() == null) return@transactionWithResult false
+            queries.selectByAddress(text).executeAsOneOrNull()?.takeIf { it.id != id }?.let { duplicate ->
+                // The edited address already exists as another entry: keep this one, drop that one.
+                if (duplicate.is_default && !makeDefault) queries.markDefault(id)
+                queries.deleteAddress(duplicate.id)
+            }
+            queries.updateAddress(address = text, label = label, id = id)
+            if (makeDefault) {
+                queries.clearDefault()
+                queries.markDefault(id)
+            }
+            true
+        }
+        if (!found) return null
+        val row = queries.selectById(id).executeAsOne()
+        return SavedAddress(id = row.id, address = address, label = row.label, isDefault = row.is_default)
+    }
+
     /** Make the address [id] the only default. */
-    fun setDefault(id: Long) {
+    override fun setDefault(id: Long) {
         database.transaction {
             queries.clearDefault()
             queries.markDefault(id)
@@ -71,7 +119,7 @@ class SavedAddressStore(private val database: NutriPlanDatabase) {
     }
 
     /** Forget one address. */
-    fun remove(id: Long) {
+    override fun remove(id: Long) {
         queries.deleteAddress(id)
     }
 

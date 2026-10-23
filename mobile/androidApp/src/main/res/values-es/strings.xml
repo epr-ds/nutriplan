@@ -415,4 +415,37 @@
     <string name="ai_recommendations_browse_recipes">Buscar recetas por tu cuenta (sin IA)</string>
     <string name="error_ai_timeout">El asesor de IA tardó demasiado en responder. Inténtalo de nuevo en un momento.</string>
     <string name="error_optimize_accept_timeout">El servidor tardó demasiado, así que puede que algunos cambios no se guardaran. Acepta de nuevo para guardar el resto.</string>
+
+    <!-- COM-601: direcciones de entrega -->
+    <string name="address_book_title">Direcciones de entrega</string>
+    <string name="address_book_add">Añadir dirección</string>
+    <string name="address_book_empty_title">No hay direcciones guardadas</string>
+    <string name="address_book_empty_description">Añade la dirección donde quieres recibir tus pedidos. Se guarda en este dispositivo.</string>
+    <string name="address_book_default_badge">Predeterminada</string>
+    <string name="address_book_set_default">Usar como predeterminada</string>
+    <string name="address_book_delete">Eliminar</string>
+    <string name="address_book_city_line">%1$s %2$s, %3$s</string>
+    <string name="cd_address_book_edit">Editar %1$s</string>
+    <string name="cd_address_book_delete">Eliminar %1$s</string>
+    <string name="cd_address_book_set_default">Usar %1$s como tu dirección predeterminada</string>
+    <string name="cd_address_book_loading">Cargando tus direcciones</string>
+    <string name="address_book_error_read">No se pudieron cargar tus direcciones guardadas.</string>
+    <string name="address_book_error_save">No se pudo guardar la dirección. Inténtalo de nuevo.</string>
+    <string name="address_book_retry">Reintentar</string>
+    <string name="address_form_title_new">Nueva dirección</string>
+    <string name="address_form_title_edit">Editar dirección</string>
+    <string name="address_form_label">Nombre (opcional)</string>
+    <string name="address_form_label_hint">p. ej. Casa u Oficina</string>
+    <string name="address_form_street">Calle y número</string>
+    <string name="address_form_apartment">Departamento o interior (opcional)</string>
+    <string name="address_form_zip">Código postal</string>
+    <string name="address_form_city">Ciudad</string>
+    <string name="address_form_state">Estado</string>
+    <string name="address_form_country">País</string>
+    <string name="address_form_instructions">Instrucciones de entrega (opcional)</string>
+    <string name="address_form_make_default">Usar como mi dirección predeterminada</string>
+    <string name="address_form_save">Guardar dirección</string>
+    <string name="address_form_cancel">Cancelar</string>
+    <string name="address_form_error_required">Obligatorio</string>
+    <string name="address_form_error_zip">Escribe el código postal de 5 dígitos</string>
 </resources>
