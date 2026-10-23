@@ -281,7 +281,7 @@ class CheckoutViewModelTest {
 
         viewModel.walkTo(CheckoutStep.SLOT)
 
-        assertEquals(listOf("06600" to "2026-11-02"), remote.availabilityCalls)
+        assertEquals(listOf<Pair<String, String?>>("06600" to "2026-11-02"), remote.availabilityCalls)
         assertEquals(listOf("13:00-15:00", "19:00-21:00"), viewModel.state.value.slots)
     }
 
