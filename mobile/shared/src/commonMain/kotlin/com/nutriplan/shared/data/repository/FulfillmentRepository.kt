@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.commerce.OrderError
 import com.nutriplan.shared.commerce.OrderResult
+import com.nutriplan.shared.commerce.isMexicanZipCode
 import com.nutriplan.shared.commerce.toOrderError
 import com.nutriplan.shared.data.model.FulfillmentProvider
 import com.nutriplan.shared.data.model.GrocerySearchItem
@@ -67,11 +68,4 @@ class FulfillmentRepository(private val remote: CommerceRepository) {
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             OrderResult.Failure(e.toOrderError())
         }
-
-    /** The contract's (and the service's) rule: a five-digit Mexican postal code. */
-    private fun String.isMexicanZipCode(): Boolean = length == ZIP_LENGTH && all(Char::isDigit)
-
-    private companion object {
-        const val ZIP_LENGTH = 5
-    }
 }
