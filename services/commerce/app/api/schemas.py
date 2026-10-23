@@ -56,7 +56,7 @@ class AddressRequest(_Camel):
 
 
 class PaymentMethodRequest(_Camel):
-    """How the order is paid; only a card needs a ``token`` (COM-608), else the request is ``422``."""
+    """How the order is paid; only a card needs a ``token`` (COM-608), else it is ``422``."""
 
     type: PaymentMethodType
     token: str | None = None
