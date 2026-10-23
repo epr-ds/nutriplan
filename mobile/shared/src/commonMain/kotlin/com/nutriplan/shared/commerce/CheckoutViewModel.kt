@@ -4,6 +4,7 @@ import com.nutriplan.shared.data.local.AddressBookStore
 import com.nutriplan.shared.data.local.SavedAddress
 import com.nutriplan.shared.data.model.FulfillmentProvider
 import com.nutriplan.shared.data.model.MealPlanSummary
+import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderQuote
 import com.nutriplan.shared.planning.IsoDate
 import kotlinx.coroutines.CoroutineDispatcher
@@ -30,6 +31,12 @@ enum class CheckoutStepError {
 
     /** The dark kitchen does not deliver to the chosen address, or not on that day. */
     AREA_NOT_SERVED,
+
+    /** No payment method was chosen (COM-608). */
+    PAYMENT_REQUIRED,
+
+    /** The payment provider could not verify the card (COM-608). */
+    CARD_NOT_VERIFIED,
 }
 
 /** Observable state of the checkout stepper (COM-605). */
@@ -56,12 +63,23 @@ data class CheckoutUiState(
     val stepError: CheckoutStepError? = null,
     /** Why the last server call (plans, providers, slots, quote or placing the order) failed. */
     val error: OrderError? = null,
+    /** How the user pays (COM-608): `credit_card`, `oxxo`, `spei` or `paypal`. */
+    val paymentType: String? = null,
+    /** A card can be paid with on this device: the provider's tokenizer is available (COM-508). */
+    val canPayByCard: Boolean = false,
+    /** Save the card paid with for the next checkout. */
+    val saveCard: Boolean = false,
     val isPlacing: Boolean = false,
-    /** Set once the order was placed; the screen then opens it. */
-    val placedOrderId: String? = null,
+    /** The order once it was placed; the screen then shows the confirmation (COM-608). */
+    val placedOrder: Order? = null,
     /** The server rejected the session: the screen sends the user to sign in again. */
     val sessionExpired: Boolean = false,
 ) {
+    val placedOrderId: String? get() = placedOrder?.id
+
+    /** What is left to pay the placed order with (an OXXO voucher, a SPEI transfer, a PayPal approval). */
+    val paymentInstructions: PaymentInstructions get() = placedOrder?.paymentInstructions() ?: PaymentInstructions.None
+
     val selectedPlan: MealPlanSummary? get() = plans.firstOrNull { it.id == planId }
     val selectedAddress: SavedAddress? get() = addresses.firstOrNull { it.id == addressId }
     val selectedProvider: FulfillmentProvider? get() = providers.firstOrNull { it.id == providerId }
@@ -85,22 +103,44 @@ data class CheckoutUiState(
  *   (a new fulfillment type clears the provider and slot, a new address or day the slot) and the
  *   price, which the review step asks for again.
  *
- * Payment selection comes with COM-608; until then the order is placed without one and is
- * `pending`. The functions are `suspend` where they call the server or the device's store, so the UI
- * owns the coroutine scope.
+ * Paying (COM-608): the review asks how to pay. A card goes through the provider's [tokenizer] when
+ * the order is placed (only offered when there is one), and can be saved for next time; OXXO, SPEI
+ * and PayPal need no card and leave the order `pending` with [CheckoutUiState.paymentInstructions].
+ * A retry after a failure reuses the card already tokenized, so the request -- and its idempotency
+ * key -- stays the same and the order is never created or charged twice. The placed order is kept
+ * for the confirmation.
+ *
+ * The functions are `suspend` where they call the server or the device's store, so the UI owns the
+ * coroutine scope.
  *
  * @param loadPlans the user's meal plans (the Dietary client).
  * @param addressBook the delivery addresses kept on the device.
+ * @param tokenizer the payment provider's card form (COM-508); without one, cards are not offered.
  */
 class CheckoutViewModel(
     private val useCases: CommerceUseCases,
     private val loadPlans: suspend () -> List<MealPlanSummary>,
     private val addressBook: AddressBookStore,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val tokenizer: PaymentTokenizer? = null,
 ) {
 
-    private val _state = MutableStateFlow(CheckoutUiState())
+    private val _state = MutableStateFlow(CheckoutUiState(canPayByCard = tokenizer != null))
     val state: StateFlow<CheckoutUiState> = _state.asStateFlow()
+
+    /** The card tokenized for this checkout, reused when placing is retried. */
+    private var tokenizedCard: NewPaymentMethod? = null
+
+    /** Choose how to pay; a card is only offered when the device can tokenize one. */
+    fun selectPayment(type: String) {
+        if (type !in PAYMENT_TYPES || (type in CARD_TYPES && tokenizer == null)) return
+        if (type != _state.value.paymentType) tokenizedCard = null
+        _state.update { it.copy(paymentType = type, stepError = null) }
+    }
+
+    fun onSaveCardChange(save: Boolean) {
+        _state.update { it.copy(saveCard = save) }
+    }
 
     /** Load the plans and addresses; [today] (ISO, from the platform) is the default delivery day. */
     suspend fun start(today: String, planId: String? = null) {
@@ -250,20 +290,54 @@ class CheckoutViewModel(
         }
     }
 
-    /** Place the order the user reviewed. Returns true when it was placed ([CheckoutUiState.placedOrderId]). */
+    /**
+     * Pay for and place the order the user reviewed. Returns true when it was placed
+     * ([CheckoutUiState.placedOrder]).
+     */
     suspend fun placeOrder(): Boolean {
-        val draft = _state.value.toDraft() ?: return false
+        val reviewed = _state.value.toDraft() ?: return false
         if (_state.value.isPlacing) return false
-        _state.update { it.copy(isPlacing = true, error = null) }
+        val type = _state.value.paymentType
+        if (type == null) {
+            _state.update { it.copy(stepError = CheckoutStepError.PAYMENT_REQUIRED) }
+            return false
+        }
+        _state.update { it.copy(isPlacing = true, error = null, stepError = null) }
+        val payment = if (type in CARD_TYPES) {
+            tokenizedCard ?: tokenizeCard() ?: return false
+        } else {
+            NewPaymentMethod.withoutToken(type)
+        }
+        val draft = reviewed.copy(payment = payment, savePaymentMethod = type in CARD_TYPES && _state.value.saveCard)
         return when (val result = useCases.placeOrder(draft)) {
             is OrderResult.Success -> {
-                _state.update { it.copy(isPlacing = false, placedOrderId = result.value.id) }
+                tokenizedCard = null
+                _state.update { it.copy(isPlacing = false, placedOrder = result.value) }
                 true
             }
             is OrderResult.Failure -> {
+                // A declined or refused card will not do better next time; anything else may have
+                // reached the server, so the same card is retried with the same request.
+                if (result.error == OrderError.PAYMENT_DECLINED || result.error == OrderError.REJECTED) tokenizedCard = null
                 fail(result.error)
                 _state.update { it.copy(isPlacing = false) }
                 false
+            }
+        }
+    }
+
+    /** Tokenize a card through the provider's form; null (and the reason shown) when there is none. */
+    private suspend fun tokenizeCard(): NewPaymentMethod? {
+        val result = tokenizer?.tokenize() ?: TokenizationResult.Failed
+        return when (result) {
+            is TokenizationResult.Tokenized -> result.method.also { tokenizedCard = it }
+            TokenizationResult.Cancelled -> {
+                _state.update { it.copy(isPlacing = false) }
+                null
+            }
+            TokenizationResult.Failed -> {
+                _state.update { it.copy(isPlacing = false, stepError = CheckoutStepError.CARD_NOT_VERIFIED) }
+                null
             }
         }
     }

@@ -28,6 +28,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -116,6 +117,24 @@ class CommerceConsumerContractTest {
             setOf("mealPlanId", "fulfillmentType", "providerId", "deliveryAddress", "deliveryDate", "deliveryTimeSlot", "paymentMethod", "notes"),
             mock.lastBody?.keys,
         )
+    }
+
+    @Test
+    fun `OXXO SPEI and PayPal orders without a token conform`() = runTest {
+        for (type in listOf("oxxo", "spei", "paypal")) {
+            commerce.createOrder(minimalOrder.copy(paymentMethod = PaymentMethodRequest(type = type)))
+
+            assertNoViolations()
+            assertEquals(setOf("type"), (mock.lastBody?.get("paymentMethod") as? JsonObject)?.keys)
+        }
+    }
+
+    @Test
+    fun `a card order with its token conforms`() = runTest {
+        commerce.createOrder(minimalOrder.copy(paymentMethod = PaymentMethodRequest(type = "credit_card", token = "tok_visa")))
+
+        assertNoViolations()
+        assertEquals(setOf("type", "token"), (mock.lastBody?.get("paymentMethod") as? JsonObject)?.keys)
     }
 
     @Test
@@ -307,6 +326,20 @@ class CommerceConsumerContractTest {
         }
 
         assertTrue(mock.violations.any { it.contains("type") && it.contains("'card'") })
+    }
+
+    @Test
+    fun `a payment method without a type is a violation`() = runTest {
+        HttpClientProvider.client.post("${CommerceContract.clientPrefix}/orders") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"mealPlanId":"p1","fulfillmentType":"pickup","deliveryAddress":{"street":"Reforma 222","city":"CDMX",""" +
+                    """"state":"CDMX","zipCode":"06600","country":"MX"},"deliveryDate":"2026-11-02","deliveryTimeSlot":"13:00-15:00",""" +
+                    """"paymentMethod":{"token":"tok"}}""",
+            )
+        }
+
+        assertTrue(mock.violations.any { it.contains("PaymentMethodRequest") && it.contains("type") })
     }
 
     @Test

@@ -65,7 +65,13 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     // COM-605: the checkout stepper; plans from the (cached) Dietary client, addresses from the device.
     factory {
         val dietary = get<DietaryRepository>()
-        CheckoutViewModel(useCases = get(), loadPlans = { dietary.getMealPlans() }, addressBook = get<SavedAddressStore>())
+        CheckoutViewModel(
+            useCases = get(),
+            loadPlans = { dietary.getMealPlans() },
+            addressBook = get<SavedAddressStore>(),
+            // COM-608: cards are offered only when the platform binds the provider tokenizer (COM-508).
+            tokenizer = getOrNull<PaymentTokenizer>(),
+        )
     }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())

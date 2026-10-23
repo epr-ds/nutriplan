@@ -28,6 +28,9 @@ import com.nutriplan.android.ui.theme.NutriPlanTheme
 import com.nutriplan.shared.commerce.CheckoutStep
 import com.nutriplan.shared.commerce.CheckoutViewModel
 import com.nutriplan.shared.commerce.CommerceUseCases
+import com.nutriplan.shared.commerce.NewPaymentMethod
+import com.nutriplan.shared.commerce.PaymentTokenizer
+import com.nutriplan.shared.commerce.TokenizationResult
 import com.nutriplan.shared.data.local.AddressBookStore
 import com.nutriplan.shared.data.local.OrderStore
 import com.nutriplan.shared.data.local.SavedAddress
@@ -45,6 +48,8 @@ import com.nutriplan.shared.data.model.OrderListQuery
 import com.nutriplan.shared.data.model.OrderQuote
 import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
+import com.nutriplan.shared.data.model.PaymentMethodRequest
+import com.nutriplan.shared.data.model.PaymentVoucher
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.repository.CommerceRepository
 import com.nutriplan.shared.data.repository.FulfillmentRepository
@@ -62,7 +67,8 @@ import org.robolectric.annotation.Config
 /**
  * COM-605: the checkout stepper walks plan -> fulfillment -> address -> day and slot -> review with
  * the itemized price, checks each step, lets the user edit any step from the review, and places
- * the order. Runs on the JVM via Robolectric.
+ * the order. COM-608: the review asks how to pay (a card only with the provider's card form), and
+ * the placed order shows a confirmation with what is left to pay. Runs on the JVM via Robolectric.
  */
 @RunWith(AndroidJUnit4::class)
 // A tall viewport so every lazily composed item is on screen.
@@ -78,7 +84,9 @@ class CheckoutScreenTest {
 
     private class FakeCommerce : CommerceRepository {
         val creates = mutableListOf<CreateOrderRequest>()
+        val saves = mutableListOf<SavePaymentMethodRequest>()
         val quotes = mutableListOf<OrderQuoteRequest>()
+        var created = Order(id = "o1", status = "pending")
 
         override suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote {
             quotes += request
@@ -92,7 +100,7 @@ class CheckoutScreenTest {
 
         override suspend fun createOrder(request: CreateOrderRequest, idempotencyKey: String?): Order {
             creates += request
-            return Order(id = "o1", status = "pending")
+            return created
         }
 
         override suspend fun darkKitchenAvailability(zipCode: String, deliveryDate: String?) =
@@ -103,7 +111,10 @@ class CheckoutScreenTest {
         override suspend fun cancelOrder(orderId: String, request: CancelOrderRequest?): Order = error("unused")
         override suspend fun syncGroceryOrder(orderId: String): Order = error("unused")
         override suspend fun listPaymentMethods(): List<PaymentMethod> = emptyList()
-        override suspend fun savePaymentMethod(request: SavePaymentMethodRequest): PaymentMethod = error("unused")
+        override suspend fun savePaymentMethod(request: SavePaymentMethodRequest): PaymentMethod {
+            saves += request
+            return PaymentMethod(id = "pm1", type = request.type)
+        }
         override suspend fun deletePaymentMethod(paymentMethodId: String) = Unit
         override suspend fun searchGroceryProducts(request: GrocerySearchRequest): List<FulfillmentProvider> = emptyList()
     }
@@ -124,6 +135,13 @@ class CheckoutScreenTest {
         override fun remove(id: Long) = Unit
     }
 
+    /** The provider's card form, answering [result]. */
+    private class FakeTokenizer(val result: TokenizationResult) : PaymentTokenizer {
+        override suspend fun tokenize() = result
+    }
+
+    private val card = NewPaymentMethod(type = "credit_card", token = "tok_visa", brand = "visa", last4 = "4242")
+
     private val remote = FakeCommerce()
     private val home = SavedAddress(
         id = 1,
@@ -135,14 +153,17 @@ class CheckoutScreenTest {
     private val other = week.copy(id = "p2", name = "Week 45")
 
     private val placed = mutableListOf<String>()
+    private val viewed = mutableListOf<String>()
     private var managed = 0
+    private var done = 0
 
-    private fun render(addresses: List<SavedAddress> = listOf(home)) {
+    private fun render(addresses: List<SavedAddress> = listOf(home), tokenizer: PaymentTokenizer? = null) {
         val viewModel = CheckoutViewModel(
             useCases = CommerceUseCases(OrderRepository(remote, NoOrders()), FulfillmentRepository(remote), PaymentRepository(remote)),
             loadPlans = { listOf(week, other) },
             addressBook = Addresses(addresses),
             io = Dispatchers.Unconfined,
+            tokenizer = tokenizer,
         )
         compose.setContent {
             val state by viewModel.state.collectAsState()
@@ -165,6 +186,10 @@ class CheckoutScreenTest {
                     onEdit = { step -> scope.launch { viewModel.edit(step) } },
                     onRetry = {},
                     onPlaceOrder = { scope.launch { viewModel.placeOrder() } },
+                    onSelectPayment = viewModel::selectPayment,
+                    onSaveCardChange = viewModel::onSaveCardChange,
+                    onViewOrder = { viewed += it },
+                    onDone = { done++ },
                 )
             }
         }
@@ -184,8 +209,8 @@ class CheckoutScreenTest {
     private fun stepTitle(@StringRes step: Int, number: Int) =
         compose.onNodeWithText(str(R.string.checkout_step_of, number, 5, str(step))).assertIsDisplayed()
 
-    /** Plan -> pickup -> the default address -> the first slot -> review. */
-    private fun walkToReview() {
+    /** Plan -> pickup -> the default address -> the first slot -> review, paying with [payment]. */
+    private fun walkToReview(payment: Int? = R.string.payment_type_oxxo) {
         choose("Week 44")
         next()
         choose(str(R.string.fulfillment_pickup))
@@ -193,6 +218,7 @@ class CheckoutScreenTest {
         next() // the default address is already chosen
         compose.onAllNodesWithTag(CheckoutTestTags.SLOT).onFirst().performClick()
         next()
+        payment?.let { choose(str(it)) }
     }
 
     @Test
@@ -279,20 +305,133 @@ class CheckoutScreenTest {
         stepTitle(R.string.checkout_step_plan, 1)
     }
 
+    private fun placeOrder() {
+        compose.onNodeWithTag(CheckoutTestTags.PLACE_ORDER).performClick()
+        compose.waitForIdle()
+    }
+
     @Test
-    fun `placing the order sends every choice and opens it`() {
+    fun `placing the order sends every choice and the way to pay`() {
         render()
         walkToReview()
 
-        compose.onNodeWithTag(CheckoutTestTags.PLACE_ORDER).performClick()
-        compose.waitForIdle()
+        placeOrder()
 
         val sent = remote.creates.single()
         assertEquals("p1", sent.mealPlanId)
         assertEquals("pickup", sent.fulfillmentType)
         assertEquals(home.address, sent.deliveryAddress)
         assertTrue(sent.deliveryTimeSlot.isNotBlank())
+        assertEquals(PaymentMethodRequest(type = "oxxo"), sent.paymentMethod)
         assertEquals(listOf("o1"), placed)
+    }
+
+    // --- paying and the confirmation (COM-608) ---
+
+    @Test
+    fun `the review offers OXXO SPEI and PayPal but no card without the card form`() {
+        render()
+
+        walkToReview(payment = null)
+
+        compose.onNode(isHeading() and hasText(str(R.string.checkout_pay_heading))).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.payment_type_oxxo)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.payment_type_spei)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.payment_type_paypal)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.payment_option_card)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `with the card form a card can be chosen and kept for next time`() {
+        render(tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card)))
+        walkToReview(payment = R.string.payment_option_card)
+
+        compose.onNodeWithTag(CheckoutTestTags.SAVE_CARD).performScrollTo().performClick()
+        compose.waitForIdle()
+        placeOrder()
+
+        assertEquals(PaymentMethodRequest(type = "credit_card", token = "tok_visa"), remote.creates.single().paymentMethod)
+        assertEquals("tok_visa", remote.saves.single().token)
+    }
+
+    @Test
+    fun `the card switch only shows for a card`() {
+        render(tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card)))
+
+        walkToReview()
+
+        compose.onNodeWithTag(CheckoutTestTags.SAVE_CARD).assertDoesNotExist()
+    }
+
+    @Test
+    fun `placing without a way to pay says so`() {
+        render()
+        walkToReview(payment = null)
+
+        placeOrder()
+
+        compose.onNodeWithText(str(R.string.checkout_error_payment)).assertIsDisplayed()
+        assertTrue(remote.creates.isEmpty())
+    }
+
+    @Test
+    fun `a card the provider cannot verify says so`() {
+        render(tokenizer = FakeTokenizer(TokenizationResult.Failed))
+        walkToReview(payment = R.string.payment_option_card)
+
+        placeOrder()
+
+        compose.onNodeWithText(str(R.string.checkout_error_card)).assertIsDisplayed()
+        assertTrue(remote.creates.isEmpty())
+    }
+
+    @Test
+    fun `an OXXO order shows the confirmation with the voucher and the total`() {
+        remote.created = Order(
+            id = "o1",
+            status = "pending",
+            items = listOf(OrderItem(name = "Lentil soup", quantity = 2.0, lineTotal = Money(178.0, formatted = "MXN 178.00"))),
+            total = Money(178.0, formatted = "MXN 178.00"),
+            voucher = PaymentVoucher(reference = "93000012345678", amount = Money(178.0, formatted = "MXN 178.00")),
+        )
+        render()
+        walkToReview()
+
+        placeOrder()
+
+        compose.onNodeWithTag(CheckoutTestTags.CONFIRMATION).assertIsDisplayed()
+        compose.onNode(isHeading() and hasText(str(R.string.confirmation_title))).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.confirmation_pay_now)).assertIsDisplayed()
+        compose.onNodeWithTag(CheckoutTestTags.INSTRUCTIONS).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.instructions_oxxo_body, "MXN 178.00")).assertIsDisplayed()
+        compose.onNodeWithText("93000012345678").assertIsDisplayed()
+        compose.onNodeWithTag(CheckoutTestTags.CONFIRMATION_TOTAL).assertIsDisplayed()
+        compose.onNodeWithTag(CheckoutTestTags.PLACE_ORDER).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a paid order is confirmed without instructions`() {
+        remote.created = Order(id = "o1", status = "paid", total = Money(178.0, formatted = "MXN 178.00"))
+        render(tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card)))
+        walkToReview(payment = R.string.payment_option_card)
+
+        placeOrder()
+
+        compose.onNodeWithText(str(R.string.confirmation_paid)).assertIsDisplayed()
+        compose.onNodeWithTag(CheckoutTestTags.INSTRUCTIONS).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the confirmation opens the order or leaves the checkout`() {
+        render()
+        walkToReview()
+        placeOrder()
+
+        compose.onNodeWithTag(CheckoutTestTags.VIEW_ORDER).performClick()
+        compose.onNodeWithTag(CheckoutTestTags.DONE).performClick()
+
+        assertEquals(listOf("o1"), viewed)
+        assertEquals(1, done)
     }
 
     @Test

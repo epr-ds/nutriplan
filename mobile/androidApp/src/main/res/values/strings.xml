@@ -509,7 +509,6 @@
     <string name="checkout_subtotal">Subtotal</string>
     <string name="checkout_delivery_fee">Delivery</string>
     <string name="checkout_total">Total</string>
-    <string name="checkout_pending_note">Your order is saved as pending until it\'s paid.</string>
     <string name="checkout_back">Back</string>
     <string name="checkout_next">Continue</string>
     <string name="checkout_place_order">Place order</string>
@@ -531,4 +530,33 @@
     <string name="error_checkout_conflict">That time slot is no longer available. Choose another one.</string>
     <string name="error_checkout_declined">Your payment was declined. Try another method.</string>
     <string name="error_checkout_unknown">Something went wrong with your order. Please try again.</string>
+
+    <!-- COM-608: payment and confirmation -->
+    <string name="checkout_pay_heading">Pay with</string>
+    <string name="payment_option_card">Card</string>
+    <string name="payment_option_card_description">Charged now. You enter it in the payment provider\'s secure form.</string>
+    <string name="payment_option_oxxo_description">Pay in cash at an OXXO store with a voucher.</string>
+    <string name="payment_option_spei_description">Pay by bank transfer with a reference.</string>
+    <string name="payment_option_paypal_description">Approve the payment on PayPal.</string>
+    <string name="checkout_save_card">Save this card for next time</string>
+    <string name="checkout_error_payment">Choose how to pay.</string>
+    <string name="checkout_error_card">The payment provider couldn\'t verify your card. Try again or choose another way to pay.</string>
+    <string name="confirmation_title">Order placed</string>
+    <string name="confirmation_paid">Your order is confirmed and paid.</string>
+    <string name="confirmation_pending">Your order is saved and waits for payment.</string>
+    <string name="confirmation_pay_now">Your order is saved. Pay for it as shown below to confirm it.</string>
+    <string name="confirmation_summary">Order summary</string>
+    <string name="confirmation_view_order">View order</string>
+    <string name="confirmation_done">Done</string>
+    <string name="instructions_oxxo_title">Pay at OXXO</string>
+    <string name="instructions_oxxo_body">Pay %1$s in cash at any OXXO store with this reference.</string>
+    <string name="instructions_oxxo_barcode">Show the barcode</string>
+    <string name="instructions_spei_title">Pay by SPEI transfer</string>
+    <string name="instructions_spei_body">Transfer %1$s from your bank to this account, quoting the reference.</string>
+    <string name="instructions_paypal_title">Approve on PayPal</string>
+    <string name="instructions_paypal_body">Approve the payment of %1$s on PayPal.</string>
+    <string name="instructions_paypal_open">Open PayPal</string>
+    <string name="instructions_reference">Reference</string>
+    <string name="instructions_clabe">CLABE</string>
+    <string name="instructions_deadline">Pay before %1$s</string>
 </resources>

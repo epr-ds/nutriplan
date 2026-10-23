@@ -20,10 +20,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -34,6 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -64,7 +68,9 @@ import com.nutriplan.shared.commerce.CheckoutStep
 import com.nutriplan.shared.commerce.CheckoutStepError
 import com.nutriplan.shared.commerce.CheckoutUiState
 import com.nutriplan.shared.commerce.CheckoutViewModel
+import com.nutriplan.shared.commerce.PaymentInstructions
 import com.nutriplan.shared.data.model.Money
+import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.planning.IsoDate
 import kotlinx.coroutines.launch
 
@@ -85,6 +91,13 @@ object CheckoutTestTags {
     const val QUOTE_LINE = "checkout_quote_line"
     const val QUOTE_TOTAL = "checkout_quote_total"
     const val EMPTY = "checkout_empty"
+    const val SAVE_CARD = "checkout_save_card"
+    const val CONFIRMATION = "checkout_confirmation"
+    const val CONFIRMATION_TOTAL = "checkout_confirmation_total"
+    const val INSTRUCTIONS = "checkout_payment_instructions"
+    const val APPROVE_PAYPAL = "checkout_approve_paypal"
+    const val VIEW_ORDER = "checkout_view_order"
+    const val DONE = "checkout_done"
 
     /** The "Edit" link of [step] on the review step. */
     fun edit(step: CheckoutStep): String = "checkout_edit_${step.name.lowercase()}"
@@ -96,8 +109,12 @@ private const val SCHEDULE_DAYS = 14
 /**
  * COM-605: check out a meal plan in steps -- plan, how it is fulfilled, delivery address, day and
  * time slot, and a review with the itemized price -- each validated before moving on, and any step
- * editable from the review. [planId] preselects the plan (from the plan's detail). Choosing how to
- * pay comes with COM-608; until then the order is placed unpaid (`pending`).
+ * editable from the review. [planId] preselects the plan (from the plan's detail).
+ *
+ * COM-608: the review asks how to pay -- a card through the payment provider's own form (when this
+ * device has it), OXXO, SPEI or PayPal -- and placing the order then shows a confirmation with the
+ * order summary and, for the methods paid later, what the user still has to do. [onOrderPlaced]
+ * opens the order from there.
  */
 @Composable
 fun CheckoutScreen(
@@ -117,7 +134,6 @@ fun CheckoutScreen(
         if (current.plansLoading && current.plans.isEmpty()) viewModel.start(todayIso(), planId) else viewModel.refreshAddresses()
     }
     LaunchedEffect(state.sessionExpired) { if (state.sessionExpired) onSessionExpired() }
-    LaunchedEffect(state.placedOrderId) { state.placedOrderId?.let(onOrderPlaced) }
 
     CheckoutScreenContent(
         state = state,
@@ -134,14 +150,20 @@ fun CheckoutScreen(
         onEdit = { step -> scope.launch { viewModel.edit(step) } },
         onRetry = {
             scope.launch {
-                when (state.step) {
-                    CheckoutStep.SLOT -> viewModel.loadSlots()
-                    CheckoutStep.REVIEW -> viewModel.loadQuote()
+                when {
+                    state.step == CheckoutStep.SLOT -> viewModel.loadSlots()
+                    // With the price known, what failed was placing the order: place it again.
+                    state.step == CheckoutStep.REVIEW && state.quote != null -> viewModel.placeOrder()
+                    state.step == CheckoutStep.REVIEW -> viewModel.loadQuote()
                     else -> viewModel.start(todayIso(), planId)
                 }
             }
         },
         onPlaceOrder = { scope.launch { viewModel.placeOrder() } },
+        onSelectPayment = viewModel::selectPayment,
+        onSaveCardChange = viewModel::onSaveCardChange,
+        onViewOrder = onOrderPlaced,
+        onDone = onBack,
     )
 }
 
@@ -162,7 +184,19 @@ fun CheckoutScreenContent(
     onEdit: (CheckoutStep) -> Unit,
     onRetry: () -> Unit,
     onPlaceOrder: () -> Unit,
+    onSelectPayment: (String) -> Unit = {},
+    onSaveCardChange: (Boolean) -> Unit = {},
+    /** Opens the placed order (COM-608 confirmation). */
+    onViewOrder: (orderId: String) -> Unit = {},
+    /** Leaves the checkout from the confirmation. */
+    onDone: () -> Unit = {},
 ) {
+    val placed = state.placedOrder
+    if (placed != null) {
+        BackHandler(onBack = onDone)
+        OrderConfirmation(placed, state.paymentInstructions, onViewOrder = { onViewOrder(placed.id) }, onDone = onDone)
+        return
+    }
     BackHandler(onBack = onBack)
     val stepNumber = state.step.ordinal + 1
     val stepCount = CheckoutStep.entries.size
@@ -221,7 +255,7 @@ fun CheckoutScreenContent(
                 CheckoutStep.FULFILLMENT -> fulfillmentStep(state, onSelectFulfillment, onSelectProvider)
                 CheckoutStep.ADDRESS -> addressStep(state, onSelectAddress, onManageAddresses)
                 CheckoutStep.SLOT -> slotStep(state, today, onSelectDay, onSelectSlot)
-                CheckoutStep.REVIEW -> reviewStep(state, onEdit)
+                CheckoutStep.REVIEW -> reviewStep(state, onEdit, onSelectPayment, onSaveCardChange)
             }
         }
     }
@@ -363,7 +397,12 @@ private fun LazyListScope.slotStep(
     }
 }
 
-private fun LazyListScope.reviewStep(state: CheckoutUiState, onEdit: (CheckoutStep) -> Unit) {
+private fun LazyListScope.reviewStep(
+    state: CheckoutUiState,
+    onEdit: (CheckoutStep) -> Unit,
+    onSelectPayment: (String) -> Unit,
+    onSaveCardChange: (Boolean) -> Unit,
+) {
     item(key = "summary") {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,15 +458,207 @@ private fun LazyListScope.reviewStep(state: CheckoutUiState, onEdit: (CheckoutSt
                     )
                 }
             }
-            item(key = "pending-note") {
-                Text(
-                    text = stringResource(R.string.checkout_pending_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            paymentSection(state, onSelectPayment, onSaveCardChange)
+        }
+    }
+}
+
+// --- paying and the confirmation (COM-608) ----------------------------------------------------
+
+private const val CARD = "credit_card"
+
+private fun LazyListScope.paymentSection(
+    state: CheckoutUiState,
+    onSelectPayment: (String) -> Unit,
+    onSaveCardChange: (Boolean) -> Unit,
+) {
+    item(key = "pay-heading") {
+        Text(
+            text = stringResource(R.string.checkout_pay_heading),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+    }
+    val options = listOfNotNull(CARD.takeIf { state.canPayByCard }, "oxxo", "spei", "paypal")
+    items(options, key = { "pay-$it" }) { type ->
+        Option(
+            title = stringResource(paymentTitleRes(type)),
+            subtitle = stringResource(paymentDescriptionRes(type)),
+            selected = state.paymentType == type,
+            onClick = { onSelectPayment(type) },
+        )
+    }
+    if (state.paymentType == CARD) {
+        item(key = "save-card") {
+            val label = stringResource(R.string.checkout_save_card)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(CheckoutTestTags.SAVE_CARD)
+                    .toggleable(value = state.saveCard, role = Role.Switch, onValueChange = onSaveCardChange),
+            ) {
+                Text(text = label, modifier = Modifier.weight(1f))
+                Switch(checked = state.saveCard, onCheckedChange = null)
             }
         }
     }
+}
+
+/** The order was placed: its summary and, for the methods paid later, how to pay. */
+@Composable
+private fun OrderConfirmation(
+    order: Order,
+    instructions: PaymentInstructions,
+    onViewOrder: () -> Unit,
+    onDone: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(text = stringResource(R.string.confirmation_title), modifier = Modifier.semantics { heading() })
+                },
+            )
+        },
+        bottomBar = {
+            Surface(tonalElevation = 3.dp) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDone, modifier = Modifier.weight(1f).testTag(CheckoutTestTags.DONE)) {
+                        Text(stringResource(R.string.confirmation_done))
+                    }
+                    Button(onClick = onViewOrder, modifier = Modifier.weight(1f).testTag(CheckoutTestTags.VIEW_ORDER)) {
+                        Text(stringResource(R.string.confirmation_view_order))
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).testTag(CheckoutTestTags.CONFIRMATION),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "status") {
+                Text(
+                    text = stringResource(
+                        when {
+                            instructions != PaymentInstructions.None -> R.string.confirmation_pay_now
+                            order.status == "pending" -> R.string.confirmation_pending
+                            else -> R.string.confirmation_paid
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+            if (instructions != PaymentInstructions.None) {
+                item(key = "instructions") { PaymentInstructionsCard(instructions, order.total) }
+            }
+            item(key = "summary-heading") {
+                Text(
+                    text = stringResource(R.string.confirmation_summary),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
+            items(order.items.withIndex().toList(), key = { "item-${it.index}" }) { (_, line) ->
+                PriceRow(
+                    label = stringResource(R.string.checkout_line, line.name.orEmpty(), formatQuantity(line.quantity)),
+                    amount = line.lineTotal,
+                )
+            }
+            item(key = "total") {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    HorizontalDivider()
+                    PriceRow(stringResource(R.string.checkout_delivery_fee), order.deliveryFee)
+                    PriceRow(
+                        label = stringResource(R.string.checkout_total),
+                        amount = order.total,
+                        bold = true,
+                        modifier = Modifier.testTag(CheckoutTestTags.CONFIRMATION_TOTAL),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentInstructionsCard(instructions: PaymentInstructions, total: Money?) {
+    val uriHandler = LocalUriHandler.current
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth().testTag(CheckoutTestTags.INSTRUCTIONS),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (instructions) {
+                is PaymentInstructions.PayAtOxxo -> {
+                    val voucher = instructions.voucher
+                    InstructionsHeader(R.string.instructions_oxxo_title, R.string.instructions_oxxo_body, voucher.amount ?: total)
+                    voucher.reference?.let { Detail(R.string.instructions_reference, it) }
+                    Deadline(voucher.expiresAt)
+                    voucher.barcodeUrl?.let { url ->
+                        TextButton(onClick = { uriHandler.openUri(url) }) { Text(stringResource(R.string.instructions_oxxo_barcode)) }
+                    }
+                }
+                is PaymentInstructions.TransferWithSpei -> {
+                    val transfer = instructions.transfer
+                    InstructionsHeader(R.string.instructions_spei_title, R.string.instructions_spei_body, transfer.amount ?: total)
+                    transfer.clabe?.let { Detail(R.string.instructions_clabe, it) }
+                    transfer.reference?.let { Detail(R.string.instructions_reference, it) }
+                    Deadline(transfer.expiresAt)
+                }
+                is PaymentInstructions.ApproveWithPayPal -> {
+                    val approval = instructions.approval
+                    InstructionsHeader(R.string.instructions_paypal_title, R.string.instructions_paypal_body, approval.amount ?: total)
+                    Deadline(approval.expiresAt)
+                    approval.approvalUrl?.let { url ->
+                        Button(
+                            onClick = { uriHandler.openUri(url) },
+                            modifier = Modifier.testTag(CheckoutTestTags.APPROVE_PAYPAL),
+                        ) { Text(stringResource(R.string.instructions_paypal_open)) }
+                    }
+                }
+                PaymentInstructions.None -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstructionsHeader(@StringRes title: Int, @StringRes body: Int, amount: Money?) {
+    Text(text = stringResource(title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+    Text(text = stringResource(body, amount?.formatted ?: amount?.amount?.toString().orEmpty()), style = MaterialTheme.typography.bodyMedium)
+}
+
+@Composable
+private fun Detail(@StringRes label: Int, value: String) {
+    Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Text(text = stringResource(label), style = MaterialTheme.typography.labelMedium)
+        Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun Deadline(expiresAt: String?) {
+    expiresAt?.let { Text(stringResource(R.string.instructions_deadline, formatPlanDay(it)), style = MaterialTheme.typography.bodySmall) }
+}
+
+@StringRes
+private fun paymentTitleRes(type: String): Int = when (type) {
+    CARD -> R.string.payment_option_card
+    "oxxo" -> R.string.payment_type_oxxo
+    "spei" -> R.string.payment_type_spei
+    else -> R.string.payment_type_paypal
+}
+
+@StringRes
+private fun paymentDescriptionRes(type: String): Int = when (type) {
+    CARD -> R.string.payment_option_card_description
+    "oxxo" -> R.string.payment_option_oxxo_description
+    "spei" -> R.string.payment_option_spei_description
+    else -> R.string.payment_option_paypal_description
 }
 
 // --- building blocks ---------------------------------------------------------------------------
@@ -584,4 +815,6 @@ private fun CheckoutStepError.messageRes(): Int = when (this) {
     CheckoutStepError.DATE_INVALID -> R.string.checkout_error_date
     CheckoutStepError.SLOT_REQUIRED -> R.string.checkout_error_slot
     CheckoutStepError.AREA_NOT_SERVED -> R.string.checkout_error_area
+    CheckoutStepError.PAYMENT_REQUIRED -> R.string.checkout_error_payment
+    CheckoutStepError.CARD_NOT_VERIFIED -> R.string.checkout_error_card
 }

@@ -47,14 +47,15 @@ data class OrderAddress(
 )
 
 /**
- * How an order is paid (`PaymentMethodRequest`): a [type] and the provider [token] produced by
- * on-device tokenization. A card number or CVV is never sent.
+ * How an order is paid (`PaymentMethodRequest`): a [type] and, for a card, the provider [token]
+ * produced by on-device tokenization (OXXO, SPEI and PayPal need none, COM-608). A card number or
+ * CVV is never sent.
  */
 @Serializable
 data class PaymentMethodRequest(
     /** `credit_card`, `debit_card`, `paypal`, `oxxo` or `spei`. */
     val type: String,
-    val token: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val token: String? = null,
 )
 
 /** Body of `POST /orders/quote` (`OrderQuoteRequest`, COM-605): what to price. */

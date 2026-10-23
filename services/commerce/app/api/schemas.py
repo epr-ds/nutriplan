@@ -10,7 +10,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 from app.domain.address import Address
@@ -56,8 +56,16 @@ class AddressRequest(_Camel):
 
 
 class PaymentMethodRequest(_Camel):
+    """How the order is paid; only a card needs a ``token`` (COM-608), else it is ``422``."""
+
     type: PaymentMethodType
-    token: str
+    token: str | None = None
+
+    @model_validator(mode="after")
+    def _card_needs_a_token(self) -> PaymentMethodRequest:
+        if self.type.is_card and not (self.token and self.token.strip()):
+            raise ValueError("a card payment method requires a token")
+        return self
 
 
 class CreateOrderRequest(_Camel):

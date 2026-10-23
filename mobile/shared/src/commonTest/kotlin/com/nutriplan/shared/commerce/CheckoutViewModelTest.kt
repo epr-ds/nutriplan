@@ -17,6 +17,8 @@ import com.nutriplan.shared.data.model.OrderListQuery
 import com.nutriplan.shared.data.model.OrderQuote
 import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
+import com.nutriplan.shared.data.model.PaymentMethodRequest
+import com.nutriplan.shared.data.model.PaymentVoucher
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.repository.CommerceRepository
@@ -33,7 +35,8 @@ import kotlin.test.assertTrue
 
 /**
  * COM-605: the checkout stepper -- plan, fulfillment, address, day and slot, review with the quote --
- * validated per step, editable from the review, placing the order through the use cases.
+ * validated per step, editable from the review, placing the order through the use cases. COM-608: paying
+ * by card through the provider's tokenizer or by OXXO, SPEI or PayPal without a token, and the confirmation.
  */
 class CheckoutViewModelTest {
 
@@ -52,6 +55,8 @@ class CheckoutViewModelTest {
         val availabilityCalls = mutableListOf<Pair<String, String?>>()
         val quotes = mutableListOf<OrderQuoteRequest>()
         val creates = mutableListOf<CreateOrderRequest>()
+        val idempotencyKeys = mutableListOf<String?>()
+        val saves = mutableListOf<SavePaymentMethodRequest>()
 
         override suspend fun darkKitchenAvailability(zipCode: String, deliveryDate: String?): KitchenAvailability {
             availabilityCalls += zipCode to deliveryDate
@@ -68,6 +73,7 @@ class CheckoutViewModelTest {
 
         override suspend fun createOrder(request: CreateOrderRequest, idempotencyKey: String?): Order {
             creates += request
+            idempotencyKeys += idempotencyKey
             val answer = created
             if (answer is Throwable) throw answer
             return answer as Order
@@ -83,7 +89,10 @@ class CheckoutViewModelTest {
 
         override suspend fun listPaymentMethods(): List<PaymentMethod> = emptyList()
 
-        override suspend fun savePaymentMethod(request: SavePaymentMethodRequest): PaymentMethod = error("unused")
+        override suspend fun savePaymentMethod(request: SavePaymentMethodRequest): PaymentMethod {
+            saves += request
+            return PaymentMethod(id = "pm1", type = request.type)
+        }
 
         override suspend fun deletePaymentMethod(paymentMethodId: String) = Unit
 
@@ -128,7 +137,16 @@ class CheckoutViewModelTest {
     private val other = week.copy(id = "p2", name = "Week 45")
     private var plans: () -> List<MealPlanSummary> = { listOf(week, other) }
 
-    private fun viewModel() = CheckoutViewModel(
+    /** The provider's card form: answers with [results] in turn, then with the last one. */
+    private class FakeTokenizer(vararg val results: TokenizationResult) : PaymentTokenizer {
+        var calls = 0
+        override suspend fun tokenize(): TokenizationResult = results[minOf(calls++, results.lastIndex)]
+    }
+
+    private val card = NewPaymentMethod(type = "credit_card", token = "tok_visa", brand = "visa", last4 = "4242", expMonth = 12, expYear = 2030)
+    private val otherCard = NewPaymentMethod(type = "credit_card", token = "tok_mc", brand = "mastercard", last4 = "4444")
+
+    private fun viewModel(tokenizer: PaymentTokenizer? = null) = CheckoutViewModel(
         useCases = CommerceUseCases(
             orders = OrderRepository(remote, MemoryOrders()),
             fulfillment = FulfillmentRepository(remote),
@@ -137,10 +155,11 @@ class CheckoutViewModelTest {
         loadPlans = { plans() },
         addressBook = addresses,
         io = UnconfinedTestDispatcher(),
+        tokenizer = tokenizer,
     )
 
-    /** Walk the first steps to [target] with valid choices. */
-    private suspend fun CheckoutViewModel.walkTo(target: CheckoutStep, type: String = "dark_kitchen") {
+    /** Walk the first steps to [target] with valid choices, paying with [payment] on the review. */
+    private suspend fun CheckoutViewModel.walkTo(target: CheckoutStep, type: String = "dark_kitchen", payment: String? = "oxxo") {
         start("2026-11-02")
         selectPlan("p1")
         if (target == CheckoutStep.PLAN) return
@@ -154,6 +173,7 @@ class CheckoutViewModelTest {
         if (target == CheckoutStep.SLOT) return
         selectSlot(state.value.slots.first())
         next()
+        payment?.let { selectPayment(it) }
     }
 
     // --- start ---
@@ -417,7 +437,7 @@ class CheckoutViewModelTest {
         assertEquals("2026-11-02", sent.deliveryDate)
         assertEquals("13:00-15:00", sent.deliveryTimeSlot)
         assertNull(sent.providerId)
-        assertNull(sent.paymentMethod, "payment is chosen in a later story (COM-608)")
+        assertEquals(PaymentMethodRequest(type = "oxxo"), sent.paymentMethod)
         assertEquals("o1", viewModel.state.value.placedOrderId)
     }
 
@@ -442,5 +462,195 @@ class CheckoutViewModelTest {
 
         assertFalse(viewModel.placeOrder())
         assertTrue(remote.creates.isEmpty())
+    }
+
+    // --- paying (COM-608) ---
+
+    @Test
+    fun `an order needs a way to pay`() = runTest {
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = null)
+
+        assertFalse(viewModel.placeOrder())
+
+        assertEquals(CheckoutStepError.PAYMENT_REQUIRED, viewModel.state.value.stepError)
+        assertTrue(remote.creates.isEmpty())
+        viewModel.selectPayment("spei")
+        assertNull(viewModel.state.value.stepError)
+    }
+
+    @Test
+    fun `a card is not offered without the provider card form`() = runTest {
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = null)
+
+        viewModel.selectPayment("credit_card")
+
+        assertFalse(viewModel.state.value.canPayByCard)
+        assertNull(viewModel.state.value.paymentType)
+        assertTrue(viewModel(FakeTokenizer(TokenizationResult.Cancelled)).state.value.canPayByCard)
+    }
+
+    @Test
+    fun `an unknown way to pay is ignored`() = runTest {
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW)
+
+        viewModel.selectPayment("bitcoin")
+
+        assertEquals("oxxo", viewModel.state.value.paymentType)
+    }
+
+    @Test
+    fun `OXXO SPEI and PayPal are placed without a token`() = runTest {
+        for (type in listOf("oxxo", "spei", "paypal")) {
+            remote.creates.clear()
+            val viewModel = viewModel()
+            viewModel.walkTo(CheckoutStep.REVIEW, payment = type)
+
+            assertTrue(viewModel.placeOrder())
+
+            assertEquals(PaymentMethodRequest(type = type), remote.creates.single().paymentMethod)
+        }
+        assertTrue(remote.saves.isEmpty())
+    }
+
+    @Test
+    fun `a card is tokenized when the order is placed and only the token is sent`() = runTest {
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+        assertEquals(0, tokenizer.calls, "the card form opens only when the user places the order")
+
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(1, tokenizer.calls)
+        assertEquals(PaymentMethodRequest(type = "credit_card", token = "tok_visa"), remote.creates.single().paymentMethod)
+        assertTrue(remote.saves.isEmpty(), "the card is not saved unless the user asks")
+    }
+
+    @Test
+    fun `a card the user wants kept is saved with the order`() = runTest {
+        val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+        viewModel.onSaveCardChange(true)
+
+        assertTrue(viewModel.placeOrder())
+
+        val saved = remote.saves.single()
+        assertEquals("tok_visa", saved.token)
+        assertEquals("4242", saved.last4)
+    }
+
+    @Test
+    fun `save card only applies to a card`() = runTest {
+        val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "oxxo")
+        viewModel.onSaveCardChange(true)
+
+        assertTrue(viewModel.placeOrder())
+
+        assertTrue(remote.saves.isEmpty())
+    }
+
+    @Test
+    fun `closing the card form places nothing and shows no error`() = runTest {
+        val viewModel = viewModel(FakeTokenizer(TokenizationResult.Cancelled))
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertFalse(viewModel.placeOrder())
+
+        assertTrue(remote.creates.isEmpty())
+        assertFalse(viewModel.state.value.isPlacing)
+        assertNull(viewModel.state.value.stepError)
+        assertNull(viewModel.state.value.error)
+    }
+
+    @Test
+    fun `a card the provider cannot verify says so`() = runTest {
+        val viewModel = viewModel(FakeTokenizer(TokenizationResult.Failed))
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertFalse(viewModel.placeOrder())
+
+        assertEquals(CheckoutStepError.CARD_NOT_VERIFIED, viewModel.state.value.stepError)
+        assertTrue(remote.creates.isEmpty())
+        assertFalse(viewModel.state.value.isPlacing)
+    }
+
+    @Test
+    fun `a retry after a network failure reuses the card and the idempotency key`() = runTest {
+        remote.created = ApiException.NetworkError(errorCause = Exception("offline"))
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card), TokenizationResult.Tokenized(otherCard))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertFalse(viewModel.placeOrder())
+        assertEquals(OrderError.NETWORK, viewModel.state.value.error)
+        remote.created = Order(id = "o1", status = "paid")
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(1, tokenizer.calls, "the card is not tokenized (or charged) twice")
+        assertEquals(2, remote.creates.size)
+        assertEquals(remote.creates[0], remote.creates[1])
+        assertEquals(remote.idempotencyKeys[0], remote.idempotencyKeys[1])
+    }
+
+    @Test
+    fun `a declined card asks for a card again`() = runTest {
+        remote.created = ApiException.HttpError(statusCode = 402, body = "{}")
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card), TokenizationResult.Tokenized(otherCard))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertFalse(viewModel.placeOrder())
+        assertEquals(OrderError.PAYMENT_DECLINED, viewModel.state.value.error)
+        remote.created = Order(id = "o1", status = "paid")
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(2, tokenizer.calls)
+        assertEquals("tok_mc", remote.creates.last().paymentMethod?.token)
+    }
+
+    @Test
+    fun `switching away from a card forgets the tokenized card`() = runTest {
+        remote.created = ApiException.NetworkError(errorCause = Exception("offline"))
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card), TokenizationResult.Tokenized(otherCard))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+        assertFalse(viewModel.placeOrder())
+
+        viewModel.selectPayment("oxxo")
+        viewModel.selectPayment("credit_card")
+        remote.created = Order(id = "o1", status = "paid")
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(2, tokenizer.calls)
+    }
+
+    @Test
+    fun `the confirmation keeps the placed order and what is left to pay`() = runTest {
+        val voucher = PaymentVoucher(reference = "93000012345678", amount = Money(208.0, formatted = "MXN 208.00"), expiresAt = "2026-11-01T23:59:00Z")
+        remote.created = Order(id = "o1", status = "pending", total = Money(208.0, formatted = "MXN 208.00"), voucher = voucher)
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW)
+
+        assertTrue(viewModel.placeOrder())
+
+        val state = viewModel.state.value
+        assertEquals("o1", state.placedOrder?.id)
+        assertEquals(PaymentInstructions.PayAtOxxo(voucher), state.paymentInstructions)
+        assertFalse(state.isPlacing)
+    }
+
+    @Test
+    fun `a paid order has nothing left to pay`() = runTest {
+        remote.created = Order(id = "o1", status = "paid")
+        val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(PaymentInstructions.None, viewModel.state.value.paymentInstructions)
     }
 }

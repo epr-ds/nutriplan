@@ -30,6 +30,11 @@ class NewPaymentMethod(
 
     override fun toString(): String =
         "NewPaymentMethod(type=$type, token=<redacted>, brand=$brand, last4=$last4, expMonth=$expMonth, expYear=$expYear)"
+
+    companion object {
+        /** OXXO, SPEI or PayPal at checkout: no card, so no token (COM-608). */
+        fun withoutToken(type: String): NewPaymentMethod = NewPaymentMethod(type = type, token = "")
+    }
 }
 
 /** The payment types the contract accepts (`PaymentMethodRequest.type`). */
@@ -63,6 +68,18 @@ internal fun NewPaymentMethod.toSaveRequest(): SavePaymentMethodRequest? {
     )
 }
 
-/** How an order is paid with this method (`PaymentMethodRequest`, COM-507), or null when it must not be sent. */
-internal fun NewPaymentMethod.toOrderPayment(): PaymentMethodRequest? =
-    sendableToken()?.let { PaymentMethodRequest(type = type, token = it) }
+/** The card types, charged at once and the only ones that need a token (COM-608). */
+internal val CARD_TYPES = setOf("credit_card", "debit_card")
+
+/**
+ * How an order is paid with this method (`PaymentMethodRequest`, COM-507), or null when it must not
+ * be sent. A card needs a sendable token; OXXO, SPEI and PayPal need none (COM-608), and a card
+ * number is never sent in any case.
+ */
+internal fun NewPaymentMethod.toOrderPayment(): PaymentMethodRequest? {
+    if (type !in PAYMENT_TYPES) return null
+    if (type in CARD_TYPES) return sendableToken()?.let { PaymentMethodRequest(type = type, token = it) }
+    val clean = token.trim()
+    if (clean.looksLikeCardNumber()) return null
+    return PaymentMethodRequest(type = type, token = clean.takeIf(String::isNotEmpty))
+}
