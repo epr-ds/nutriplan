@@ -4,6 +4,8 @@ import app.cash.sqldelight.db.SqlDriver
 import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.commerce.AddressBookViewModel
 import com.nutriplan.shared.commerce.CommerceUseCases
+import com.nutriplan.shared.commerce.PaymentMethodsViewModel
+import com.nutriplan.shared.commerce.PaymentTokenizer
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
 import com.nutriplan.shared.data.local.FavoriteRecipeCache
 import com.nutriplan.shared.data.local.OrderCache
@@ -57,6 +59,8 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     factory { CommerceUseCases(orders = get(), fulfillment = get(), payments = get()) }
     // COM-601: the address book screen, on the on-device address store.
     factory { AddressBookViewModel(store = get<SavedAddressStore>()) }
+    // COM-603: saved payment methods; "Add" needs the platform's provider tokenizer (COM-508).
+    factory { PaymentMethodsViewModel(repository = get(), tokenizer = getOrNull<PaymentTokenizer>()) }
     single<DietaryRepository> {
         CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
     }
