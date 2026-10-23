@@ -526,4 +526,39 @@ class MealPlanDetailScreenTest {
 
         compose.onNodeWithTag(MealPlanDetailTestTags.OPTIMIZE).assertDoesNotExist()
     }
+
+    // --- COM-605: order the plan ---
+
+    private fun renderOrderable(state: MealPlanDetailUiState): MutableList<Unit> {
+        val ordered = mutableListOf<Unit>()
+        compose.setContent {
+            NutriPlanTheme {
+                MealPlanDetailScreenContent(
+                    state = state,
+                    onRefresh = {},
+                    onRetry = {},
+                    onBack = {},
+                    onAddMeal = {},
+                    onOrder = { ordered += Unit },
+                )
+            }
+        }
+        return ordered
+    }
+
+    @Test
+    fun `a plan with meals can be ordered`() {
+        val ordered = renderOrderable(loaded(plan(meal("m1", 0, "lunch"))))
+
+        compose.onNodeWithContentDescription(str(R.string.cd_plan_detail_order)).performClick()
+
+        assertEquals(1, ordered.size)
+    }
+
+    @Test
+    fun `an empty plan cannot be ordered`() {
+        renderOrderable(loaded(plan()))
+
+        compose.onNodeWithTag(MealPlanDetailTestTags.ORDER).assertDoesNotExist()
+    }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,6 +70,7 @@ object MealPlanDetailTestTags {
     const val LOADING = "plan_detail_loading"
     const val ADD_MEAL = "plan_detail_add_meal"
     const val OPTIMIZE = "plan_detail_optimize"
+    const val ORDER = "plan_detail_order"
     const val ERROR_BANNER = "plan_detail_error_banner"
     const val MEAL_CARD = "plan_detail_meal_card"
     const val PENDING_LABEL = "plan_detail_pending_label"
@@ -93,6 +95,8 @@ fun MealPlanDetailScreen(
     onSessionExpired: () -> Unit,
     /** Opens the AI optimization of the plan (AIA-605); the action is offered when set. */
     onOptimize: (() -> Unit)? = null,
+    /** Orders the plan through checkout (COM-605); the action is offered when set. */
+    onOrder: (() -> Unit)? = null,
 ) {
     val viewModel = koinInject<MealPlanDetailViewModel>()
     val state by viewModel.state.collectAsState()
@@ -113,6 +117,7 @@ fun MealPlanDetailScreen(
         onDismissFailedAdd = viewModel::dismissFailedAdd,
         onDismissFailedChange = viewModel::dismissFailedChange,
         onOptimize = onOptimize,
+        onOrder = onOrder,
     )
 }
 
@@ -128,6 +133,7 @@ fun MealPlanDetailScreenContent(
     onDismissFailedAdd: (id: Long) -> Unit = {},
     onDismissFailedChange: (id: Long) -> Unit = {},
     onOptimize: (() -> Unit)? = null,
+    onOrder: (() -> Unit)? = null,
 ) {
     val plan = state.plan
     val error = state.error
@@ -151,6 +157,18 @@ fun MealPlanDetailScreenContent(
                     }
                 },
                 actions = {
+                    // COM-605: a plan with meals can be ordered.
+                    if (onOrder != null && plan != null && plan.meals.isNotEmpty()) {
+                        IconButton(
+                            onClick = onOrder,
+                            modifier = Modifier.testTag(MealPlanDetailTestTags.ORDER),
+                        ) {
+                            Icon(
+                                Icons.Filled.ShoppingCart,
+                                contentDescription = stringResource(R.string.cd_plan_detail_order),
+                            )
+                        }
+                    }
                     // AIA-605: only a plan with meals that is still being planned or under way.
                     if (onOptimize != null && plan != null && plan.canBeOptimized()) {
                         IconButton(

@@ -81,7 +81,8 @@ class RouteDeepLinkTest {
 
     @Test
     fun `toDeepLink returns correct URI for Checkout`() {
-        assertEquals("nutriplan://checkout", Route.Checkout.toDeepLink())
+        assertEquals("nutriplan://checkout", Route.Checkout().toDeepLink())
+        assertEquals("nutriplan://checkout/p1", Route.Checkout("p1").toDeepLink())
     }
 
     @Test
@@ -210,7 +211,8 @@ class RouteDeepLinkTest {
 
     @Test
     fun `fromDeepLink parses Checkout correctly`() {
-        assertEquals(Route.Checkout, Route.fromDeepLink("nutriplan://checkout"))
+        assertEquals(Route.Checkout(), Route.fromDeepLink("nutriplan://checkout"))
+        assertEquals(Route.Checkout("p1"), Route.fromDeepLink("nutriplan://checkout/p1"))
     }
 
     @Test

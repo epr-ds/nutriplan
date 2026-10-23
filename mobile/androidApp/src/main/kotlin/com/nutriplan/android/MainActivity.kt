@@ -24,7 +24,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nutriplan.android.screen.auth.LoginScreen
 import com.nutriplan.android.screen.auth.RegisterScreen
-import com.nutriplan.android.screen.checkout.CheckoutScreen
 import com.nutriplan.android.screen.home.HomeScreen
 import com.nutriplan.android.screen.onboarding.OnboardingScreen
 import com.nutriplan.android.screen.onboarding.OnboardingWizardScreen
@@ -249,6 +248,8 @@ class MainNavigationScreens(
             onEditMeal = { mealId -> navController.navigate(Route.EditMeal(planId, mealId)) },
             onSessionExpired = { sessionManager.onSignedOut() },
             onOptimize = { navController.navigate(Route.OptimizePlan(planId)) },
+            // COM-605: order the plan (checkout opens with it chosen).
+            onOrder = { navController.navigate(Route.Checkout(planId)) },
         )
     }
 
@@ -427,14 +428,18 @@ class MainNavigationScreens(
 
     @Composable
     override fun CheckoutScreen(
+        planId: String?,
         onNavigate: (Any) -> Unit,
         onComplete: (Any) -> Unit,
         onCancel: () -> Unit,
     ) {
-        CheckoutScreen(
-            planId = "default-plan-id",
-            onCheckoutSuccess = { onComplete(Route.OrderList) },
-            onNavigateBack = onCancel
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.checkout.CheckoutScreen(
+            planId = planId,
+            onOrderPlaced = { orderId -> onComplete(Route.OrderDetail(orderId)) },
+            onManageAddresses = { onNavigate(Route.AddressBook) },
+            onBack = onCancel,
+            onSessionExpired = { sessionManager.onSignedOut() },
         )
     }
 
