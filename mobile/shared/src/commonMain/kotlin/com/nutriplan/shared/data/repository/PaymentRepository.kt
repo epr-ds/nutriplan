@@ -4,8 +4,8 @@ import com.nutriplan.shared.commerce.NewPaymentMethod
 import com.nutriplan.shared.commerce.OrderError
 import com.nutriplan.shared.commerce.OrderResult
 import com.nutriplan.shared.commerce.toOrderError
+import com.nutriplan.shared.commerce.toSaveRequest
 import com.nutriplan.shared.data.model.PaymentMethod
-import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -30,7 +30,7 @@ class PaymentRepository(private val remote: CommerceRepository) {
 
     /** Save [method] for reuse at checkout; returns the saved method (its id and display details). */
     suspend fun addPaymentMethod(method: NewPaymentMethod): OrderResult<PaymentMethod> {
-        val request = method.toRequest() ?: return OrderResult.Failure(OrderError.REJECTED)
+        val request = method.toSaveRequest() ?: return OrderResult.Failure(OrderError.REJECTED)
         return call { remote.savePaymentMethod(request) }
     }
 
@@ -38,26 +38,6 @@ class PaymentRepository(private val remote: CommerceRepository) {
     suspend fun deletePaymentMethod(paymentMethodId: String): OrderResult<Unit> {
         if (paymentMethodId.isBlank()) return OrderResult.Failure(OrderError.REJECTED)
         return call { remote.deletePaymentMethod(paymentMethodId) }
-    }
-
-    /** The wire request for a valid [NewPaymentMethod], or null when it must not be sent. */
-    private fun NewPaymentMethod.toRequest(): SavePaymentMethodRequest? {
-        val cleanToken = token.trim()
-        val valid = type in PAYMENT_TYPES &&
-            cleanToken.isNotEmpty() &&
-            !cleanToken.looksLikeCardNumber() &&
-            (last4 == null || (last4.length == LAST4_LENGTH && last4.all(Char::isDigit))) &&
-            (expMonth == null || expMonth in 1..MONTHS) &&
-            (expYear == null || expYear >= MIN_EXP_YEAR)
-        if (!valid) return null
-        return SavePaymentMethodRequest(
-            type = type,
-            token = cleanToken,
-            brand = brand?.trim()?.takeIf(String::isNotEmpty),
-            last4 = last4,
-            expMonth = expMonth,
-            expYear = expYear,
-        )
     }
 
     /** Run a server call, turning a failure into a typed result (cancellation is never swallowed). */
@@ -69,13 +49,6 @@ class PaymentRepository(private val remote: CommerceRepository) {
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             OrderResult.Failure(e.toOrderError())
         }
-
-    private companion object {
-        val PAYMENT_TYPES = setOf("credit_card", "debit_card", "paypal", "oxxo", "spei")
-        const val LAST4_LENGTH = 4
-        const val MONTHS = 12
-        const val MIN_EXP_YEAR = 2000
-    }
 }
 
 /**
