@@ -10,6 +10,8 @@ import com.nutriplan.shared.data.model.KitchenAvailability
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentApproval
 import com.nutriplan.shared.data.model.PaymentMethod
 import com.nutriplan.shared.data.model.PaymentMethodRequest
@@ -66,6 +68,8 @@ class CommerceUseCasesTest {
             availability += zipCode to deliveryDate
             return KitchenAvailability(available = true, zipCode = zipCode, timeSlots = listOf("13:00-15:00"))
         }
+
+        override suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote = error("unused")
 
         override suspend fun listOrders(query: OrderListQuery): List<Order> = listOf(order("o1"))
 

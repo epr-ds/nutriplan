@@ -69,6 +69,7 @@ internal object CommerceContract {
             query = setOf("status", "fromDate", "page", "limit"),
             queryEnums = mapOf("status" to setOf("pending", "confirmed", "preparing", "in_transit", "delivered", "cancelled")),
         ),
+        Operation("POST", "/orders/quote", request = "OrderQuoteRequest", response = "OrderQuoteResponse", status = 200),
         Operation("GET", "/orders/{orderId}", request = null, response = "OrderResponse", status = 200),
         Operation(
             "POST",
@@ -139,6 +140,15 @@ internal object CommerceContract {
             required = setOf("type", "token"),
             properties = setOf("type", "token"),
             enums = mapOf("type" to setOf("credit_card", "debit_card", "paypal", "oxxo", "spei")),
+        ),
+        "OrderQuoteRequest" to Schema(
+            required = setOf("mealPlanId", "fulfillmentType"),
+            properties = setOf("mealPlanId", "fulfillmentType", "providerId"),
+            enums = mapOf("fulfillmentType" to setOf("dark_kitchen", "grocery_delivery", "pickup")),
+        ),
+        "OrderQuoteResponse" to Schema(
+            required = setOf("items", "subtotal", "deliveryFee", "total"),
+            properties = setOf("items", "subtotal", "deliveryFee", "total"),
         ),
         "CancelOrderRequest" to Schema(
             required = emptySet(),

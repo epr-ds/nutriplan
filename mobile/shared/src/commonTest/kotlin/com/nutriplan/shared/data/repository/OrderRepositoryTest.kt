@@ -12,6 +12,8 @@ import com.nutriplan.shared.data.model.KitchenAvailability
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.network.ApiException
@@ -64,6 +66,8 @@ class OrderRepositoryTest {
 
         @Suppress("UNCHECKED_CAST")
         private fun <T> answer(value: Any): T = if (value is Throwable) throw value else value as T
+
+        override suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote = error("unused")
 
         override suspend fun listOrders(query: OrderListQuery): List<Order> {
             queries += query

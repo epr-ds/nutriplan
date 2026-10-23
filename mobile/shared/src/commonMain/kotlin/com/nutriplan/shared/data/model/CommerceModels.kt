@@ -57,6 +57,16 @@ data class PaymentMethodRequest(
     val token: String,
 )
 
+/** Body of `POST /orders/quote` (`OrderQuoteRequest`, COM-605): what to price. */
+@Serializable
+data class OrderQuoteRequest(
+    val mealPlanId: String,
+    /** `dark_kitchen`, `grocery_delivery` or `pickup`. */
+    val fulfillmentType: String,
+    /** Required for `grocery_delivery`. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val providerId: String? = null,
+)
+
 /**
  * Optional body of `POST /orders/{orderId}/cancel` (`CancelOrderRequest`). Without [refundAmount] a
  * paid order is refunded in full.
@@ -138,6 +148,15 @@ data class Order(
     val refund: Refund? = null,
     /** The order placed with a grocery provider, once it was placed. */
     val groceryOrder: GroceryOrder? = null,
+)
+
+/** What an order would cost (`OrderQuoteResponse`, COM-605), priced like the order itself. */
+@Serializable
+data class OrderQuote(
+    val items: List<OrderItem> = emptyList(),
+    val subtotal: Money? = null,
+    val deliveryFee: Money? = null,
+    val total: Money? = null,
 )
 
 /** One line of an order (`OrderItemResponse`). */

@@ -10,6 +10,8 @@ import com.nutriplan.shared.data.model.CancelOrderRequest
 import com.nutriplan.shared.data.model.CreateOrderRequest
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import kotlinx.coroutines.flow.Flow
@@ -88,6 +90,16 @@ class OrderRepository(
     /** Cancel an order; a paid one is refunded in full unless [refundAmount] asks for part of it. */
     suspend fun cancelOrder(orderId: String, refundAmount: Double? = null): OrderResult<Order> =
         write(orderId) { remote.cancelOrder(orderId, refundAmount?.let { CancelOrderRequest(refundAmount = it) }) }
+
+    /**
+     * What an order for a meal plan would cost (COM-605), priced by the server like the order
+     * itself. Nothing is created, so nothing is stored either.
+     */
+    suspend fun quote(request: OrderQuoteRequest): OrderResult<OrderQuote> =
+        when (val outcome = fetch { remote.quoteOrder(request) }) {
+            is Outcome.Ok -> OrderResult.Success(outcome.value)
+            is Outcome.Failed -> OrderResult.Failure(outcome.error)
+        }
 
     /** Pull a grocery order's latest status from its provider. */
     suspend fun syncGroceryOrder(orderId: String): OrderResult<Order> =

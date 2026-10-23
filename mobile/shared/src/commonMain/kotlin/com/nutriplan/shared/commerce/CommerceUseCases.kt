@@ -5,6 +5,8 @@ import com.nutriplan.shared.data.model.FulfillmentProvider
 import com.nutriplan.shared.data.model.GrocerySearchItem
 import com.nutriplan.shared.data.model.KitchenAvailability
 import com.nutriplan.shared.data.model.Order
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
 import com.nutriplan.shared.data.repository.FulfillmentRepository
 import com.nutriplan.shared.data.repository.OrderRepository
@@ -66,6 +68,20 @@ class CommerceUseCases(
             payments.addPaymentMethod(payment)
         }
         return result
+    }
+
+    /**
+     * What an order for [mealPlanId] would cost with [fulfillmentType] (COM-605): the itemized
+     * lines, subtotal, delivery fee and total the order will get, with nothing created or charged.
+     * A grocery quote needs [providerId]; input the contract refuses is [OrderError.REJECTED].
+     */
+    suspend fun quoteOrder(mealPlanId: String, fulfillmentType: String, providerId: String? = null): OrderResult<OrderQuote> {
+        val provider = providerId?.trim()?.takeIf(String::isNotEmpty)
+        val valid = mealPlanId.isNotBlank() &&
+            fulfillmentType in CheckoutDraft.FULFILLMENT_TYPES &&
+            (fulfillmentType != CheckoutDraft.GROCERY_DELIVERY || provider != null)
+        if (!valid) return OrderResult.Failure(OrderError.REJECTED)
+        return orders.quote(OrderQuoteRequest(mealPlanId.trim(), fulfillmentType, provider))
     }
 
     /** Whether a dark kitchen delivers to [zipCode] and when, optionally on [deliveryDate] (ISO date). */

@@ -1,5 +1,6 @@
 package com.nutriplan.shared.contract
 
+import com.nutriplan.shared.commerce.CommerceUseCases
 import com.nutriplan.shared.commerce.OrderResult
 import com.nutriplan.shared.data.local.OrderStore
 import com.nutriplan.shared.data.model.CancelOrderRequest
@@ -9,12 +10,14 @@ import com.nutriplan.shared.data.model.GrocerySearchRequest
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethodRequest
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.network.HttpClientProvider
 import com.nutriplan.shared.data.repository.CommerceRepositoryImpl
 import com.nutriplan.shared.data.repository.FulfillmentRepository
 import com.nutriplan.shared.data.repository.OrderRepository
+import com.nutriplan.shared.data.repository.PaymentRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -122,6 +125,31 @@ class CommerceConsumerContractTest {
         assertCalled("GET /orders")
         assertNoViolations()
         assertEquals("11111111-1111-4111-8111-111111111111", orders.single().id)
+    }
+
+    @Test
+    fun `a quote for each fulfillment type conforms and the price is read in full`() = runTest {
+        val quote = commerce.quoteOrder(OrderQuoteRequest(mealPlanId = "p1", fulfillmentType = "dark_kitchen"))
+        commerce.quoteOrder(OrderQuoteRequest(mealPlanId = "p1", fulfillmentType = "grocery_delivery", providerId = "freshbasket"))
+
+        assertCalled("POST /orders/quote")
+        assertNoViolations()
+        assertEquals("MXN 178.0", quote.items.single().lineTotal?.formatted)
+        assertEquals(30.0, quote.deliveryFee?.amount)
+        assertEquals(208.0, quote.total?.amount)
+    }
+
+    @Test
+    fun `the use cases' quote conforms`() = runTest {
+        val useCases = CommerceUseCases(
+            orders = OrderRepository(commerce, MemoryStore()),
+            fulfillment = FulfillmentRepository(commerce),
+            payments = PaymentRepository(commerce),
+        )
+
+        assertIs<OrderResult.Success<*>>(useCases.quoteOrder(" p1 ", "pickup"))
+        assertNoViolations()
+        assertEquals(setOf("mealPlanId", "fulfillmentType"), mock.lastBody?.keys)
     }
 
     @Test
@@ -341,6 +369,7 @@ class CommerceConsumerContractTest {
             setOf(
                 "POST /orders",
                 "GET /orders",
+                "POST /orders/quote",
                 "GET /orders/{orderId}",
                 "POST /orders/{orderId}/cancel",
                 "POST /orders/{orderId}/grocery/sync",

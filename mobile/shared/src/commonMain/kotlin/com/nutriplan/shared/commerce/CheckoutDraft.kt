@@ -82,9 +82,11 @@ data class CheckoutDraft(
 
     private fun String?.cleaned(): String? = this?.trim()?.takeIf(String::isNotEmpty)
 
-    private companion object {
+    internal companion object {
+        const val DARK_KITCHEN = "dark_kitchen"
         const val GROCERY_DELIVERY = "grocery_delivery"
-        val FULFILLMENT_TYPES = setOf("dark_kitchen", GROCERY_DELIVERY, "pickup")
+        const val PICKUP = "pickup"
+        val FULFILLMENT_TYPES = setOf(DARK_KITCHEN, GROCERY_DELIVERY, PICKUP)
     }
 }
 

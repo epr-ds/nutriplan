@@ -36,6 +36,8 @@ import com.nutriplan.shared.data.model.GrocerySearchRequest
 import com.nutriplan.shared.data.model.KitchenAvailability
 import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderListQuery
+import com.nutriplan.shared.data.model.OrderQuote
+import com.nutriplan.shared.data.model.OrderQuoteRequest
 import com.nutriplan.shared.data.model.PaymentMethod
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.repository.CommerceRepository
@@ -80,6 +82,8 @@ class PaymentMethodsScreenTest {
         }
 
         override suspend fun createOrder(request: CreateOrderRequest, idempotencyKey: String?): Order = error("unused")
+        override suspend fun quoteOrder(request: OrderQuoteRequest): OrderQuote = error("unused")
+
         override suspend fun listOrders(query: OrderListQuery): List<Order> = error("unused")
         override suspend fun getOrder(orderId: String): Order = error("unused")
         override suspend fun cancelOrder(orderId: String, request: CancelOrderRequest?): Order = error("unused")
