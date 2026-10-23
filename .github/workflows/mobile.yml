@@ -40,6 +40,9 @@ jobs:
       # AIA-703: the AI client, its spec-derived mock and the contract must agree.
       - name: Contract drift guard (KMP AI client)
         run: python ../scripts/check_mobile_ai_contract.py
+      # COM-803: the Commerce client, its spec-derived mock and the contract must agree.
+      - name: Contract drift guard (KMP Commerce client)
+        run: python ../scripts/check_mobile_commerce_contract.py
       - name: Build shared + Android app & run tests
         run: ./gradlew :shared:testAndroidHostTest :androidApp:assembleDebug --stacktrace
       - name: Static analysis (detekt)
