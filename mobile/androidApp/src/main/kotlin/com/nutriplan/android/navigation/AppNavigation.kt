@@ -241,10 +241,11 @@ fun AppNavigationGraph(
 
         // Checkout
         composable<Route.Checkout> { backStackEntry ->
-            val planId = backStackEntry.toRoute<Route.Checkout>().planId
+            val route = backStackEntry.toRoute<Route.Checkout>()
             analyticsTracker?.logScreenView("checkout", "CheckoutScreen")
             screens.CheckoutScreen(
-                planId = planId,
+                planId = route.planId,
+                reorderOrderId = route.reorderOrderId,
                 onNavigate = { route -> navigate(navController, route) },
                 onComplete = { route ->
                     analyticsTracker?.logEvent("checkout_complete", emptyMap())
@@ -416,6 +417,7 @@ interface AppNavigationScreens {
     )
     @Composable fun CheckoutScreen(
         planId: String?,
+        reorderOrderId: String?,
         onNavigate: (Any) -> Unit,
         onComplete: (Any) -> Unit,
         onCancel: () -> Unit,

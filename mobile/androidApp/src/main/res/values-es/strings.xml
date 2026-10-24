@@ -557,4 +557,36 @@
     <string name="instructions_reference">Referencia</string>
     <string name="instructions_clabe">CLABE</string>
     <string name="instructions_deadline">Paga antes del %1$s</string>
+    <string name="checkout_reorder_note">Misma entrega que tu pedido anterior. Elige el plan que quieres pedir.</string>
+    <string name="checkout_reorder_note_dated">Misma entrega que tu pedido del %1$s. Elige el plan que quieres pedir.</string>
+    <!-- COM-701: lista de pedidos -->
+    <string name="orders_title">Mis pedidos</string>
+    <string name="orders_filter_all">Todos</string>
+    <string name="orders_filter_active">En curso</string>
+    <string name="orders_filter_delivered">Entregados</string>
+    <string name="orders_filter_cancelled">Cancelados</string>
+    <string name="orders_filter_count">%1$s (%2$d)</string>
+    <string name="order_status_pending">Pendiente</string>
+    <string name="order_status_confirmed">Confirmado</string>
+    <string name="order_status_preparing">En preparación</string>
+    <string name="order_status_in_transit">En camino</string>
+    <string name="order_status_delivered">Entregado</string>
+    <string name="order_status_cancelled">Cancelado</string>
+    <string name="order_status_unknown">Estado desconocido</string>
+    <string name="orders_placed_on">Pedido el %1$s</string>
+    <string name="orders_order">Pedido</string>
+    <string name="orders_delivery_on">Entrega el %1$s, %2$s</string>
+    <string name="orders_items_more">%1$s y %2$d más</string>
+    <string name="orders_reorder">Volver a pedir</string>
+    <string name="cd_orders_reorder">Volver a pedir: %1$s</string>
+    <string name="orders_empty_title">Aún no tienes pedidos</string>
+    <string name="orders_empty_description">Pide uno de tus planes de comidas y aparecerá aquí.</string>
+    <string name="orders_browse_plans">Ver mis planes de comidas</string>
+    <string name="orders_filtered_empty">No hay pedidos con este estado.</string>
+    <string name="orders_stale">Mostrando tus pedidos guardados. Puede que no estén actualizados.</string>
+    <string name="orders_retry">Reintentar</string>
+    <string name="cd_orders_loading">Cargando tus pedidos</string>
+    <string name="error_orders_network">Estás sin conexión. Conéctate a internet para ver tus pedidos.</string>
+    <string name="error_orders_server">El servicio de pedidos tuvo un problema. Inténtalo más tarde.</string>
+    <string name="error_orders_unknown">No se pudieron cargar tus pedidos. Inténtalo de nuevo.</string>
 </resources>

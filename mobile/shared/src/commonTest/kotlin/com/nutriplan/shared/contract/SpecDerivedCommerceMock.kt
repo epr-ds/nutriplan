@@ -161,6 +161,9 @@ internal object CommerceResponses {
         """{"id":"11111111-1111-4111-8111-111111111111","status":"pending","fulfillmentType":"grocery_delivery",""" +
             """"provider":{"id":"freshbasket","name":"FreshBasket","type":"grocery",""" +
             """"logoUrl":"https://cdn.nutriplan.mx/providers/freshbasket.png","estimatedDelivery":"Same day, 1-2 h"},""" +
+            """"deliveryAddress":{"street":"Reforma 222","apartment":null,"city":"CDMX","state":"CDMX",""" +
+            """"zipCode":"06600","country":"MX","instructions":"Ring twice"},""" +
+            """"deliveryDate":"2026-11-02","deliveryTimeSlot":"13:00-15:00","createdAt":"2026-10-23T18:00:00Z",""" +
             """"items":[{"name":"Lentil soup","quantity":2,"unit":"serving","unitPrice":${money("89.0")},""" +
             """"lineTotal":${money("178.0")}}],""" +
             """"subtotal":${money("178.0")},"deliveryFee":${money("30.0")},"total":${money("208.0")},""" +

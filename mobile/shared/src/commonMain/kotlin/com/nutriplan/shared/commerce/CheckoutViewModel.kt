@@ -13,6 +13,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -72,6 +73,8 @@ data class CheckoutUiState(
     val isPlacing: Boolean = false,
     /** The order once it was placed; the screen then shows the confirmation (COM-608). */
     val placedOrder: Order? = null,
+    /** The earlier order this checkout repeats (COM-701), its delivery choices already filled in. */
+    val reorderOf: Order? = null,
     /** The server rejected the session: the screen sends the user to sign in again. */
     val sessionExpired: Boolean = false,
 ) {
@@ -142,8 +145,13 @@ class CheckoutViewModel(
         _state.update { it.copy(saveCard = save) }
     }
 
-    /** Load the plans and addresses; [today] (ISO, from the platform) is the default delivery day. */
-    suspend fun start(today: String, planId: String? = null) {
+    /**
+     * Load the plans and addresses; [today] (ISO, from the platform) is the default delivery day.
+     * With [reorderOf] (an order id, COM-701) the earlier order's fulfillment type, store and
+     * delivery address are chosen too, so the user only picks the plan and the day.
+     */
+    suspend fun start(today: String, planId: String? = null, reorderOf: String? = null) {
+        if (reorderOf != null) prefillFrom(reorderOf)
         _state.update { it.copy(deliveryDate = it.deliveryDate.ifEmpty { today }, planId = planId ?: it.planId) }
         refreshAddresses()
         val plans = try {
@@ -164,6 +172,24 @@ class CheckoutViewModel(
                 error = null,
             )
         }
+    }
+
+    /**
+     * Fill in the delivery choices of order [orderId]: its fulfillment type, its store (when it is
+     * still offered) and its address (when it is in the address book). The plan, day and slot are
+     * the user's to choose again. An order that cannot be read leaves an ordinary checkout.
+     */
+    private suspend fun prefillFrom(orderId: String) {
+        // The device's copy is enough (and works offline); without one, the server's answer.
+        val order = (useCases.order(orderId).first() as? OrderResult.Success)?.value?.value ?: return
+        val type = order.fulfillmentType?.takeIf { it in CheckoutDraft.FULFILLMENT_TYPES } ?: return
+        _state.update { it.copy(reorderOf = order) }
+        refreshAddresses()
+        order.deliveryAddress?.let { address ->
+            _state.value.addresses.firstOrNull { it.address == address }?.let { selectAddress(it.id) }
+        }
+        selectFulfillment(type)
+        order.provider?.id?.takeIf { id -> _state.value.providers.any { it.id == id } }?.let(::selectProvider)
     }
 
     /** Re-read the address book (for example after the user added an address from the address step). */

@@ -91,6 +91,7 @@ object CheckoutTestTags {
     const val QUOTE_LINE = "checkout_quote_line"
     const val QUOTE_TOTAL = "checkout_quote_total"
     const val EMPTY = "checkout_empty"
+    const val REORDER_NOTE = "checkout_reorder_note"
     const val SAVE_CARD = "checkout_save_card"
     const val CONFIRMATION = "checkout_confirmation"
     const val CONFIRMATION_TOTAL = "checkout_confirmation_total"
@@ -115,10 +116,14 @@ private const val SCHEDULE_DAYS = 14
  * device has it), OXXO, SPEI or PayPal -- and placing the order then shows a confirmation with the
  * order summary and, for the methods paid later, what the user still has to do. [onOrderPlaced]
  * opens the order from there.
+ *
+ * COM-701: with [reorderOrderId] the checkout repeats an earlier order's delivery -- its fulfillment
+ * type, store and address are already chosen -- and the user picks the plan and the day.
  */
 @Composable
 fun CheckoutScreen(
     planId: String?,
+    reorderOrderId: String? = null,
     onOrderPlaced: (orderId: String) -> Unit,
     onManageAddresses: () -> Unit,
     onBack: () -> Unit,
@@ -131,7 +136,7 @@ fun CheckoutScreen(
 
     LaunchedEffect(viewModel) {
         val current = viewModel.state.value
-        if (current.plansLoading && current.plans.isEmpty()) viewModel.start(todayIso(), planId) else viewModel.refreshAddresses()
+        if (current.plansLoading && current.plans.isEmpty()) viewModel.start(todayIso(), planId, reorderOrderId) else viewModel.refreshAddresses()
     }
     LaunchedEffect(state.sessionExpired) { if (state.sessionExpired) onSessionExpired() }
 
@@ -155,7 +160,7 @@ fun CheckoutScreen(
                     // With the price known, what failed was placing the order: place it again.
                     state.step == CheckoutStep.REVIEW && state.quote != null -> viewModel.placeOrder()
                     state.step == CheckoutStep.REVIEW -> viewModel.loadQuote()
-                    else -> viewModel.start(todayIso(), planId)
+                    else -> viewModel.start(todayIso(), planId, reorderOrderId)
                 }
             }
         },
@@ -264,6 +269,18 @@ fun CheckoutScreenContent(
 // --- steps ---------------------------------------------------------------------------------------
 
 private fun LazyListScope.planStep(state: CheckoutUiState, onSelectPlan: (String) -> Unit) {
+    state.reorderOf?.let { order ->
+        item(key = "reorder") {
+            val placed = order.createdAt?.let { formatPlanDay(it) }
+            Text(
+                text = placed?.let { stringResource(R.string.checkout_reorder_note_dated, it) }
+                    ?: stringResource(R.string.checkout_reorder_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag(CheckoutTestTags.REORDER_NOTE),
+            )
+        }
+    }
     when {
         state.plansLoading -> item(key = "loading") { Loading() }
         state.plans.isEmpty() -> item(key = "empty") {
