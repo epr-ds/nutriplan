@@ -46,6 +46,20 @@ When creating the Xcode project, set:
   - `NSPhotoLibraryUsageDescription` — for saving/exporting plans
   - `NSLocationWhenInUseUsageDescription` — for restaurant/location features
 
+### 5. Push Notifications (APNs) — Entitlements + Capabilities
+The iOS push setup (NTF-503) requires the following, configured in Xcode / the Apple Developer Portal:
+
+- **Push Notifications capability**: enable it for the App ID in App Store Connect / Apple Developer Portal.
+- **APNs entitlement**: add the `aps-environment` entitlement to the app target — `development` for
+  development builds and local debugging, `production` for App Store / TestFlight / release builds.
+- **Background modes**: add `remote-notification` to the `UIBackgroundModes` key of the Info.plist so
+  background pushes are delivered.
+
+The app side implements this in code: `PushNotificationManager` registers the device through
+`UIApplication.registerForRemoteNotifications()`, handles the token handover, and implements the
+`UNUserNotificationCenterDelegate` foreground (`willPresent`) and background (`didReceive response`)
+paths; taps forward the payload's `deepLink` (NTF-304) through the app-side callback.
+
 ---
 
 ## CI/CD Setup (GitHub Actions)
@@ -120,6 +134,9 @@ When creating the `.xcodeproj`:
 ## Checklist Before First Release
 - [ ] Apple Developer Program enrollment confirmed
 - [ ] App ID created in Developer Portal
+- [ ] Push Notifications capability enabled on the App ID
+- [ ] `aps-environment` entitlement configured (development / production)
+- [ ] Background modes (`remote-notification`) configured in Info.plist
 - [ ] Distribution certificate generated and installed on CI
 - [ ] Provisioning profile created for App Store distribution
 - [ ] Xcode project with correct bundle identifier
