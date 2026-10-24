@@ -505,6 +505,13 @@ class MainNavigationScreens(
     }
 
     @Composable
+    override fun NotificationPreferencesScreen(
+        onBack: () -> Unit,
+    ) {
+        com.nutriplan.android.screen.notifications.NotificationsPreferencesScreen(onBack = onBack)
+    }
+
+    @Composable
     override fun ProfileScreen(onNavigate: (Any) -> Unit) {
         val signOut = koinInject<SignOut>()
         val pushRegistration = koinInject<PushRegistrationManager>()
@@ -515,7 +522,7 @@ class MainNavigationScreens(
             onNavigateToAddresses = { onNavigate(Route.AddressBook) },
             onNavigateToPaymentMethods = { onNavigate(Route.PaymentMethods) },
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
-            onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
+            onNavigateToNotificationSettings = { onNavigate(Route.NotificationPreferences) },
             onLogout = {
                 // NTF-505: revoke the push device registration before the session ends.
                 coroutineScope.launch { pushRegistration.revoke() }

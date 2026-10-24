@@ -626,4 +626,12 @@
     <string name="notification_permission_not_now">Ahora no</string>
     <string name="notification_permission_denied_description">Las notificaciones están desactivadas. Puedes volver a activarlas desde los ajustes.</string>
     <string name="notification_permission_open_settings">Abrir ajustes</string>
+    <string name="notification_preferences_back">Atrás</string>
+    <string name="notification_preferences_title">Ajustes de notificaciones</string>
+    <string name="notification_preferences_push">Notificaciones push</string>
+    <string name="notification_preferences_meal_reminders">Recordatorios de planes de comidas</string>
+    <string name="notification_preferences_order_updates">Actualizaciones de pedidos</string>
+    <string name="notification_preferences_promotions">Promociones</string>
+    <string name="notification_preferences_email">Notificaciones por correo</string>
+    <string name="notification_preferences_quiet_hours">Horas de silencio</string>
 </resources>

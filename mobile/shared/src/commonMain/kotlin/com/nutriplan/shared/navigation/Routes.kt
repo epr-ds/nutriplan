@@ -119,6 +119,10 @@ sealed class Route {
     @Serializable
     object NotificationCenter : Route()
 
+    /** Notification preferences (NTF-509): channel + per-type toggles and quiet hours. */
+    @Serializable
+    object NotificationPreferences : Route()
+
     // --- Profile screens ---
     /** User profile. */
     @Serializable
