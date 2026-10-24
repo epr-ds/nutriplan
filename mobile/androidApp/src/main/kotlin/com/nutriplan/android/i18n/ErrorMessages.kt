@@ -7,6 +7,7 @@ import com.nutriplan.shared.auth.AuthError
 import com.nutriplan.shared.auth.FieldError
 import com.nutriplan.shared.commerce.OrderError
 import com.nutriplan.shared.data.local.PendingFailure
+import com.nutriplan.shared.notifications.NotificationsError
 import com.nutriplan.shared.onboarding.OnboardingError
 import com.nutriplan.shared.planning.AddMealError
 import com.nutriplan.shared.planning.AddMealFieldError
@@ -79,6 +80,15 @@ fun FavoriteError.loadMessageRes(): Int = when (this) {
     FavoriteError.SERVER_PROBLEM -> R.string.error_favorites_load_server
     FavoriteError.SESSION_EXPIRED -> R.string.error_favorites_session_expired
     FavoriteError.UNKNOWN -> R.string.error_favorites_load_unknown
+}
+
+/** NTF-506: message for the in-app notification list that could not be loaded. */
+@StringRes
+fun NotificationsError.messageRes(): Int = when (this) {
+    NotificationsError.NETWORK -> R.string.error_notifications_network
+    NotificationsError.SERVER_PROBLEM -> R.string.error_notifications_server
+    NotificationsError.SESSION_EXPIRED -> R.string.error_notifications_session_expired
+    NotificationsError.UNKNOWN -> R.string.error_notifications_unknown
 }
 
 /** DPL-607: message for a heart that was put back because saving or removing a favorite failed. */

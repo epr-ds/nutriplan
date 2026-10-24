@@ -2,10 +2,12 @@
 
 package com.nutriplan.android.screen.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,6 +41,8 @@ fun HomeScreen(
     onNavigateToAiRecommendations: () -> Unit,
     onNavigateToMealPlans: () -> Unit = {},
     onNavigateToAnalyzeMeal: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    unreadCount: Int = 0,
 ) {
     // DPL-501: Home shows the same plans as the full list, from the shared view-model.
     val viewModel = koinInject<MealPlanListViewModel>()
@@ -66,7 +70,30 @@ fun HomeScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary
-                )
+                ),
+                actions = {
+                    // NTF-506: the entry point to the in-app notification center, with an unread badge.
+                    IconButton(onClick = onNavigateToNotifications) {
+                        Box(
+                            modifier = Modifier.size(40.dp),
+                            contentAlignment = Alignment.TopEnd,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = stringResource(R.string.notification_center_title),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            if (unreadCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(MaterialTheme.colorScheme.error, CircleShape),
+                                )
+                            }
+                        }
+                    }
+                },
             )
         },
         floatingActionButton = {

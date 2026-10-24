@@ -612,4 +612,14 @@
     <string name="error_order_cancel_conflict">This order can no longer be cancelled.</string>
     <string name="error_order_cancel_network">You\'re offline. Connect to the internet to cancel the order.</string>
     <string name="error_order_cancel_unknown">The order couldn\'t be cancelled. Please try again.</string>
+    <!-- Notifications -->
+    <string name="notification_center_title">Notifications</string>
+    <string name="notification_empty_title">No notifications</string>
+    <string name="notification_empty_description">When something needs your attention - an order update or a meal plan reminder - it will show up here.</string>
+    <string name="error_notifications_network">Can\'t reach the server. Check your connection and try again.</string>
+    <string name="error_notifications_server">The server had a problem. Please try again later.</string>
+    <string name="error_notifications_session_expired">Please sign in again to see your notifications.</string>
+    <string name="error_notifications_unknown">Your notifications could not be loaded. Please try again.</string>
+    <string name="notifications_retry">Retry</string>
+    <string name="cd_notifications_loading">Loading notifications</string>
 </resources>

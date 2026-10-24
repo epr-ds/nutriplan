@@ -610,4 +610,14 @@
     <string name="error_order_cancel_conflict">Este pedido ya no se puede cancelar.</string>
     <string name="error_order_cancel_network">Estás sin conexión. Conéctate a internet para cancelar el pedido.</string>
     <string name="error_order_cancel_unknown">No se pudo cancelar el pedido. Inténtalo de nuevo.</string>
+    <!-- Notifications -->
+    <string name="notification_center_title">Notificaciones</string>
+    <string name="notification_empty_title">Sin notificaciones</string>
+    <string name="notification_empty_description">Te avisaremos cuando algo requiera tu atención: una actualización de pedido o un recordatorio de plan de comidas.</string>
+    <string name="error_notifications_network">No se puede conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="error_notifications_server">El servidor ha tenido un problema. Inténtalo de nuevo más tarde.</string>
+    <string name="error_notifications_session_expired">Inicia sesión de nuevo para ver tus notificaciones.</string>
+    <string name="error_notifications_unknown">No se pudieron cargar tus notificaciones. Inténtalo de nuevo.</string>
+    <string name="notifications_retry">Reintentar</string>
+    <string name="cd_notifications_loading">Cargando notificaciones</string>
 </resources>

@@ -33,6 +33,7 @@ import com.nutriplan.android.navigation.SessionGate
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.auth.CurrentActivity
 import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.notifications.NotificationsViewModel
 import com.nutriplan.shared.navigation.PendingDeepLink
 import com.nutriplan.shared.session.SignOut
 import com.nutriplan.shared.session.SessionManager
@@ -188,6 +189,10 @@ class MainNavigationScreens(
 
     @Composable
     override fun MainScreen(onNavigate: (Any) -> Unit) {
+        val notificationsViewModel = koinInject<NotificationsViewModel>()
+        val notificationsState by notificationsViewModel.state.collectAsState()
+        val unreadCount = notificationsState.unreadCount
+
         HomeScreen(
             onNavigateToMealPlanDetail = { planId -> onNavigate(Route.MealPlanDetail(planId)) },
             onNavigateToCreateMealPlan = { onNavigate(Route.CreateMealPlan(null)) },
@@ -195,6 +200,8 @@ class MainNavigationScreens(
             onNavigateToAiRecommendations = { onNavigate(Route.AiRecommendations) },
             onNavigateToAnalyzeMeal = { onNavigate(Route.AiMealAnalysis) },
             onNavigateToMealPlans = { onNavigate(Route.MealPlanList) },
+            onNavigateToNotifications = { onNavigate(Route.NotificationCenter) },
+            unreadCount = unreadCount,
         )
     }
 
@@ -462,7 +469,9 @@ class MainNavigationScreens(
         onNavigate: (Any) -> Unit,
         onNotificationClick: (String) -> Unit,
     ) {
-        NotificationCenterScreenContent(onNavigate, onNotificationClick)
+        com.nutriplan.android.screen.notifications.NotificationsScreen(
+            onNotificationClick = onNotificationClick,
+        )
     }
 
     @Composable
@@ -604,19 +613,6 @@ private fun CheckoutScreenContent(
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Checkout", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun NotificationCenterScreenContent(
-    onNavigate: (Any) -> Unit,
-    onNotificationClick: (String) -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Notifications", style = MaterialTheme.typography.headlineLarge)
     }
 }
 
