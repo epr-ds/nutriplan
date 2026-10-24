@@ -279,6 +279,24 @@ fun OrderError.ordersMessageRes(): Int = when (this) {
         R.string.error_orders_unknown
 }
 
+/** COM-703: message for an order that could not be loaded. */
+@StringRes
+fun OrderError.orderDetailMessageRes(): Int = when (this) {
+    OrderError.NOT_FOUND -> R.string.error_order_not_found
+    else -> ordersMessageRes()
+}
+
+/** COM-703: message for an order that could not be cancelled. */
+@StringRes
+fun OrderError.cancelOrderMessageRes(): Int = when (this) {
+    OrderError.CONFLICT -> R.string.error_order_cancel_conflict
+    OrderError.NETWORK -> R.string.error_order_cancel_network
+    OrderError.SERVER_PROBLEM -> R.string.error_orders_server
+    OrderError.SESSION_EXPIRED -> R.string.error_payment_methods_session_expired
+    OrderError.NOT_FOUND -> R.string.error_order_not_found
+    OrderError.REJECTED, OrderError.PAYMENT_DECLINED, OrderError.UNKNOWN -> R.string.error_order_cancel_unknown
+}
+
 /** COM-605: message for a checkout step that could not load (plans, providers, slots, price) or an order not placed. */
 @StringRes
 fun OrderError.checkoutMessageRes(): Int = when (this) {

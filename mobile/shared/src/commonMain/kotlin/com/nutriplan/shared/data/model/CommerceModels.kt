@@ -140,6 +140,8 @@ data class Order(
     val deliveryTimeSlot: String? = null,
     /** ISO date-time the order was placed. */
     val createdAt: String? = null,
+    /** Every move of the order's lifecycle, oldest first (COM-703). */
+    val statusHistory: List<OrderStatusChange> = emptyList(),
     val items: List<OrderItem> = emptyList(),
     val subtotal: Money? = null,
     val deliveryFee: Money? = null,
@@ -157,6 +159,15 @@ data class Order(
     val refund: Refund? = null,
     /** The order placed with a grocery provider, once it was placed. */
     val groceryOrder: GroceryOrder? = null,
+)
+
+/** One move of an order's lifecycle (`StatusChangeResponse`, COM-703). */
+@Serializable
+data class OrderStatusChange(
+    val fromStatus: String? = null,
+    val toStatus: String? = null,
+    /** ISO date-time. */
+    val occurredAt: String? = null,
 )
 
 /** What an order would cost (`OrderQuoteResponse`, COM-605), priced like the order itself. */

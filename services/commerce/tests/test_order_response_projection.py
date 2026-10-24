@@ -72,6 +72,21 @@ def test_projection_field_values():
     assert data["createdAt"] == order.created_at
 
 
+def test_status_history_projects_oldest_first():
+    order = _order()
+    order.status = OrderStatus.PENDING
+    order.confirm(occurred_at=datetime(2026, 7, 9, 10, 0, tzinfo=UTC))
+    order.start_preparing(occurred_at=datetime(2026, 7, 10, 11, 0, tzinfo=UTC))
+
+    data = OrderResponse.from_order(order).model_dump(by_alias=True)
+
+    assert [(c["fromStatus"], c["toStatus"]) for c in data["statusHistory"]] == [
+        ("pending", "confirmed"),
+        ("confirmed", "preparing"),
+    ]
+    assert data["statusHistory"][0]["occurredAt"] == datetime(2026, 7, 9, 10, 0, tzinfo=UTC)
+
+
 def test_money_amount_projects_as_json_number():
     data = OrderResponse.from_order(_order()).model_dump(by_alias=True)
     assert isinstance(data["total"]["amount"], float)
@@ -116,3 +131,9 @@ def test_projection_conforms_to_contract():
     assert set(data["total"].keys()) <= documented("MoneyResponse")
     assert set(data["provider"].keys()) <= documented("ProviderResponse")
     assert set(data["deliveryAddress"].keys()) <= documented("AddressResponse")
+
+    order = _order()
+    order.status = OrderStatus.PENDING
+    order.confirm()
+    history = OrderResponse.from_order(order).model_dump(by_alias=True)["statusHistory"]
+    assert set(history[0].keys()) <= documented("StatusChangeResponse")

@@ -589,4 +589,25 @@
     <string name="error_orders_network">Estás sin conexión. Conéctate a internet para ver tus pedidos.</string>
     <string name="error_orders_server">El servicio de pedidos tuvo un problema. Inténtalo más tarde.</string>
     <string name="error_orders_unknown">No se pudieron cargar tus pedidos. Inténtalo de nuevo.</string>
+    <!-- COM-703: detalle del pedido -->
+    <string name="order_detail_title">Detalle del pedido</string>
+    <string name="order_detail_status_heading">Estado</string>
+    <string name="order_detail_items_heading">Artículos</string>
+    <string name="order_detail_delivery_heading">Entrega</string>
+    <string name="order_detail_store">De %1$s</string>
+    <string name="order_detail_instructions">Notas: %1$s</string>
+    <string name="order_timeline_done">completado</string>
+    <string name="order_timeline_current">paso actual</string>
+    <string name="order_timeline_upcoming">pendiente</string>
+    <string name="order_timeline_step">%1$s, %2$s</string>
+    <string name="order_detail_cancel">Cancelar pedido</string>
+    <string name="order_detail_cancel_title">¿Cancelar este pedido?</string>
+    <string name="order_detail_cancel_message">No se preparará ni se entregará. Si ya pagaste, recibirás un reembolso.</string>
+    <string name="order_detail_keep">Conservar pedido</string>
+    <string name="order_detail_stale">Mostrando la copia guardada de este pedido. Puede que no esté actualizada.</string>
+    <string name="cd_order_detail_loading">Cargando el pedido</string>
+    <string name="error_order_not_found">Este pedido ya no está disponible.</string>
+    <string name="error_order_cancel_conflict">Este pedido ya no se puede cancelar.</string>
+    <string name="error_order_cancel_network">Estás sin conexión. Conéctate a internet para cancelar el pedido.</string>
+    <string name="error_order_cancel_unknown">No se pudo cancelar el pedido. Inténtalo de nuevo.</string>
 </resources>

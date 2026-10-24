@@ -430,7 +430,12 @@ class MainNavigationScreens(
         orderId: String,
         onBack: () -> Unit,
     ) {
-        OrderDetailScreenContent(orderId, onBack)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.orders.OrderDetailScreen(
+            orderId = orderId,
+            onBack = onBack,
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -585,16 +590,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun OrderDetailScreenContent(orderId: String, onBack: () -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Order: $orderId", style = MaterialTheme.typography.headlineLarge)
     }
 }
 

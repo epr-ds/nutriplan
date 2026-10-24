@@ -591,4 +591,25 @@
     <string name="error_orders_network">You\'re offline. Connect to the internet to see your orders.</string>
     <string name="error_orders_server">The ordering service had a problem. Please try again later.</string>
     <string name="error_orders_unknown">Your orders couldn\'t be loaded. Please try again.</string>
+    <!-- COM-703: order detail -->
+    <string name="order_detail_title">Order details</string>
+    <string name="order_detail_status_heading">Status</string>
+    <string name="order_detail_items_heading">Items</string>
+    <string name="order_detail_delivery_heading">Delivery</string>
+    <string name="order_detail_store">From %1$s</string>
+    <string name="order_detail_instructions">Notes: %1$s</string>
+    <string name="order_timeline_done">done</string>
+    <string name="order_timeline_current">current step</string>
+    <string name="order_timeline_upcoming">upcoming</string>
+    <string name="order_timeline_step">%1$s, %2$s</string>
+    <string name="order_detail_cancel">Cancel order</string>
+    <string name="order_detail_cancel_title">Cancel this order?</string>
+    <string name="order_detail_cancel_message">It won\'t be prepared or delivered. If you already paid, you\'ll get a refund.</string>
+    <string name="order_detail_keep">Keep order</string>
+    <string name="order_detail_stale">Showing your saved copy of this order. It may be out of date.</string>
+    <string name="cd_order_detail_loading">Loading the order</string>
+    <string name="error_order_not_found">This order isn\'t available anymore.</string>
+    <string name="error_order_cancel_conflict">This order can no longer be cancelled.</string>
+    <string name="error_order_cancel_network">You\'re offline. Connect to the internet to cancel the order.</string>
+    <string name="error_order_cancel_unknown">The order couldn\'t be cancelled. Please try again.</string>
 </resources>

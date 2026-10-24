@@ -286,7 +286,7 @@ private fun itemsSummary(order: Order): String? {
 }
 
 @Composable
-private fun StatusChip(status: String?) {
+internal fun StatusChip(status: String?) {
     val (container, content) = statusColors(status)
     Surface(
         color = container,
@@ -326,7 +326,7 @@ internal fun statusLabelRes(status: String?): Int = when (status) {
 }
 
 @StringRes
-private fun fulfillmentLabelRes(type: String): Int = when (type) {
+internal fun fulfillmentLabelRes(type: String): Int = when (type) {
     "dark_kitchen" -> R.string.fulfillment_dark_kitchen
     "grocery_delivery" -> R.string.fulfillment_grocery_delivery
     else -> R.string.fulfillment_pickup
