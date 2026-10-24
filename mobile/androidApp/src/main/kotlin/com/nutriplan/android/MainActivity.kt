@@ -39,7 +39,6 @@ import com.nutriplan.shared.session.SignOut
 import com.nutriplan.shared.session.SessionManager
 import com.nutriplan.shared.session.SessionState
 import com.nutriplan.shared.navigation.Route
-import kotlinx.coroutines.flow.map
 import com.nutriplan.android.ui.theme.NutriPlanTheme
 
 /**
@@ -191,7 +190,8 @@ class MainNavigationScreens(
     @Composable
     override fun MainScreen(onNavigate: (Any) -> Unit) {
         val notificationsViewModel = koinInject<NotificationsViewModel>()
-        val unreadCount by notificationsViewModel.state.map { it.unreadCount }.collectAsState()
+        val notificationsState by notificationsViewModel.state.collectAsState()
+        val unreadCount = notificationsState.unreadCount
 
         HomeScreen(
             onNavigateToMealPlanDetail = { planId -> onNavigate(Route.MealPlanDetail(planId)) },
