@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
 
@@ -135,6 +136,9 @@ dependencies {
 
     // HRD-606: Firebase Analytics for beta funnel/retention instrumentation
     implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // NTF-502: Firebase Cloud Messaging for push delivery (token + foreground/background handling)
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // HRD-305: Compose UI testing for accessibility regression checks
     androidTestImplementation(platform(libs.compose.bom))
