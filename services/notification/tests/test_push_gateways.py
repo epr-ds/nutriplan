@@ -16,7 +16,7 @@ from app.adapters.in_memory_notification_repository import InMemoryNotificationR
 from app.adapters.push_gateways import ApnsPushGateway, FcmPushGateway
 from app.core.config import Settings
 from app.domain.enums import DevicePlatform
-from app.domain.push import PushError, PushMessage
+from app.domain.push import PushAction, PushError, PushMessage
 
 
 class FakeFcmAdapter:
@@ -54,6 +54,22 @@ def _message() -> PushMessage:
     )
 
 
+def _rich_message() -> PushMessage:
+    """A rich order push: image on the notification, one ``Open`` action to tap (NTF-405)."""
+    return PushMessage(
+        token="token-123",
+        title="En camino",
+        body="Tu pedido order-1 está en camino.",
+        data={
+            "notificationId": "n-1",
+            "type": "order_in_transit",
+            "deepLink": "nutriplan://order/order-1",
+        },
+        image_url="https://images.nutriplan.app/orders/order-1.jpg",
+        actions=(PushAction(title="Open", deep_link="nutriplan://order/order-1"),),
+    )
+
+
 def test_fcm_gateway_forwards_the_message() -> None:
     adapter = FakeFcmAdapter(result="projects/p/messages/1")
     gateway = FcmPushGateway(adapter)  # type: ignore[arg-type]
@@ -64,6 +80,34 @@ def test_fcm_gateway_forwards_the_message() -> None:
     assert sent.token == "token-123"
     assert (sent.title, sent.body) == ("Ready", "Your order is here")
     assert sent.data == {"notificationId": "n-1", "type": "order_delivered"}
+    assert sent.android is None
+
+
+def test_fcm_gateway_sends_the_rich_notification_block() -> None:
+    """NTF-405: image plus action becomes the FCM rich ``android`` block, not an override set."""
+    adapter = FakeFcmAdapter(result="projects/p/messages/1")
+    gateway = FcmPushGateway(adapter)  # type: ignore[arg-type]
+
+    assert gateway.send(_rich_message()) == "projects/p/messages/1"
+    sent = adapter.messages[0]
+    assert sent.android == {
+        "notification": {
+            "title": "En camino",
+            "body": "Tu pedido order-1 está en camino.",
+            "image": "https://images.nutriplan.app/orders/order-1.jpg",
+            "click_action": "nutriplan://order/order-1",
+        }
+    }
+
+
+def test_fcm_gateway_keeps_a_plain_push_without_a_rich_block() -> None:
+    """NTF-405: nothing rich to say means no ``android`` block reaches the adapter at all."""
+    adapter = FakeFcmAdapter(result="projects/p/messages/1")
+    gateway = FcmPushGateway(adapter)  # type: ignore[arg-type]
+
+    gateway.send(_message())
+
+    assert adapter.messages[0].android is None
 
 
 def test_apns_gateway_merges_copy_and_data() -> None:
@@ -79,6 +123,17 @@ def test_apns_gateway_merges_copy_and_data() -> None:
         "notificationId": "n-1",
         "type": "order_delivered",
     }
+    assert sent.image_url is None
+
+
+def test_apns_gateway_passes_the_rich_image_through() -> None:
+    """NTF-405: the rich image travels to the APNs client via the message, not the copy."""
+    adapter = FakeApnsAdapter(result="apns-1")
+    gateway = ApnsPushGateway(adapter)  # type: ignore[arg-type]
+
+    assert gateway.send(_rich_message()) == "apns-1"
+    sent = adapter.messages[0]
+    assert sent.image_url == "https://images.nutriplan.app/orders/order-1.jpg"
 
 
 def test_fcm_dead_token_keeps_its_meaning() -> None:
