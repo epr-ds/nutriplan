@@ -184,6 +184,7 @@ sealed class Route {
         is OrderDetail -> "nutriplan://order/$orderId"
         is Checkout -> "nutriplan://checkout" + (planId?.let { "/$it" } ?: "")
         is NotificationCenter -> "nutriplan://notifications"
+        is NotificationPreferences -> "nutriplan://notifications/preferences"
         is Profile -> "nutriplan://profile"
         is EditProfile -> "nutriplan://profile/edit"
         is DietaryPreferences -> "nutriplan://profile/dietary"
