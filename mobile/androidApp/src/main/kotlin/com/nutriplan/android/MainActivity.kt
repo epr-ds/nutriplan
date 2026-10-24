@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import com.nutriplan.android.navigation.SessionGate
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.auth.CurrentActivity
 import com.nutriplan.android.push.PushPermissionManager
+import com.nutriplan.android.push.PushRegistrationManager
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.notifications.NotificationsViewModel
 import com.nutriplan.shared.navigation.PendingDeepLink
@@ -41,6 +43,7 @@ import com.nutriplan.shared.session.SessionManager
 import com.nutriplan.shared.session.SessionState
 import com.nutriplan.shared.navigation.Route
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
 /**
@@ -173,12 +176,17 @@ class MainNavigationScreens(
         // A lightweight toggle keeps login and registration on one destination without a new route.
         var showRegister by remember { mutableStateOf(false) }
         val sessionManager = koinInject<SessionManager>()
+        val pushRegistration = koinInject<PushRegistrationManager>()
+        val coroutineScope = rememberCoroutineScope()
         val onSuccess: () -> Unit = {
             // New users have no dietary preferences yet and must go through the wizard.
             val route: Any = when (sessionManager.state.value) {
                 is SessionState.SignedIn -> Route.Main
                 else -> Route.OnboardingWizard
             }
+            // NTF-505: capture and register the device token with the backend on login / register /
+            // OAuth before the session starts receiving pushes.
+            coroutineScope.launch { pushRegistration.registerCurrentToken() }
             onLoginSuccess(route)
             onAuthenticated()
         }
@@ -486,6 +494,8 @@ class MainNavigationScreens(
     @Composable
     override fun ProfileScreen(onNavigate: (Any) -> Unit) {
         val signOut = koinInject<SignOut>()
+        val pushRegistration = koinInject<PushRegistrationManager>()
+        val coroutineScope = rememberCoroutineScope()
         ProfileScreen(
             onNavigateToEditProfile = { onNavigate(Route.EditProfile) },
             onNavigateToDietaryPreferences = { onNavigate(Route.DietaryPreferences) },
@@ -494,6 +504,8 @@ class MainNavigationScreens(
             onNavigateToOrderHistory = { onNavigate(Route.OrderList) },
             onNavigateToNotificationSettings = { onNavigate(Route.NotificationCenter) },
             onLogout = {
+                // NTF-505: revoke the push device registration before the session ends.
+                coroutineScope.launch { pushRegistration.revoke() }
                 // End the session (secure storage and cached personal data included) and drop the
                 // whole back stack so Back cannot return to a signed-in screen.
                 signOut()
