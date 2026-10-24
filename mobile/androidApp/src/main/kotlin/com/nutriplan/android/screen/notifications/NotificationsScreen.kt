@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.minimumInteractiveComponentSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -566,7 +566,7 @@ private fun PreferenceToggleRow(
             onCheckedChange = if (enabled) onCheckedChange else null,
             // NTF-606: the switch is labelled by its row text so TalkBack announces it as a toggle.
             modifier = Modifier
-                .minimumInteractiveComponentSize()
+                .heightIn(min = 48.dp)
                 .semantics { contentDescription = label },
         )
     }
