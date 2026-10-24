@@ -134,4 +134,7 @@ class NotificationsViewModel(
     fun reset() {
         _state.value = NotificationsUiState()
     }
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): NotificationsUiState = _state.value
 }
