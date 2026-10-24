@@ -510,7 +510,9 @@ fun NotificationsPreferencesScreen(
                 value = preferences?.quietHoursStart,
                 onCommit = { start ->
                     // The other slot is preserved: only the edited one is committed as the new value.
-                    viewModel.updateQuietHours(start, preferences?.quietHoursEnd)
+                    scope.launch {
+                        viewModel.updateQuietHours(start, preferences?.quietHoursEnd)
+                    }
                 },
             )
 
@@ -518,7 +520,9 @@ fun NotificationsPreferencesScreen(
                 label = stringResource(R.string.notification_preferences_quiet_hours_end),
                 value = preferences?.quietHoursEnd,
                 onCommit = { end ->
-                    viewModel.updateQuietHours(preferences?.quietHoursStart, end)
+                    scope.launch {
+                        viewModel.updateQuietHours(preferences?.quietHoursStart, end)
+                    }
                 },
             )
         }
