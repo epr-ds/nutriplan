@@ -25,7 +25,7 @@ private const val KEY_ASKED = "asked"
  * through [onRequestResult]; [refreshStatus] re-reads the OS state, for example after the user
  * changed the permission in the system settings (the re-prompt path).
  */
-class PushPermissionManager(appContext: Context) {
+class PushPermissionManager(private val appContext: Context) {
 
     private val preferences: SharedPreferences =
         appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
