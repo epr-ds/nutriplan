@@ -5,15 +5,34 @@ import UserNotifications
 
 private let greeting = Greeting().greet()
 
+/// Destinations for the notification deep-link surface (NTF-508): the in-app notification center is
+/// live, and detail screens a deep link opens (meal / plan / order) become destinations here as
+/// those screens land in the SwiftUI app.
+private enum DeepLinkRoute: Hashable {
+    case notifications
+}
+
 struct ContentView: View {
     @State private var authorizationStatus: UNNotificationSettings.AuthorizationStatus = .notDetermined
     @State private var hasRequested = false
-    @State private var showingNotifications = false
+    @State private var path = [DeepLinkRoute]()
+
+    /// Shared deep-link router (NTF-508): accepts a tapped push deep link and holds it until the
+    /// user may open its target; an unknown or unopenable link falls back to the notification
+    /// center.
+    private let deepLinkRouter = PendingDeepLink()
 
     init() {
         // NTF-504: the manager reports the authorization status back into the UI.
         PushNotificationManager.shared.onAuthorizationChange = { status in
             authorizationStatus = status
+        }
+        // NTF-508: a tapped push resolves its deep link through the shared router (cold start and
+        // warm start alike land here); an unopenable link falls back to the notification center.
+        PushNotificationManager.shared.onNotificationTap = { deepLink in
+            if !deepLinkRouter.offer(deepLink: deepLink) {
+                path = [DeepLinkRoute.notifications]
+            }
         }
     }
 
@@ -33,10 +52,18 @@ struct ContentView: View {
                         hasRequested = true
                     },
                 )
-            } else if showingNotifications {
-                NotificationsView(onClose: { showingNotifications = false })
             } else {
-                HomeContent(onOpenNotifications: { showingNotifications = true })
+                NavigationStack(path: $path) {
+                    HomeContent(
+                        onOpenNotifications: { path = [DeepLinkRoute.notifications] },
+                    )
+                }
+                .navigationDestination(for: DeepLinkRoute.self) { route in
+                    switch route {
+                    case .notifications:
+                        NotificationsView(onClose: { path = [] })
+                    }
+                }
             }
         }
     }
