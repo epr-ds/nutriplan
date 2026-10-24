@@ -620,4 +620,10 @@
     <string name="error_notifications_unknown">No se pudieron cargar tus notificaciones. Inténtalo de nuevo.</string>
     <string name="notifications_retry">Reintentar</string>
     <string name="cd_notifications_loading">Cargando notificaciones</string>
+    <string name="notification_permission_title">Notificaciones</string>
+    <string name="notification_permission_description">Los recordatorios de planes de comidas y las actualizaciones de pedidos se mostrarán aquí y como alertas.</string>
+    <string name="notification_permission_allow">Permitir</string>
+    <string name="notification_permission_not_now">Ahora no</string>
+    <string name="notification_permission_denied_description">Las notificaciones están desactivadas. Puedes volver a activarlas desde los ajustes.</string>
+    <string name="notification_permission_open_settings">Abrir ajustes</string>
 </resources>

@@ -25,6 +25,13 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     /// notification service attached (`deepLink` for order/plan/meal deep links, NTF-304).
     var onNotificationTap: ((String?) -> Void)?
 
+    /// The authorization status the manager last read (NTF-504): the user has not answered the OS
+    /// prompt yet, allowed it, refused it, or accepted quiet/provisional access.
+    private(set) var authorizationStatus: UNNotificationSettings.AuthorizationStatus = .notDetermined
+
+    /// Invoked when the authorization status changes (prompt answer or settings change).
+    var onAuthorizationChange: ((UNNotificationSettings.AuthorizationStatus) -> Void)?
+
     override init() {
         super.init()
     }
@@ -43,6 +50,32 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     /// Hand an APNs registration failure to the app.
     func handleRegistrationError(_ error: Error) {
         onDeviceTokenError?(error)
+    }
+
+    /// Ask `UIApplication` / `UNUserNotificationCenter` for remote notification authorization
+    /// (NTF-504): options are the alert, badge and sound the user was offered; the completion
+    /// handler reports the answer (granted / refused) and the error when the request failed.
+    func requestAuthorization(
+        options: UNNotificationOptions = [.alert, .badge, .sound],
+        completionHandler: ((Bool, Error?) -> Void)? = nil,
+    ) {
+        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
+            if let error = error {
+                completionHandler?(false, error)
+            } else {
+                completionHandler?(granted, nil)
+            }
+        }
+    }
+
+    /// Read the current authorization status (notDetermined / provisional / denied / authorized)
+    /// and hand it to the app through [onAuthorizationChange].
+    func refreshAuthorizationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let status = settings.authorizationStatus
+            self.authorizationStatus = status
+            self.onAuthorizationChange?(status)
+        }
     }
 
     // MARK: - UNUserNotificationCenterDelegate

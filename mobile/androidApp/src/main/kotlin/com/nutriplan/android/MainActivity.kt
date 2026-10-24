@@ -32,6 +32,7 @@ import com.nutriplan.android.navigation.AppNavigationGraph
 import com.nutriplan.android.navigation.SessionGate
 import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.auth.CurrentActivity
+import com.nutriplan.android.push.PushPermissionManager
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.notifications.NotificationsViewModel
 import com.nutriplan.shared.navigation.PendingDeepLink
@@ -40,6 +41,7 @@ import com.nutriplan.shared.session.SessionManager
 import com.nutriplan.shared.session.SessionState
 import com.nutriplan.shared.navigation.Route
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import org.koin.core.context.GlobalContext
 
 /**
  * Main activity entry point for the NutriPlan Android app.
@@ -101,6 +103,13 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         offerDeepLink(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // NTF-504: pick up a notification permission the user flipped in the system settings while
+        // the app was away (the re-prompt path leaves the state here).
+        GlobalContext.get().get<PushPermissionManager>().refreshStatus()
     }
 
     /**
