@@ -59,6 +59,12 @@ class MainActivity : ComponentActivity() {
     /** Bumped whenever a new link is accepted so the UI re-checks whether it can be opened. */
     private var deepLinkVersion by mutableIntStateOf(0)
 
+    /**
+     * NTF-508: deep links that could not be opened (unknown or unopenable) fall back to the
+     * notification center, so a tap is never silently dropped.
+     */
+    private var deepLinkFallback by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // IDN-505: let the OAuth token provider launch the native consent UI.
@@ -84,8 +90,14 @@ class MainActivity : ComponentActivity() {
                     // screen is still deciding where to go (it would pop the link off the back stack).
                     val currentEntry by navController.currentBackStackEntryAsState()
                     val onSplash = currentEntry?.destination?.hasRoute<Route.Splash>() != false
-                    LaunchedEffect(deepLinkVersion, onSplash) {
-                        if (!onSplash) openPendingDeepLink(authRepository.isAuthenticated)
+                    LaunchedEffect(deepLinkVersion, deepLinkFallback, onSplash) {
+                        if (onSplash) return@LaunchedEffect
+                        if (deepLinkFallback > 0) {
+                            deepLinkFallback = 0
+                            navController.navigate(Route.NotificationCenter)
+                            return@LaunchedEffect
+                        }
+                        openPendingDeepLink(authRepository.isAuthenticated)
                     }
 
                     AppNavigationGraph(
@@ -122,6 +134,7 @@ class MainActivity : ComponentActivity() {
     private fun offerDeepLink(intent: Intent?) {
         val link = intent?.data?.toString() ?: intent?.getStringExtra(NOTIFICATION_DEEP_LINK_EXTRA)
         if (pendingDeepLink.offer(link)) deepLinkVersion++
+        else if (link != null) deepLinkFallback = 1
     }
 
     private companion object {
