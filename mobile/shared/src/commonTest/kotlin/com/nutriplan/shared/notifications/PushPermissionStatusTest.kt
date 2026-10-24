@@ -1,7 +1,9 @@
 package com.nutriplan.shared.notifications
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * NTF-504: the notification permission state enum used by both platforms' priming flow.
@@ -9,7 +11,7 @@ import org.junit.Test
 class PushPermissionStatusTest {
 
     @Test
-    fun `the permission state covers every answer the OS can give`() {
+    fun `the permission state covers every answer the os can give`() {
         assertEquals(4, PushPermissionStatus.values().size)
     }
 
