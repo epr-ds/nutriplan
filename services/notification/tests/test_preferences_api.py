@@ -94,6 +94,17 @@ def test_a_user_who_never_saved_gets_the_defaults_not_a_404():
     assert all(row["inApp"] and row["push"] for row in body["types"])
     assert body["quietHours"] is None
     assert body["updatedAt"]
+    assert body["locale"] == "es"
+
+
+def test_the_users_locale_is_reflected_in_the_response():
+    client = _build()
+
+    client.put(PATH, headers=_auth(), json={"types": [], "quietHours": None, "locale": "en"})
+
+    body = client.get(PATH, headers=_auth()).json()
+
+    assert body["locale"] == "en"
 
 
 def test_the_matrix_lists_every_type_in_declaration_order():
@@ -230,6 +241,7 @@ def test_a_replacement_by_one_user_does_not_touch_another():
             {"types": [], "quietHours": {"start": "22:00", "end": "22:00"}},
             "start == end is ambiguous, so it is refused",
         ),
+        ({"types": [], "locale": "fr"}, "unknown notification locale"),
         (
             {"types": [{"type": "order_confirmed"}, {"type": "order_confirmed", "push": False}]},
             "a duplicate row carries two answers to one question",

@@ -39,12 +39,20 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from app.application.devices import DeviceRegistrationService
+from app.application.templates import build_default_catalog
 from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel
+from app.domain.errors import TemplateError
 from app.domain.notification import Notification
 from app.domain.push import PushError, PushGateway, PushMessage
 from app.domain.push_receipt import PushReceipt
-from app.domain.repositories import NotificationRepository, PushReceiptStore
+from app.domain.repositories import (
+    NotificationRepository,
+    NotificationTemplateStore,
+    PreferencesRepository,
+    PushReceiptStore,
+)
+from app.domain.templates import Locale, RenderedNotification
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +77,24 @@ def _truncate(value: str) -> str:
         return value
     suffix = "…".encode()
     return encoded[: MAX_VALUE_BYTES - len(suffix)].decode("utf-8", "ignore") + "…"
+
+
+def _payload_variables(notification: Notification) -> dict[str, str]:
+    """The payload fields a copy template may interpolate; ``title``/``body`` are copy, not data.
+
+    FCM and APNs both require string data values, so the same flattening decides what reaches
+    ``data`` and what a template may speak to; ``title`` and ``body`` are the copy itself and
+    are therefore never variables.
+    """
+    variables: dict[str, str] = {}
+    for key, value in notification.payload.items():
+        if key in {"title", "body"} or value is None:
+            continue
+        if isinstance(value, bool):
+            variables[key] = "true" if value else "false"
+        elif isinstance(value, (str, int, float)):
+            variables[key] = _truncate(str(value))
+    return variables
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +133,8 @@ class PushDelivery:
         backoff_seconds: float = 0.2,
         backoff_multiplier: float = 2.0,
         sleep: Callable[[float], None] | None = None,
+        preferences: PreferencesRepository | None = None,
+        templates: NotificationTemplateStore | None = None,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("max_attempts must be at least 1")
@@ -124,6 +152,8 @@ class PushDelivery:
         self._backoff_seconds = backoff_seconds
         self._backoff_multiplier = backoff_multiplier
         self._sleep = sleep or time.sleep
+        self._preferences = preferences
+        self._templates = templates if templates is not None else build_default_catalog()
 
     def deliver(self, notification: Notification) -> PushDeliveryResult:
         """Fan ``notification`` out to every reachable device and persist the outcome.
@@ -324,33 +354,90 @@ class PushDelivery:
     # -- rendering ---------------------------------------------------------------
 
     def _build_message(self, notification: Notification, token: str) -> PushMessage:
-        """Render the provider-neutral message from the stored notification.
+        """Render the provider-neutral message from the stored notification (NTF-401).
 
-        Title and body come from the payload when a producer supplied them. Otherwise they
-        fall back to the brand and the *type token* -- deliberately not an English sentence,
-        because NTF-401 owns localized copy and a hard-coded one here would quietly become a
-        second, untranslated catalogue. Scalars from the payload are flattened into ``data``
-        so the client can deep-link without the service inventing a schema (NTF-304).
+        The title and body come from the copy template for the user's locale, filled from the
+        notification's payload fields. A producer-supplied ``title``/``body`` in the payload
+        wins and the template is not consulted -- the producer owns that wording, and the
+        payload is also the shape the in-app feed renders from, so both surfaces speak the same
+        words. Without a producer copy the lookup falls through to the locale's template and,
+        with no template for that locale either, to the brand and the *type token*: deliberately
+        not a hard-coded English sentence, so a deployment that has not wired a catalog yet
+        degrades to the same fallback the pre-NTF-401 code had.
+
+        Scalars from the payload are flattened into ``data`` so the client can deep-link without
+        the service inventing a schema (NTF-304).
         """
-        payload = notification.payload
+        title, body = self._copy(notification)
         return PushMessage(
             token=token,
-            title=_truncate(str(payload.get("title") or DEFAULT_TITLE)),
-            body=_truncate(str(payload.get("body") or notification.type.value)),
+            title=_truncate(title),
+            body=_truncate(body),
             data=self._data(notification),
         )
+
+    def _copy(self, notification: Notification) -> tuple[str, str]:
+        """The title/body to send, from the user's locale and this notification's payload.
+
+        Producer-supplied copy wins over the catalog; the catalog is the default for everything
+        the producers do not write themselves. Both fallbacks -- producer copy, then the brand
+        and the type token -- are the pre-NTF-401 behaviour, so wiring a catalog into the
+        delivery path is what *changes* what a user reads, never a second code path.
+        """
+        payload = notification.payload
+        fallback = (
+            str(payload.get("title") or DEFAULT_TITLE),
+            str(payload.get("body") or notification.type.value),
+        )
+        if payload.get("title") or payload.get("body"):
+            return fallback
+        rendered = self._render_copy(notification)
+        if rendered is None:
+            return fallback
+        return rendered.title, rendered.body
+
+    def _render_copy(self, notification: Notification) -> RenderedNotification | None:
+        """Render the locale-specific copy, or ``None`` when no template answers.
+
+        A copy that cannot be resolved for the user's locale -- no template registered for the
+        type, one that does not know every variable the payload carries, an unsupported locale --
+        returns ``None`` so the caller falls back. Rendering is a *copy* decision, not a delivery
+        decision: a copy that cannot be resolved must not turn into a send failure, which would
+        park a handled event on the dead-letter queue for something a fallback can fix.
+        """
+        try:
+            resolved = Locale.parse(
+                self._locale_for(notification.user_id), default=Locale.default()
+            )
+            template = self._templates.get(notification.type, resolved)
+            return template.render(_payload_variables(notification))
+        except TemplateError:
+            return None
+
+    def _locale_for(self, user_id: uuid.UUID) -> Locale:
+        """The user's language, failing open to the default when preferences cannot be read.
+
+        The asymmetry with delivery failures is deliberate and matches the recorder's: treating
+        an unreadable preference store as "no language" would cost that user at most the wording
+        of one notification, whereas treating it as a hard failure would fail delivery over a
+        copy question.
+        """
+        if self._preferences is None:
+            return Locale.default()
+        try:
+            preferences = self._preferences.get(user_id)
+        except Exception:
+            logger.warning(
+                "notification.preferences.unavailable user_id=%s -- using the default copy",
+                user_id,
+            )
+            return Locale.default()
+        return preferences.locale if preferences is not None else Locale.default()
 
     @staticmethod
     def _data(notification: Notification) -> dict[str, str]:
         """FCM and APNs both require string data values; flatten the JSON-native scalars."""
-        data: dict[str, str] = {}
-        for key, value in notification.payload.items():
-            if key in {"title", "body"} or value is None:
-                continue
-            if isinstance(value, bool):
-                data[key] = "true" if value else "false"
-            elif isinstance(value, (str, int, float)):
-                data[key] = _truncate(str(value))
+        data = dict(_payload_variables(notification))
         # Written last so a producer cannot shadow the fields the client relies on.
         data["notificationId"] = str(notification.id)
         data["type"] = notification.type.value

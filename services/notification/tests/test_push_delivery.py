@@ -15,15 +15,18 @@ import pytest
 
 from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
 from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
+from app.adapters.in_memory_preferences_repository import InMemoryPreferencesRepository
 from app.adapters.in_memory_push_receipt_store import InMemoryPushReceiptStore
 from app.application.devices import DeviceRegistrationService
 from app.application.push_delivery import MAX_VALUE_BYTES, PushDelivery
 from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.notification import Notification
+from app.domain.preferences import NotificationPreferences
 from app.domain.push import PushError, PushMessage
 from app.domain.push_receipt import PushReceipt
 from app.domain.repositories import DeviceTokenRepository
+from app.domain.templates import Locale
 
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 ANDROID = DevicePlatform.ANDROID
@@ -404,6 +407,41 @@ def test_copy_falls_back_to_brand_and_type_token(
 
     assert gateway.sent[0].title == "NutriPlan"
     assert gateway.sent[0].body == "order_delivered"
+
+
+def test_the_users_locale_selects_the_copy(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-401: the copy a user reads is the one their language preference picks."""
+    _register(devices, ANDROID, "android-token")
+    preferences = InMemoryPreferencesRepository()
+    preferences.save(NotificationPreferences(user_id=USER_ID, locale=Locale.EN))
+    gateway = FakeGateway(ANDROID)
+
+    _service(notifications, devices, gateway, preferences=preferences).deliver(
+        _store(
+            notifications, payload={"orderId": "order-1", "deepLink": "nutriplan://order/order-1"}
+        )
+    )
+
+    assert gateway.sent[0].title == "Delivered"
+
+
+def test_the_default_locale_is_the_spanish_catalog(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-401: a user with no language preference gets the service default, Spanish."""
+    _register(devices, ANDROID, "android-token")
+    gateway = FakeGateway(ANDROID)
+
+    _service(notifications, devices, gateway).deliver(
+        _store(
+            notifications, payload={"orderId": "order-1", "deepLink": "nutriplan://order/order-1"}
+        )
+    )
+
+    assert gateway.sent[0].title == "Entregado"
+    assert "Tu pedido order-1 fue entregado" in gateway.sent[0].body
 
 
 @pytest.mark.parametrize(

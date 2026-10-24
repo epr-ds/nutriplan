@@ -25,6 +25,7 @@ from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.errors import InvalidPreferences
 from app.domain.preferences import NotificationPreferences
 from app.domain.quiet_hours import QuietHours
+from app.domain.templates import Locale
 
 USER = uuid.uuid4()
 MEXICO_CITY = "America/Mexico_City"
@@ -47,6 +48,7 @@ def test_a_user_who_never_opened_the_screen_has_everything_enabled():
 
     assert preferences.muted == frozenset()
     assert preferences.quiet_hours is None
+    assert preferences.locale is Locale.ES
     for notification_type in NotificationType:
         for channel in NotificationChannel:
             assert preferences.allows(notification_type, channel) is True
@@ -187,6 +189,24 @@ def test_channels_for_ignores_the_clock():
 
     assert preferences.channels_for(CONFIRMED) == frozenset({PUSH})
     assert preferences.channels_for(DELIVERED) == frozenset({IN_APP, PUSH})
+
+
+# -- language (NTF-401) ----------------------------------------------------------------
+
+
+def test_the_locale_can_be_set_and_replaced():
+    preferences = NotificationPreferences.defaults(USER)
+
+    spanish = preferences.with_locale(Locale.ES)
+    english = spanish.with_locale(Locale.EN)
+
+    assert english.locale is Locale.EN
+    assert spanish.locale is Locale.ES
+
+
+def test_an_unknown_locale_is_refused():
+    with pytest.raises(InvalidPreferences, match="unknown notification locale"):
+        NotificationPreferences(user_id=USER, locale="fr")
 
 
 # -- the materialized matrix ------------------------------------------------------------

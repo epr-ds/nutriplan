@@ -31,8 +31,9 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
 from app.domain.enums import NotificationChannel, NotificationType
-from app.domain.errors import InvalidPreferences
+from app.domain.errors import InvalidPreferences, UnknownLocaleError
 from app.domain.quiet_hours import QuietHours
+from app.domain.templates import Locale
 
 Mute = tuple[NotificationType, NotificationChannel]
 """One switched-off (type, channel) pair -- the only thing this record actually stores."""
@@ -57,11 +58,12 @@ def _normalize_mutes(mutes: Iterable[Mute]) -> frozenset[Mute]:
 
 @dataclass(frozen=True, slots=True)
 class NotificationPreferences:
-    """One user's notification opt-outs and quiet-hours window."""
+    """One user's notification opt-outs, quiet-hours window, and language."""
 
     user_id: uuid.UUID
     muted: frozenset[Mute] = frozenset()
     quiet_hours: QuietHours | None = None
+    locale: Locale = Locale.ES
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
@@ -70,6 +72,10 @@ class NotificationPreferences:
         if offset is None:
             raise InvalidPreferences("updated_at must be timezone-aware")
         object.__setattr__(self, "updated_at", self.updated_at.astimezone(UTC))
+        try:
+            object.__setattr__(self, "locale", Locale.parse(self.locale))
+        except UnknownLocaleError as exc:
+            raise InvalidPreferences(f"unknown notification locale: {self.locale!r}") from exc
 
     @classmethod
     def defaults(cls, user_id: uuid.UUID) -> NotificationPreferences:
@@ -151,3 +157,7 @@ class NotificationPreferences:
     def with_quiet_hours(self, quiet_hours: QuietHours | None) -> NotificationPreferences:
         """Return a copy with the quiet-hours window set, replaced, or cleared."""
         return replace(self, quiet_hours=quiet_hours, updated_at=datetime.now(UTC))
+
+    def with_locale(self, locale: Locale) -> NotificationPreferences:
+        """Return a copy with the user's language preference replaced."""
+        return replace(self, locale=locale, updated_at=datetime.now(UTC))

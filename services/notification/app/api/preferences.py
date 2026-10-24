@@ -67,5 +67,6 @@ def replace_preferences(
         user_id,
         types=[row.to_domain() for row in request.types],
         quiet_hours=None if request.quiet_hours is None else request.quiet_hours.to_domain(),
+        locale=request.locale,
     )
     return NotificationPreferencesResponse.from_domain(matrix)
