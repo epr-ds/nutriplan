@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.minimumInteractiveComponentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -402,6 +403,56 @@ fun NotificationsPreferencesScreen(
 
     LaunchedEffect(Unit) { viewModel.loadPreferences() }
 
+    NotificationsPreferencesScreenContent(
+        preferences = preferences,
+        onBack = onBack,
+        onPushEnabled = { enabled ->
+            scope.launch {
+                viewModel.updatePreferences(
+                    UpdateNotificationPreferencesRequest(
+                        pushEnabled = enabled,
+                        emailEnabled = preferences?.emailEnabled ?: true,
+                        mealReminders = preferences?.mealReminders ?: true,
+                        orderUpdates = preferences?.orderUpdates ?: true,
+                        promotions = preferences?.promotions ?: true,
+                    ),
+                )
+            }
+        },
+        onMealRemindersEnabled = { enabled ->
+            scope.launch { viewModel.updatePreferences(UpdateNotificationPreferencesRequest(mealReminders = enabled)) }
+        },
+        onOrderUpdatesEnabled = { enabled ->
+            scope.launch { viewModel.updatePreferences(UpdateNotificationPreferencesRequest(orderUpdates = enabled)) }
+        },
+        onPromotionsEnabled = { enabled ->
+            scope.launch { viewModel.updatePreferences(UpdateNotificationPreferencesRequest(promotions = enabled)) }
+        },
+        onEmailEnabled = { enabled ->
+            scope.launch { viewModel.updatePreferences(UpdateNotificationPreferencesRequest(emailEnabled = enabled)) }
+        },
+        onQuietHoursChange = { start, end ->
+            scope.launch { viewModel.updateQuietHours(start, end) }
+        },
+    )
+}
+
+/**
+ * Stateless notification preferences screen content (NTF-509 / NTF-606): renders [preferences];
+ * every change flows through callbacks so the accessibility checks can render it without the DI
+ * graph.
+ */
+@Composable
+fun NotificationsPreferencesScreenContent(
+    preferences: NotificationPreferences?,
+    onBack: () -> Unit,
+    onPushEnabled: (Boolean) -> Unit,
+    onMealRemindersEnabled: (Boolean) -> Unit,
+    onOrderUpdatesEnabled: (Boolean) -> Unit,
+    onPromotionsEnabled: (Boolean) -> Unit,
+    onEmailEnabled: (Boolean) -> Unit,
+    onQuietHoursChange: (String?, String?) -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -431,70 +482,34 @@ fun NotificationsPreferencesScreen(
             PreferenceToggleRow(
                 label = stringResource(R.string.notification_preferences_push),
                 checked = preferences?.pushEnabled ?: false,
-                onCheckedChange = { checked ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(
-                                pushEnabled = checked,
-                                emailEnabled = preferences?.emailEnabled ?: true,
-                                mealReminders = preferences?.mealReminders ?: true,
-                                orderUpdates = preferences?.orderUpdates ?: true,
-                                promotions = preferences?.promotions ?: true,
-                            ),
-                        )
-                    }
-                },
+                onCheckedChange = onPushEnabled,
             )
 
             PreferenceToggleRow(
                 label = stringResource(R.string.notification_preferences_meal_reminders),
                 checked = preferences?.mealReminders ?: false,
                 enabled = preferences?.pushEnabled ?: false,
-                onCheckedChange = { checked ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(mealReminders = checked),
-                        )
-                    }
-                },
+                onCheckedChange = onMealRemindersEnabled,
             )
 
             PreferenceToggleRow(
                 label = stringResource(R.string.notification_preferences_order_updates),
                 checked = preferences?.orderUpdates ?: false,
                 enabled = preferences?.pushEnabled ?: false,
-                onCheckedChange = { checked ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(orderUpdates = checked),
-                        )
-                    }
-                },
+                onCheckedChange = onOrderUpdatesEnabled,
             )
 
             PreferenceToggleRow(
                 label = stringResource(R.string.notification_preferences_promotions),
                 checked = preferences?.promotions ?: false,
                 enabled = preferences?.pushEnabled ?: false,
-                onCheckedChange = { checked ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(promotions = checked),
-                        )
-                    }
-                },
+                onCheckedChange = onPromotionsEnabled,
             )
 
             PreferenceToggleRow(
                 label = stringResource(R.string.notification_preferences_email),
                 checked = preferences?.emailEnabled ?: false,
-                onCheckedChange = { checked ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(emailEnabled = checked),
-                        )
-                    }
-                },
+                onCheckedChange = onEmailEnabled,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -510,9 +525,7 @@ fun NotificationsPreferencesScreen(
                 value = preferences?.quietHoursStart,
                 onCommit = { start ->
                     // The other slot is preserved: only the edited one is committed as the new value.
-                    scope.launch {
-                        viewModel.updateQuietHours(start, preferences?.quietHoursEnd)
-                    }
+                    onQuietHoursChange(start, preferences?.quietHoursEnd)
                 },
             )
 
@@ -520,9 +533,7 @@ fun NotificationsPreferencesScreen(
                 label = stringResource(R.string.notification_preferences_quiet_hours_end),
                 value = preferences?.quietHoursEnd,
                 onCommit = { end ->
-                    scope.launch {
-                        viewModel.updateQuietHours(preferences?.quietHoursStart, end)
-                    }
+                    onQuietHoursChange(preferences?.quietHoursStart, end)
                 },
             )
         }
@@ -553,6 +564,10 @@ private fun PreferenceToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = if (enabled) onCheckedChange else null,
+            // NTF-606: the switch is labelled by its row text so TalkBack announces it as a toggle.
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .semantics { contentDescription = label },
         )
     }
 }

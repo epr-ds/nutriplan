@@ -194,7 +194,9 @@ fun ErrorState(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            // NTF-606: the error is a live region so screen readers announce it when it appears.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         
         Spacer(modifier = Modifier.height(24.dp))
