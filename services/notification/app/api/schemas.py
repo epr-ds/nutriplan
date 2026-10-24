@@ -35,6 +35,7 @@ from app.domain.enums import (
 )
 from app.domain.notification import Notification
 from app.domain.quiet_hours import DEFAULT_TIME_ZONE, QuietHours
+from app.domain.templates import Locale
 
 
 class _Camel(BaseModel):
@@ -167,6 +168,8 @@ class NotificationPreferencesResponse(_Camel):
     types: list[TypePreferenceSchema]
     quiet_hours: QuietHoursSchema | None = None
     updated_at: datetime
+    locale: Locale = Locale.ES
+    """The user's language for notification copy, resolved per user (NTF-401)."""
 
     @classmethod
     def from_domain(cls, matrix: PreferenceMatrix) -> NotificationPreferencesResponse:
@@ -178,6 +181,7 @@ class NotificationPreferencesResponse(_Camel):
                 else QuietHoursSchema.from_domain(matrix.quiet_hours)
             ),
             updated_at=matrix.updated_at,
+            locale=matrix.locale,
         )
 
 
@@ -236,3 +240,5 @@ class UpdateNotificationPreferencesRequest(_Camel):
 
     types: list[TypePreferenceSchema]
     quiet_hours: QuietHoursSchema | None = None
+    locale: Locale = Locale.ES
+    """The user's language for notification copy; ``es`` is the service default (NTF-401)."""

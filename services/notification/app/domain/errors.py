@@ -81,3 +81,27 @@ class InvalidPushReceipt(NotificationError, ValueError):
     is refused here rather than written. A store holding a receipt that says nothing would
     make the fan-out path skip a device as "already attempted" when it never was.
     """
+
+
+class TemplateError(NotificationError):
+    """Base class for every notification-copy template failure (NTF-401)."""
+
+
+class UnknownLocaleError(TemplateError, ValueError):
+    """A locale string could not be mapped onto a supported notification :class:`Locale`."""
+
+
+class InvalidTemplate(TemplateError, ValueError):
+    """A notification copy template was built in a state the engine does not accept."""
+
+
+class TemplateNotFoundError(TemplateError, NotificationError):
+    """No copy template is registered for the notification type (and locale fallback)."""
+
+
+class MissingTemplateVariableError(TemplateError, NotificationError):
+    """A template was rendered without a value for one or more of its placeholders."""
+
+
+class DuplicateNotificationTemplateError(TemplateError, NotificationError, ValueError):
+    """A copy template was registered twice for the same notification type + locale."""

@@ -26,6 +26,7 @@ from app.domain.enums import NotificationChannel, NotificationType
 from app.domain.errors import InvalidPreferences
 from app.domain.preferences import NotificationPreferences
 from app.domain.quiet_hours import QuietHours
+from app.domain.templates import Locale
 from tests.conftest import drop_namespace, isolated_namespace
 
 IN_APP = NotificationChannel.IN_APP
@@ -88,6 +89,17 @@ def test_quiet_hours_survive_the_round_trip(preferences_repository):
     assert stored is not None
     assert stored.quiet_hours == NIGHT
     assert stored.quiet_hours.time_zone == "America/Mexico_City"
+
+
+def test_the_locale_survives_the_round_trip(preferences_repository):
+    """The language is user state like any other: it must not live only in the process."""
+    user = uuid.uuid4()
+    preferences_repository.save(NotificationPreferences(user_id=user, locale=Locale.EN))
+
+    stored = preferences_repository.get(user)
+
+    assert stored is not None
+    assert stored.locale is Locale.EN
 
 
 def test_updated_at_survives_the_round_trip(preferences_repository):

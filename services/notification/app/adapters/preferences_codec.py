@@ -25,9 +25,10 @@ from datetime import datetime, time
 from typing import Any
 
 from app.domain.enums import NotificationChannel, NotificationType
-from app.domain.errors import InvalidPreferences
+from app.domain.errors import InvalidPreferences, UnknownLocaleError
 from app.domain.preferences import Mute, NotificationPreferences
 from app.domain.quiet_hours import QuietHours
+from app.domain.templates import Locale
 
 TIME_FORMAT = "%H:%M"
 """Quiet-hours bounds are local wall-clock times to the minute -- no offset, no seconds."""
@@ -91,6 +92,7 @@ def to_record(preferences: NotificationPreferences) -> dict[str, Any]:
             if preferences.quiet_hours is None
             else quiet_hours_to_record(preferences.quiet_hours)
         ),
+        "locale": preferences.locale.value,
         "updatedAt": preferences.updated_at.isoformat(),
     }
 
@@ -142,10 +144,17 @@ def from_record(record: Mapping[str, Any]) -> NotificationPreferences:
             f"updatedAt is not an ISO-8601 timestamp: {record.get('updatedAt')!r}"
         ) from exc
 
+    locale_value = record.get("locale")
+    try:
+        locale = Locale.ES if locale_value is None else Locale.parse(str(locale_value))
+    except UnknownLocaleError as exc:
+        raise InvalidPreferences(f"unknown notification locale: {locale_value!r}") from exc
+
     return NotificationPreferences(
         user_id=user_id,
         muted=frozenset(_as_mute(entry) for entry in muted),
         quiet_hours=None if quiet_hours is None else quiet_hours_from_record(quiet_hours),
+        locale=locale,
         updated_at=updated_at,
     )
 
