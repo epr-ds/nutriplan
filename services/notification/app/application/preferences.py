@@ -30,6 +30,7 @@ from app.domain.errors import InvalidPreferences
 from app.domain.preferences import Mute, NotificationPreferences
 from app.domain.quiet_hours import QuietHours
 from app.domain.repositories import PreferencesRepository
+from app.domain.templates import Locale
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +60,8 @@ class PreferenceMatrix:
     types: tuple[TypePreference, ...]
     quiet_hours: QuietHours | None
     updated_at: datetime
+    locale: Locale = Locale.ES
+    """The user's language preference, materialized for the settings screen."""
 
     @classmethod
     def from_preferences(cls, preferences: NotificationPreferences) -> PreferenceMatrix:
@@ -79,6 +82,7 @@ class PreferenceMatrix:
             ),
             quiet_hours=preferences.quiet_hours,
             updated_at=preferences.updated_at,
+            locale=preferences.locale,
         )
 
 
@@ -122,12 +126,14 @@ class NotificationPreferenceService:
         *,
         types: Sequence[TypePreference],
         quiet_hours: QuietHours | None,
+        locale: Locale = Locale.ES,
     ) -> PreferenceMatrix:
         """Replace the caller's preferences wholesale and return the stored result."""
         preferences = NotificationPreferences(
             user_id=user_id,
             muted=_collapse(types),
             quiet_hours=quiet_hours,
+            locale=locale,
             updated_at=datetime.now(UTC),
         )
         return PreferenceMatrix.from_preferences(self._repository.save(preferences))

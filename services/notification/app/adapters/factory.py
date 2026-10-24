@@ -40,6 +40,7 @@ from app.adapters.retention import RetentionPolicy
 from app.application.devices import DeviceRegistrationService
 from app.application.notification_recorder import NotificationRecorder
 from app.application.push_delivery import PushDelivery
+from app.application.templates import build_default_catalog
 from app.core.config import Settings
 from app.core.config import settings as default_settings
 from app.domain.enums import DevicePlatform
@@ -220,6 +221,8 @@ def build_push_delivery(
         max_attempts=settings.push_max_attempts,
         backoff_seconds=settings.push_retry_backoff_ms / 1000.0,
         backoff_multiplier=settings.push_retry_multiplier,
+        preferences=build_preferences_repository(settings),
+        templates=build_default_catalog(),
     )
 
 

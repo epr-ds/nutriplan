@@ -21,11 +21,12 @@ from typing import Protocol, runtime_checkable
 
 from app.domain.dedupe import Claim, DedupeKey
 from app.domain.device_token import DeviceToken
-from app.domain.enums import DevicePlatform
+from app.domain.enums import DevicePlatform, NotificationType
 from app.domain.notification import Notification
 from app.domain.order_status import OrderStatus
 from app.domain.preferences import NotificationPreferences
 from app.domain.push_receipt import PushReceipt
+from app.domain.templates import Locale, NotificationTemplate
 
 
 @runtime_checkable
@@ -283,4 +284,36 @@ class PushReceiptStore(Protocol):
 
     def list_for(self, notification_id: uuid.UUID) -> list[PushReceipt]:
         """Return every device's receipt for a notification, most recently updated first."""
+        ...
+
+
+@runtime_checkable
+class NotificationTemplateStore(Protocol):
+    """Persistence port for notification copy templates (NTF-401).
+
+    A copy template answers one question: what should this notification say, in the user's
+    language? The key is the notification type -- the intent the consumers actually produce --
+    paired with a :class:`~app.domain.templates.Locale`, so a new notification type ships its
+    own catalog entries rather than being described by an English fallback by default.
+
+    Resolution falls back to the default locale, so a type that has not been translated yet
+    still delivers copy in the default language instead of failing the send. A type that has
+    no template at all on the default locale is an error the delivery path treats as "no
+    template", which in turn falls back to the producer-supplied copy or the brand/type token.
+    """
+
+    def get(self, notification_type: NotificationType, locale: Locale) -> NotificationTemplate:
+        """Return the copy template for ``notification_type`` in ``locale``."""
+        ...
+
+    def register(self, template: NotificationTemplate) -> None:
+        """Add a template, rejecting a second one for the same type + locale."""
+        ...
+
+    def ids(self) -> frozenset[str]:
+        """Every notification type that has at least one registered copy template."""
+        ...
+
+    def available_locales(self, notification_type: NotificationType) -> frozenset[Locale]:
+        """The locales a given notification type has a copy template for."""
         ...
