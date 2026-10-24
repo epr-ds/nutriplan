@@ -12,9 +12,14 @@ struct NotificationsView: View {
     @StateObject private var viewModel: NotificationsViewModel = createNotificationsViewModel()
     @State private var state: NotificationsUiState?
     let onClose: () -> Void
+    let onOpenPreferences: () -> Void
 
-    init(onClose: @escaping () -> Void) {
+    init(
+        onClose: @escaping () -> Void,
+        onOpenPreferences: @escaping () -> Void = {},
+    ) {
         self.onClose = onClose
+        self.onOpenPreferences = onOpenPreferences
     }
 
     var body: some View {
@@ -23,6 +28,13 @@ struct NotificationsView: View {
                 Text("Notifications")
                     .font(.headline)
                 Spacer()
+                Button {
+                    onOpenPreferences()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
                 Button("Done") {
                     onClose()
                 }

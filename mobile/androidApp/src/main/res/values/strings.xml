@@ -628,4 +628,14 @@
     <string name="notification_permission_not_now">Not now</string>
     <string name="notification_permission_denied_description">Notifications are turned off. You can enable them again from the settings.</string>
     <string name="notification_permission_open_settings">Open settings</string>
+    <string name="notification_preferences_back">Back</string>
+    <string name="notification_preferences_title">Notification Settings</string>
+    <string name="notification_preferences_push">Push notifications</string>
+    <string name="notification_preferences_meal_reminders">Meal plan reminders</string>
+    <string name="notification_preferences_order_updates">Order updates</string>
+    <string name="notification_preferences_promotions">Promotions</string>
+    <string name="notification_preferences_email">Email notifications</string>
+    <string name="notification_preferences_quiet_hours">Quiet hours</string>
+    <string name="notification_preferences_quiet_hours_start">Quiet hours start</string>
+    <string name="notification_preferences_quiet_hours_end">Quiet hours end</string>
 </resources>

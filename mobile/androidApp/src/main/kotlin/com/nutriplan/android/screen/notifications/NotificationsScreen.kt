@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -26,8 +30,11 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,7 +44,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +56,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.R
@@ -56,6 +68,8 @@ import com.nutriplan.android.di.koinInject
 import com.nutriplan.android.i18n.messageRes
 import com.nutriplan.android.push.PushPermissionManager
 import com.nutriplan.shared.data.model.Notification
+import com.nutriplan.shared.data.model.NotificationPreferences
+import com.nutriplan.shared.data.model.UpdateNotificationPreferencesRequest
 import com.nutriplan.shared.notifications.NotificationsError
 import com.nutriplan.shared.notifications.NotificationsUiState
 import com.nutriplan.shared.notifications.NotificationsViewModel
@@ -371,4 +385,211 @@ private fun NotificationCard(
             )
         }
     }
+}
+/**
+ * Notification preferences screen (NTF-509): per-type + channel toggles and quiet hours, all
+ * bound to the shared [NotificationsViewModel]; every change saves with the optimistic + roll-back
+ * behaviour the rest of the notification flow uses.
+ */
+@Composable
+fun NotificationsPreferencesScreen(
+    onBack: () -> Unit = {},
+) {
+    val viewModel = koinInject<NotificationsViewModel>()
+    val state by viewModel.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    val preferences = state.preferences
+
+    LaunchedEffect(Unit) { viewModel.loadPreferences() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.notification_preferences_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.notification_preferences_back),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        },
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PreferenceToggleRow(
+                label = stringResource(R.string.notification_preferences_push),
+                checked = preferences?.pushEnabled ?: false,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        viewModel.updatePreferences(
+                            UpdateNotificationPreferencesRequest(
+                                pushEnabled = checked,
+                                emailEnabled = preferences?.emailEnabled ?: true,
+                                mealReminders = preferences?.mealReminders ?: true,
+                                orderUpdates = preferences?.orderUpdates ?: true,
+                                promotions = preferences?.promotions ?: true,
+                            ),
+                        )
+                    }
+                },
+            )
+
+            PreferenceToggleRow(
+                label = stringResource(R.string.notification_preferences_meal_reminders),
+                checked = preferences?.mealReminders ?: false,
+                enabled = preferences?.pushEnabled ?: false,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        viewModel.updatePreferences(
+                            UpdateNotificationPreferencesRequest(mealReminders = checked),
+                        )
+                    }
+                },
+            )
+
+            PreferenceToggleRow(
+                label = stringResource(R.string.notification_preferences_order_updates),
+                checked = preferences?.orderUpdates ?: false,
+                enabled = preferences?.pushEnabled ?: false,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        viewModel.updatePreferences(
+                            UpdateNotificationPreferencesRequest(orderUpdates = checked),
+                        )
+                    }
+                },
+            )
+
+            PreferenceToggleRow(
+                label = stringResource(R.string.notification_preferences_promotions),
+                checked = preferences?.promotions ?: false,
+                enabled = preferences?.pushEnabled ?: false,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        viewModel.updatePreferences(
+                            UpdateNotificationPreferencesRequest(promotions = checked),
+                        )
+                    }
+                },
+            )
+
+            PreferenceToggleRow(
+                label = stringResource(R.string.notification_preferences_email),
+                checked = preferences?.emailEnabled ?: false,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        viewModel.updatePreferences(
+                            UpdateNotificationPreferencesRequest(emailEnabled = checked),
+                        )
+                    }
+                },
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(R.string.notification_preferences_quiet_hours),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            QuietHoursTimeField(
+                label = stringResource(R.string.notification_preferences_quiet_hours_start),
+                value = preferences?.quietHoursStart,
+                onCommit = { start ->
+                    // The other slot is preserved: only the edited one is committed as the new value.
+                    scope.launch {
+                        viewModel.updateQuietHours(start, preferences?.quietHoursEnd)
+                    }
+                },
+            )
+
+            QuietHoursTimeField(
+                label = stringResource(R.string.notification_preferences_quiet_hours_end),
+                value = preferences?.quietHoursEnd,
+                onCommit = { end ->
+                    scope.launch {
+                        viewModel.updateQuietHours(preferences?.quietHoursStart, end)
+                    }
+                },
+            )
+        }
+    }
+}
+
+/**
+ * One notification preference row: label + switch, disabled while the (parent) push master switch
+ * is off so the user cannot edit a type that is not being delivered.
+ */
+@Composable
+private fun PreferenceToggleRow(
+    label: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Switch(
+            checked = checked,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+        )
+    }
+}
+
+/**
+ * Quiet-hours slot editor: a plain single-line text field normalized to `HH:mm`. A committed
+ * valid time is stored as the slot value (start or end); clearing or partial input clears it, so
+ * the quiet-hours window can be set, adjusted or removed.
+ */
+@Composable
+private fun QuietHoursTimeField(
+    label: String,
+    value: String?,
+    onCommit: (String?) -> Unit,
+) {
+    var text by remember { mutableStateOf(value ?: "") }
+
+    LaunchedEffect(value) { text = value ?: "" }
+
+    OutlinedTextField(
+        value = text,
+        onValueChange = { newText ->
+            text = newText
+            normalizeQuietHoursTime(newText)?.let(onCommit)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+    )
+}
+
+/** Normalize a typed quiet-hours time to `HH:mm`; null when the input is not a valid time. */
+private fun normalizeQuietHoursTime(raw: String?): String? {
+    val digits = raw?.replace(":", "")?.take(4).orEmpty()
+    if (digits.length != 4) return null
+    val hours = digits.substring(0, 2).toIntOrNull() ?: return null
+    val minutes = digits.substring(2, 4).toIntOrNull() ?: return null
+    if (hours > 23 || minutes > 59) return null
+    return "%02d:%02d".format(hours, minutes)
 }

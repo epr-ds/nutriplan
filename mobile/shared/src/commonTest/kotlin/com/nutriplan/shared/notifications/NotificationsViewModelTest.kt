@@ -24,6 +24,15 @@ class NotificationsViewModelTest {
         var unreadCount: Int = 0
         var failure: Throwable? = null
         val markedReads = mutableListOf<String>()
+        var preferences: NotificationPreferences = NotificationPreferences(
+            pushEnabled = true,
+            emailEnabled = true,
+            mealReminders = true,
+            orderUpdates = true,
+            promotions = true,
+        )
+        var preferencesFailure: Throwable? = null
+        val updatedRequests = mutableListOf<UpdateNotificationPreferencesRequest>()
 
         override suspend fun getNotifications(): List<Notification> {
             failure?.let { throw it }
@@ -39,9 +48,25 @@ class NotificationsViewModelTest {
             markedReads += notificationId
         }
 
-        override suspend fun getPreferences(): NotificationPreferences = error("unused")
+        override suspend fun getPreferences(): NotificationPreferences {
+            preferencesFailure?.let { throw it }
+            return preferences
+        }
 
-        override suspend fun updatePreferences(request: UpdateNotificationPreferencesRequest): NotificationPreferences = error("unused")
+        override suspend fun updatePreferences(request: UpdateNotificationPreferencesRequest): NotificationPreferences {
+            preferencesFailure?.let { throw it }
+            updatedRequests += request
+            preferences = NotificationPreferences(
+                pushEnabled = request.pushEnabled ?: preferences.pushEnabled ?: true,
+                emailEnabled = request.emailEnabled ?: preferences.emailEnabled ?: true,
+                mealReminders = request.mealReminders ?: preferences.mealReminders ?: true,
+                orderUpdates = request.orderUpdates ?: preferences.orderUpdates ?: true,
+                promotions = request.promotions ?: preferences.promotions ?: true,
+                quietHoursStart = request.quietHoursStart ?: preferences.quietHoursStart,
+                quietHoursEnd = request.quietHoursEnd ?: preferences.quietHoursEnd,
+            )
+            return preferences
+        }
 
         override suspend fun registerDevice(platform: String, token: String): RegisteredDevice = error("unused")
 
@@ -66,6 +91,15 @@ class NotificationsViewModelTest {
         repository.unreadCount = 0
         repository.failure = null
         repository.markedReads.clear()
+        repository.preferences = NotificationPreferences(
+            pushEnabled = true,
+            emailEnabled = true,
+            mealReminders = true,
+            orderUpdates = true,
+            promotions = true,
+        )
+        repository.preferencesFailure = null
+        repository.updatedRequests.clear()
     }
 
     @Test
@@ -112,6 +146,52 @@ class NotificationsViewModelTest {
 
         assertEquals(listOf("n-1"), repository.markedReads)
         assertTrue(viewModel.state.value.notifications.first().isRead)
+    }
+
+    @Test
+    fun `loadPreferences stores the preferences`() = runTest {
+        val prefs = NotificationPreferences(
+            pushEnabled = false,
+            emailEnabled = true,
+            mealReminders = false,
+            orderUpdates = true,
+            promotions = true,
+        )
+        repository.preferences = prefs
+
+        val viewModel = NotificationsViewModel(repository)
+
+        viewModel.loadPreferences()
+
+        assertEquals(prefs, viewModel.state.value.preferences)
+    }
+
+    @Test
+    fun `updatePreferences optimistically applies and rolls back on failure`() = runTest {
+        val initial = NotificationPreferences(
+            pushEnabled = true,
+            emailEnabled = true,
+            mealReminders = true,
+            orderUpdates = true,
+            promotions = true,
+        )
+        repository.preferences = initial
+
+        val viewModel = NotificationsViewModel(repository)
+
+        viewModel.loadPreferences()
+
+        val request = UpdateNotificationPreferencesRequest(pushEnabled = false)
+        viewModel.updatePreferences(request)
+        // Optimistic: the local copy reflects the request before the confirm lands.
+        assertEquals(false, viewModel.state.value.preferences?.pushEnabled)
+
+        repository.preferencesFailure = RuntimeException("boom")
+        viewModel.updatePreferences(UpdateNotificationPreferencesRequest(emailEnabled = false))
+
+        // Rollback: the pre-update snapshot comes back when the confirm fails.
+        assertEquals(false, viewModel.state.value.preferences?.pushEnabled)
+        assertEquals(true, viewModel.state.value.preferences?.emailEnabled)
     }
 
     @Test
