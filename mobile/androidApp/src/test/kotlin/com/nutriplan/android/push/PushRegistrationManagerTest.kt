@@ -3,6 +3,7 @@ package com.nutriplan.android.push
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.nutriplan.android.a11y.TestApplication
 import com.nutriplan.shared.data.model.Notification
 import com.nutriplan.shared.data.model.NotificationPreferences
 import com.nutriplan.shared.data.model.RegisteredDevice
