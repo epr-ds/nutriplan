@@ -8,7 +8,7 @@ detekt = "1.23.8"
 koin = "4.2.2"
 navigation = "2.10.2"
 coroutinesTest = "1.11.0"
-ktorMock = "2.3.12"
+ktorMock = "3.6.0"
 koinTest = "4.2.2"
 sqldelight = "2.4.1"
 
