@@ -83,6 +83,8 @@ class APNsMessage:
     badge: int | None = None
     category: str | None = None
     thread_id: str | None = None
+    image_url: str | None = None
+    """Rich-notification image (NTF-405); when set, the copy renders as an attachment."""
 
 
 class APNsAdapter:
@@ -160,6 +162,13 @@ class APNsAdapter:
                 },
             }
         }
+
+        if message.image_url is not None:
+            # Rich notification (NTF-405): the alert copy is mutable and the image arrives as an
+            # attachment, so the client-side notification service extension renders the image
+            # before the system presents the notification.
+            apns_payload["aps"]["mutable-content"] = 1
+            apns_payload["aps"]["attachment"] = {"url": message.image_url}
 
         if message.sound:
             apns_payload["aps"]["sound"] = message.sound

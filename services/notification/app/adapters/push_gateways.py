@@ -8,6 +8,8 @@ translation belongs in the adapter below them or in the use case above them.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.adapters.apns_adapter import APNsAdapter, APNsError, APNsMessage
 from app.adapters.fcm_adapter import FCMAdapter, FCMError, FCMMessage
 from app.domain.enums import DevicePlatform
@@ -30,6 +32,7 @@ class FcmPushGateway:
                     title=message.title,
                     body=message.body,
                     data=dict(message.data),
+                    android=self._android(message),
                 )
             )
         except FCMError as exc:
@@ -39,6 +42,23 @@ class FcmPushGateway:
                 dead_token=exc.dead_token,
                 details=exc.details,
             ) from exc
+
+    @staticmethod
+    def _android(message: PushMessage) -> dict[str, Any] | None:
+        """The FCM rich-notification block, or ``None`` for a plain push (NTF-405).
+
+        ``None`` means *no block at all*: the provider's own default rendering handles the copy,
+        which is the graceful fallback made structural rather than a message without the fields a
+        rich notification would have needed.
+        """
+        if message.image_url is None and not message.actions:
+            return None
+        notification: dict[str, Any] = {"title": message.title, "body": message.body}
+        if message.image_url is not None:
+            notification["image"] = message.image_url
+        if message.actions:
+            notification["click_action"] = message.actions[0].deep_link
+        return {"notification": notification}
 
 
 class ApnsPushGateway:
@@ -57,6 +77,7 @@ class ApnsPushGateway:
                     token=message.token,
                     payload=payload,
                     badge=message.badge,
+                    image_url=message.image_url,
                 )
             )
         except APNsError as exc:

@@ -23,7 +23,7 @@ from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.notification import Notification
 from app.domain.preferences import NotificationPreferences
-from app.domain.push import PushError, PushMessage
+from app.domain.push import PushAction, PushError, PushMessage
 from app.domain.push_receipt import PushReceipt
 from app.domain.repositories import DeviceTokenRepository
 from app.domain.templates import Locale
@@ -442,6 +442,76 @@ def test_the_default_locale_is_the_spanish_catalog(
 
     assert gateway.sent[0].title == "Entregado"
     assert "Tu pedido order-1 fue entregado" in gateway.sent[0].body
+
+
+def test_an_order_update_push_carries_the_image_and_an_open_action(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-405: an actionable order update becomes a rich push with an image and a button."""
+    _register(devices, ANDROID, "android-token")
+    notification = notifications.add(
+        Notification(
+            user_id=USER_ID,
+            type=NotificationType.ORDER_IN_TRANSIT,
+            payload={
+                "orderId": "order-1",
+                "deepLink": "nutriplan://order/order-1",
+                "imageUrl": "https://images.nutriplan.app/orders/order-1.jpg",
+            },
+            channels=(NotificationChannel.PUSH,),
+            status=DeliveryStatus.PENDING,
+        )
+    )
+    gateway = FakeGateway(ANDROID)
+
+    result = _service(notifications, devices, gateway).deliver(notification)
+
+    message = gateway.sent[0]
+    assert message.image_url == "https://images.nutriplan.app/orders/order-1.jpg"
+    assert message.actions == (PushAction(title="Open", deep_link="nutriplan://order/order-1"),)
+    assert message.data["deepLink"] == "nutriplan://order/order-1"
+    assert result.status is DeliveryStatus.SENT
+
+
+def test_a_non_order_update_notification_gets_no_action(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-405: only order-lifecycle notifications are actionable; reminders stay plain."""
+    _register(devices, ANDROID, "android-token")
+    notification = notifications.add(
+        Notification(
+            user_id=USER_ID,
+            type=NotificationType.MEAL_REMINDER,
+            payload={
+                "mealId": "meal-1",
+                "deepLink": "nutriplan://meal/meal-1",
+                "imageUrl": "https://images.nutriplan.app/recipes/meal-1.jpg",
+            },
+            channels=(NotificationChannel.PUSH,),
+            status=DeliveryStatus.PENDING,
+        )
+    )
+    gateway = FakeGateway(ANDROID)
+
+    _service(notifications, devices, gateway).deliver(notification)
+
+    message = gateway.sent[0]
+    assert message.image_url == "https://images.nutriplan.app/recipes/meal-1.jpg"
+    assert message.actions == ()
+
+
+def test_a_push_without_image_or_deep_link_stays_plain(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-405: no image and no deep link means the plain message, not a rich one."""
+    _register(devices, ANDROID, "android-token")
+    gateway = FakeGateway(ANDROID)
+
+    _service(notifications, devices, gateway).deliver(_store(notifications))
+
+    message = gateway.sent[0]
+    assert message.image_url is None
+    assert message.actions == ()
 
 
 @pytest.mark.parametrize(

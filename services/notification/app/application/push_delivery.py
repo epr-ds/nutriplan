@@ -44,7 +44,7 @@ from app.domain.device_token import DeviceToken
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel
 from app.domain.errors import TemplateError
 from app.domain.notification import Notification
-from app.domain.push import PushError, PushGateway, PushMessage
+from app.domain.push import PushAction, PushError, PushGateway, PushMessage
 from app.domain.push_receipt import PushReceipt
 from app.domain.repositories import (
     NotificationRepository,
@@ -369,12 +369,41 @@ class PushDelivery:
         the service inventing a schema (NTF-304).
         """
         title, body = self._copy(notification)
+        image_url, actions = self._rich_content(notification)
         return PushMessage(
             token=token,
             title=_truncate(title),
             body=_truncate(body),
             data=self._data(notification),
+            image_url=image_url,
+            actions=actions,
         )
+
+    def _rich_content(
+        self, notification: Notification
+    ) -> tuple[str | None, tuple[PushAction, ...]]:
+        """The image and the action buttons for a rich push (NTF-405).
+
+        The image rides along whenever the producer attached one to the payload: a missing
+        ``imageUrl`` is not an empty image, so it simply means "no rich image" and the provider
+        falls back to the plain notification. An order-lifecycle notification is actionable by
+        nature -- the user is being asked to act on an order -- so it gets an ``Open`` action whose
+        deep link is the same ``nutriplan://`` spelling the copy and the data already use; a type
+        that is not an order update gets no action, and a notification without a deep link gets
+        none either.
+
+        Nothing here can fail the send. An absent image or action is the plain message, which is
+        the graceful fallback rather than a delivery error or a third code path.
+        """
+        image_url = notification.payload.get("imageUrl")
+        image = str(image_url) if image_url else None
+        deep_link = notification.payload.get("deepLink")
+        action = (
+            PushAction(title="Open", deep_link=str(deep_link))
+            if notification.type.is_order_update and deep_link
+            else None
+        )
+        return image, (action,) if action is not None else ()
 
     def _copy(self, notification: Notification) -> tuple[str, str]:
         """The title/body to send, from the user's locale and this notification's payload.

@@ -86,6 +86,50 @@ def test_fcm_sends_the_expected_body_and_returns_the_message_name() -> None:
         "body": "Your order is here",
     }
     assert body["message"]["data"] == {"notificationId": "n-1"}
+    assert body["message"].get("android") is None
+
+
+def test_fcm_sends_the_rich_notification_block() -> None:
+    """NTF-405: an image and a click action travel to FCM as the rich ``android`` block."""
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"name": "projects/project/messages/1"})
+
+    adapter = _fcm(handler)
+    try:
+        assert (
+            adapter.send(
+                FCMMessage(
+                    token="device-token",
+                    title="En camino",
+                    body="Tu pedido order-1 está en camino.",
+                    data={"notificationId": "n-1", "deepLink": "nutriplan://order/order-1"},
+                    android={
+                        "notification": {
+                            "title": "En camino",
+                            "body": "Tu pedido order-1 está en camino.",
+                            "image": "https://images.nutriplan.app/orders/order-1.jpg",
+                            "click_action": "nutriplan://order/order-1",
+                        }
+                    },
+                )
+            )
+            == "projects/project/messages/1"
+        )
+    finally:
+        adapter.stop()
+
+    body = json.loads(seen[0].content)
+    assert body["message"]["android"] == {
+        "notification": {
+            "title": "En camino",
+            "body": "Tu pedido order-1 está en camino.",
+            "image": "https://images.nutriplan.app/orders/order-1.jpg",
+            "click_action": "nutriplan://order/order-1",
+        }
+    }
 
 
 def test_fcm_unregistered_is_a_dead_token() -> None:
@@ -154,6 +198,48 @@ def test_apns_sends_the_alert_and_custom_keys() -> None:
     assert body["aps"]["alert"] == {"title": "Ready", "body": "Your order is here"}
     assert body["aps"]["badge"] == 4
     assert body["id"] == "notification-1"
+    assert "mutable-content" not in body["aps"]
+    assert "attachment" not in body["aps"]
+
+
+def test_apns_sends_the_rich_notification_with_image() -> None:
+    """NTF-405: a rich push makes the APNs copy mutable and attaches the image."""
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, headers={"apns-id": "apns-1"})
+
+    adapter = _apns(handler)
+    try:
+        assert (
+            adapter.send(
+                APNsMessage(
+                    token="device-token",
+                    payload={
+                        "title": "En camino",
+                        "body": "Tu pedido order-1 está en camino.",
+                        "id": "notification-1",
+                        "deepLink": "nutriplan://order/order-1",
+                    },
+                    badge=1,
+                    image_url="https://images.nutriplan.app/orders/order-1.jpg",
+                )
+            )
+            == "apns-1"
+        )
+    finally:
+        adapter.stop()
+
+    body = json.loads(seen[0].content)
+    assert body["aps"]["alert"] == {
+        "title": "En camino",
+        "body": "Tu pedido order-1 está en camino.",
+    }
+    assert body["aps"]["badge"] == 1
+    assert body["aps"]["mutable-content"] == 1
+    assert body["aps"]["attachment"] == {"url": "https://images.nutriplan.app/orders/order-1.jpg"}
+    assert body["aps"].get("sound", "default") == "default"
 
 
 def test_apns_unregistered_is_a_dead_token() -> None:

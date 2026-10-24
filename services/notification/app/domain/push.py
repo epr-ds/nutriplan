@@ -25,6 +25,19 @@ from app.domain.enums import DevicePlatform
 
 
 @dataclass(frozen=True, slots=True)
+class PushAction:
+    """One actionable button on a rich push (NTF-405).
+
+    The button's ``deep_link`` is the screen the tap should resolve to -- the same
+    ``nutriplan://`` spelling the notification copy and the data already use, so a rich push
+    never invents a second link dialect.
+    """
+
+    title: str
+    deep_link: str
+
+
+@dataclass(frozen=True, slots=True)
 class PushMessage:
     """One provider-bound message, addressed to exactly one device token.
 
@@ -32,6 +45,10 @@ class PushMessage:
     is a string because that is the only shape both FCM and APNs accept without translation.
     The alert text lives in ``title``/``body`` rather than in ``data`` so a provider that
     renders the notification itself still has something to show.
+
+    ``image_url`` and ``actions`` are the rich-push extension (NTF-405): a rich notification
+    leads with an image and offers actions, and both are optional -- an absent value simply
+    means the message is the plain copy, which is the graceful fallback rather than a failure.
     """
 
     token: str
@@ -39,6 +56,8 @@ class PushMessage:
     body: str
     data: Mapping[str, str] = field(default_factory=dict)
     badge: int | None = None
+    image_url: str | None = None
+    actions: tuple[PushAction, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data", MappingProxyType(dict(self.data)))
