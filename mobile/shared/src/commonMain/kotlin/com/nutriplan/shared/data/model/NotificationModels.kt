@@ -34,6 +34,22 @@ data class NotificationPreferences(
     val quietHoursEnd: String? = null,
 )
 
+/** A push token the app wants associated with the authenticated account (NTF-501). */
+@Serializable
+data class RegisterDevice(
+    val platform: String,
+    val token: String,
+)
+
+/** A stored push-device registration; the id is what the client uses to revoke it (NTF-501). */
+@Serializable
+data class RegisteredDevice(
+    val id: String,
+    val platform: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
 /** Request to update notification preferences. */
 @Serializable
 data class UpdateNotificationPreferencesRequest(
