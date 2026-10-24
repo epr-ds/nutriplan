@@ -24,7 +24,7 @@ class NotificationsViewModelTest {
         var unreadCount: Int = 0
         var failure: Throwable? = null
         val markedReads = mutableListOf<String>()
-        var preferences: NotificationPreferences? = NotificationPreferences(
+        var preferences: NotificationPreferences = NotificationPreferences(
             pushEnabled = true,
             emailEnabled = true,
             mealReminders = true,
@@ -50,20 +50,20 @@ class NotificationsViewModelTest {
 
         override suspend fun getPreferences(): NotificationPreferences {
             preferencesFailure?.let { throw it }
-            return preferences ?: error("no preferences")
+            return preferences
         }
 
         override suspend fun updatePreferences(request: UpdateNotificationPreferencesRequest): NotificationPreferences {
             preferencesFailure?.let { throw it }
             updatedRequests += request
             preferences = NotificationPreferences(
-                pushEnabled = request.pushEnabled ?: preferences?.pushEnabled ?: true,
-                emailEnabled = request.emailEnabled ?: preferences?.emailEnabled ?: true,
-                mealReminders = request.mealReminders ?: preferences?.mealReminders ?: true,
-                orderUpdates = request.orderUpdates ?: preferences?.orderUpdates ?: true,
-                promotions = request.promotions ?: preferences?.promotions ?: true,
-                quietHoursStart = request.quietHoursStart ?: preferences?.quietHoursStart,
-                quietHoursEnd = request.quietHoursEnd ?: preferences?.quietHoursEnd,
+                pushEnabled = request.pushEnabled ?: preferences.pushEnabled ?: true,
+                emailEnabled = request.emailEnabled ?: preferences.emailEnabled ?: true,
+                mealReminders = request.mealReminders ?: preferences.mealReminders ?: true,
+                orderUpdates = request.orderUpdates ?: preferences.orderUpdates ?: true,
+                promotions = request.promotions ?: preferences.promotions ?: true,
+                quietHoursStart = request.quietHoursStart ?: preferences.quietHoursStart,
+                quietHoursEnd = request.quietHoursEnd ?: preferences.quietHoursEnd,
             )
             return preferences
         }

@@ -7,7 +7,8 @@ import Shared
 struct NotificationsPreferencesView: View {
     @StateObject private var viewModel: NotificationsViewModel = createNotificationsViewModel()
     @State private var preferences: NotificationPreferences?
-    @State private var time = Date()
+    @State private var startTime = Date()
+    @State private var endTime = Date()
 
     let onBack: () -> Void
 
@@ -21,7 +22,9 @@ struct NotificationsPreferencesView: View {
                 "Push notifications",
                 isOn: Binding(
                     get: { preferences?.pushEnabled ?? false },
-                    set: { viewModel.updatePushEnabled(enabled: $0) },
+                    set: { newValue in
+                        Task { await viewModel.updatePushEnabled(enabled: newValue) }
+                    },
                 ),
             )
 
@@ -29,7 +32,9 @@ struct NotificationsPreferencesView: View {
                 "Meal plan reminders",
                 isOn: Binding(
                     get: { preferences?.mealReminders ?? false },
-                    set: { viewModel.updateMealReminders(enabled: $0) },
+                    set: { newValue in
+                        Task { await viewModel.updateMealReminders(enabled: newValue) }
+                    },
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
@@ -38,7 +43,9 @@ struct NotificationsPreferencesView: View {
                 "Order updates",
                 isOn: Binding(
                     get: { preferences?.orderUpdates ?? false },
-                    set: { viewModel.updateOrderUpdates(enabled: $0) },
+                    set: { newValue in
+                        Task { await viewModel.updateOrderUpdates(enabled: newValue) }
+                    },
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
@@ -47,7 +54,9 @@ struct NotificationsPreferencesView: View {
                 "Promotions",
                 isOn: Binding(
                     get: { preferences?.promotions ?? false },
-                    set: { viewModel.updatePromotions(enabled: $0) },
+                    set: { newValue in
+                        Task { await viewModel.updatePromotions(enabled: newValue) }
+                    },
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
@@ -56,7 +65,9 @@ struct NotificationsPreferencesView: View {
                 "Email notifications",
                 isOn: Binding(
                     get: { preferences?.emailEnabled ?? false },
-                    set: { viewModel.updateEmailEnabled(enabled: $0) },
+                    set: { newValue in
+                        Task { await viewModel.updateEmailEnabled(enabled: newValue) }
+                    },
                 ),
             )
 
@@ -64,16 +75,31 @@ struct NotificationsPreferencesView: View {
                 .font(.headline)
 
             DatePicker(
-                "Time",
-                selection: $time,
+                "Start",
+                selection: $startTime,
                 displayedComponents: [.hour, .minute],
             )
-            .onChange(of: time) { _ in
-                let start = String(format: "%02d:%02d", Calendar.current.component(.hour, from: time),
-                                   Calendar.current.component(.minute, from: time))
-                let end = String(format: "%02d:%02d", Calendar.current.component(.hour, from: time),
-                                 Calendar.current.component(.minute, from: time))
-                viewModel.updateQuietHours(start: start, end: end)
+            .onChange(of: startTime) { _ in
+                Task {
+                    await viewModel.updateQuietHours(
+                        start: Self.timeComponents(from: startTime),
+                        end: Self.timeComponents(from: endTime),
+                    )
+                }
+            }
+
+            DatePicker(
+                "End",
+                selection: $endTime,
+                displayedComponents: [.hour, .minute],
+            )
+            .onChange(of: endTime) { _ in
+                Task {
+                    await viewModel.updateQuietHours(
+                        start: Self.timeComponents(from: startTime),
+                        end: Self.timeComponents(from: endTime),
+                    )
+                }
             }
         }
         .onAppear {
@@ -85,6 +111,15 @@ struct NotificationsPreferencesView: View {
                 Button("Back") { onBack() }
             }
         }
+    }
+
+    private static func timeComponents(from date: Date) -> String {
+        let calendar = Calendar.current
+        return String(
+            format: "%02d:%02d",
+            calendar.component(.hour, from: date),
+            calendar.component(.minute, from: date),
+        )
     }
 }
 

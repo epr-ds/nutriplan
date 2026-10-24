@@ -634,4 +634,6 @@
     <string name="notification_preferences_promotions">Promociones</string>
     <string name="notification_preferences_email">Notificaciones por correo</string>
     <string name="notification_preferences_quiet_hours">Horas de silencio</string>
+    <string name="notification_preferences_quiet_hours_start">Comienzo de la franja de silencio</string>
+    <string name="notification_preferences_quiet_hours_end">Fin de la franja de silencio</string>
 </resources>

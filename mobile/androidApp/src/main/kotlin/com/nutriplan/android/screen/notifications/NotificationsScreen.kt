@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,12 +32,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimeOfDay
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -44,7 +44,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +56,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nutriplan.android.R
@@ -500,29 +505,20 @@ fun NotificationsPreferencesScreen(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            TimePicker(
-                initialTime = quietHoursStartTime(preferences?.quietHoursStart),
-                onTimeChange = { time ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(
-                                quietHoursStart = String.format("%02d:%02d", time.hours, time.minutes),
-                            ),
-                        )
-                    }
+            QuietHoursTimeField(
+                label = stringResource(R.string.notification_preferences_quiet_hours_start),
+                value = preferences?.quietHoursStart,
+                onCommit = { start ->
+                    // The other slot is preserved: only the edited one is committed as the new value.
+                    viewModel.updateQuietHours(start, preferences?.quietHoursEnd)
                 },
             )
 
-            TimePicker(
-                initialTime = quietHoursEndTime(preferences?.quietHoursEnd),
-                onTimeChange = { time ->
-                    scope.launch {
-                        viewModel.updatePreferences(
-                            UpdateNotificationPreferencesRequest(
-                                quietHoursEnd = String.format("%02d:%02d", time.hours, time.minutes),
-                            ),
-                        )
-                    }
+            QuietHoursTimeField(
+                label = stringResource(R.string.notification_preferences_quiet_hours_end),
+                value = preferences?.quietHoursEnd,
+                onCommit = { end ->
+                    viewModel.updateQuietHours(preferences?.quietHoursStart, end)
                 },
             )
         }
@@ -557,20 +553,39 @@ private fun PreferenceToggleRow(
     }
 }
 
-/** First quiet-hours slot of the day from a `HH:mm` preference string, or a default. */
-private fun quietHoursStartTime(quietHoursStart: String?): TimeOfDay =
-    TimeOfDay(
-        hours = quietHoursStart?.substringBefore(':')?.toIntOrNull() ?: DEFAULT_QUIET_HOURS_HOURS,
-        minutes = quietHoursStart?.substringAfter(':')?.toIntOrNull() ?: DEFAULT_QUIET_HOURS_MINUTES,
+/**
+ * Quiet-hours slot editor: a plain single-line text field normalized to `HH:mm`. A committed
+ * valid time is stored as the slot value (start or end); clearing or partial input clears it, so
+ * the quiet-hours window can be set, adjusted or removed.
+ */
+@Composable
+private fun QuietHoursTimeField(
+    label: String,
+    value: String?,
+    onCommit: (String?) -> Unit,
+) {
+    var text by remember { mutableStateOf(value ?: "") }
+
+    LaunchedEffect(value) { text = value ?: "" }
+
+    OutlinedTextField(
+        value = text,
+        onValueChange = { newText ->
+            text = newText
+            normalizeQuietHoursTime(newText)?.let(onCommit)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
     )
+}
 
-/** Second quiet-hours slot of the day from a `HH:mm` preference string, or a default. */
-private fun quietHoursEndTime(quietHoursEnd: String?): TimeOfDay =
-    TimeOfDay(
-        hours = quietHoursEnd?.substringBefore(':')?.toIntOrNull() ?: DEFAULT_QUIET_HOURS_HOURS,
-        minutes = quietHoursEnd?.substringAfter(':')?.toIntOrNull() ?: DEFAULT_QUIET_HOURS_MINUTES,
-    )
-
-private const val DEFAULT_QUIET_HOURS_HOURS = 22
-
-private const val DEFAULT_QUIET_HOURS_MINUTES = 0
+/** Normalize a typed quiet-hours time to `HH:mm`; null when the input is not a valid time. */
+private fun normalizeQuietHoursTime(raw: String?): String? {
+    val digits = raw?.replace(":", "")?.take(4).orEmpty()
+    if (digits.length != 4) return null
+    val hours = digits.substring(0, 2).toIntOrNull() ?: return null
+    val minutes = digits.substring(2, 4).toIntOrNull() ?: return null
+    if (hours > 23 || minutes > 59) return null
+    return "%02d:%02d".format(hours, minutes)
+}
