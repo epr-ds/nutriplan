@@ -107,6 +107,7 @@ class NotificationsViewModelTest {
 
         val viewModel = NotificationsViewModel(repository)
 
+        viewModel.load()
         viewModel.markAsRead("n-1")
 
         assertEquals(listOf("n-1"), repository.markedReads)
