@@ -25,10 +25,10 @@ private const val KEY_ASKED = "asked"
  * through [onRequestResult]; [refreshStatus] re-reads the OS state, for example after the user
  * changed the permission in the system settings (the re-prompt path).
  */
-class PushPermissionManager(context: Context) {
+class PushPermissionManager(appContext: Context) {
 
     private val preferences: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val _status = MutableStateFlow(resolveStatus(granted = false, asked = false))
     val status: StateFlow<PushPermissionStatus> = _status.asStateFlow()
@@ -48,7 +48,7 @@ class PushPermissionManager(context: Context) {
      */
     fun refreshStatus() {
         val granted = ContextCompat.checkSelfPermission(
-            context,
+            appContext,
             Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
         _status.value = resolveStatus(
