@@ -18,6 +18,7 @@ import com.nutriplan.shared.di.KoinInitializer
 import com.nutriplan.shared.di.cacheModule
 import com.nutriplan.shared.onboarding.DeviceOnboardingDraftStorage
 import com.nutriplan.shared.onboarding.OnboardingDraftStorage
+import com.nutriplan.android.push.PushPermissionManager
 import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
@@ -60,6 +61,8 @@ class NutriPlanApplication : Application() {
                 }
                 // AIA-602: AI answers (reasoning, disclaimer) in the device language.
                 factory { AiAdvisor(repository = get(), language = { Locale.getDefault().language }) }
+                // NTF-504: notification permission priming state for the OS prompt flow.
+                single<PushPermissionManager> { PushPermissionManager(applicationContext) }
             },
             cacheModule(DatabaseDriverFactory(applicationContext)),
         )

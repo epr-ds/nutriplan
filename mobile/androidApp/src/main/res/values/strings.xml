@@ -622,4 +622,10 @@
     <string name="error_notifications_unknown">Your notifications could not be loaded. Please try again.</string>
     <string name="notifications_retry">Retry</string>
     <string name="cd_notifications_loading">Loading notifications</string>
+    <string name="notification_permission_title">Notifications</string>
+    <string name="notification_permission_description">Meal plan reminders and order updates will show up here and as alerts.</string>
+    <string name="notification_permission_allow">Allow</string>
+    <string name="notification_permission_not_now">Not now</string>
+    <string name="notification_permission_denied_description">Notifications are turned off. You can enable them again from the settings.</string>
+    <string name="notification_permission_open_settings">Open settings</string>
 </resources>
