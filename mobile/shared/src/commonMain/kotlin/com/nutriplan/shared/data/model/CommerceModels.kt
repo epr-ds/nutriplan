@@ -132,6 +132,14 @@ data class Order(
     /** `dark_kitchen`, `grocery_delivery` or `pickup`. */
     val fulfillmentType: String? = null,
     val provider: FulfillmentProvider? = null,
+    /** Where the order is delivered (COM-701); null from a server or cache that predates it. */
+    val deliveryAddress: OrderAddress? = null,
+    /** ISO date. */
+    val deliveryDate: String? = null,
+    /** e.g. `13:00-15:00`. */
+    val deliveryTimeSlot: String? = null,
+    /** ISO date-time the order was placed. */
+    val createdAt: String? = null,
     val items: List<OrderItem> = emptyList(),
     val subtotal: Money? = null,
     val deliveryFee: Money? = null,

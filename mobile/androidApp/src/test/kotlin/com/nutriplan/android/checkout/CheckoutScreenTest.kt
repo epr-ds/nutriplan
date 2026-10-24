@@ -435,6 +435,29 @@ class CheckoutScreenTest {
     }
 
     @Test
+    fun `a reorder says whose delivery it repeats`() {
+        compose.setContent {
+            NutriPlanTheme {
+                CheckoutScreenContent(
+                    state = com.nutriplan.shared.commerce.CheckoutUiState(
+                        plansLoading = false,
+                        plans = listOf(week),
+                        reorderOf = Order(id = "o9", createdAt = "2026-10-01T10:00:00Z"),
+                    ),
+                    today = "2026-11-02",
+                    onBack = {}, onNext = {}, onSelectPlan = {}, onSelectFulfillment = {}, onSelectProvider = {},
+                    onSelectAddress = {}, onManageAddresses = {}, onSelectDay = {}, onSelectSlot = {}, onEdit = {},
+                    onRetry = {}, onPlaceOrder = {},
+                )
+            }
+        }
+
+        val placedOn = com.nutriplan.android.screen.plans.formatPlanDay("2026-10-01")
+        compose.onNodeWithText(str(R.string.checkout_reorder_note_dated, placedOn)).assertIsDisplayed()
+        compose.onNodeWithTag(CheckoutTestTags.REORDER_NOTE).assertIsDisplayed()
+    }
+
+    @Test
     fun `the order cannot be placed before the price is known`() {
         compose.setContent {
             NutriPlanTheme {

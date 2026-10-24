@@ -583,6 +583,28 @@ components:
         instructions:
           type: string
 
+    AddressResponse:
+      type: object
+      description: Where an order is delivered (COM-701).
+      required: [street, city, state, zipCode, country]
+      properties:
+        street:
+          type: string
+        apartment:
+          type: string
+          nullable: true
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+        instructions:
+          type: string
+          nullable: true
+
     PaymentMethodRequest:
       type: object
       description: >
@@ -663,6 +685,18 @@ components:
             - type: object
               nullable: true
               maxProperties: 0
+        deliveryAddress:
+          $ref: '#/components/schemas/AddressResponse'
+        deliveryDate:
+          type: string
+          format: date
+        deliveryTimeSlot:
+          type: string
+          description: The delivery window, e.g. `13:00-15:00`.
+        createdAt:
+          type: string
+          format: date-time
+          description: When the order was placed.
         items:
           type: array
           items:

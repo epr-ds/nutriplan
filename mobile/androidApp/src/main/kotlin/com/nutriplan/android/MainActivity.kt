@@ -415,7 +415,14 @@ class MainNavigationScreens(
         onNavigate: (Any) -> Unit,
         onOrderClick: (String) -> Unit,
     ) {
-        OrderListScreenContent(onNavigate, onOrderClick)
+        val sessionManager = koinInject<SessionManager>()
+        com.nutriplan.android.screen.orders.OrderListScreen(
+            onOrderClick = onOrderClick,
+            onReorder = { orderId -> onNavigate(Route.Checkout(reorderOrderId = orderId)) },
+            onBrowsePlans = { onNavigate(Route.MealPlanList) },
+            onBack = { navController.popBackStack() },
+            onSessionExpired = { sessionManager.onSignedOut() },
+        )
     }
 
     @Composable
@@ -429,6 +436,7 @@ class MainNavigationScreens(
     @Composable
     override fun CheckoutScreen(
         planId: String?,
+        reorderOrderId: String?,
         onNavigate: (Any) -> Unit,
         onComplete: (Any) -> Unit,
         onCancel: () -> Unit,
@@ -436,6 +444,7 @@ class MainNavigationScreens(
         val sessionManager = koinInject<SessionManager>()
         com.nutriplan.android.screen.checkout.CheckoutScreen(
             planId = planId,
+            reorderOrderId = reorderOrderId,
             onOrderPlaced = { orderId -> onComplete(Route.OrderDetail(orderId)) },
             onManageAddresses = { onNavigate(Route.AddressBook) },
             onBack = onCancel,
@@ -576,19 +585,6 @@ private fun MainScreenContent(onNavigate: (Any) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Text("Main", style = MaterialTheme.typography.headlineLarge)
-    }
-}
-
-@Composable
-private fun OrderListScreenContent(
-    onNavigate: (Any) -> Unit,
-    onOrderClick: (String) -> Unit,
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text("Orders", style = MaterialTheme.typography.headlineLarge)
     }
 }
 

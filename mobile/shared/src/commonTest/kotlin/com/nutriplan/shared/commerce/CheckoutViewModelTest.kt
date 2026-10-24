@@ -57,6 +57,8 @@ class CheckoutViewModelTest {
         val creates = mutableListOf<CreateOrderRequest>()
         val idempotencyKeys = mutableListOf<String?>()
         val saves = mutableListOf<SavePaymentMethodRequest>()
+        /** The orders `GET /orders/{id}` returns. */
+        var served: List<Order> = emptyList()
 
         override suspend fun darkKitchenAvailability(zipCode: String, deliveryDate: String?): KitchenAvailability {
             availabilityCalls += zipCode to deliveryDate
@@ -81,7 +83,8 @@ class CheckoutViewModelTest {
 
         override suspend fun listOrders(query: OrderListQuery): List<Order> = emptyList()
 
-        override suspend fun getOrder(orderId: String): Order = error("unused")
+        override suspend fun getOrder(orderId: String): Order =
+            served.firstOrNull { it.id == orderId } ?: throw ApiException.HttpError(statusCode = 404, body = "{}")
 
         override suspend fun cancelOrder(orderId: String, request: CancelOrderRequest?): Order = error("unused")
 
@@ -125,6 +128,7 @@ class CheckoutViewModelTest {
     }
 
     private val remote = FakeCommerce()
+    private val orderStore = MemoryOrders()
     private val home = SavedAddress(
         id = 1,
         address = OrderAddress(street = "Reforma 222", city = "CDMX", state = "CDMX", zipCode = "06600", country = "MX"),
@@ -148,7 +152,7 @@ class CheckoutViewModelTest {
 
     private fun viewModel(tokenizer: PaymentTokenizer? = null) = CheckoutViewModel(
         useCases = CommerceUseCases(
-            orders = OrderRepository(remote, MemoryOrders()),
+            orders = OrderRepository(remote, orderStore),
             fulfillment = FulfillmentRepository(remote),
             payments = PaymentRepository(remote),
         ),
@@ -652,5 +656,95 @@ class CheckoutViewModelTest {
         assertTrue(viewModel.placeOrder())
 
         assertEquals(PaymentInstructions.None, viewModel.state.value.paymentInstructions)
+    }
+
+    // --- reordering (COM-701) ---
+
+    private val earlier = Order(
+        id = "o9",
+        status = "delivered",
+        fulfillmentType = "grocery_delivery",
+        provider = FulfillmentProvider(id = "walmart", name = "Walmart"),
+        deliveryAddress = office.address,
+        deliveryDate = "2026-10-05",
+        deliveryTimeSlot = "19:00-21:00",
+        createdAt = "2026-10-01T10:00:00Z",
+    )
+
+    @Test
+    fun `a reorder fills in the earlier order's delivery from the device`() = runTest {
+        orderStore.orders += earlier
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02", reorderOf = "o9")
+
+        val state = viewModel.state.value
+        assertEquals("o9", state.reorderOf?.id)
+        assertEquals("grocery_delivery", state.fulfillmentType)
+        assertEquals("walmart", state.providerId)
+        assertEquals(office.id, state.addressId)
+        assertEquals(CheckoutStep.PLAN, state.step)
+        assertNull(state.planId, "the plan is the user's to choose")
+        assertNull(state.timeSlot, "so are the day and the slot")
+    }
+
+    @Test
+    fun `a reorder reads an order the device does not have from the server`() = runTest {
+        remote.served = listOf(earlier.copy(fulfillmentType = "dark_kitchen", provider = null, deliveryAddress = home.address))
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02", reorderOf = "o9")
+
+        assertEquals("dark_kitchen", viewModel.state.value.fulfillmentType)
+        assertEquals(home.id, viewModel.state.value.addressId)
+    }
+
+    @Test
+    fun `a reorder walks straight past the delivery steps`() = runTest {
+        orderStore.orders += earlier
+        val viewModel = viewModel()
+        viewModel.start("2026-11-02", reorderOf = "o9")
+
+        viewModel.selectPlan("p1")
+
+        assertTrue(viewModel.next())
+        assertTrue(viewModel.next(), "the fulfillment and store are already chosen")
+        assertTrue(viewModel.next(), "so is the address")
+        assertEquals(CheckoutStep.SLOT, viewModel.state.value.step)
+        assertEquals(CheckoutViewModel.STANDARD_TIME_SLOTS, viewModel.state.value.slots)
+    }
+
+    @Test
+    fun `a store no longer offered is left for the user to choose`() = runTest {
+        orderStore.orders += earlier.copy(provider = FulfillmentProvider(id = "soriana"))
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02", reorderOf = "o9")
+
+        assertEquals("grocery_delivery", viewModel.state.value.fulfillmentType)
+        assertNull(viewModel.state.value.providerId)
+    }
+
+    @Test
+    fun `an address no longer in the book keeps the default one`() = runTest {
+        orderStore.orders += earlier.copy(deliveryAddress = office.address.copy(street = "Madero 1"))
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02", reorderOf = "o9")
+
+        assertEquals(home.id, viewModel.state.value.addressId)
+    }
+
+    @Test
+    fun `an order that cannot be read starts an ordinary checkout`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02", reorderOf = "missing")
+
+        val state = viewModel.state.value
+        assertNull(state.reorderOf)
+        assertNull(state.fulfillmentType)
+        assertNull(state.error)
+        assertEquals(listOf("p1", "p2"), state.plans.map { it.id })
     }
 }

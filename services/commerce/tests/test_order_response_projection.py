@@ -54,7 +54,8 @@ def _order() -> Order:
 
 
 def test_projection_field_values():
-    data = OrderResponse.from_order(_order()).model_dump(by_alias=True)
+    order = _order()
+    data = OrderResponse.from_order(order).model_dump(by_alias=True)
     assert data["status"] == "confirmed"
     assert data["fulfillmentType"] == "dark_kitchen"
     assert data["total"]["amount"] == 120.0
@@ -64,6 +65,11 @@ def test_projection_field_values():
     assert data["items"][0]["quantity"] == 2.0
     assert data["provider"]["id"] == "prov-1"
     assert data["trackingUrl"] == "https://track.example/abc"
+    assert data["deliveryDate"] == date(2026, 7, 10)
+    assert data["deliveryTimeSlot"] == "12:00-13:00"
+    assert data["deliveryAddress"]["zipCode"] == "06600"
+    assert data["deliveryAddress"]["apartment"] is None
+    assert data["createdAt"] == order.created_at
 
 
 def test_money_amount_projects_as_json_number():
@@ -109,3 +115,4 @@ def test_projection_conforms_to_contract():
     assert set(data["items"][0].keys()) <= documented("OrderItemResponse")
     assert set(data["total"].keys()) <= documented("MoneyResponse")
     assert set(data["provider"].keys()) <= documented("ProviderResponse")
+    assert set(data["deliveryAddress"].keys()) <= documented("AddressResponse")

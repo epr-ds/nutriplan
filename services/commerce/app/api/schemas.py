@@ -279,11 +279,39 @@ class OrderQuoteResponse(_Camel):
         )
 
 
+class AddressResponse(_Camel):
+    """Where an order is delivered (COM-701), so the app can show it and reorder to it."""
+
+    street: str
+    city: str
+    state: str
+    zip_code: str
+    country: str
+    apartment: str | None = None
+    instructions: str | None = None
+
+    @classmethod
+    def from_address(cls, address: Address) -> AddressResponse:
+        return cls(
+            street=address.street,
+            city=address.city,
+            state=address.state,
+            zip_code=address.zip_code,
+            country=address.country,
+            apartment=address.apartment,
+            instructions=address.instructions,
+        )
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
     fulfillment_type: FulfillmentType
     provider: ProviderResponse | None = None
+    delivery_address: AddressResponse
+    delivery_date: date
+    delivery_time_slot: str
+    created_at: datetime
     items: list[OrderItemResponse]
     subtotal: MoneyResponse
     delivery_fee: MoneyResponse
@@ -346,6 +374,10 @@ class OrderResponse(_Camel):
             status=order.status,
             fulfillment_type=order.fulfillment_type,
             provider=provider,
+            delivery_address=AddressResponse.from_address(order.delivery_address),
+            delivery_date=order.delivery_date,
+            delivery_time_slot=order.delivery_time_slot,
+            created_at=order.created_at,
             items=[OrderItemResponse.from_item(item) for item in order.items],
             subtotal=MoneyResponse.from_money(order.subtotal),
             delivery_fee=MoneyResponse.from_money(order.delivery_fee),
