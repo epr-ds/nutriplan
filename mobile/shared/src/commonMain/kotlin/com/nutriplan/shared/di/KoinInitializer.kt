@@ -30,6 +30,7 @@ object KoinInitializer {
             modules(sessionModule)
             modules(planningModule)
             modules(recipesModule)
+            modules(notificationsModule)
             modules(appModules)
         }
     }
