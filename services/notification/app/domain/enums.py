@@ -29,6 +29,8 @@ class NotificationType(StrEnum):
     ORDER_CANCELLED = "order_cancelled"
     MEAL_REMINDER = "meal_reminder"
     PLAN_ENDING = "plan_ending"
+    PLAN_ENDED = "plan_ended"
+    PLAN_RENEWAL = "plan_renewal"
 
     @property
     def is_order_update(self) -> bool:

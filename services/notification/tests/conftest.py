@@ -46,8 +46,10 @@ from app.adapters.redis_order_progress import RedisOrderProgressStore
 from app.adapters.redis_preferences_repository import RedisPreferencesRepository
 from app.adapters.redis_push_receipt_store import RedisPushReceiptStore
 from app.adapters.retention import RetentionPolicy
+from app.application.meal_reminder_consumer import MealReminderConsumer
 from app.application.notification_recorder import NotificationRecorder
 from app.application.order_status_consumer import OrderStatusConsumer
+from app.application.plan_ending_consumer import PlanEndingConsumer
 from app.domain.notification import Notification
 from app.domain.repositories import (
     DeduplicationStore,
@@ -520,6 +522,116 @@ def order_consumer(request: pytest.FixtureRequest) -> Iterator[OrderConsumerHarn
         yield OrderConsumerHarness(
             OrderStatusConsumer(recorder, progress), repository, progress, preferences
         )
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@dataclass
+class MealReminderConsumerHarness:
+    """The meal-reminder consumer with its stores behind it left reachable (NTF-602).
+
+    A consumer's whole output is a side effect, so a test needs to read the store to see
+    what it did. Bundling the consumer with its repository here keeps every assertion going
+    through the same backend the consumer wrote to -- the mistake that would make an
+    in-memory test pass while the Redis one silently asserted nothing.
+    """
+
+    consumer: MealReminderConsumer
+    repository: NotificationRepository
+    preferences: PreferencesRepository
+
+    def feed(self, user_id: uuid.UUID) -> list[Notification]:
+        """Everything recorded for a user, newest first."""
+        return self.repository.list_for_user(user_id)
+
+    def types(self, user_id: uuid.UUID) -> list[str]:
+        """Just the notification types in the user's feed, for readable assertions."""
+        return [n.type.value for n in self.feed(user_id)]
+
+
+@pytest.fixture(params=["memory", "redis"])
+def meal_reminder_consumer(request: pytest.FixtureRequest) -> Iterator[MealReminderConsumerHarness]:
+    """The meal-reminder consumer wired to one backend, with its stores exposed."""
+    if request.param == "memory":
+        repository: NotificationRepository = InMemoryNotificationRepository(policy=TEST_POLICY)
+        preferences: PreferencesRepository = InMemoryPreferencesRepository()
+        recorder = NotificationRecorder(
+            repository,
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+            preferences,
+        )
+        yield MealReminderConsumerHarness(MealReminderConsumer(recorder), repository, preferences)
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    keys = NotificationKeys(namespace=namespace)
+    try:
+        repository = redis_repository(client, namespace=namespace)
+        preferences = RedisPreferencesRepository(client, keys=keys)  # type: ignore[arg-type]
+        recorder = NotificationRecorder(
+            repository,
+            RedisDeduplicationStore(client, keys=keys, window=TEST_WINDOW),  # type: ignore[arg-type]
+            preferences,
+        )
+        yield MealReminderConsumerHarness(MealReminderConsumer(recorder), repository, preferences)
+    finally:
+        drop_namespace(client, namespace)
+        client.close()
+
+
+@dataclass
+class PlanEndingConsumerHarness:
+    """The plan-ending consumer with its stores behind it left reachable (NTF-602).
+
+    Same reasoning as :class:`MealReminderConsumerHarness`: the plan-ending consumer's output
+    is a feed write, and the write is what a user would actually find.
+    """
+
+    consumer: PlanEndingConsumer
+    repository: NotificationRepository
+    preferences: PreferencesRepository
+
+    def feed(self, user_id: uuid.UUID) -> list[Notification]:
+        """Everything recorded for a user, newest first."""
+        return self.repository.list_for_user(user_id)
+
+    def types(self, user_id: uuid.UUID) -> list[str]:
+        """Just the notification types in the user's feed, for readable assertions."""
+        return [n.type.value for n in self.feed(user_id)]
+
+
+@pytest.fixture(params=["memory", "redis"])
+def plan_ending_consumer(request: pytest.FixtureRequest) -> Iterator[PlanEndingConsumerHarness]:
+    """The plan-ending consumer wired to one backend, with its stores exposed."""
+    if request.param == "memory":
+        repository: NotificationRepository = InMemoryNotificationRepository(policy=TEST_POLICY)
+        preferences: PreferencesRepository = InMemoryPreferencesRepository()
+        recorder = NotificationRecorder(
+            repository,
+            InMemoryDeduplicationStore(window=TEST_WINDOW),
+            preferences,
+        )
+        yield PlanEndingConsumerHarness(PlanEndingConsumer(recorder), repository, preferences)
+        return
+
+    import redis
+
+    client = redis.Redis.from_url(require_redis_url(), decode_responses=True)
+    namespace = isolated_namespace()
+    keys = NotificationKeys(namespace=namespace)
+    try:
+        repository = redis_repository(client, namespace=namespace)
+        preferences = RedisPreferencesRepository(client, keys=keys)  # type: ignore[arg-type]
+        recorder = NotificationRecorder(
+            repository,
+            RedisDeduplicationStore(client, keys=keys, window=TEST_WINDOW),  # type: ignore[arg-type]
+            preferences,
+        )
+        yield PlanEndingConsumerHarness(PlanEndingConsumer(recorder), repository, preferences)
     finally:
         drop_namespace(client, namespace)
         client.close()
