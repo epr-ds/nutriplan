@@ -583,6 +583,21 @@ components:
         instructions:
           type: string
 
+    StatusChangeResponse:
+      type: object
+      description: One move of an order's lifecycle (COM-703).
+      required: [fromStatus, toStatus, occurredAt]
+      properties:
+        fromStatus:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+        toStatus:
+          type: string
+          enum: [pending, confirmed, preparing, in_transit, delivered, cancelled]
+        occurredAt:
+          type: string
+          format: date-time
+
     AddressResponse:
       type: object
       description: Where an order is delivered (COM-701).
@@ -697,6 +712,11 @@ components:
           type: string
           format: date-time
           description: When the order was placed.
+        statusHistory:
+          type: array
+          description: Every move of the order's lifecycle, oldest first (COM-703).
+          items:
+            $ref: '#/components/schemas/StatusChangeResponse'
         items:
           type: array
           items:

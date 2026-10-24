@@ -303,6 +303,14 @@ class AddressResponse(_Camel):
         )
 
 
+class StatusChangeResponse(_Camel):
+    """One move of the order's lifecycle (COM-703), for the app's status timeline."""
+
+    from_status: OrderStatus
+    to_status: OrderStatus
+    occurred_at: datetime
+
+
 class OrderResponse(_Camel):
     id: uuid.UUID
     status: OrderStatus
@@ -312,6 +320,7 @@ class OrderResponse(_Camel):
     delivery_date: date
     delivery_time_slot: str
     created_at: datetime
+    status_history: list[StatusChangeResponse]
     items: list[OrderItemResponse]
     subtotal: MoneyResponse
     delivery_fee: MoneyResponse
@@ -378,6 +387,14 @@ class OrderResponse(_Camel):
             delivery_date=order.delivery_date,
             delivery_time_slot=order.delivery_time_slot,
             created_at=order.created_at,
+            status_history=[
+                StatusChangeResponse(
+                    from_status=change.from_status,
+                    to_status=change.to_status,
+                    occurred_at=change.occurred_at,
+                )
+                for change in order.status_history
+            ],
             items=[OrderItemResponse.from_item(item) for item in order.items],
             subtotal=MoneyResponse.from_money(order.subtotal),
             delivery_fee=MoneyResponse.from_money(order.delivery_fee),

@@ -61,6 +61,7 @@ REQUEST_CLASSES: dict[str, str] = {
 # Classes the client reads: a subset of the schema's properties (it ignores the rest).
 RESPONSE_CLASSES: dict[str, str] = {
     "Order": "OrderResponse",
+    "OrderStatusChange": "StatusChangeResponse",
     "OrderQuote": "OrderQuoteResponse",
     "OrderItem": "OrderItemResponse",
     "Money": "MoneyResponse",

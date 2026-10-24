@@ -602,7 +602,7 @@ private fun OrderConfirmation(
 }
 
 @Composable
-private fun PaymentInstructionsCard(instructions: PaymentInstructions, total: Money?) {
+internal fun PaymentInstructionsCard(instructions: PaymentInstructions, total: Money?) {
     val uriHandler = LocalUriHandler.current
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -751,7 +751,7 @@ private fun SummaryRow(step: CheckoutStep, value: String, onEdit: (CheckoutStep)
 }
 
 @Composable
-private fun PriceRow(label: String, amount: Money?, modifier: Modifier = Modifier, bold: Boolean = false) {
+internal fun PriceRow(label: String, amount: Money?, modifier: Modifier = Modifier, bold: Boolean = false) {
     val weight = if (bold) FontWeight.Bold else FontWeight.Normal
     Row(modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Text(text = label, fontWeight = weight, modifier = Modifier.weight(1f))
@@ -795,7 +795,7 @@ private fun ErrorBanner(@StringRes message: Int, onRetry: () -> Unit) {
 // --- labels ------------------------------------------------------------------------------------
 
 /** "2" for whole servings, "1.5" otherwise. */
-private fun formatQuantity(quantity: Double?): String {
+internal fun formatQuantity(quantity: Double?): String {
     val value = quantity ?: return "1"
     return if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
 }

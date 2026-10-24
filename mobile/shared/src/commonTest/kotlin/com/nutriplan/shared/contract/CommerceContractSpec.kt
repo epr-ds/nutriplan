@@ -179,6 +179,7 @@ internal object CommerceContract {
                 "deliveryDate",
                 "deliveryTimeSlot",
                 "createdAt",
+                "statusHistory",
                 "items",
                 "subtotal",
                 "deliveryFee",
