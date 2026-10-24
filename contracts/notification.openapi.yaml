@@ -366,6 +366,8 @@ components:
         - order_cancelled
         - meal_reminder
         - plan_ending
+        - plan_ended
+        - plan_renewal
 
     DevicePlatform:
       type: string
