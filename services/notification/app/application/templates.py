@@ -123,6 +123,34 @@ DEFAULT_NOTIFICATION_TEMPLATES: tuple[NotificationTemplate, ...] = (
         title="Your plan ends soon",
         body="Your $planType plan ends on $endingDate — manage it at $deepLink",
     ),
+    NotificationTemplate(
+        id="plan_ended",
+        version=NOTIFICATION_COPY_VERSION,
+        locale=Locale.ES,
+        title="Tu plan termino",
+        body="Tu plan $planType termino el $endingDate — revisa lo que paso en $deepLink",
+    ),
+    NotificationTemplate(
+        id="plan_ended",
+        version=NOTIFICATION_COPY_VERSION,
+        locale=Locale.EN,
+        title="Your plan ended",
+        body="Your $planType plan ended on $endingDate — see the summary at $deepLink",
+    ),
+    NotificationTemplate(
+        id="plan_renewal",
+        version=NOTIFICATION_COPY_VERSION,
+        locale=Locale.ES,
+        title="Plan por renovar",
+        body="Tu plan $planType se renueva el $renewalDate — gestiona en $deepLink",
+    ),
+    NotificationTemplate(
+        id="plan_renewal",
+        version=NOTIFICATION_COPY_VERSION,
+        locale=Locale.EN,
+        title="Plan renewal",
+        body="Your $planType plan renews on $renewalDate — manage it at $deepLink",
+    ),
 )
 
 
