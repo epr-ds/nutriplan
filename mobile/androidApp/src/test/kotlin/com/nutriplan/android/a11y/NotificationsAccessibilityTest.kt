@@ -1,5 +1,6 @@
 package com.nutriplan.android.a11y
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isHeading
