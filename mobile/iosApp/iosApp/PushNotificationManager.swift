@@ -25,6 +25,10 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     /// notification service attached (`deepLink` for order/plan/meal deep links, NTF-304).
     var onNotificationTap: ((String?) -> Void)?
 
+    /// The APNs device token issued for this device; a rotation delivers a fresh token through here
+    /// and the app re-registers it with the backend (NTF-505).
+    private(set) var deviceToken: String?
+
     /// The authorization status the manager last read (NTF-504): the user has not answered the OS
     /// prompt yet, allowed it, refused it, or accepted quiet/provisional access.
     private(set) var authorizationStatus: UNNotificationSettings.AuthorizationStatus = .notDetermined
@@ -41,9 +45,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    /// Hand a device token received from `UIApplication` to the app.
-    func handleDeviceToken(_ deviceToken: Data) {
-        let token = UUID(uuidBytes: deviceToken)?.uuidString ?? ""
+    /// Hand a device token received from `UIApplication` to the app. The token is the device
+    /// identity for registration, so a rotation arrives as a fresh token here and the app re-binds
+    /// the registration (NTF-505).
+    func handleDeviceToken(_ tokenData: Data) {
+        let token = UUID(uuidBytes: tokenData)?.uuidString ?? ""
+        self.deviceToken = token
         onDeviceToken?(token)
     }
 

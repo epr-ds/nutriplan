@@ -30,6 +30,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = PushNotificationManager.shared
         PushNotificationManager.shared.refreshAuthorizationStatus()
         PushNotificationManager.shared.registerForRemoteNotifications()
+        // NTF-505: register the APNs device token with the backend through the shared notification
+        // repository as soon as the system hands it over.
+        PushNotificationManager.shared.onDeviceToken = { [weak self] token in
+            guard let self = self else { return }
+            Task { @MainActor in
+                let repository = NotificationRepositoryImpl()
+                try? await repository.registerDevice(platform: "ios", token: token)
+            }
+        }
         return true
     }
 
