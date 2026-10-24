@@ -5,6 +5,8 @@ import com.nutriplan.db.NutriPlanDatabase
 import com.nutriplan.shared.commerce.AddressBookViewModel
 import com.nutriplan.shared.commerce.CheckoutViewModel
 import com.nutriplan.shared.commerce.CommerceUseCases
+import com.nutriplan.shared.commerce.OrderDetailViewModel
+import com.nutriplan.shared.commerce.OrderListViewModel
 import com.nutriplan.shared.commerce.PaymentMethodsViewModel
 import com.nutriplan.shared.commerce.PaymentTokenizer
 import com.nutriplan.shared.data.local.DatabaseDriverFactory
@@ -62,6 +64,10 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     factory { AddressBookViewModel(store = get<SavedAddressStore>()) }
     // COM-603: saved payment methods; "Add" needs the platform's provider tokenizer (COM-508).
     factory { PaymentMethodsViewModel(repository = get(), tokenizer = getOrNull<PaymentTokenizer>()) }
+    // COM-701: the order list, cache-first through the use cases.
+    factory { OrderListViewModel(useCases = get()) }
+    // COM-703: one order's detail, cache-first, with cancel.
+    factory { OrderDetailViewModel(useCases = get()) }
     // COM-605: the checkout stepper; plans from the (cached) Dietary client, addresses from the device.
     factory {
         val dietary = get<DietaryRepository>()

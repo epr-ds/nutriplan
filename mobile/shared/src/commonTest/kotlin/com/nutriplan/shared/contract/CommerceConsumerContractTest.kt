@@ -11,6 +11,7 @@ import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.OrderListQuery
 import com.nutriplan.shared.data.model.OrderQuoteRequest
+import com.nutriplan.shared.data.model.OrderStatusChange
 import com.nutriplan.shared.data.model.PaymentMethodRequest
 import com.nutriplan.shared.data.model.SavePaymentMethodRequest
 import com.nutriplan.shared.data.network.HttpClientProvider
@@ -88,6 +89,12 @@ class CommerceConsumerContractTest {
         assertNoViolations()
         assertEquals("11111111-1111-4111-8111-111111111111", order.id)
         assertEquals("FreshBasket", order.provider?.name)
+        assertEquals("06600", order.deliveryAddress?.zipCode)
+        assertEquals("Ring twice", order.deliveryAddress?.instructions)
+        assertEquals("2026-11-02", order.deliveryDate)
+        assertEquals("13:00-15:00", order.deliveryTimeSlot)
+        assertEquals("2026-10-23T18:00:00Z", order.createdAt)
+        assertEquals(OrderStatusChange("pending", "confirmed", "2026-10-23T18:05:00Z"), order.statusHistory.single())
         assertEquals(2.0, order.items.single().quantity)
         assertEquals("MXN 178.0", order.items.single().lineTotal?.formatted)
         assertEquals(208.0, order.total?.amount)

@@ -54,7 +54,8 @@ def _order() -> Order:
 
 
 def test_projection_field_values():
-    data = OrderResponse.from_order(_order()).model_dump(by_alias=True)
+    order = _order()
+    data = OrderResponse.from_order(order).model_dump(by_alias=True)
     assert data["status"] == "confirmed"
     assert data["fulfillmentType"] == "dark_kitchen"
     assert data["total"]["amount"] == 120.0
@@ -64,6 +65,26 @@ def test_projection_field_values():
     assert data["items"][0]["quantity"] == 2.0
     assert data["provider"]["id"] == "prov-1"
     assert data["trackingUrl"] == "https://track.example/abc"
+    assert data["deliveryDate"] == date(2026, 7, 10)
+    assert data["deliveryTimeSlot"] == "12:00-13:00"
+    assert data["deliveryAddress"]["zipCode"] == "06600"
+    assert data["deliveryAddress"]["apartment"] is None
+    assert data["createdAt"] == order.created_at
+
+
+def test_status_history_projects_oldest_first():
+    order = _order()
+    order.status = OrderStatus.PENDING
+    order.confirm(occurred_at=datetime(2026, 7, 9, 10, 0, tzinfo=UTC))
+    order.start_preparing(occurred_at=datetime(2026, 7, 10, 11, 0, tzinfo=UTC))
+
+    data = OrderResponse.from_order(order).model_dump(by_alias=True)
+
+    assert [(c["fromStatus"], c["toStatus"]) for c in data["statusHistory"]] == [
+        ("pending", "confirmed"),
+        ("confirmed", "preparing"),
+    ]
+    assert data["statusHistory"][0]["occurredAt"] == datetime(2026, 7, 9, 10, 0, tzinfo=UTC)
 
 
 def test_money_amount_projects_as_json_number():
@@ -109,3 +130,10 @@ def test_projection_conforms_to_contract():
     assert set(data["items"][0].keys()) <= documented("OrderItemResponse")
     assert set(data["total"].keys()) <= documented("MoneyResponse")
     assert set(data["provider"].keys()) <= documented("ProviderResponse")
+    assert set(data["deliveryAddress"].keys()) <= documented("AddressResponse")
+
+    order = _order()
+    order.status = OrderStatus.PENDING
+    order.confirm()
+    history = OrderResponse.from_order(order).model_dump(by_alias=True)["statusHistory"]
+    assert set(history[0].keys()) <= documented("StatusChangeResponse")

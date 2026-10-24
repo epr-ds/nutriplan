@@ -107,9 +107,12 @@ sealed class Route {
     @Serializable
     data class OrderDetail(val orderId: String) : Route()
 
-    /** Checkout flow (COM-605), optionally for one meal plan. */
+    /**
+     * Checkout flow (COM-605), optionally for one meal plan, or repeating the delivery of order
+     * [reorderOrderId] (COM-701). A reorder is started from the order list, not from a deep link.
+     */
     @Serializable
-    data class Checkout(val planId: String? = null) : Route()
+    data class Checkout(val planId: String? = null, val reorderOrderId: String? = null) : Route()
 
     // --- Notification screens ---
     /** Notification center. */
