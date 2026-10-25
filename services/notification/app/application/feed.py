@@ -105,7 +105,9 @@ class NotificationFeed:
         The unread badge is a second scan today, which is wasteful when the page already holds
         every unread entry of the user (HRD-203): with ``unread_only`` the window is bounded by
         the page limit + one, so a window that did not overflow means the page *is* the badge and
-        the count scan can be skipped.
+        the count scan can be skipped -- but only while the window starts at the head of the
+        unread index, which is what the first page does. Later pages cannot know that, and must
+        count.
         """
         window = self._repository.list_for_user(
             query.user_id,
@@ -114,7 +116,10 @@ class NotificationFeed:
             offset=query.offset,
         )
         items = tuple(window[: query.limit])
-        if query.unread_only and len(window) <= query.limit:
+        # Only a window that starts at the head of the unread index can answer the badge from
+        # its own contents: a first page that did not overflow holds *every* unread entry, while
+        # a later page is a slice of them and must still count the user's total. (HRD-203)
+        if query.unread_only and query.offset == 0 and len(window) <= query.limit:
             unread_count = len(items)
         else:
             unread_count = self._repository.count_unread(query.user_id)
