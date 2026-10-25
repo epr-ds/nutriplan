@@ -38,6 +38,8 @@ struct NotificationsPreferencesView: View {
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
+            // HRD-303: spell the gating out so VoiceOver users know why the row is inert (WCAG 4.1.2).
+            .accessibilityHint("Disabled while push notifications are turned off")
 
             Toggle(
                 "Order updates",
@@ -49,6 +51,7 @@ struct NotificationsPreferencesView: View {
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
+            .accessibilityHint("Disabled while push notifications are turned off")
 
             Toggle(
                 "Promotions",
@@ -60,6 +63,7 @@ struct NotificationsPreferencesView: View {
                 ),
             )
             .disabled(!(preferences?.pushEnabled ?? false))
+            .accessibilityHint("Disabled while push notifications are turned off")
 
             Toggle(
                 "Email notifications",
@@ -79,6 +83,8 @@ struct NotificationsPreferencesView: View {
                 selection: $startTime,
                 displayedComponents: [.hour, .minute],
             )
+            .accessibilityLabel("Quiet hours start")
+            .accessibilityHint("Notifications are suppressed during this window")
             .onChange(of: startTime) { _ in
                 Task {
                     await viewModel.updateQuietHours(
@@ -93,6 +99,8 @@ struct NotificationsPreferencesView: View {
                 selection: $endTime,
                 displayedComponents: [.hour, .minute],
             )
+            .accessibilityLabel("Quiet hours end")
+            .accessibilityHint("Notifications are suppressed during this window")
             .onChange(of: endTime) { _ in
                 Task {
                     await viewModel.updateQuietHours(

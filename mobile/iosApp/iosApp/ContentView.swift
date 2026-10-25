@@ -104,6 +104,10 @@ private struct HomeContent: View {
                         }
                     }
                 }
+                // HRD-303: the bell is the notification entry point, so it carries an explicit
+                // accessible name including the unread badge (WCAG 4.1.2 / TalkBack & VoiceOver).
+                .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
+                .accessibilityHint("Opens the notification center")
             }
             Spacer(minLength: 24)
             Text(greeting)
@@ -126,11 +130,12 @@ struct NotificationPermissionView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "bell.fill")
-                .font(.system(size: 48))
+                .font(.headline)
                 .foregroundColor(.orange)
             Text("Stay notified about meal plan reminders and order updates.")
                 .font(.headline)
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
             Button("Allow Notifications") {
                 onAllow()
             }
