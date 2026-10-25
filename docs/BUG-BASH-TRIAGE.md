@@ -8,7 +8,7 @@
 
 Full org-wide bug bash scope is defined in `docs/BUG-BASH.md` (probe areas, defect capture format, tooling/process, severity tagging, acceptance criteria).
 
-This triage report covers the **initial bug-bash automated pass** and the resulting findings.
+This triage report covers the **automated bug-bash pass** and the resulting findings.
 
 ## 2. Automated Bug-Bash Pass Results (task-2)
 
@@ -22,11 +22,15 @@ This triage report covers the **initial bug-bash automated pass** and the result
 | Chaos / resilience — notification | `chaos-tests/test_notification_resilience.py` | ✅ PASS (16) |
 | Chaos / resilience — dietary | `chaos-tests/test_dietary_db_connection_loss.py` | ✅ PASS (3) |
 | Chaos / resilience — commerce | `chaos-tests/test_commerce_*.py` | ✅ GREEN (19 passed after installing `services/commerce/requirements-dev.txt`) |
-| Regression runner | `regression/run.py --services dietary` | ⛔ VACUOUS (0 cases loaded — no `services/*/regression/corpus.json` files exist in repo) |
+| Service tests — ai | `services/ai/tests` | ✅ PASS (exit 0) |
+| Service tests — notification | `services/notification/tests` | ✅ PASS (exit 0) |
+| Service tests — dietary | `services/dietary/tests` | ✅ PASS (exit 0) |
+| Service tests — identity | `services/identity/tests` | ⛔ ENV-BLOCKED (missing `boto3`; further deps unresolved) |
+| Regression runner | `regression/run.py --services dietary` | ⛔ VACUOUS (0 cases loaded — no `services/*/regression/corpus.json` exist in repo) |
 
 ## 3. Captured Findings & Severity-Ranked Report
 
-**Captured findings from the initial automated bug-bash pass:**
+**Captured findings from the automated bug-bash pass:**
 
 | # | Source | Severity | Area | Status | Note |
 |---|--------|----------|------|--------|------|
@@ -34,12 +38,13 @@ This triage report covers the **initial bug-bash automated pass** and the result
 | F2 | Automated pass — chaos/resilience (ai / notification / dietary) | N/A (no defect) | ai / notification / dietary | ✅ Green | All runnable chaos probes passed. |
 | F3 | Automated pass — chaos/resilience (commerce) | N/A (no defect; resolved) | commerce | ✅ Green | Chaos probes pass after installing commerce dev deps; not a code defect. |
 | F4 | Automated pass — regression runner | N/A (vacuous) | services | ⛔ Vacuous | No corpus files exist; runner loaded 0 cases. |
+| F5 | Automated pass — service tests (ai / notification / dietary) | N/A (no defect) | ai / notification / dietary | ✅ PASS (exit 0) | Service test suites ran green. |
 
 **Severity-ranked findings:**
 
 - No reproducible defect was surfaced by the automated probes executed in this pass.
 - Consequently, **no GA-blocking (P0/P1) defect** was identified from automated evidence, and no real severity tag (P0–P3) should be assigned to fabricated findings. Any severities recorded for future triage must come from actual reproductions.
-- Environment/tooling caveats (F3, F4) are not code defects and carry no severity assignment.
+- Environment/tooling caveats (identity service tests, regression runner) are not code defects and carry no severity assignment.
 
 ## 4. Triage Decisions
 
