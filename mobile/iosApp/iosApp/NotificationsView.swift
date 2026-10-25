@@ -27,6 +27,7 @@ struct NotificationsView: View {
             HStack {
                 Text("Notifications")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button {
                     onOpenPreferences()
@@ -35,6 +36,8 @@ struct NotificationsView: View {
                         .font(.subheadline)
                         .foregroundColor(.primary)
                 }
+                .accessibilityLabel("Notification preferences")
+                .accessibilityHint("Opens notification preferences")
                 Button("Done") {
                     onClose()
                 }
@@ -67,6 +70,9 @@ struct NotificationsView: View {
                                     }
                                 }
                                 .buttonStyle(.borderless)
+                                // HRD-303: name each notification from its text content so screen readers
+                                // announce the title + body (WCAG 4.1.2).
+                                .accessibilityLabel("\(state.notifications[index].title) \(state.notifications[index].body)")
                             }
                         }
                     }
@@ -87,6 +93,9 @@ struct NotificationsView: View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Loading your notifications…")
+                // HRD-303: announce the loading state to screen readers via a polite live region
+                // (WCAG 4.1.3).
+                .accessibilityLiveRegion(.polite)
         }
     }
 
@@ -103,6 +112,9 @@ struct NotificationsView: View {
             Image(systemName: "bell.slash")
                 .font(.title)
             Text("Couldn't load your notifications.")
+                // HRD-303: announce errors through a polite live region so screen readers read them
+                // when they appear (WCAG 3.3.1 / 4.1.3).
+                .accessibilityLiveRegion(.polite)
             Button("Retry") {
                 retry()
             }

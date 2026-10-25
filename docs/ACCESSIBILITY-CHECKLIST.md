@@ -69,6 +69,9 @@
 - [ ] Empty / loading / error states are announced (live regions where they carry state)
 - [ ] Preference toggles are labelled; per-type rows disable when push master is off
 - [ ] Quiet-hours inputs are reachable and announced
+- [ ] iOS: notification bell entry point announces the unread count when present
+- [ ] iOS: notification preferences screen announces push-master gating on per-type rows
+- [ ] iOS: quiet-hours start / end pickers have accessible labels and announce suppression
 
 ### 2. Large Font / Dynamic Type Testing
 
