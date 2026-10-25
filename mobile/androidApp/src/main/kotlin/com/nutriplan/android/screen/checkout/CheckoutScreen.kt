@@ -276,7 +276,7 @@ private fun LazyListScope.planStep(state: CheckoutUiState, onSelectPlan: (String
                 text = placed?.let { stringResource(R.string.checkout_reorder_note_dated, it) }
                     ?: stringResource(R.string.checkout_reorder_note),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.testTag(CheckoutTestTags.REORDER_NOTE),
             )
         }
@@ -725,7 +725,7 @@ private fun Option(title: String, subtitle: String?, selected: Boolean, onClick:
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
                 subtitle?.takeIf(String::isNotBlank)?.let {
-                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -738,7 +738,7 @@ private fun SummaryRow(step: CheckoutStep, value: String, onEdit: (CheckoutStep)
     val editDescription = stringResource(R.string.cd_checkout_edit, stepTitle)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = stepTitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = stepTitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
             Text(text = value, style = MaterialTheme.typography.bodyMedium)
         }
         TextButton(
