@@ -243,18 +243,22 @@ private fun ProfileAvatar(avatarUrl: String?) {
 
 /**
  * Stat item component.
+ *
+ * Groups the value and label into a single semantic unit so screen readers announce them
+ * together (WCAG 1.3.1, Info and Relationships / F17).
  */
 @Composable
 private fun StatItem(label: String, value: String) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        // F17: Group value and label into a single semantic unit for screen readers
+        modifier = Modifier.semantics { contentDescription = "$value $label" }
     ) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary
         )
-        // F17: Grouped into single semantic unit for screen readers (combinedText)
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
