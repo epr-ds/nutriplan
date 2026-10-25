@@ -270,6 +270,20 @@ def test_an_unread_only_page_that_overflows_still_counts() -> None:
     assert repository.scans == 1
 
 
+def test_an_unread_only_page_past_the_first_still_counts_the_user_badge() -> None:
+    """The badge is the user's whole unread total, whatever page it is read on -- so a page
+    past the first must still run the count scan. Only a *first* page that did not overflow can
+    answer the badge from its own contents (HRD-203)."""
+    repository = _CountingUnreadRepository()
+    feed = NotificationFeed(repository)
+    _seed(repository, *(_notification(age_seconds=i * 10) for i in range(3)))
+
+    page = feed.page(FeedQuery(user_id=USER, unread_only=True, page=2, limit=2))
+
+    assert page.unread_count == 3
+    assert repository.scans == 1
+
+
 # -- unread count ----------------------------------------------------------------------
 
 
