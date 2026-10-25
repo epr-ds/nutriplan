@@ -21,7 +21,7 @@ This triage report covers the **initial bug-bash automated pass** and the result
 | Chaos / resilience — ai | `chaos-tests/test_ai_llm_retry.py` | ✅ PASS (20) |
 | Chaos / resilience — notification | `chaos-tests/test_notification_resilience.py` | ✅ PASS (16) |
 | Chaos / resilience — dietary | `chaos-tests/test_dietary_db_connection_loss.py` | ✅ PASS (3) |
-| Chaos / resilience — commerce | `chaos-tests/test_commerce_*.py` | ⛔ ENV-BLOCKED (local venv missing `sqlalchemy`; CI installs `services/<svc>/requirements-dev.txt` first) |
+| Chaos / resilience — commerce | `chaos-tests/test_commerce_*.py` | ✅ GREEN (19 passed after installing `services/commerce/requirements-dev.txt`) |
 | Regression runner | `regression/run.py --services dietary` | ⛔ VACUOUS (0 cases loaded — no `services/*/regression/corpus.json` files exist in repo) |
 
 ## 3. Captured Findings & Severity-Ranked Report
@@ -32,7 +32,7 @@ This triage report covers the **initial bug-bash automated pass** and the result
 |---|--------|----------|------|--------|------|
 | F1 | Automated pass — contract drift (4 checks) | N/A (no defect) | mobile/shared | ✅ No drift detected | All four contract checks passed. |
 | F2 | Automated pass — chaos/resilience (ai / notification / dietary) | N/A (no defect) | ai / notification / dietary | ✅ Green | All runnable chaos probes passed. |
-| F3 | Automated pass — chaos/resilience (commerce) | N/A (env-blocked) | commerce | ⛔ Env-blocked | Missing local venv dependency; CI path installs it. |
+| F3 | Automated pass — chaos/resilience (commerce) | N/A (no defect; resolved) | commerce | ✅ Green | Chaos probes pass after installing commerce dev deps; not a code defect. |
 | F4 | Automated pass — regression runner | N/A (vacuous) | services | ⛔ Vacuous | No corpus files exist; runner loaded 0 cases. |
 
 **Severity-ranked findings:**
