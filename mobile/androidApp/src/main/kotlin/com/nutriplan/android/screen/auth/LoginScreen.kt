@@ -165,7 +165,9 @@ internal fun LoginScreenContent(
                     enabled = oauthState.canSubmit,
                     modifier = Modifier
                         .fillMaxWidth()
+                        // F7 / F9: guarantee a 48dp touch target in both dimensions (WCAG 2.5.5)
                         .widthIn(min = 48.dp)
+                        .heightIn(min = 48.dp)
                 ) {
                     if (oauthState.isLoading && oauthState.activeProvider == provider) {
                         CircularProgressIndicator(
