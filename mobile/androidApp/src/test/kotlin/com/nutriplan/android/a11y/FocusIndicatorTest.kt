@@ -64,6 +64,6 @@ class FocusIndicatorTest {
         render()
 
         compose.onNodeWithText("Email").assertExists()
-        compose.onNodeWithRole(Role.TextInput).assertExists()
+        compose.onNodeWithRole(Role.Button).assertExists()
     }
 }
