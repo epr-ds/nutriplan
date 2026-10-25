@@ -59,7 +59,7 @@ class NotificationRepositoryContractTest {
         val device = repository.registerDevice(platform = "ios", token = "fcm-token-1")
 
         assertEquals(HttpMethod.Post, lastRequest!!.method)
-        assertEquals("/notification/v1/notifications/devices", lastRequest!!.url.encodedPath)
+        assertEquals("/notifications/v1/notifications/devices", lastRequest!!.url.encodedPath)
         assertEquals("""{"platform":"ios","token":"fcm-token-1"}""", requestBody())
         assertEquals("3f9d0f4e-1c2b-4d3e-9f8a-7b6c5d4e3f2a", device.id)
     }
@@ -71,7 +71,7 @@ class NotificationRepositoryContractTest {
         repository.revokeDevice(deviceId = "device-1")
 
         assertEquals(HttpMethod.Delete, lastRequest!!.method)
-        assertEquals("/notification/v1/notifications/devices/device-1", lastRequest!!.url.encodedPath)
+        assertEquals("/notifications/v1/notifications/devices/device-1", lastRequest!!.url.encodedPath)
     }
 
     @Test
