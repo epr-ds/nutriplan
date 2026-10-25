@@ -34,7 +34,7 @@ class ApiConfigTest {
 
     @Test
     fun `NOTIFICATION endpoint is correctly configured`() {
-        assertEquals("https://api.nutriplan.app/notification/v1", ApiConfig.NOTIFICATION)
+        assertEquals("https://api.nutriplan.app/notifications/v1", ApiConfig.NOTIFICATION)
     }
 
     @Test

@@ -28,5 +28,5 @@ object ApiConfig {
     val DIETARY: String get() = "$BASE_URL/dietary/v1"
     val AI: String get() = "$BASE_URL/ai/v1"
     val COMMERCE: String get() = "$BASE_URL/commerce/v1"
-    val NOTIFICATION: String get() = "$BASE_URL/notification/v1"
+    val NOTIFICATION: String get() = "$BASE_URL/notifications/v1"
 }
