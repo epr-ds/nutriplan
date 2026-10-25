@@ -101,6 +101,11 @@ class NotificationFeed:
 
         One extra row is requested and then dropped; see the module docstring for why that is
         a truthful ``has_more`` rather than a guess.
+
+        The unread badge is a second scan today, which is wasteful when the page already holds
+        every unread entry of the user (HRD-203): with ``unread_only`` the window is bounded by
+        the page limit + one, so a window that did not overflow means the page *is* the badge and
+        the count scan can be skipped.
         """
         window = self._repository.list_for_user(
             query.user_id,
@@ -108,9 +113,14 @@ class NotificationFeed:
             limit=query.limit + 1,
             offset=query.offset,
         )
+        items = tuple(window[: query.limit])
+        if query.unread_only and len(window) <= query.limit:
+            unread_count = len(items)
+        else:
+            unread_count = self._repository.count_unread(query.user_id)
         return FeedPage(
-            items=tuple(window[: query.limit]),
-            unread_count=self._repository.count_unread(query.user_id),
+            items=items,
+            unread_count=unread_count,
             page=query.page,
             limit=query.limit,
             has_more=len(window) > query.limit,
