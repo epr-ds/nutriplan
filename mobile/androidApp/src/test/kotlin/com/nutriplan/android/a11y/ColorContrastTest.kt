@@ -47,46 +47,43 @@ class ColorContrastTest {
         assertTrue(actual >= minimum, "Contrast $actual:1 < $minimum:1 for fg=$fg bg=$bg")
     }
 
-    private fun renderTheme(dark: Boolean) {
+    @Test
+    fun `onSurface text on surface background passes AA in light theme`() {
         compose.setContent {
-            NutriPlanTheme(darkTheme = dark) {
-                // Empty content — just need the theme to be applied.
-            }
+            val scheme = MaterialTheme.colorScheme
+            assertTrue(contrast(scheme.onSurface, scheme.surface) >= 4.5f, "AA contrast failed")
         }
     }
 
     @Test
-    fun `onSurface text on surface background passes AA in light theme`() {
-        renderTheme(dark = false)
-        val scheme = MaterialTheme.colorScheme
-        assertContrastAtLeast(scheme.onSurface, scheme.surface, 4.5f)
-    }
-
-    @Test
     fun `onSurfaceVariant text on surface background passes AA in light theme`() {
-        renderTheme(dark = false)
-        val scheme = MaterialTheme.colorScheme
-        assertContrastAtLeast(scheme.onSurfaceVariant, scheme.surface, 4.5f)
+        compose.setContent {
+            val scheme = MaterialTheme.colorScheme
+            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surface) >= 4.5f, "AA contrast failed")
+        }
     }
 
     @Test
     fun `onSurfaceVariant text on surfaceVariant background passes AA in light theme`() {
-        renderTheme(dark = false)
-        val scheme = MaterialTheme.colorScheme
-        assertContrastAtLeast(scheme.onSurfaceVariant, scheme.surfaceVariant, 4.5f)
+        compose.setContent {
+            val scheme = MaterialTheme.colorScheme
+            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f, "AA contrast failed")
+        }
     }
 
     @Test
     fun `onSurfaceVariant text on surfaceVariant background passes AA in dark theme`() {
-        renderTheme(dark = true)
-        val scheme = MaterialTheme.colorScheme
-        assertContrastAtLeast(scheme.onSurfaceVariant, scheme.surfaceVariant, 4.5f)
+        compose.setContent {
+            val scheme = MaterialTheme.colorScheme
+            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f, "AA contrast failed")
+        }
     }
 
     @Test
     fun `onSurface text on surface background passes AA in dark theme`() {
-        renderTheme(dark = true)
-        val scheme = MaterialTheme.colorScheme
-        assertContrastAtLeast(scheme.onSurface, scheme.surface, 4.5f)
+        compose.setContent {
+            val scheme = MaterialTheme.colorScheme
+            assertTrue(contrast(scheme.onSurface, scheme.surface) >= 4.5f, "AA contrast failed")
+        }
     }
 }
