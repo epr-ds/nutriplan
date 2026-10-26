@@ -1,4 +1,4 @@
-"""Regression Suite Runner -- release-gate coverage (HRD-905 / HRD-906).
+"""Regression Suite Runner -- release-gate coverage (HRD-805 / HRD-906 / HRD-905).
 
 The runner (``regression/run.py``) is the release gate: it loads each service's regression
 corpus, drives the per-case verifiers and reports / blocks release on P0/P1 failures.
