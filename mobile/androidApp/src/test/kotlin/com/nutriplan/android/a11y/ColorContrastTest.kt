@@ -46,7 +46,7 @@ class ColorContrastTest {
     fun `onSurface text on surface background passes AA in light theme`() {
         compose.setContent {
             val scheme = MaterialTheme.colorScheme
-            assertTrue(contrast(scheme.onSurface, scheme.surface) >= 4.5f, "AA contrast failed")
+            assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
         }
     }
 
@@ -54,7 +54,7 @@ class ColorContrastTest {
     fun `onSurfaceVariant text on surface background passes AA in light theme`() {
         compose.setContent {
             val scheme = MaterialTheme.colorScheme
-            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surface) >= 4.5f, "AA contrast failed")
+            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surface) >= 4.5f)
         }
     }
 
@@ -62,7 +62,7 @@ class ColorContrastTest {
     fun `onSurfaceVariant text on surfaceVariant background passes AA in light theme`() {
         compose.setContent {
             val scheme = MaterialTheme.colorScheme
-            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f, "AA contrast failed")
+            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
         }
     }
 
@@ -70,7 +70,7 @@ class ColorContrastTest {
     fun `onSurfaceVariant text on surfaceVariant background passes AA in dark theme`() {
         compose.setContent {
             val scheme = MaterialTheme.colorScheme
-            assertTrue(contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f, "AA contrast failed")
+            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
         }
     }
 
@@ -78,7 +78,7 @@ class ColorContrastTest {
     fun `onSurface text on surface background passes AA in dark theme`() {
         compose.setContent {
             val scheme = MaterialTheme.colorScheme
-            assertTrue(contrast(scheme.onSurface, scheme.surface) >= 4.5f, "AA contrast failed")
+            assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
         }
     }
 }
