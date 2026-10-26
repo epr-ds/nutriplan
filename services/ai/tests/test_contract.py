@@ -255,6 +255,7 @@ def client():
     # Import from conftest to avoid pytest picking up _FakeTokenVerifier as a fixture candidate.
     from tests.conftest import _fake_token_verifier  # noqa: PLC0415
 
+    previous_overrides = dict(app.dependency_overrides)
     app.dependency_overrides[get_token_verifier] = _fake_token_verifier
     app.dependency_overrides[get_recommendation_service] = _recommendation_service
     app.dependency_overrides[get_meal_analysis_service] = _analysis_service
@@ -262,7 +263,11 @@ def client():
     try:
         yield TestClient(app)
     finally:
+        # Restore the previous override map instead of clearing it wholesale: the suite-wide
+        # auth override registered in ``tests/conftest.py`` must survive this fixture so later
+        # modules keep exercising the /ai/* auth + rate-limit behaviour (issue #651).
         app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)
 
 
 def assert_conforms(openapi: OpenAPI, method: str, path: str, response) -> None:
