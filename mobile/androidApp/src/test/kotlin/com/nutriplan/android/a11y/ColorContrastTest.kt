@@ -42,11 +42,6 @@ class ColorContrastTest {
         return (maxOf(l1, l2) + 0.05f) / (minOf(l1, l2) + 0.05f)
     }
 
-    private fun assertContrastAtLeast(fg: Color, bg: Color, minimum: Float) {
-        val actual = contrast(fg, bg)
-        assertTrue(actual >= minimum, "Contrast $actual:1 < $minimum:1 for fg=$fg bg=$bg")
-    }
-
     @Test
     fun `onSurface text on surface background passes AA in light theme`() {
         compose.setContent {
