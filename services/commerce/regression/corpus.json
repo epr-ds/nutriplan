@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "service": "commerce",
+  "last_updated": "2026-10-26",
+  "cases": [
+    {
+      "name": "order-creation-idempotent",
+      "journey": "order-creation",
+      "severity": "P0",
+      "tags": ["regression", "idempotency"],
+      "description": "Verify order creation is idempotent",
+      "input": { "order": { "userId": "u1", "items": [] } },
+      "expected": { "idempotent": true }
+    },
+    {
+      "name": "payment-success-flow",
+      "journey": "payment",
+      "severity": "P0",
+      "tags": ["regression", "payment"],
+      "description": "Verify successful payment flow",
+      "input": { "payment": { "method": "card", "status": "approved" } },
+      "expected": { "paymentApproved": true }
+    },
+    {
+      "name": "payment-failure-retry",
+      "journey": "payment",
+      "severity": "P1",
+      "tags": ["regression", "payment"],
+      "description": "Verify failed payment retries safely",
+      "input": { "payment": { "method": "card", "status": "declined" } },
+      "expected": { "retried": true }
+    },
+    {
+      "name": "order-cancellation-refund",
+      "journey": "order-lifecycle",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify cancellation refunds the order",
+      "input": { "orderId": "o1" },
+      "expected": { "refunded": true }
+    },
+    {
+      "name": "slot-reservation-concurrency",
+      "journey": "slot-booking",
+      "severity": "P1",
+      "tags": ["regression", "concurrency"],
+      "description": "Verify slot reservation handles concurrent bookings",
+      "input": { "slotId": "s1", "quantity": 2 },
+      "expected": { "reserved": 2 }
+    },
+    {
+      "name": "grocery-provider-fallback",
+      "journey": "grocery",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify grocery provider fallback on failure",
+      "input": { "provider": "dark-kitchen" },
+      "expected": { "fallbackUsed": true }
+    },
+    {
+      "name": "voucher-application",
+      "journey": "pricing",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify voucher application reduces charge",
+      "input": { "voucher": "SAVE10", "total": 1000 },
+      "expected": { "discountApplied": true }
+    },
+    {
+      "name": "webhook-retry-delivery",
+      "journey": "webhook",
+      "severity": "P1",
+      "tags": ["regression", "reliability"],
+      "description": "Verify webhook delivery retries on failure",
+      "input": { "webhookId": "w1", "eventId": "e1" },
+      "expected": { "delivered": true }
+    }
+  ]
+}
