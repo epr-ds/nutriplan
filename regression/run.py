@@ -105,6 +105,24 @@ def _import_verifier(service: str) -> ModuleType:
     ) from last_error
 
 
+def _run_case(service: str, case_name: str) -> tuple[bool, str | None]:
+    """Run a single regression case through its service verifier.
+
+    The AI release gate drives the fixed golden safety corpus
+    (:data:`app.regression.GOLDEN_SAFETY_CASES`) through the production allergen filter
+    rather than case-name-keyed invocations, so the AI gate executes that corpus directly; every
+    other service is invoked by case name.
+    """
+    verifier = _import_verifier(service)
+    if service == "ai":
+        from app.regression import GOLDEN_SAFETY_CASES
+
+        report = verifier.SafetyRegressionVerifier().verify(GOLDEN_SAFETY_CASES)
+        return (report.ok, "; ".join(report.failures) or None)
+    passed, error = verifier.verify(case_name)
+    return (passed, error)
+
+
 def run_regression_for_service(
     service: str, tags: list[str] | None = None
 ) -> list[TestCase]:
@@ -122,8 +140,7 @@ def run_regression_for_service(
         start = time.time()
         try:
             # Import and run the service's regression tests
-            verifier = _import_verifier(service)
-            passed, error = verifier.verify(case.name)
+            passed, error = _run_case(service, case.name)
             case.duration_ms = (time.time() - start) * 1000
             case.passed = passed
             case.error = error
