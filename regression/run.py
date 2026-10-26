@@ -19,7 +19,6 @@ import time
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from types import ModuleType
 
 
 class Severity(str, Enum):
@@ -55,9 +54,42 @@ class RegressionReport:
     blocked_by: list[str]  # P0/P1 failures that block release
 
 
+def _service_root(service: str) -> Path:
+    """Return the repository root's service directory for a service."""
+    return Path(__file__).parent.parent / "services" / service
+
+
+def _ensure_service_importable(service: str) -> Path:
+    """Put a service's application root on ``sys.path`` so its ``app`` package resolves."""
+    service_root = _service_root(service)
+    if str(service_root) not in sys.path:
+        sys.path.insert(0, str(service_root))
+    return service_root
+
+
+def _golden_safety_cases() -> list[TestCase]:
+    """Build the release-gate cases from the AI service's fixed golden safety corpus."""
+    _ensure_service_importable("ai")
+    from app.regression.corpus import GOLDEN_SAFETY_CASES
+
+    return [
+        TestCase(
+            name=case.name,
+            service="ai",
+            severity=Severity.P2,
+            tags=["regression"],
+        )
+        for case in GOLDEN_SAFETY_CASES
+    ]
+
+
 def load_regression_corpus(service: str) -> list[TestCase]:
     """Load regression test cases for a service from its regression corpus."""
-    service_dir = Path(__file__).parent.parent / "services" / service
+    if service == "ai":
+        # The AI release gate drives the fixed golden safety corpus, not a JSON corpus file.
+        return _golden_safety_cases()
+
+    service_dir = _service_root(service)
     corpus_file = service_dir / "regression" / "corpus.json"
 
     if not corpus_file.exists():
@@ -79,50 +111,6 @@ def load_regression_corpus(service: str) -> list[TestCase]:
     return cases
 
 
-def _import_verifier(service: str) -> ModuleType:
-    """Import the regression verifier for a service, trying each known module path.
-
-    The documented corpus convention points at ``services.<service>.regression.verifier``;
-    the service's own application package (``<service>/app``) exposes the verifier the same way,
-    so the service root is put on the path to resolve it. Both are accepted; the gate fails
-    with a clear error when no verifier can be resolved.
-    """
-    candidates = (
-        f"services.{service}.regression.verifier",
-        "app.regression.verifier",
-    )
-    service_root = Path(__file__).parent.parent / "services" / service
-    if str(service_root) not in sys.path:
-        sys.path.insert(0, str(service_root))
-    last_error: Exception | None = None
-    for module_path in candidates:
-        try:
-            return __import__(module_path, fromlist=["verify"])
-        except ImportError as error:
-            last_error = error
-    raise ImportError(
-        f"No regression verifier found for service {service!r}"
-    ) from last_error
-
-
-def _run_case(service: str, case_name: str) -> tuple[bool, str | None]:
-    """Run a single regression case through its service verifier.
-
-    The AI release gate drives the fixed golden safety corpus
-    (:data:`app.regression.GOLDEN_SAFETY_CASES`) through the production allergen filter
-    rather than case-name-keyed invocations, so the AI gate executes that corpus directly; every
-    other service is invoked by case name.
-    """
-    verifier = _import_verifier(service)
-    if service == "ai":
-        from app.regression import GOLDEN_SAFETY_CASES
-
-        report = verifier.SafetyRegressionVerifier().verify(GOLDEN_SAFETY_CASES)
-        return (report.ok, "; ".join(report.failures) or None)
-    passed, error = verifier.verify(case_name)
-    return (passed, error)
-
-
 def run_regression_for_service(
     service: str, tags: list[str] | None = None
 ) -> list[TestCase]:
@@ -139,21 +127,11 @@ def run_regression_for_service(
 
         start = time.time()
         try:
-            # Import and run the service's regression tests
-            passed, error = _run_case(service, case.name)
+            passed, error = _run_case(service, case)
             case.duration_ms = (time.time() - start) * 1000
             case.passed = passed
             case.error = error
-        except ImportError as error:
-            # The corpus case exists but its service shipped no verifier -- a gate that
-            # silently reports such cases as passed would still be vacuous, so fail them.
-            case.duration_ms = (time.time() - start) * 1000
-            case.passed = False
-            case.error = (
-                str(error)
-                or f"regression verifier not implemented for case {case.name!r}"
-            )
-        except Exception as e:  # noqa: BLE001 -- a verifier failure must fail the gate, not crash it
+        except Exception as e:  # noqa: BLE001 - a crashed case must fail the gate, not crash it
             case.duration_ms = (time.time() - start) * 1000
             case.passed = False
             case.error = str(e)
@@ -161,6 +139,28 @@ def run_regression_for_service(
         results.append(case)
 
     return results
+
+
+def _run_case(service: str, case: TestCase) -> tuple[bool, str | None]:
+    """Run a single regression case through its service's verifier.
+
+    The AI release gate executes the fixed golden safety corpus
+    (:data:`app.regression.GOLDEN_SAFETY_CASES`) through the production allergen filter rather
+    than case-name-keyed invocations, so the AI gate grades that corpus directly; every other
+    service is invoked by case name.
+    """
+    if service == "ai":
+        _ensure_service_importable(service)
+        from app.regression import GOLDEN_SAFETY_CASES, SafetyRegressionVerifier
+
+        report = SafetyRegressionVerifier().verify(GOLDEN_SAFETY_CASES)
+        return report.ok, "; ".join(report.failures) if report.failures else None
+
+    _ensure_service_importable(service)
+    module_path = f"services.{service}.regression.verifier"
+    verifier = __import__(module_path, fromlist=["verify"])
+    passed, error = verifier.verify(case.name)
+    return passed, error
 
 
 def generate_report(
