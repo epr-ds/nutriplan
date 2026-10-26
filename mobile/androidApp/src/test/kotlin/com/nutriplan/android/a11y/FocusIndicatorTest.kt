@@ -2,6 +2,7 @@ package com.nutriplan.android.a11y
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -38,7 +39,7 @@ class FocusIndicatorTest {
             NutriPlanTheme {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     NutriPlanButton(onClick = {}) {
-                        "Button"
+                        Text("Button")
                     }
                     NutriPlanTextField(
                         value = "meal@example.com",
