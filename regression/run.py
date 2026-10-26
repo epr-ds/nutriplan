@@ -16,9 +16,10 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 
 class Severity(str, Enum):
@@ -38,7 +39,7 @@ class TestCase:
     tags: list[str]
     duration_ms: float = 0
     passed: bool = False
-    error: str | None = None
+    error: Optional[str] = None
 
 
 @dataclass
@@ -100,20 +101,16 @@ def load_regression_corpus(service: str) -> list[TestCase]:
 
     cases = []
     for item in corpus.get("cases", []):
-        cases.append(
-            TestCase(
-                name=item["name"],
-                service=service,
-                severity=Severity(item.get("severity", "P2")),
-                tags=item.get("tags", []),
-            )
-        )
+        cases.append(TestCase(
+            name=item["name"],
+            service=service,
+            severity=Severity(item.get("severity", "P2")),
+            tags=item.get("tags", []),
+        ))
     return cases
 
 
-def run_regression_for_service(
-    service: str, tags: list[str] | None = None
-) -> list[TestCase]:
+def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -> list[TestCase]:
     """Run regression tests for a single service."""
     cases = load_regression_corpus(service)
     results = []
@@ -141,7 +138,7 @@ def run_regression_for_service(
     return results
 
 
-def _run_case(service: str, case: TestCase) -> tuple[bool, str | None]:
+def _run_case(service: str, case: TestCase) -> tuple[bool, Optional[str]]:
     """Run a single regression case through its service's verifier.
 
     The AI release gate executes the fixed golden safety corpus
@@ -171,7 +168,10 @@ def generate_report(
     """Generate a regression report."""
     failed = [r for r in all_results if not r.passed]
     skipped = [r for r in all_results if r.error and "skipped" in r.error]
-    blocked = [r.name for r in failed if r.severity in (Severity.P0, Severity.P1)]
+    blocked = [
+        r.name for r in failed
+        if r.severity in (Severity.P0, Severity.P1)
+    ]
 
     return RegressionReport(
         timestamp=timestamp,
@@ -222,13 +222,7 @@ def main():
     )
     args = parser.parse_args()
 
-    services = args.services or [
-        "ai",
-        "commerce",
-        "identity",
-        "dietary",
-        "notification",
-    ]
+    services = args.services or ["ai", "commerce", "identity", "dietary", "notification"]
     if args.all:
         services = ["ai", "commerce", "identity", "dietary", "notification"]
 
@@ -238,11 +232,7 @@ def main():
         all_results.extend(results)
 
         if args.fail_fast:
-            blocked = [
-                r
-                for r in results
-                if not r.passed and r.severity in (Severity.P0, Severity.P1)
-            ]
+            blocked = [r for r in results if not r.passed and r.severity in (Severity.P0, Severity.P1)]
             if blocked:
                 print(f"FAIL: {len(blocked)} P0/P1 regression(s) failed in {service}")
                 for b in blocked:
@@ -252,27 +242,25 @@ def main():
     report = generate_report(services, all_results, time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     # Print summary
-    print(f"\n{'=' * 60}")
-    print("Regression Suite Report")
-    print(f"{'=' * 60}")
+    print(f"\n{'='*60}")
+    print(f"Regression Suite Report")
+    print(f"{'='*60}")
     print(f"Services: {', '.join(services)}")
-    print(
-        f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}"
-    )
+    print(f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}")
     print(f"Duration: {report.total_duration_ms:.0f}ms")
 
     if report.failed > 0:
-        print(f"\n{'=' * 60}")
-        print("FAILED TESTS")
-        print(f"{'=' * 60}")
+        print(f"\n{'='*60}")
+        print(f"FAILED TESTS")
+        print(f"{'='*60}")
         for r in report.results:
             if not r["passed"]:
                 print(f"  [{r['severity']}] {r['name']} ({r['service']}): {r['error']}")
 
     if report.blocked_by:
-        print(f"\n{'=' * 60}")
+        print(f"\n{'='*60}")
         print(f"RELEASE BLOCKED by {len(report.blocked_by)} P0/P1 failure(s)")
-        print(f"{'=' * 60}")
+        print(f"{'='*60}")
         for name in report.blocked_by:
             print(f"  - {name}")
 

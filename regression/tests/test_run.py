@@ -1,4 +1,4 @@
-"""Regression Suite Runner -- release-gate coverage (HRD-805 / HRD-906 / HRD-905).
+"""Regression Suite Runner -- release-gate coverage (HRD-905 / HRD-806 / HRD-805).
 
 The runner (``regression/run.py``) is the release gate: it loads each service's regression
 corpus, drives the per-case verifiers and reports / blocks release on P0/P1 failures.
@@ -8,7 +8,15 @@ that reports spurious failures over an un-executable corpus is not a gate, and i
 substantiate the GA release sign-off exit criteria (HRD-805 / HRD-906).
 """
 
-from regression.run import run_regression_for_service
+from regression.run import load_regression_corpus, run_regression_for_service
+
+
+def test_load_regression_corpus_executes_the_ai_golden_safety_set() -> None:
+    """The AI release gate must load its fixed golden safety corpus."""
+    cases = load_regression_corpus("ai")
+
+    assert cases, "expected the AI regression corpus to load"
+    assert all(case.service == "ai" for case in cases)
 
 
 def test_ai_golden_corpus_passes_the_release_gate() -> None:
