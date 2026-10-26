@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "service": "identity",
+  "last_updated": "2026-10-26",
+  "cases": [
+    {
+      "name": "login-success",
+      "journey": "auth",
+      "severity": "P0",
+      "tags": ["regression"],
+      "description": "Verify successful login issues tokens",
+      "input": { "credentials": { "email": "user@example.com", "password": "correct" } },
+      "expected": { "tokenIssued": true }
+    },
+    {
+      "name": "login-invalid-credentials",
+      "journey": "auth",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify invalid credentials are rejected",
+      "input": { "credentials": { "email": "user@example.com", "password": "wrong" } },
+      "expected": { "rejected": true }
+    },
+    {
+      "name": "token-refresh-valid",
+      "journey": "auth",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify valid refresh token grants new tokens",
+      "input": { "refreshToken": "rt1" },
+      "expected": { "tokenIssued": true }
+    },
+    {
+      "name": "token-refresh-expired",
+      "journey": "auth",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify expired refresh token is rejected",
+      "input": { "refreshToken": "rt-expired" },
+      "expected": { "rejected": true }
+    },
+    {
+      "name": "rate-limit-enforcement",
+      "journey": "auth",
+      "severity": "P1",
+      "tags": ["regression", "security"],
+      "description": "Verify auth rate limiting",
+      "input": { "attempts": 6, "windowSeconds": 60 },
+      "expected": { "limited": true }
+    },
+    {
+      "name": "profile-update-persist",
+      "journey": "profile",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify profile updates persist",
+      "input": { "userId": "u1", "profile": { "displayName": "New" } },
+      "expected": { "persisted": true }
+    },
+    {
+      "name": "oauth-callback-flow",
+      "journey": "oauth",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify OAuth callback exchanges code for tokens",
+      "input": { "code": "authcode1", "provider": "google" },
+      "expected": { "tokenIssued": true }
+    },
+    {
+      "name": "jwks-rotation",
+      "journey": "auth",
+      "severity": "P1",
+      "tags": ["regression", "security"],
+      "description": "Verify JWKS rotation keeps verification working",
+      "input": { "kid": "new-key" },
+      "expected": { "verified": true }
+    }
+  ]
+}
