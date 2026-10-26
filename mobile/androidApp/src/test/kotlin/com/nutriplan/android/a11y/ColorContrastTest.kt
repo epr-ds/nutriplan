@@ -1,9 +1,11 @@
 package com.nutriplan.android.a11y
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.nutriplan.android.ui.theme.NutriPlanTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,21 +25,26 @@ class ColorContrastTest {
     val compose = createComposeRule()
 
     private fun luminance(color: Color): Float {
-        val rgb = listOf(color.componentRed, color.componentGreen, color.componentBlue)
-            .map { it / 255f }
-            .map { if (it <= 0.03929f) it / 12.92f else ((it + 0.055f) / 1.055f) pow 2.4f }
-        return 0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2]
+        fun channel(component: Float): Float {
+            val value = component / 255f
+            return if (value <= 0.03929f) {
+                value / 12.92f
+            } else {
+                Math.pow(((value + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+            }
+        }
+        return 0.2126f * channel(color.red) + 0.7152f * channel(color.green) + 0.0722f * channel(color.blue)
     }
 
     private fun contrast(fg: Color, bg: Color): Float {
         val l1 = luminance(fg)
         val l2 = luminance(bg)
-        return (max(l1, l2) + 0.05f) / (min(l1, l2) + 0.05f)
+        return (maxOf(l1, l2) + 0.05f) / (minOf(l1, l2) + 0.05f)
     }
 
     private fun assertContrastAtLeast(fg: Color, bg: Color, minimum: Float) {
         val actual = contrast(fg, bg)
-        assert(actual >= minimum, "Contrast $actual:1 < $minimum:1 for fg=$fg bg=$bg")
+        assertTrue(actual >= minimum, "Contrast $actual:1 < $minimum:1 for fg=$fg bg=$bg")
     }
 
     private fun renderTheme(dark: Boolean) {

@@ -2,8 +2,8 @@ package com.nutriplan.android.screen.auth
 
 import android.content.Context
 import androidx.annotation.StringRes
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
