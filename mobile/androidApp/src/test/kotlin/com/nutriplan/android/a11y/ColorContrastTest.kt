@@ -26,7 +26,7 @@ class ColorContrastTest {
 
     private fun luminance(color: Color): Float {
         fun channel(component: Float): Float {
-            val value = component / 255f
+            val value = component
             return if (value <= 0.03929f) {
                 value / 12.92f
             } else {
@@ -45,40 +45,50 @@ class ColorContrastTest {
     @Test
     fun `onSurface text on surface background passes AA in light theme`() {
         compose.setContent {
-            val scheme = MaterialTheme.colorScheme
-            assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
+            NutriPlanTheme(darkTheme = false) {
+                val scheme = MaterialTheme.colorScheme
+                assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
+            }
         }
     }
 
     @Test
     fun `onSurfaceVariant text on surface background passes AA in light theme`() {
         compose.setContent {
-            val scheme = MaterialTheme.colorScheme
-            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surface) >= 4.5f)
+            NutriPlanTheme(darkTheme = false) {
+                val scheme = MaterialTheme.colorScheme
+                assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surface) >= 4.5f)
+            }
         }
     }
 
     @Test
     fun `onSurfaceVariant text on surfaceVariant background passes AA in light theme`() {
         compose.setContent {
-            val scheme = MaterialTheme.colorScheme
-            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
+            NutriPlanTheme(darkTheme = false) {
+                val scheme = MaterialTheme.colorScheme
+                assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
+            }
         }
     }
 
     @Test
     fun `onSurfaceVariant text on surfaceVariant background passes AA in dark theme`() {
         compose.setContent {
-            val scheme = MaterialTheme.colorScheme
-            assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
+            NutriPlanTheme(darkTheme = true) {
+                val scheme = MaterialTheme.colorScheme
+                assertTrue("AA contrast failed", contrast(scheme.onSurfaceVariant, scheme.surfaceVariant) >= 4.5f)
+            }
         }
     }
 
     @Test
     fun `onSurface text on surface background passes AA in dark theme`() {
         compose.setContent {
-            val scheme = MaterialTheme.colorScheme
-            assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
+            NutriPlanTheme(darkTheme = true) {
+                val scheme = MaterialTheme.colorScheme
+                assertTrue("AA contrast failed", contrast(scheme.onSurface, scheme.surface) >= 4.5f)
+            }
         }
     }
 }
