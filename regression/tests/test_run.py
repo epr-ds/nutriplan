@@ -11,7 +11,11 @@ nothing is not a gate.
 
 import pytest
 
-from regression.run import load_regression_corpus
+from regression.run import (
+    _import_verifier,
+    load_regression_corpus,
+    run_regression_for_service,
+)
 
 DOCUMENTED_SERVICES = ["ai", "commerce", "identity", "dietary", "notification"]
 
@@ -24,3 +28,17 @@ def test_every_documented_service_loads_a_regression_corpus(service: str) -> Non
     assert cases, (
         f"no regression corpus loaded for service {service!r} -- the release gate would run 0 cases"
     )
+
+
+def test_import_verifier_raises_for_unknown_service() -> None:
+    """The runner cannot resolve a verifier for an unknown service and must say so."""
+    with pytest.raises(ImportError):
+        _import_verifier("no-such-service")
+
+
+def test_corpus_case_without_verifier_fails_instead_of_faking_pass() -> None:
+    """A corpus case whose service has no verifier must not be silently reported as passed."""
+    cases = run_regression_for_service("commerce")
+
+    assert cases, "expected the commerce regression corpus to load"
+    assert all(not case.passed for case in cases)

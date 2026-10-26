@@ -16,10 +16,10 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from types import ModuleType
 
 
 class Severity(str, Enum):
@@ -39,7 +39,7 @@ class TestCase:
     tags: list[str]
     duration_ms: float = 0
     passed: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -68,16 +68,46 @@ def load_regression_corpus(service: str) -> list[TestCase]:
 
     cases = []
     for item in corpus.get("cases", []):
-        cases.append(TestCase(
-            name=item["name"],
-            service=service,
-            severity=Severity(item.get("severity", "P2")),
-            tags=item.get("tags", []),
-        ))
+        cases.append(
+            TestCase(
+                name=item["name"],
+                service=service,
+                severity=Severity(item.get("severity", "P2")),
+                tags=item.get("tags", []),
+            )
+        )
     return cases
 
 
-def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -> list[TestCase]:
+def _import_verifier(service: str) -> ModuleType:
+    """Import the regression verifier for a service, trying each known module path.
+
+    The documented corpus convention points at ``services.<service>.regression.verifier``;
+    the service's own application package (``<service>/app``) exposes the verifier the same way,
+    so the service root is put on the path to resolve it. Both are accepted; the gate fails
+    with a clear error when no verifier can be resolved.
+    """
+    candidates = (
+        f"services.{service}.regression.verifier",
+        "app.regression.verifier",
+    )
+    service_root = Path(__file__).parent.parent / "services" / service
+    if str(service_root) not in sys.path:
+        sys.path.insert(0, str(service_root))
+    last_error: Exception | None = None
+    for module_path in candidates:
+        try:
+            return __import__(module_path, fromlist=["verify"])
+        except ImportError as error:
+            last_error = error
+    raise ImportError(
+        f"No regression verifier found for service {service!r}"
+    ) from last_error
+
+
+def run_regression_for_service(
+    service: str, tags: list[str] | None = None
+) -> list[TestCase]:
     """Run regression tests for a single service."""
     cases = load_regression_corpus(service)
     results = []
@@ -92,16 +122,21 @@ def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -
         start = time.time()
         try:
             # Import and run the service's regression tests
-            module_path = f"services.{service}.regression.verifier"
-            verifier = __import__(module_path, fromlist=["verify"])
+            verifier = _import_verifier(service)
             passed, error = verifier.verify(case.name)
             case.duration_ms = (time.time() - start) * 1000
             case.passed = passed
             case.error = error
-        except ImportError:
-            case.passed = True
-            case.error = "no regression corpus found"
-        except Exception as e:
+        except ImportError as error:
+            # The corpus case exists but its service shipped no verifier -- a gate that
+            # silently reports such cases as passed would still be vacuous, so fail them.
+            case.duration_ms = (time.time() - start) * 1000
+            case.passed = False
+            case.error = (
+                str(error)
+                or f"regression verifier not implemented for case {case.name!r}"
+            )
+        except Exception as e:  # noqa: BLE001 -- a verifier failure must fail the gate, not crash it
             case.duration_ms = (time.time() - start) * 1000
             case.passed = False
             case.error = str(e)
@@ -119,10 +154,7 @@ def generate_report(
     """Generate a regression report."""
     failed = [r for r in all_results if not r.passed]
     skipped = [r for r in all_results if r.error and "skipped" in r.error]
-    blocked = [
-        r.name for r in failed
-        if r.severity in (Severity.P0, Severity.P1)
-    ]
+    blocked = [r.name for r in failed if r.severity in (Severity.P0, Severity.P1)]
 
     return RegressionReport(
         timestamp=timestamp,
@@ -173,7 +205,13 @@ def main():
     )
     args = parser.parse_args()
 
-    services = args.services or ["ai", "commerce", "identity", "dietary", "notification"]
+    services = args.services or [
+        "ai",
+        "commerce",
+        "identity",
+        "dietary",
+        "notification",
+    ]
     if args.all:
         services = ["ai", "commerce", "identity", "dietary", "notification"]
 
@@ -183,7 +221,11 @@ def main():
         all_results.extend(results)
 
         if args.fail_fast:
-            blocked = [r for r in results if not r.passed and r.severity in (Severity.P0, Severity.P1)]
+            blocked = [
+                r
+                for r in results
+                if not r.passed and r.severity in (Severity.P0, Severity.P1)
+            ]
             if blocked:
                 print(f"FAIL: {len(blocked)} P0/P1 regression(s) failed in {service}")
                 for b in blocked:
@@ -193,25 +235,27 @@ def main():
     report = generate_report(services, all_results, time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     # Print summary
-    print(f"\n{'='*60}")
-    print(f"Regression Suite Report")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("Regression Suite Report")
+    print(f"{'=' * 60}")
     print(f"Services: {', '.join(services)}")
-    print(f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}")
+    print(
+        f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}"
+    )
     print(f"Duration: {report.total_duration_ms:.0f}ms")
 
     if report.failed > 0:
-        print(f"\n{'='*60}")
-        print(f"FAILED TESTS")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print("FAILED TESTS")
+        print(f"{'=' * 60}")
         for r in report.results:
             if not r["passed"]:
                 print(f"  [{r['severity']}] {r['name']} ({r['service']}): {r['error']}")
 
     if report.blocked_by:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"RELEASE BLOCKED by {len(report.blocked_by)} P0/P1 failure(s)")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for name in report.blocked_by:
             print(f"  - {name}")
 
