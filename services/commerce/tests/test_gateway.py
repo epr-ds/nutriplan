@@ -13,7 +13,10 @@ unauthenticated response is the gateway's own ``401`` (``WWW-Authenticate: Beare
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
+from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_payment_method_service, get_token_verifier
@@ -29,7 +32,7 @@ PROBLEM_JSON = "application/problem+json"
 PRINCIPAL = Principal(user_id=str(uuid.uuid4()), email="a@b.com")
 USER = uuid.UUID(PRINCIPAL.user_id)
 
-_CARD_BODY = {
+_CARD_BODY: dict[str, Any] = {
     "type": "credit_card",
     "token": "tok_visa_secret",
     "brand": "visa",
@@ -39,11 +42,22 @@ _CARD_BODY = {
 }
 
 
-def _build() -> tuple[TestClient, InMemoryPaymentMethodRepository]:
+@pytest.fixture
+def client() -> Iterator[tuple[TestClient, InMemoryPaymentMethodRepository]]:
+    """A gateway-bound ``TestClient`` with the in-process fakes installed for one test.
+
+    The app is a module-level singleton, so the overrides must be torn down afterwards -- a leaked
+    override would silently swap the harness database for the in-memory fakes in later tests.
+    """
+
     repo = InMemoryPaymentMethodRepository()
     app.dependency_overrides[get_payment_method_service] = lambda: PaymentMethodService(repo)
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
-    return TestClient(app), repo
+    try:
+        yield TestClient(app), repo
+    finally:
+        app.dependency_overrides.pop(get_payment_method_service, None)
+        app.dependency_overrides.pop(get_token_verifier, None)
 
 
 def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
@@ -53,17 +67,17 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
 # --------------------------------------------------------------------------- the gateway edge
 
 
-def test_gateway_payment_methods_require_authentication():
-    client, _ = _build()
-    response = client.get("/commerce/v1/payment-methods")
+def test_gateway_payment_methods_require_authentication(client) -> None:
+    api_client, _repo = client
+    response = api_client.get("/commerce/v1/payment-methods")
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
 
 
-def test_gateway_orders_require_authentication():
-    client, _ = _build()
-    response = client.post(
+def test_gateway_orders_require_authentication(client) -> None:
+    api_client, _repo = client
+    response = api_client.post(
         "/commerce/v1/orders",
         json={
             "mealPlanId": str(uuid.uuid4()),
@@ -84,11 +98,11 @@ def test_gateway_orders_require_authentication():
     assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
 
 
-def test_gateway_accepts_authenticated_commerce_call():
+def test_gateway_accepts_authenticated_commerce_call(client) -> None:
     """The edge passes a verified caller through to the commerce handler."""
 
-    client, repo = _build()
-    response = client.post("/commerce/v1/payment-methods", json=_CARD_BODY, headers=_auth())
+    api_client, repo = client
+    response = api_client.post("/commerce/v1/payment-methods", json=_CARD_BODY, headers=_auth())
     assert response.status_code == 201
     body = response.json()
     assert body["type"] == "credit_card"
@@ -99,10 +113,10 @@ def test_gateway_accepts_authenticated_commerce_call():
     assert len(repo.list_for_user(USER)) == 1
 
 
-def test_gateway_lists_payment_methods_for_authenticated_caller():
-    client, repo = _build()
+def test_gateway_lists_payment_methods_for_authenticated_caller(client) -> None:
+    api_client, repo = client
     repo.add(SavedPaymentMethod(user_id=USER, type=PaymentMethodType.PAYPAL, token="tok_secret"))
-    response = client.get("/commerce/v1/payment-methods", headers=_auth())
+    response = api_client.get("/commerce/v1/payment-methods", headers=_auth())
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 1
