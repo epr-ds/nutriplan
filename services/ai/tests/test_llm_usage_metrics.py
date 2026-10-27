@@ -75,3 +75,24 @@ def test_llm_usage_without_token_counts_is_not_recorded() -> None:
     before = _value(client, "ai_llm_usage_total", model=MODEL)
     llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
     assert _value(client, "ai_llm_usage_total", model=MODEL) == before
+
+
+def test_llm_usage_exposes_prompt_and_completion_token_series() -> None:
+    """The cost & usage dashboard needs the prompt/completion split, not just the total."""
+    provider = FakeLLMProvider(
+        script=[
+            LLMResponse(
+                content="ok",
+                model=MODEL,
+                usage=LLMUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5),
+            ),
+        ]
+    )
+    llm = LLMClient(provider)
+    before_prompt = _value(client, "ai_llm_usage_prompt_tokens_total", model=MODEL)
+    before_completion = _value(client, "ai_llm_usage_completion_tokens_total", model=MODEL)
+    llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
+    assert _value(client, "ai_llm_usage_prompt_tokens_total", model=MODEL) == before_prompt + 3
+    assert (
+        _value(client, "ai_llm_usage_completion_tokens_total", model=MODEL) == before_completion + 2
+    )
