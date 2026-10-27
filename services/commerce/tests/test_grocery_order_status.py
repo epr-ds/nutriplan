@@ -330,7 +330,7 @@ def test_api_sync_returns_the_updated_order_with_its_grocery_block():
     order = _placed_order(external_order_id="fb_ord_1:dispatched")
     repo.add(order)
 
-    response = _client(service).post(f"/orders/{order.id}/grocery/sync")
+    response = _client(service).post(f"/commerce/v1/orders/{order.id}/grocery/sync")
 
     assert response.status_code == 200
     body = response.json()
@@ -349,7 +349,7 @@ def test_api_sync_requires_a_bearer_token():
     client = _client(service)
     client.headers.pop("Authorization")
 
-    response = client.post(f"/orders/{order.id}/grocery/sync")
+    response = client.post(f"/commerce/v1/orders/{order.id}/grocery/sync")
 
     assert response.status_code == 401
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -358,7 +358,7 @@ def test_api_sync_requires_a_bearer_token():
 def test_api_sync_of_an_unknown_order_is_404():
     service, _, _ = _service()
 
-    response = _client(service).post(f"/orders/{uuid.uuid4()}/grocery/sync")
+    response = _client(service).post(f"/commerce/v1/orders/{uuid.uuid4()}/grocery/sync")
 
     assert response.status_code == 404
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -370,7 +370,7 @@ def test_api_sync_of_an_unplaced_order_is_409():
     order.grocery_external_order_id = None
     repo.add(order)
 
-    response = _client(service).post(f"/orders/{order.id}/grocery/sync")
+    response = _client(service).post(f"/commerce/v1/orders/{order.id}/grocery/sync")
 
     assert response.status_code == 409
 
@@ -380,7 +380,7 @@ def test_api_sync_reports_a_provider_outage_as_503():
     order = _placed_order()
     repo.add(order)
 
-    response = _client(service).post(f"/orders/{order.id}/grocery/sync")
+    response = _client(service).post(f"/commerce/v1/orders/{order.id}/grocery/sync")
 
     assert response.status_code == 503
     assert response.headers["content-type"].startswith("application/problem+json")

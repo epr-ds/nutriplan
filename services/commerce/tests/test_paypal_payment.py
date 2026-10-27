@@ -308,7 +308,7 @@ def test_create_with_paypal_returns_201_pending_with_approval():
     client, _, payments = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "paypal", "token": "tok_paypal"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     payload = response.json()
@@ -329,7 +329,7 @@ def test_create_with_paypal_has_no_voucher_or_transfer_block():
     client, _, _ = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "paypal", "token": "tok_paypal"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     # PayPal creates an approval, not an OXXO voucher or SPEI transfer — both blocks stay null.
@@ -341,7 +341,7 @@ def test_create_with_card_has_no_approval_block():
     client, _, _ = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "credit_card", "token": "tok_visa"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     assert response.json()["approval"] is None

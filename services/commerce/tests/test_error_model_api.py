@@ -148,10 +148,10 @@ def test_unauthenticated_request_returns_problem_json():
     order = _order()
     client, _ = _build(order)
 
-    response = client.get(f"/orders/{order.id}")
+    response = client.get(f"/commerce/v1/orders/{order.id}")
 
     body = _assert_problem(response, 401, "Unauthorized")
-    assert body["instance"] == f"/orders/{order.id}"
+    assert body["instance"] == f"/commerce/v1/orders/{order.id}"
     assert response.headers.get("www-authenticate") == "Bearer"
 
 
@@ -159,7 +159,7 @@ def test_invalid_token_returns_problem_json():
     order = _order()
     client, _ = _build(order)
 
-    response = client.get(f"/orders/{order.id}", headers=_auth("bogus"))
+    response = client.get(f"/commerce/v1/orders/{order.id}", headers=_auth("bogus"))
 
     _assert_problem(response, 401, "Unauthorized")
     assert response.headers.get("www-authenticate") == "Bearer"
@@ -171,10 +171,10 @@ def test_invalid_token_returns_problem_json():
 def test_missing_order_returns_404_problem_json():
     client, _ = _build()
 
-    response = client.get(f"/orders/{MISSING_ID}", headers=_auth())
+    response = client.get(f"/commerce/v1/orders/{MISSING_ID}", headers=_auth())
 
     body = _assert_problem(response, 404, "Not Found")
-    assert body["instance"] == f"/orders/{MISSING_ID}"
+    assert body["instance"] == f"/commerce/v1/orders/{MISSING_ID}"
 
 
 def test_cross_user_order_returns_404_problem_json_without_leak():
@@ -182,8 +182,8 @@ def test_cross_user_order_returns_404_problem_json_without_leak():
     theirs = _order(user_id=uuid.uuid4())
     client, _ = _build(theirs)
 
-    missing = client.get(f"/orders/{MISSING_ID}", headers=_auth())
-    unowned = client.get(f"/orders/{theirs.id}", headers=_auth())
+    missing = client.get(f"/commerce/v1/orders/{MISSING_ID}", headers=_auth())
+    unowned = client.get(f"/commerce/v1/orders/{theirs.id}", headers=_auth())
 
     _assert_problem(missing, 404, "Not Found")
     unowned_body = _assert_problem(unowned, 404, "Not Found")
@@ -199,7 +199,7 @@ def test_illegal_transition_returns_409_problem_json():
     order = _order(status=OrderStatus.IN_TRANSIT)
     client, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth())
 
     _assert_problem(response, 409, "Conflict")
 
@@ -209,7 +209,7 @@ def test_domain_precondition_returns_422_problem_json():
     client, _ = _build()
     body = {**VALID_BODY, "fulfillmentType": "grocery_delivery"}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     _assert_problem(response, 422, "Unprocessable Entity")
 
@@ -221,7 +221,7 @@ def test_request_validation_returns_422_problem_json_with_errors():
     client, _ = _build()
     body = {k: v for k, v in VALID_BODY.items() if k != "deliveryDate"}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     body_out = _assert_problem(response, 422, "Unprocessable Entity")
     assert body_out["detail"] == "Request validation failed"
@@ -234,7 +234,7 @@ def test_query_validation_returns_422_problem_json():
     # status is constrained to a known enum; an unknown value is a query-validation failure.
     client, _ = _build()
 
-    response = client.get("/orders", params={"status": "teleported"}, headers=_auth())
+    response = client.get("/commerce/v1/orders", params={"status": "teleported"}, headers=_auth())
 
     body_out = _assert_problem(response, 422, "Unprocessable Entity")
     assert isinstance(body_out["errors"], list) and body_out["errors"]
@@ -247,7 +247,7 @@ def test_success_response_is_plain_json():
     order = _order()
     client, _ = _build(order)
 
-    response = client.get(f"/orders/{order.id}", headers=_auth())
+    response = client.get(f"/commerce/v1/orders/{order.id}", headers=_auth())
 
     assert response.status_code == 200
     assert response.headers["content-type"].split(";")[0].strip() == "application/json"

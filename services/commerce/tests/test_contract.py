@@ -98,11 +98,24 @@ def openapi() -> OpenAPI:
     return OpenAPI.from_file_path(str(_SPEC_PATH), config=_config())
 
 
+GATEWAY_PREFIX = "/commerce/v1"
+
+
+def _spec_path(path: str) -> str:
+    """Drop the gateway prefix before validating against the published contract.
+
+    The contract documents resource paths (``/orders``, ``/payment-methods``, ...) with the
+    gateway prefix carried by the server URL (``https://api.nutriplan.app/commerce/v1``), so the
+    in-app gateway-prefixed request path must be translated back before validation.
+    """
+    return path[len(GATEWAY_PREFIX) :] if path.startswith(GATEWAY_PREFIX) else path
+
+
 def assert_conforms(openapi: OpenAPI, method: str, path: str, response) -> None:
     """Validate a captured TestClient response against the contract for method+path."""
     content_type = response.headers.get("content-type", "application/json").split(";")[0].strip()
     openapi.validate_response(
-        MockRequest(host_url=HOST, method=method.lower(), path=path),
+        MockRequest(host_url=HOST, method=method.lower(), path=_spec_path(path)),
         MockResponse(
             data=response.content, status_code=response.status_code, content_type=content_type
         ),
@@ -194,7 +207,7 @@ def _order_body(*, payment: dict | None = None, **overrides) -> dict:
 
 
 def _create(api, **kwargs) -> dict:
-    response = api.post("/orders", json=_order_body(**kwargs), headers=_AUTH)
+    response = api.post("/commerce/v1/orders", json=_order_body(**kwargs), headers=_AUTH)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -209,10 +222,10 @@ def _signed(secret: str, event: dict) -> tuple[bytes, dict[str, str]]:
 
 
 def test_create_order_conforms(openapi, api):
-    resp = api.post("/orders", json=_order_body(notes="Contract order"), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(notes="Contract order"), headers=_AUTH)
     assert resp.status_code == 201
     assert resp.json()["status"] == "pending"
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 @pytest.mark.parametrize(
@@ -227,65 +240,65 @@ def test_create_order_conforms(openapi, api):
     ],
 )
 def test_create_order_with_an_async_payment_conforms(openapi, api, payment, member):
-    resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(payment=payment), headers=_AUTH)
     assert resp.status_code == 201
     assert resp.json()[member] is not None
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_paid_by_card_conforms(openapi, api):
     payment = {"type": "credit_card", "token": "tok_visa"}
-    resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(payment=payment), headers=_AUTH)
     assert resp.status_code == 201
     assert resp.json()["status"] == "confirmed"
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 @pytest.mark.parametrize("token", [None, "", "  "])
 def test_create_order_card_without_token_conforms(openapi, api, token):
     payment = {"type": "credit_card"} if token is None else {"type": "credit_card", "token": token}
-    resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(payment=payment), headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_declined_card_conforms(openapi, api):
     payment = {"type": "credit_card", "token": "tok_decline_insufficient"}
-    resp = api.post("/orders", json=_order_body(payment=payment), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(payment=payment), headers=_AUTH)
     assert resp.status_code == 402
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_unknown_meal_plan_conforms(openapi, api, meal_plans):
     meal_plans.snapshot = None
-    resp = api.post("/orders", json=_order_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(), headers=_AUTH)
     assert resp.status_code == 404
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_dietary_unavailable_conforms(openapi, api, meal_plans):
     meal_plans.unavailable = True
-    resp = api.post("/orders", json=_order_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(), headers=_AUTH)
     assert resp.status_code == 503
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_idempotency_conflict_conforms(openapi, api):
     headers = {**_AUTH, "Idempotency-Key": "contract-key-1"}
-    first = api.post("/orders", json=_order_body(), headers=headers)
+    first = api.post("/commerce/v1/orders", json=_order_body(), headers=headers)
     assert first.status_code == 201
     # The same key with a different body is a conflict, not a second order.
-    resp = api.post("/orders", json=_order_body(notes="Different"), headers=headers)
+    resp = api.post("/commerce/v1/orders", json=_order_body(notes="Different"), headers=headers)
     assert resp.status_code == 409
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def test_create_order_validation_error_conforms(openapi, api):
     body = _order_body()
     del body["deliveryAddress"]
-    resp = api.post("/orders", json=body, headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=body, headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 def _quote_body(**overrides) -> dict:
@@ -293,51 +306,51 @@ def _quote_body(**overrides) -> dict:
 
 
 def test_quote_order_conforms(openapi, api):
-    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders/quote", json=_quote_body(), headers=_AUTH)
     assert resp.status_code == 200
     assert [item["name"] for item in resp.json()["items"]] == ["Oats", "Lentil soup"]
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_quote_grocery_order_conforms(openapi, api):
     body = _quote_body(fulfillmentType="grocery_delivery", providerId="freshbasket")
-    resp = api.post("/orders/quote", json=body, headers=_AUTH)
+    resp = api.post("/commerce/v1/orders/quote", json=body, headers=_AUTH)
     assert resp.status_code == 200
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_quote_order_unknown_meal_plan_conforms(openapi, api, meal_plans):
     meal_plans.snapshot = None
-    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders/quote", json=_quote_body(), headers=_AUTH)
     assert resp.status_code == 404
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_quote_order_dietary_unavailable_conforms(openapi, api, meal_plans):
     meal_plans.unavailable = True
-    resp = api.post("/orders/quote", json=_quote_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders/quote", json=_quote_body(), headers=_AUTH)
     assert resp.status_code == 503
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_quote_order_validation_error_conforms(openapi, api):
     body = _quote_body(fulfillmentType="grocery_delivery")
-    resp = api.post("/orders/quote", json=body, headers=_AUTH)
+    resp = api.post("/commerce/v1/orders/quote", json=body, headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_quote_order_unauthenticated_conforms(openapi, api):
-    resp = api.post("/orders/quote", json=_quote_body())
+    resp = api.post("/commerce/v1/orders/quote", json=_quote_body())
     assert resp.status_code == 401
-    assert_conforms(openapi, "post", "/orders/quote", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders/quote", resp)
 
 
 def test_create_order_unauthenticated_conforms(openapi, api):
-    resp = api.post("/orders", json=_order_body())
+    resp = api.post("/commerce/v1/orders", json=_order_body())
     assert resp.status_code == 401
     assert resp.headers["content-type"].startswith(_PROBLEM_JSON)
-    assert_conforms(openapi, "post", "/orders", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/orders", resp)
 
 
 # --- GET /orders and GET /orders/{orderId} ---------------------------------------------------
@@ -345,50 +358,50 @@ def test_create_order_unauthenticated_conforms(openapi, api):
 
 def test_list_orders_conforms(openapi, api, db_session):
     seed_orders(db_session)
-    resp = api.get("/orders", headers=_AUTH)
+    resp = api.get("/commerce/v1/orders", headers=_AUTH)
     assert resp.status_code == 200
     assert len(resp.json()) == 2
-    assert_conforms(openapi, "get", "/orders", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/orders", resp)
 
 
 def test_list_orders_filtered_conforms(openapi, api, db_session):
     seed_orders(db_session)
-    resp = api.get("/orders", params={"status": "confirmed", "limit": 5}, headers=_AUTH)
+    resp = api.get("/commerce/v1/orders", params={"status": "confirmed", "limit": 5}, headers=_AUTH)
     assert resp.status_code == 200
     assert [order["status"] for order in resp.json()] == ["confirmed"]
-    assert_conforms(openapi, "get", "/orders", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/orders", resp)
 
 
 def test_list_orders_bad_paging_conforms(openapi, api):
-    resp = api.get("/orders", params={"limit": 0}, headers=_AUTH)
+    resp = api.get("/commerce/v1/orders", params={"limit": 0}, headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "get", "/orders", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/orders", resp)
 
 
 def test_list_orders_unauthenticated_conforms(openapi, api):
-    resp = api.get("/orders")
+    resp = api.get("/commerce/v1/orders")
     assert resp.status_code == 401
-    assert_conforms(openapi, "get", "/orders", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/orders", resp)
 
 
 def test_get_order_conforms(openapi, api, db_session):
     kitchen, grocery = seed_orders(db_session)
     for order in (kitchen, grocery):
-        resp = api.get(f"/orders/{order.id}", headers=_AUTH)
+        resp = api.get(f"/commerce/v1/orders/{order.id}", headers=_AUTH)
         assert resp.status_code == 200
-        assert_conforms(openapi, "get", f"/orders/{order.id}", resp)
+        assert_conforms(openapi, "get", f"/commerce/v1/orders/{order.id}", resp)
 
 
 def test_get_order_not_found_conforms(openapi, api):
-    resp = api.get(f"/orders/{_MISSING_ID}", headers=_AUTH)
+    resp = api.get(f"/commerce/v1/orders/{_MISSING_ID}", headers=_AUTH)
     assert resp.status_code == 404
-    assert_conforms(openapi, "get", f"/orders/{_MISSING_ID}", resp)
+    assert_conforms(openapi, "get", f"/commerce/v1/orders/{_MISSING_ID}", resp)
 
 
 def test_get_order_unauthenticated_conforms(openapi, api):
-    resp = api.get(f"/orders/{_MISSING_ID}")
+    resp = api.get(f"/commerce/v1/orders/{_MISSING_ID}")
     assert resp.status_code == 401
-    assert_conforms(openapi, "get", f"/orders/{_MISSING_ID}", resp)
+    assert_conforms(openapi, "get", f"/commerce/v1/orders/{_MISSING_ID}", resp)
 
 
 # --- POST /orders/{orderId}/cancel -----------------------------------------------------------
@@ -396,46 +409,48 @@ def test_get_order_unauthenticated_conforms(openapi, api):
 
 def test_cancel_order_conforms(openapi, api):
     order = _create(api)
-    resp = api.post(f"/orders/{order['id']}/cancel", headers=_AUTH)
+    resp = api.post(f"/commerce/v1/orders/{order['id']}/cancel", headers=_AUTH)
     assert resp.status_code == 200
     assert resp.json()["status"] == "cancelled"
-    assert_conforms(openapi, "post", f"/orders/{order['id']}/cancel", resp)
+    assert_conforms(openapi, "post", f"/commerce/v1/orders/{order['id']}/cancel", resp)
 
 
 def test_cancel_paid_order_with_partial_refund_conforms(openapi, api):
     order = _create(api, payment={"type": "credit_card", "token": "tok_visa"})
-    resp = api.post(f"/orders/{order['id']}/cancel", json={"refundAmount": 5}, headers=_AUTH)
+    resp = api.post(
+        f"/commerce/v1/orders/{order['id']}/cancel", json={"refundAmount": 5}, headers=_AUTH
+    )
     assert resp.status_code == 200
     assert resp.json()["refund"]["status"] == "partial"
-    assert_conforms(openapi, "post", f"/orders/{order['id']}/cancel", resp)
+    assert_conforms(openapi, "post", f"/commerce/v1/orders/{order['id']}/cancel", resp)
 
 
 def test_cancel_order_twice_conforms(openapi, api):
     order = _create(api)
-    api.post(f"/orders/{order['id']}/cancel", headers=_AUTH)
-    resp = api.post(f"/orders/{order['id']}/cancel", headers=_AUTH)
+    api.post(f"/commerce/v1/orders/{order['id']}/cancel", headers=_AUTH)
+    resp = api.post(f"/commerce/v1/orders/{order['id']}/cancel", headers=_AUTH)
     assert resp.status_code == 409
-    assert_conforms(openapi, "post", f"/orders/{order['id']}/cancel", resp)
+    assert_conforms(openapi, "post", f"/commerce/v1/orders/{order['id']}/cancel", resp)
 
 
 def test_cancel_with_refund_over_total_conforms(openapi, api):
     order = _create(api, payment={"type": "credit_card", "token": "tok_visa"})
-    path = f"/orders/{order['id']}/cancel"
+    path = f"/commerce/v1/orders/{order['id']}/cancel"
     resp = api.post(path, json={"refundAmount": 999999}, headers=_AUTH)
     assert resp.status_code == 422
     assert_conforms(openapi, "post", path, resp)
 
 
 def test_cancel_order_not_found_conforms(openapi, api):
-    resp = api.post(f"/orders/{_MISSING_ID}/cancel", headers=_AUTH)
+    resp = api.post(f"/commerce/v1/orders/{_MISSING_ID}/cancel", headers=_AUTH)
     assert resp.status_code == 404
-    assert_conforms(openapi, "post", f"/orders/{_MISSING_ID}/cancel", resp)
+    assert_conforms(openapi, "post", f"/commerce/v1/orders/{_MISSING_ID}/cancel", resp)
 
 
 def test_cancel_order_unauthenticated_conforms(openapi, api):
-    resp = api.post(f"/orders/{_MISSING_ID}/cancel")
+    resp = api.post(f"/commerce/v1/orders/{_MISSING_ID}/cancel")
     assert resp.status_code == 401
-    assert_conforms(openapi, "post", f"/orders/{_MISSING_ID}/cancel", resp)
+    assert_conforms(openapi, "post", f"/commerce/v1/orders/{_MISSING_ID}/cancel", resp)
 
 
 # --- POST /orders/{orderId}/grocery/sync ------------------------------------------------------
@@ -443,7 +458,7 @@ def test_cancel_order_unauthenticated_conforms(openapi, api):
 
 def test_sync_grocery_order_conforms(openapi, api, db_session):
     _, grocery = seed_orders(db_session)
-    path = f"/orders/{grocery.id}/grocery/sync"
+    path = f"/commerce/v1/orders/{grocery.id}/grocery/sync"
     resp = api.post(path, headers=_AUTH)
     assert resp.status_code == 200
     assert resp.json()["groceryOrder"]["externalOrderId"] == "FB-1001"
@@ -452,7 +467,7 @@ def test_sync_grocery_order_conforms(openapi, api, db_session):
 
 def test_sync_unplaced_order_conforms(openapi, api, db_session):
     kitchen, _ = seed_orders(db_session)
-    path = f"/orders/{kitchen.id}/grocery/sync"
+    path = f"/commerce/v1/orders/{kitchen.id}/grocery/sync"
     resp = api.post(path, headers=_AUTH)
     assert resp.status_code == 409
     assert_conforms(openapi, "post", path, resp)
@@ -463,21 +478,21 @@ def test_sync_provider_outage_conforms(openapi, api, db_session):
     app.dependency_overrides[get_grocery_adapters] = lambda: {
         "freshbasket": _UnavailableGroceryAdapter()
     }
-    path = f"/orders/{grocery.id}/grocery/sync"
+    path = f"/commerce/v1/orders/{grocery.id}/grocery/sync"
     resp = api.post(path, headers=_AUTH)
     assert resp.status_code == 503
     assert_conforms(openapi, "post", path, resp)
 
 
 def test_sync_not_found_conforms(openapi, api):
-    path = f"/orders/{_MISSING_ID}/grocery/sync"
+    path = f"/commerce/v1/orders/{_MISSING_ID}/grocery/sync"
     resp = api.post(path, headers=_AUTH)
     assert resp.status_code == 404
     assert_conforms(openapi, "post", path, resp)
 
 
 def test_sync_unauthenticated_conforms(openapi, api):
-    path = f"/orders/{_MISSING_ID}/grocery/sync"
+    path = f"/commerce/v1/orders/{_MISSING_ID}/grocery/sync"
     resp = api.post(path)
     assert resp.status_code == 401
     assert_conforms(openapi, "post", path, resp)
@@ -583,63 +598,67 @@ _CARD = {
 
 
 def test_save_payment_method_conforms(openapi, api):
-    resp = api.post("/payment-methods", json=_CARD, headers=_AUTH)
+    resp = api.post("/commerce/v1/payment-methods", json=_CARD, headers=_AUTH)
     assert resp.status_code == 201
     assert "token" not in resp.json()
-    assert_conforms(openapi, "post", "/payment-methods", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/payment-methods", resp)
 
 
 def test_save_wallet_payment_method_conforms(openapi, api):
-    resp = api.post("/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_AUTH)
+    resp = api.post(
+        "/commerce/v1/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_AUTH
+    )
     assert resp.status_code == 201
     assert resp.json()["last4"] is None
-    assert_conforms(openapi, "post", "/payment-methods", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/payment-methods", resp)
 
 
 def test_save_payment_method_validation_error_conforms(openapi, api):
-    resp = api.post("/payment-methods", json={**_CARD, "last4": "42"}, headers=_AUTH)
+    resp = api.post("/commerce/v1/payment-methods", json={**_CARD, "last4": "42"}, headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "post", "/payment-methods", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/payment-methods", resp)
 
 
 def test_save_payment_method_unauthenticated_conforms(openapi, api):
-    resp = api.post("/payment-methods", json=_CARD)
+    resp = api.post("/commerce/v1/payment-methods", json=_CARD)
     assert resp.status_code == 401
-    assert_conforms(openapi, "post", "/payment-methods", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/payment-methods", resp)
 
 
 def test_list_payment_methods_conforms(openapi, api):
-    api.post("/payment-methods", json=_CARD, headers=_AUTH)
-    api.post("/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_AUTH)
-    resp = api.get("/payment-methods", headers=_AUTH)
+    api.post("/commerce/v1/payment-methods", json=_CARD, headers=_AUTH)
+    api.post(
+        "/commerce/v1/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_AUTH
+    )
+    resp = api.get("/commerce/v1/payment-methods", headers=_AUTH)
     assert resp.status_code == 200
     assert len(resp.json()) == 2
-    assert_conforms(openapi, "get", "/payment-methods", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/payment-methods", resp)
 
 
 def test_list_payment_methods_unauthenticated_conforms(openapi, api):
-    resp = api.get("/payment-methods")
+    resp = api.get("/commerce/v1/payment-methods")
     assert resp.status_code == 401
-    assert_conforms(openapi, "get", "/payment-methods", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/payment-methods", resp)
 
 
 def test_delete_payment_method_conforms(openapi, api):
-    saved = api.post("/payment-methods", json=_CARD, headers=_AUTH).json()
-    path = f"/payment-methods/{saved['id']}"
+    saved = api.post("/commerce/v1/payment-methods", json=_CARD, headers=_AUTH).json()
+    path = f"/commerce/v1/payment-methods/{saved['id']}"
     resp = api.delete(path, headers=_AUTH)
     assert resp.status_code == 204
     assert_conforms(openapi, "delete", path, resp)
 
 
 def test_delete_payment_method_not_found_conforms(openapi, api):
-    path = f"/payment-methods/{_MISSING_ID}"
+    path = f"/commerce/v1/payment-methods/{_MISSING_ID}"
     resp = api.delete(path, headers=_AUTH)
     assert resp.status_code == 404
     assert_conforms(openapi, "delete", path, resp)
 
 
 def test_delete_payment_method_unauthenticated_conforms(openapi, api):
-    path = f"/payment-methods/{_MISSING_ID}"
+    path = f"/commerce/v1/payment-methods/{_MISSING_ID}"
     resp = api.delete(path)
     assert resp.status_code == 401
     assert_conforms(openapi, "delete", path, resp)
@@ -647,7 +666,7 @@ def test_delete_payment_method_unauthenticated_conforms(openapi, api):
 
 # --- /fulfillment ------------------------------------------------------------------------------
 
-_AVAILABILITY = "/fulfillment/dark-kitchen/availability"
+_AVAILABILITY = "/commerce/v1/fulfillment/dark-kitchen/availability"
 
 
 def test_availability_served_zip_conforms(openapi, api):
@@ -677,37 +696,37 @@ def test_availability_unauthenticated_conforms(openapi, api):
 
 
 def test_grocery_providers_conforms(openapi, api):
-    resp = api.get("/fulfillment/grocery/providers", headers=_AUTH)
+    resp = api.get("/commerce/v1/fulfillment/grocery/providers", headers=_AUTH)
     assert resp.status_code == 200
     assert resp.json()
-    assert_conforms(openapi, "get", "/fulfillment/grocery/providers", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/fulfillment/grocery/providers", resp)
 
 
 def test_grocery_providers_unauthenticated_conforms(openapi, api):
-    resp = api.get("/fulfillment/grocery/providers")
+    resp = api.get("/commerce/v1/fulfillment/grocery/providers")
     assert resp.status_code == 401
-    assert_conforms(openapi, "get", "/fulfillment/grocery/providers", resp)
+    assert_conforms(openapi, "get", "/commerce/v1/fulfillment/grocery/providers", resp)
 
 
 def test_grocery_search_conforms(openapi, api):
     body = {"items": [{"ingredient": "rice", "quantity": 1, "unit": "kg"}], "zipCode": "06600"}
-    resp = api.post("/fulfillment/grocery/search", json=body, headers=_AUTH)
+    resp = api.post("/commerce/v1/fulfillment/grocery/search", json=body, headers=_AUTH)
     assert resp.status_code == 200
-    assert_conforms(openapi, "post", "/fulfillment/grocery/search", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/fulfillment/grocery/search", resp)
 
 
 def test_grocery_search_validation_error_conforms(openapi, api):
     body = {"items": [], "zipCode": "06600"}
-    resp = api.post("/fulfillment/grocery/search", json=body, headers=_AUTH)
+    resp = api.post("/commerce/v1/fulfillment/grocery/search", json=body, headers=_AUTH)
     assert resp.status_code == 422
-    assert_conforms(openapi, "post", "/fulfillment/grocery/search", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/fulfillment/grocery/search", resp)
 
 
 def test_grocery_search_unauthenticated_conforms(openapi, api):
     body = {"items": [{"ingredient": "rice"}], "zipCode": "06600"}
-    resp = api.post("/fulfillment/grocery/search", json=body)
+    resp = api.post("/commerce/v1/fulfillment/grocery/search", json=body)
     assert resp.status_code == 401
-    assert_conforms(openapi, "post", "/fulfillment/grocery/search", resp)
+    assert_conforms(openapi, "post", "/commerce/v1/fulfillment/grocery/search", resp)
 
 
 # --- the gate actually catches drift (COM-802 AC2) -------------------------------------------
@@ -728,9 +747,9 @@ def test_a_newly_required_field_fails_validation(api, tmp_path):
         order = schemas["OrderResponse"]
         order["required"] = [*order.get("required", []), "fieldAddedByABreakingChange"]
 
-    resp = api.post("/orders", json=_order_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(), headers=_AUTH)
     with pytest.raises(Exception):  # noqa: B017 - any openapi-core validation error is a pass here
-        assert_conforms(_drifted(tmp_path, require_new_field), "post", "/orders", resp)
+        assert_conforms(_drifted(tmp_path, require_new_field), "post", "/commerce/v1/orders", resp)
 
 
 def test_a_null_the_contract_does_not_allow_fails_validation(api, tmp_path):
@@ -740,10 +759,11 @@ def test_a_null_the_contract_does_not_allow_fails_validation(api, tmp_path):
         voucher = schemas["OrderResponse"]["properties"]["voucher"]
         voucher["anyOf"] = voucher["anyOf"][:1]
 
-    resp = api.post("/orders", json=_order_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(), headers=_AUTH)
     assert resp.json()["voucher"] is None
     with pytest.raises(Exception):  # noqa: B017 - any openapi-core validation error is a pass here
-        assert_conforms(_drifted(tmp_path, forbid_null_voucher), "post", "/orders", resp)
+        drifted = _drifted(tmp_path, forbid_null_voucher)
+        assert_conforms(drifted, "post", "/commerce/v1/orders", resp)
 
 
 def test_a_drifted_enum_fails_validation(api, tmp_path):
@@ -753,6 +773,6 @@ def test_a_drifted_enum_fails_validation(api, tmp_path):
         status = schemas["OrderResponse"]["properties"]["status"]
         status["enum"] = [value for value in status["enum"] if value != "pending"] + ["awaiting"]
 
-    resp = api.post("/orders", json=_order_body(), headers=_AUTH)
+    resp = api.post("/commerce/v1/orders", json=_order_body(), headers=_AUTH)
     with pytest.raises(Exception):  # noqa: B017 - any openapi-core validation error is a pass here
-        assert_conforms(_drifted(tmp_path, rename_pending), "post", "/orders", resp)
+        assert_conforms(_drifted(tmp_path, rename_pending), "post", "/commerce/v1/orders", resp)

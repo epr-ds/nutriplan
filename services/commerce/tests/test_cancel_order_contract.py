@@ -39,7 +39,7 @@ def _response_schema_name(response: dict[str, Any]) -> str | None:
 
 
 def _impl_cancel_order() -> dict[str, Any]:
-    operation = _operation(app.openapi()["paths"], "/orders/{}/cancel", "post")
+    operation = _operation(app.openapi()["paths"], "/commerce/v1/orders/{}/cancel", "post")
     assert operation is not None, "POST /orders/{orderId}/cancel is not exposed by the app"
     return operation
 

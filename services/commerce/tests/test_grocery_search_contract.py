@@ -15,7 +15,7 @@ import pytest
 
 from app.main import app
 
-_PATH = "/fulfillment/grocery/search"
+_PATH = "/commerce/v1/fulfillment/grocery/search"
 
 
 def _post_operation(paths: dict[str, Any], path: str) -> dict[str, Any] | None:
@@ -80,7 +80,7 @@ def _spec_or_skip() -> dict[str, Any]:
 
 
 def test_contract_documents_authenticated_search_operation():
-    documented = _post_operation(_spec_or_skip()["paths"], _PATH)
+    documented = _post_operation(_spec_or_skip()["paths"], "/fulfillment/grocery/search")
     assert documented is not None, "searchGroceryProducts is not documented in the contract"
 
     assert _array_item_schema_name(documented["responses"]["200"]) == "ProviderResponse"

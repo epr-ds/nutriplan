@@ -245,8 +245,8 @@ def test_api_same_key_replays_same_order():
     body = {**VALID_BODY, "paymentMethod": {"type": "credit_card", "token": CARD_TOKEN}}
     headers = {**_auth(), "Idempotency-Key": KEY}
 
-    first = client.post("/orders", json=body, headers=headers)
-    second = client.post("/orders", json=body, headers=headers)
+    first = client.post("/commerce/v1/orders", json=body, headers=headers)
+    second = client.post("/commerce/v1/orders", json=body, headers=headers)
 
     assert first.status_code == 201
     assert second.status_code == 201
@@ -259,9 +259,11 @@ def test_api_same_key_different_body_returns_409_problem_json():
     client, _, _ = _api_build()
     headers = {**_auth(), "Idempotency-Key": KEY}
 
-    first = client.post("/orders", json=VALID_BODY, headers=headers)
+    first = client.post("/commerce/v1/orders", json=VALID_BODY, headers=headers)
     second = client.post(
-        "/orders", json={**VALID_BODY, "deliveryTimeSlot": "18:00-19:00"}, headers=headers
+        "/commerce/v1/orders",
+        json={**VALID_BODY, "deliveryTimeSlot": "18:00-19:00"},
+        headers=headers,
     )
 
     assert first.status_code == 201
@@ -273,8 +275,8 @@ def test_api_same_key_different_body_returns_409_problem_json():
 def test_api_no_key_creates_two_orders():
     client, repo, _ = _api_build()
 
-    first = client.post("/orders", json=VALID_BODY, headers=_auth())
-    second = client.post("/orders", json=VALID_BODY, headers=_auth())
+    first = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
+    second = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
 
     assert first.status_code == 201
     assert second.status_code == 201
@@ -287,7 +289,7 @@ def test_api_forwards_idempotency_key_to_provider():
     body = {**VALID_BODY, "paymentMethod": {"type": "credit_card", "token": CARD_TOKEN}}
     headers = {**_auth(), "Idempotency-Key": KEY}
 
-    response = client.post("/orders", json=body, headers=headers)
+    response = client.post("/commerce/v1/orders", json=body, headers=headers)
 
     assert response.status_code == 201
     assert payments.charges[0].idempotency_key == KEY

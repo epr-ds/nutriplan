@@ -142,7 +142,7 @@ def test_provider_without_a_wired_adapter_is_skipped():
 
 # --------------------------------------------------------------------------------------- API layer
 
-_URL = "/fulfillment/grocery/search"
+_URL = "/commerce/v1/fulfillment/grocery/search"
 
 
 @pytest.fixture(autouse=True)

@@ -17,7 +17,7 @@ import pytest
 from app.api.schemas import AvailabilityResponse
 from app.main import app
 
-_PATH = "/fulfillment/dark-kitchen/availability"
+_PATH = "/commerce/v1/fulfillment/dark-kitchen/availability"
 
 
 def _get_operation(paths: dict[str, Any], path: str) -> dict[str, Any] | None:
@@ -84,7 +84,7 @@ def _spec_or_skip() -> dict[str, Any]:
 
 
 def test_contract_documents_authenticated_availability_operation():
-    documented = _get_operation(_spec_or_skip()["paths"], _PATH)
+    documented = _get_operation(_spec_or_skip()["paths"], "/fulfillment/dark-kitchen/availability")
     assert documented is not None, "getDarkKitchenAvailability is not documented in the contract"
 
     assert _response_schema_name(documented["responses"]["200"]) == "AvailabilityResponse"
