@@ -16,6 +16,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.budget.errors import BudgetError
+
 PROBLEM_JSON = "application/problem+json"
 
 
@@ -83,7 +85,17 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+async def budget_exception_handler(request: Request, exc: BudgetError) -> JSONResponse:
+    """Translate an exhausted AI token budget into a ``429`` problem+json refusal."""
+    return problem_response(
+        HTTPStatus.TOO_MANY_REQUESTS,
+        detail=str(exc) or "AI token budget exceeded",
+        instance=request.url.path,
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(BudgetError, budget_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
