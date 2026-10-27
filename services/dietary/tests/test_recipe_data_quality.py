@@ -21,9 +21,9 @@ def test_seed_catalog_recipes_meet_nutrition_bounds() -> None:
     for recipe in SEED_RECIPES:
         assert recipe.servings > 0, recipe.id
         assert recipe.nutritional_info is not None, recipe.id
-        assert recipe.nutritional_info.calories is not None and recipe.nutritional_info.calories > 0, (
-            recipe.id
-        )
+        assert (
+            recipe.nutritional_info.calories is not None and recipe.nutritional_info.calories > 0
+        ), recipe.id
 
 
 def test_seed_catalog_recipes_provide_bilingual_content() -> None:
@@ -33,4 +33,5 @@ def test_seed_catalog_recipes_provide_bilingual_content() -> None:
         assert recipe.description, recipe.id
         # Bilingual coverage: the es (Spanish) name + description must exist per locale.
         assert getattr(recipe, "name_es", None), f"missing Spanish name for {recipe.id}"
-        assert getattr(recipe, "description_es", None), f"missing Spanish description for {recipe.id}"
+        description_es = getattr(recipe, "description_es", None)
+        assert description_es, f"missing Spanish description for {recipe.id}"
