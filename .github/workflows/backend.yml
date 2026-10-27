@@ -213,6 +213,8 @@ jobs:
           cache-dependency-path: services/dietary/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build Docker image
+        run: docker build -t nutriplan-dietary:${{ github.sha }} .
       - name: Lint (ruff)
         run: |
           ruff check .
