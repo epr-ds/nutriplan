@@ -31,6 +31,8 @@ jobs:
           cache-dependency-path: services/ai/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build Docker image
+        run: docker build -t nutriplan-ai:${{ github.sha }} .
       - name: Lint (ruff)
         run: |
           ruff check .
