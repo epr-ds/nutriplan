@@ -112,9 +112,13 @@ def test_llm_cost_is_recorded_per_model() -> None:
         ]
     )
     llm = LLMClient(provider)
-    before = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
-    llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
-    actual = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
+    before = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini", route="analyze-meal")
+    token = current_route.set("analyze-meal")
+    try:
+        llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
+    finally:
+        current_route.reset(token)
+    actual = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini", route="analyze-meal")
     assert actual == pytest.approx(before + 0.00027)
 
 

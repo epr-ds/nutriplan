@@ -24,6 +24,7 @@ import logging
 import re
 import time
 import uuid
+from contextvars import ContextVar
 
 from prometheus_client import Counter, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -71,12 +72,18 @@ def llm_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> floa
     return (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000
 
 
-# Spend per model for the cost & usage dashboard (AIA-805).
+# Spend per model + route for the cost & usage dashboard (AIA-805): the route dimension is
+# what lets the dashboard attribute spend to a specific endpoint instead of only to a vendor.
 ai_llm_cost_usd_total = Counter(
     "ai_llm_cost_usd_total",
     "LLM cost in USD consumed.",
-    ["model"],
+    ["model", "route"],
 )
+
+# The route a completion is attributed to (``/ai/recommendations`` etc.). The telemetry
+# middleware publishes the matched route per request; the LLM client reads it to stamp the
+# per-route spend series.
+current_route: ContextVar[str] = ContextVar("ai_current_route", default="unknown")
 
 # W3C trace context: version-traceid-spanid-flags (all lowercase hex).
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
@@ -170,7 +177,8 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         request.state.trace_id = trace_id
         start = time.perf_counter()
-
+        route = _route_template(request)
+        token = current_route.set(route)
         try:
             response = await call_next(request)
         except Exception:
@@ -181,6 +189,8 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
                 ids=(request_id, trace_id, span_id),
             )
             raise
+        finally:
+            current_route.reset(token)
 
         response.headers["X-Request-ID"] = request_id
         self._record(
