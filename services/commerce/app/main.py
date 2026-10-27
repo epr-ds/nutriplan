@@ -3,14 +3,20 @@ from fastapi import FastAPI
 from app.api.errors import register_exception_handlers
 from app.api.gateway import router as gateway_router
 from app.api.health import router as health_router
+from app.api.metrics import router as metrics_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
+from app.core.telemetry import TelemetryMiddleware, configure_logging
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
-
+configure_logging()
 register_exception_handlers(app)
 
+# Telemetry is added last so it is the outermost middleware.
+app.add_middleware(TelemetryMiddleware)
+
 app.include_router(health_router)
+app.include_router(metrics_router)
 app.include_router(gateway_router)
 app.include_router(webhooks_router)
 
