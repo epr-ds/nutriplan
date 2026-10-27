@@ -55,7 +55,9 @@ def override_recommendation_service():
     app.dependency_overrides.pop(get_recommendation_service, None)
 
 
-def test_global_kill_switch_returns_429_problem_json() -> None:
+def test_global_kill_switch_returns_429_problem_json(
+    override_recommendation_service,
+) -> None:
     """When the global token budget trips, the endpoint refuses with ``429`` before spending."""
     response = client.post(
         "/ai/recommendations",
