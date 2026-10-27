@@ -19,6 +19,7 @@ from app.core.telemetry import (
     ai_llm_usage_completion_tokens_total,
     ai_llm_usage_prompt_tokens_total,
     ai_llm_usage_total,
+    current_route,
     llm_cost_usd,
 )
 from app.llm.errors import LLMTransientError
@@ -77,6 +78,6 @@ class LLMClient:
         ai_llm_usage_completion_tokens_total.labels(response.model or "").inc(
             usage.completion_tokens
         )
-        ai_llm_cost_usd_total.labels(response.model or "").inc(
+        ai_llm_cost_usd_total.labels(response.model or "", current_route.get()).inc(
             llm_cost_usd(response.model or "", usage.prompt_tokens, usage.completion_tokens)
         )
