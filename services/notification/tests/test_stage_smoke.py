@@ -12,6 +12,7 @@ that never reports.
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 
@@ -25,9 +26,11 @@ from app.application.order_status_consumer import OrderStatusConsumer
 from app.core.config import Settings
 from app.domain.enums import DeliveryStatus, DevicePlatform, NotificationChannel, NotificationType
 from app.domain.event_router import EventRouter
+from app.events.consumer import DeliveredEvent
 from app.events.dead_letter import InMemoryDeadLetterQueue
 from app.events.dispatcher import EventDispatcher
 from app.events.factory import (
+    build_event_dispatcher,
     build_notification_recorder,
     build_order_progress_store,
     build_push_delivery,
@@ -127,5 +130,53 @@ class TestTheStagingSmokePath:
         assert set(feed[0].channels) == {NotificationChannel.IN_APP, NotificationChannel.PUSH}
 
         delivered = metrics.delivery_totals()[NotificationType.ORDER_IN_TRANSIT.value]
+        assert delivered["delivered"] == 1
+        assert delivered["failed"] == 0
+
+
+class TestTheDefaultAssembledRuntimePath:
+    """HRD-605: the crash-free counters have to be fed by the runtime that runs in production.
+
+    The staging smoke wires an :class:`EventMetrics` in by hand to prove the fan-out reports.
+    But the worker that a deploy actually runs assembles its dispatcher from settings alone
+    (``EventWorker.from_settings``), so the assembled default path has to own those counters
+    itself -- otherwise the crash-free dashboard has no delivery data to reason about.
+    """
+
+    def test_a_delivery_through_the_default_assembled_path_is_reported(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        settings = smoke_settings(monkeypatch)
+        device_repo = InMemoryDeviceTokenRepository()
+        monkeypatch.setattr(
+            "app.adapters.factory.build_device_token_repository", lambda settings: device_repo
+        )
+        devices = DeviceRegistrationService(device_repo)
+        devices.register(USER, DevicePlatform.ANDROID, "fcm-smoke-token")
+
+        dispatcher = build_event_dispatcher(settings)
+        batch = dispatcher.dispatch(
+            DeliveredEvent(
+                delivery_id=EVENT_ID,
+                payload=json.dumps(
+                    {
+                        "schemaVersion": ORDER_EVENT_VERSION,
+                        "id": EVENT_ID,
+                        "type": ORDER_STATUS_CHANGED,
+                        "occurredAt": datetime.now(UTC).isoformat(),
+                        "data": {
+                            "orderId": ORDER_ID,
+                            "userId": str(USER),
+                            "fromStatus": "confirmed",
+                            "toStatus": "in_transit",
+                        },
+                    }
+                ),
+                attempt=1,
+            )
+        )
+
+        assert batch.handled == 1
+        delivered = dispatcher.metrics.delivery_totals()[NotificationType.ORDER_IN_TRANSIT.value]
         assert delivered["delivered"] == 1
         assert delivered["failed"] == 0

@@ -134,6 +134,7 @@ def build_event_dispatcher(
     it is visible here in one place instead of being a ``return`` buried in a handler.
     """
     settings = settings or default_settings
+    metrics = metrics or EventMetrics()
     if handler_registry is None:
         order_status = build_order_status_consumer(settings, metrics=metrics)
         handler_registry = {
