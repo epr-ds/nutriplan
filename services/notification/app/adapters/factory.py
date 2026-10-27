@@ -53,6 +53,7 @@ from app.domain.repositories import (
     PreferencesRepository,
     PushReceiptStore,
 )
+from app.events.metrics import EventMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -201,13 +202,16 @@ def build_push_delivery(
     settings: Settings | None = None,
     *,
     notifications: NotificationRepository,
+    metrics: EventMetrics | None = None,
 ) -> PushDelivery | None:
     """Assemble the send-and-record path over the *caller's* notification store (NTF-303/305).
 
     The repository is passed in rather than rebuilt because the in-process store keeps its
     state inside the object: a delivery path reading a different instance than the recorder
     wrote to would report every notification as expired in dev and CI. ``None`` means no
-    provider is configured, so the caller should not attempt delivery at all.
+    provider is configured, so the caller should not attempt delivery at all. ``metrics`` is
+    the event metrics the fan-out reports its delivery outcome into, so a smoke run -- or any
+    other reader of the counters -- can see what the provider actually did.
     """
     settings = settings or default_settings
     gateways = build_push_gateways(settings)
@@ -223,6 +227,7 @@ def build_push_delivery(
         backoff_multiplier=settings.push_retry_multiplier,
         preferences=build_preferences_repository(settings),
         templates=build_default_catalog(),
+        metrics=metrics,
     )
 
 
