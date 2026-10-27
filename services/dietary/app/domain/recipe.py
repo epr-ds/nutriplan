@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
@@ -65,6 +66,13 @@ UNIT_ALIASES: dict[str, str] = {
 
 NUTRIENT_FIELDS: tuple[str, ...] = ("calories", "protein", "carbs", "fat", "sugar")
 
+# Recipe image pipeline (DPL-207): CDN-served image URLs plus the deterministic placeholder used
+# when a catalog recipe carries no usable image.
+RECIPE_IMAGE_CDN_BASE_URL = "https://images.nutriplan.app"
+RECIPE_IMAGE_PLACEHOLDER = "https://images.nutriplan.app/placeholders/recipe.svg"
+SUPPORTED_RECIPE_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".svg", ".gif")
+MAX_RECIPE_IMAGE_URL_LENGTH = 512
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -88,6 +96,38 @@ def normalize_unit(unit: str | None) -> str | None:
     if canonical is None:
         raise ValueError(f"unknown nutrition unit: {unit!r}")
     return canonical
+
+
+def is_valid_recipe_image_url(image_url: str | None) -> bool:
+    """Whether *image_url* is a usable recipe image reference (DPL-207).
+
+    An image reference must be an absolute ``http(s)`` URL of a supported image format that
+    respects the maximum reference length; a missing/blank reference is not valid (and therefore
+    resolves to the placeholder). Anything longer than :data:`MAX_RECIPE_IMAGE_URL_LENGTH` or
+    with an unsupported format is rejected so bad rows never reach the CDN/rendering layer.
+    """
+    if not image_url:
+        return False
+    url = image_url.strip()
+    if len(url) > MAX_RECIPE_IMAGE_URL_LENGTH:
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    return url.lower().endswith(SUPPORTED_RECIPE_IMAGE_EXTENSIONS)
+
+
+def resolve_recipe_image_url(image_url: str | None) -> str:
+    """Resolve a recipe image reference to its CDN-served URL, else the deterministic placeholder.
+
+    DPL-207: ``imageUrl`` is populated/served via the CDN; when no usable image is configured the
+    aggregate exposes a deterministic placeholder instead of ``None`` so consumers never render a
+    broken/missing image. The placeholder is resolved at read time only and is never persisted.
+    """
+    url = (image_url or "").strip()
+    if not is_valid_recipe_image_url(url):
+        return RECIPE_IMAGE_PLACEHOLDER
+    return url
 
 
 class _Model(BaseModel):
@@ -207,6 +247,15 @@ class Recipe(_Model):
             nutritional_info=nutritional_info,
             dietary_types=dietary_types or [],
         )
+
+    @property
+    def effective_image_url(self) -> str:
+        """CDN-served image URL for this recipe (DPL-207).
+
+        Returns the stored image reference when it is a valid image URL (catalog rows store
+        CDN-served URLs); otherwise returns the deterministic placeholder.
+        """
+        return resolve_recipe_image_url(self.image_url)
 
     def to_document(self) -> dict:
         """Serialize to a MongoDB document: camelCase keys, aggregate id stored as ``_id``."""
