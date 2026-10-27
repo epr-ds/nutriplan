@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.llm.client import LLMClient
@@ -96,3 +97,21 @@ def test_llm_usage_exposes_prompt_and_completion_token_series() -> None:
     assert (
         _value(client, "ai_llm_usage_completion_tokens_total", model=MODEL) == before_completion + 2
     )
+
+
+def test_llm_cost_is_recorded_per_model() -> None:
+    """The dashboard's per-model spend series must exist and be populated (AIA-805)."""
+    provider = FakeLLMProvider(
+        script=[
+            LLMResponse(
+                content="ok",
+                model="gpt-4o-mini",
+                usage=LLMUsage(prompt_tokens=1000, completion_tokens=200, total_tokens=1200),
+            ),
+        ]
+    )
+    llm = LLMClient(provider)
+    before = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
+    llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
+    actual = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
+    assert actual == pytest.approx(before + 0.00027)

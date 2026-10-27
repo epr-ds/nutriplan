@@ -55,6 +55,29 @@ ai_llm_usage_completion_tokens_total = Counter(
     ["model"],
 )
 
+# USD per 1M tokens (input, output) per model — the spend side of the cost & usage dashboard.
+LLM_MODEL_PRICES_USD_PER_MTOK: dict[str, tuple[float, float]] = {
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4o": (5.0, 15.0),
+    "gpt-4-turbo": (10.0, 30.0),
+    "claude-3-5-sonnet": (3.0, 15.0),
+    "claude-3-5-haiku": (0.80, 4.0),
+}
+
+
+def llm_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    """Spend in USD for one completion, from the model's published token prices."""
+    input_price, output_price = LLM_MODEL_PRICES_USD_PER_MTOK.get(model, (0.0, 0.0))
+    return (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000
+
+
+# Spend per model for the cost & usage dashboard (AIA-805).
+ai_llm_cost_usd_total = Counter(
+    "ai_llm_cost_usd_total",
+    "LLM cost in USD consumed.",
+    ["model"],
+)
+
 # W3C trace context: version-traceid-spanid-flags (all lowercase hex).
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
 
