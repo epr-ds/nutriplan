@@ -11,7 +11,10 @@ reference, and detected allergens. AIA-504 adds an input scrub at the front of t
 free-text description and ingredient names before the prompt is assembled, so a crafted meal
 write-up cannot hijack the model. AIA-505 adds a response post-processor at the end of the use case:
 a :class:`~app.guardrails.compliance.ResponsePostProcessor` strips any diagnostic/medical claim from
-the advisory warnings and attaches a localized medical disclaimer to the result. Production wiring
+the advisory warnings and attaches a localized medical disclaimer to the result. HRD-103 (Privacy &
+data compliance, MX LFPDPPP) gates this use case: before any health-data processing reaches the
+completion engine, the user must have consented; without consent the analysis degrades to an
+unestimated result and the LLM is never invoked. Production wiring
 layers caching and budgets under the completion via :func:`build_meal_analysis_service`; tests
 inject a fake-backed completion so the path runs offline.
 """
@@ -61,6 +64,7 @@ class MealAnalysisService:
         assembler: MealAnalysisPromptAssembler | None = None,
         aligner: MealAligner | None = None,
         low_confidence_threshold: float = _DEFAULT_LOW_CONFIDENCE_THRESHOLD,
+        consent: bool = False,
         sanitizer: PromptSanitizer | None = None,
         post_processor: ResponsePostProcessor | None = None,
     ) -> None:
@@ -68,6 +72,7 @@ class MealAnalysisService:
         self._assembler = assembler or build_meal_analysis_prompt_assembler()
         self._aligner = aligner or MealAligner()
         self._low_confidence_threshold = low_confidence_threshold
+        self._consent = consent
         self._sanitizer = sanitizer or PromptSanitizer()
         self._post_processor = post_processor or ResponsePostProcessor()
 
@@ -77,8 +82,16 @@ class MealAnalysisService:
         *,
         locale: Locale | str = _DEFAULT_LOCALE,
     ) -> MealAnalysis:
-        """Sanitize input, assemble the prompt, estimate, normalize, score, flag, and disclaim."""
+        """Check consent, then sanitize, assemble, estimate, normalize, score, flag, and disclaim.
+
+        The consent gate runs first (HRD-103): without user consent the completion engine is never
+        invoked and the analysis degrades to an unestimated result instead of estimating.
+        """
         resolved = Locale.parse(locale, default=Locale.default())
+        if not self._consent:
+            # HRD-103 (MX LFPDPPP): withheld consent means health-data processing must not reach the
+            # completion engine, so degrade to an unestimated result without asking the model.
+            return MealAnalysis(disclaimer=self._post_processor.disclaimer(resolved))
         command = self._sanitize_command(command)
         prompt = self._assembler.assemble(command, locale=resolved)
         draft = self._completion.complete(prompt.to_request())
@@ -139,6 +152,7 @@ def build_meal_analysis_service(
     telemetry: PromptTelemetry | None = None,
     sanitization_telemetry: SanitizationTelemetry | None = None,
     medical_claim_telemetry: MedicalClaimTelemetry | None = None,
+    consent: bool = False,
 ) -> MealAnalysisService:
     """Wire the service from configuration: cached, budgeted, schema-constrained completions."""
     settings = settings or default_settings
@@ -153,6 +167,7 @@ def build_meal_analysis_service(
         completion,
         assembler=build_meal_analysis_prompt_assembler(telemetry=telemetry),
         aligner=aligner or MealAligner(),
+        consent=consent,
         sanitizer=PromptSanitizer(sanitization_telemetry or LoggingSanitizationTelemetry()),
         post_processor=ResponsePostProcessor(
             medical_claim_telemetry or LoggingMedicalClaimTelemetry()
