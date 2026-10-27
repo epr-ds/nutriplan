@@ -16,8 +16,7 @@ import pytest
 import yaml
 
 _LOCAL_CANDIDATES: list[Path] = [
-    ancestor / "infra" / "docker-compose.yml"
-    for ancestor in Path(__file__).resolve().parents
+    ancestor / "infra" / "docker-compose.yml" for ancestor in Path(__file__).resolve().parents
 ]
 _LOCAL_CANDIDATES = [candidate for candidate in _LOCAL_CANDIDATES if candidate.is_file()]
 
