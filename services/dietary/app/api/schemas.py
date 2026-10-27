@@ -164,7 +164,7 @@ class RecipeResponse(_Camel):
             prep_time=recipe.prep_time,
             cook_time=recipe.cook_time,
             servings=recipe.servings,
-            image_url=recipe.image_url,
+            image_url=recipe.effective_image_url,
             nutritional_info=(
                 NutritionalInfoSchema(**recipe.nutritional_info.model_dump())
                 if recipe.nutritional_info is not None
