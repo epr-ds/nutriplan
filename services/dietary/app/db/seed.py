@@ -30,11 +30,15 @@ def _recipe(
     image_url: str,
     nutritional_info: NutritionalInfo,
     dietary_types: list[DietaryType],
+    name_es: str | None = None,
+    description_es: str | None = None,
 ) -> Recipe:
     return Recipe(
         id=recipe_id,
         name=name,
         description=description,
+        name_es=name_es,
+        description_es=description_es,
         ingredients=ingredients,
         instructions=instructions,
         prep_time=prep_time,
@@ -95,13 +99,19 @@ SEED_RECIPES: list[Recipe] = [
                 sugar=6.0,
             ),
         ],
-        ["Combine oats, milk and chia in a jar.", "Top with berries.", "Refrigerate overnight."],
+        [
+            "Combine oats, milk and chia in a jar.",
+            "Top with berries.",
+            "Refrigerate overnight.",
+        ],
         5,
         0,
         2,
         "https://images.nutriplan.app/recipes/overnight-oats.jpg",
         NutritionalInfo(calories=243, protein=9.9, carbs=38.1, fat=6.2, sugar=8.6),
-        [DietaryType.VEGETARIAN, DietaryType.OMNIVORE],
+        [DietaryType.OMNIVORE, DietaryType.VEGETARIAN, DietaryType.VEGAN],
+        name_es="Avena nocturna con bayas",
+        description_es="Avena nocturna remojada con leche, chia y bayas mixtas.",
     ),
     _recipe(
         "22222222-2222-2222-2222-222222222222",
@@ -161,6 +171,8 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/chicken-quinoa-bowl.jpg",
         NutritionalInfo(calories=550, protein=55.0, carbs=42.0, fat=16.6, sugar=2.1),
         [DietaryType.OMNIVORE],
+        name_es="Bowl de pollo con quinoa",
+        description_es="Pollo a la parrilla con quinoa y verduras asadas.",
     ),
     _recipe(
         "33333333-3333-3333-3333-333333333333",
@@ -219,6 +231,8 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/tofu-stir-fry.jpg",
         NutritionalInfo(calories=228, protein=23.5, carbs=14.0, fat=10.4, sugar=4.4),
         [DietaryType.VEGAN, DietaryType.VEGETARIAN, DietaryType.OMNIVORE],
+        name_es="Salteado de tofu y verduras",
+        description_es="Salteado de tofu y verduras con salsa soja y jengibre.",
     ),
     _recipe(
         "44444444-4444-4444-4444-444444444444",
@@ -277,6 +291,8 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/baked-salmon.jpg",
         NutritionalInfo(calories=473, protein=32.3, carbs=22.0, fat=28.8, sugar=5.7),
         [DietaryType.PALEO, DietaryType.OMNIVORE],
+        name_es="Salmon al horno con verduras",
+        description_es="Filete de salmón con verduras asadas al horno.",
     ),
     _recipe(
         "aaaaaaaa-0000-4000-8000-000000000101",
@@ -335,6 +351,8 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/breakfast-burrito.jpg",
         NutritionalInfo(calories=560, protein=28.0, carbs=55.0, fat=26.0, sugar=12.0),
         [DietaryType.OMNIVORE, DietaryType.VEGETARIAN, DietaryType.VEGAN],
+        name_es="Burrito de desayuno",
+        description_es="Burrito con huevos revueltos, frijoles, queso y salsa.",
     ),
     _recipe(
         "aaaaaaaa-0000-4000-8000-000000000102",
@@ -393,11 +411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/avocado-toast-egg.jpg",
         NutritionalInfo(calories=420, protein=18.0, carbs=38.0, fat=22.0, sugar=6.0),
         [DietaryType.OMNIVORE, DietaryType.VEGETARIAN, DietaryType.VEGAN],
+        name_es="Tostada de aguacate con huevo",
+        description_es="Tostada de masa madre con aguacate machacado y un huevo.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000000",
-        "Curated Meal Batch 0",
-        "Generated curated meal 0 for the baseline catalog.",
+        "Comida generada 0",
+        "Comida generada 0 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -441,11 +461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-0.jpg",
         NutritionalInfo(calories=640, protein=48.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 0",
+        description_es="Comida generada 0 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000001",
-        "Curated Meal Batch 1",
-        "Generated curated meal 1 for the baseline catalog.",
+        "Comida generada 1",
+        "Comida generada 1 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -489,11 +511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-1.jpg",
         NutritionalInfo(calories=641, protein=49.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 1",
+        description_es="Comida generada 1 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000002",
-        "Curated Meal Batch 2",
-        "Generated curated meal 2 for the baseline catalog.",
+        "Comida generada 2",
+        "Comida generada 2 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -537,11 +561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-2.jpg",
         NutritionalInfo(calories=642, protein=50.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 2",
+        description_es="Comida generada 2 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000003",
-        "Curated Meal Batch 3",
-        "Generated curated meal 3 for the baseline catalog.",
+        "Comida generada 3",
+        "Comida generada 3 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -585,11 +611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-3.jpg",
         NutritionalInfo(calories=643, protein=51.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 3",
+        description_es="Comida generada 3 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000004",
-        "Curated Meal Batch 4",
-        "Generated curated meal 4 for the baseline catalog.",
+        "Comida generada 4",
+        "Comida generada 4 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -633,11 +661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-4.jpg",
         NutritionalInfo(calories=644, protein=52.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 4",
+        description_es="Comida generada 4 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000005",
-        "Curated Meal Batch 5",
-        "Generated curated meal 5 for the baseline catalog.",
+        "Comida generada 5",
+        "Comida generada 5 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -681,11 +711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-5.jpg",
         NutritionalInfo(calories=645, protein=53.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 5",
+        description_es="Comida generada 5 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000006",
-        "Curated Meal Batch 6",
-        "Generated curated meal 6 for the baseline catalog.",
+        "Comida generada 6",
+        "Comida generada 6 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -729,11 +761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-6.jpg",
         NutritionalInfo(calories=646, protein=54.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 6",
+        description_es="Comida generada 6 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000007",
-        "Curated Meal Batch 7",
-        "Generated curated meal 7 for the baseline catalog.",
+        "Comida generada 7",
+        "Comida generada 7 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -777,11 +811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-7.jpg",
         NutritionalInfo(calories=647, protein=55.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 7",
+        description_es="Comida generada 7 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000008",
-        "Curated Meal Batch 8",
-        "Generated curated meal 8 for the baseline catalog.",
+        "Comida generada 8",
+        "Comida generada 8 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -825,11 +861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-8.jpg",
         NutritionalInfo(calories=648, protein=56.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 8",
+        description_es="Comida generada 8 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000009",
-        "Curated Meal Batch 9",
-        "Generated curated meal 9 for the baseline catalog.",
+        "Comida generada 9",
+        "Comida generada 9 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -873,11 +911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-9.jpg",
         NutritionalInfo(calories=649, protein=57.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 9",
+        description_es="Comida generada 9 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000010",
-        "Curated Meal Batch 10",
-        "Generated curated meal 10 for the baseline catalog.",
+        "Comida generada 10",
+        "Comida generada 10 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -921,11 +961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-10.jpg",
         NutritionalInfo(calories=650, protein=48.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 10",
+        description_es="Comida generada 10 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000011",
-        "Curated Meal Batch 11",
-        "Generated curated meal 11 for the baseline catalog.",
+        "Comida generada 11",
+        "Comida generada 11 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -969,11 +1011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-11.jpg",
         NutritionalInfo(calories=651, protein=49.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 11",
+        description_es="Comida generada 11 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000012",
-        "Curated Meal Batch 12",
-        "Generated curated meal 12 for the baseline catalog.",
+        "Comida generada 12",
+        "Comida generada 12 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1017,11 +1061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-12.jpg",
         NutritionalInfo(calories=652, protein=50.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 12",
+        description_es="Comida generada 12 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000013",
-        "Curated Meal Batch 13",
-        "Generated curated meal 13 for the baseline catalog.",
+        "Comida generada 13",
+        "Comida generada 13 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1065,11 +1111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-13.jpg",
         NutritionalInfo(calories=653, protein=51.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 13",
+        description_es="Comida generada 13 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000014",
-        "Curated Meal Batch 14",
-        "Generated curated meal 14 for the baseline catalog.",
+        "Comida generada 14",
+        "Comida generada 14 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1113,11 +1161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-14.jpg",
         NutritionalInfo(calories=654, protein=52.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 14",
+        description_es="Comida generada 14 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000015",
-        "Curated Meal Batch 15",
-        "Generated curated meal 15 for the baseline catalog.",
+        "Comida generada 15",
+        "Comida generada 15 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1161,11 +1211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-15.jpg",
         NutritionalInfo(calories=655, protein=53.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 15",
+        description_es="Comida generada 15 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000016",
-        "Curated Meal Batch 16",
-        "Generated curated meal 16 for the baseline catalog.",
+        "Comida generada 16",
+        "Comida generada 16 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1209,11 +1261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-16.jpg",
         NutritionalInfo(calories=656, protein=54.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 16",
+        description_es="Comida generada 16 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000017",
-        "Curated Meal Batch 17",
-        "Generated curated meal 17 for the baseline catalog.",
+        "Comida generada 17",
+        "Comida generada 17 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1257,11 +1311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-17.jpg",
         NutritionalInfo(calories=657, protein=55.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 17",
+        description_es="Comida generada 17 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000018",
-        "Curated Meal Batch 18",
-        "Generated curated meal 18 for the baseline catalog.",
+        "Comida generada 18",
+        "Comida generada 18 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1305,11 +1361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-18.jpg",
         NutritionalInfo(calories=658, protein=56.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 18",
+        description_es="Comida generada 18 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000019",
-        "Curated Meal Batch 19",
-        "Generated curated meal 19 for the baseline catalog.",
+        "Comida generada 19",
+        "Comida generada 19 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1353,11 +1411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-19.jpg",
         NutritionalInfo(calories=659, protein=57.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 19",
+        description_es="Comida generada 19 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000020",
-        "Curated Meal Batch 20",
-        "Generated curated meal 20 for the baseline catalog.",
+        "Comida generada 20",
+        "Comida generada 20 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1401,11 +1461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-20.jpg",
         NutritionalInfo(calories=660, protein=48.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 20",
+        description_es="Comida generada 20 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000021",
-        "Curated Meal Batch 21",
-        "Generated curated meal 21 for the baseline catalog.",
+        "Comida generada 21",
+        "Comida generada 21 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1449,11 +1511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-21.jpg",
         NutritionalInfo(calories=661, protein=49.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 21",
+        description_es="Comida generada 21 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000022",
-        "Curated Meal Batch 22",
-        "Generated curated meal 22 for the baseline catalog.",
+        "Comida generada 22",
+        "Comida generada 22 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1497,11 +1561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-22.jpg",
         NutritionalInfo(calories=662, protein=50.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 22",
+        description_es="Comida generada 22 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000023",
-        "Curated Meal Batch 23",
-        "Generated curated meal 23 for the baseline catalog.",
+        "Comida generada 23",
+        "Comida generada 23 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1545,11 +1611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-23.jpg",
         NutritionalInfo(calories=663, protein=51.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 23",
+        description_es="Comida generada 23 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000024",
-        "Curated Meal Batch 24",
-        "Generated curated meal 24 for the baseline catalog.",
+        "Comida generada 24",
+        "Comida generada 24 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1593,11 +1661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-24.jpg",
         NutritionalInfo(calories=664, protein=52.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 24",
+        description_es="Comida generada 24 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000025",
-        "Curated Meal Batch 25",
-        "Generated curated meal 25 for the baseline catalog.",
+        "Comida generada 25",
+        "Comida generada 25 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1641,11 +1711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-25.jpg",
         NutritionalInfo(calories=665, protein=53.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 25",
+        description_es="Comida generada 25 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000026",
-        "Curated Meal Batch 26",
-        "Generated curated meal 26 for the baseline catalog.",
+        "Comida generada 26",
+        "Comida generada 26 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1689,11 +1761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-26.jpg",
         NutritionalInfo(calories=666, protein=54.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 26",
+        description_es="Comida generada 26 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000027",
-        "Curated Meal Batch 27",
-        "Generated curated meal 27 for the baseline catalog.",
+        "Comida generada 27",
+        "Comida generada 27 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1737,11 +1811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-27.jpg",
         NutritionalInfo(calories=667, protein=55.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 27",
+        description_es="Comida generada 27 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000028",
-        "Curated Meal Batch 28",
-        "Generated curated meal 28 for the baseline catalog.",
+        "Comida generada 28",
+        "Comida generada 28 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1785,11 +1861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-28.jpg",
         NutritionalInfo(calories=668, protein=56.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 28",
+        description_es="Comida generada 28 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000029",
-        "Curated Meal Batch 29",
-        "Generated curated meal 29 for the baseline catalog.",
+        "Comida generada 29",
+        "Comida generada 29 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1833,11 +1911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-29.jpg",
         NutritionalInfo(calories=669, protein=57.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 29",
+        description_es="Comida generada 29 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000030",
-        "Curated Meal Batch 30",
-        "Generated curated meal 30 for the baseline catalog.",
+        "Comida generada 30",
+        "Comida generada 30 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1881,11 +1961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-30.jpg",
         NutritionalInfo(calories=670, protein=48.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 30",
+        description_es="Comida generada 30 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000031",
-        "Curated Meal Batch 31",
-        "Generated curated meal 31 for the baseline catalog.",
+        "Comida generada 31",
+        "Comida generada 31 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1929,11 +2011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-31.jpg",
         NutritionalInfo(calories=671, protein=49.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 31",
+        description_es="Comida generada 31 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000032",
-        "Curated Meal Batch 32",
-        "Generated curated meal 32 for the baseline catalog.",
+        "Comida generada 32",
+        "Comida generada 32 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -1977,11 +2061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-32.jpg",
         NutritionalInfo(calories=672, protein=50.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 32",
+        description_es="Comida generada 32 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000033",
-        "Curated Meal Batch 33",
-        "Generated curated meal 33 for the baseline catalog.",
+        "Comida generada 33",
+        "Comida generada 33 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2025,11 +2111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-33.jpg",
         NutritionalInfo(calories=673, protein=51.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 33",
+        description_es="Comida generada 33 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000034",
-        "Curated Meal Batch 34",
-        "Generated curated meal 34 for the baseline catalog.",
+        "Comida generada 34",
+        "Comida generada 34 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2073,11 +2161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-34.jpg",
         NutritionalInfo(calories=674, protein=52.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 34",
+        description_es="Comida generada 34 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000035",
-        "Curated Meal Batch 35",
-        "Generated curated meal 35 for the baseline catalog.",
+        "Comida generada 35",
+        "Comida generada 35 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2121,11 +2211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-35.jpg",
         NutritionalInfo(calories=675, protein=53.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 35",
+        description_es="Comida generada 35 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000036",
-        "Curated Meal Batch 36",
-        "Generated curated meal 36 for the baseline catalog.",
+        "Comida generada 36",
+        "Comida generada 36 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2169,11 +2261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-36.jpg",
         NutritionalInfo(calories=676, protein=54.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 36",
+        description_es="Comida generada 36 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000037",
-        "Curated Meal Batch 37",
-        "Generated curated meal 37 for the baseline catalog.",
+        "Comida generada 37",
+        "Comida generada 37 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2217,11 +2311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-37.jpg",
         NutritionalInfo(calories=677, protein=55.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 37",
+        description_es="Comida generada 37 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000038",
-        "Curated Meal Batch 38",
-        "Generated curated meal 38 for the baseline catalog.",
+        "Comida generada 38",
+        "Comida generada 38 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2265,11 +2361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-38.jpg",
         NutritionalInfo(calories=678, protein=56.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 38",
+        description_es="Comida generada 38 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000039",
-        "Curated Meal Batch 39",
-        "Generated curated meal 39 for the baseline catalog.",
+        "Comida generada 39",
+        "Comida generada 39 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2313,11 +2411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-39.jpg",
         NutritionalInfo(calories=679, protein=57.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 39",
+        description_es="Comida generada 39 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000040",
-        "Curated Meal Batch 40",
-        "Generated curated meal 40 for the baseline catalog.",
+        "Comida generada 40",
+        "Comida generada 40 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2361,11 +2461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-40.jpg",
         NutritionalInfo(calories=680, protein=48.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 40",
+        description_es="Comida generada 40 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000041",
-        "Curated Meal Batch 41",
-        "Generated curated meal 41 for the baseline catalog.",
+        "Comida generada 41",
+        "Comida generada 41 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2409,11 +2511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-41.jpg",
         NutritionalInfo(calories=681, protein=49.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 41",
+        description_es="Comida generada 41 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000042",
-        "Curated Meal Batch 42",
-        "Generated curated meal 42 for the baseline catalog.",
+        "Comida generada 42",
+        "Comida generada 42 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2457,11 +2561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-42.jpg",
         NutritionalInfo(calories=682, protein=50.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 42",
+        description_es="Comida generada 42 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000043",
-        "Curated Meal Batch 43",
-        "Generated curated meal 43 for the baseline catalog.",
+        "Comida generada 43",
+        "Comida generada 43 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2505,11 +2611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-43.jpg",
         NutritionalInfo(calories=683, protein=51.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 43",
+        description_es="Comida generada 43 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000044",
-        "Curated Meal Batch 44",
-        "Generated curated meal 44 for the baseline catalog.",
+        "Comida generada 44",
+        "Comida generada 44 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2553,11 +2661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-44.jpg",
         NutritionalInfo(calories=684, protein=52.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 44",
+        description_es="Comida generada 44 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000045",
-        "Curated Meal Batch 45",
-        "Generated curated meal 45 for the baseline catalog.",
+        "Comida generada 45",
+        "Comida generada 45 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2601,11 +2711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-45.jpg",
         NutritionalInfo(calories=685, protein=53.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 45",
+        description_es="Comida generada 45 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000046",
-        "Curated Meal Batch 46",
-        "Generated curated meal 46 for the baseline catalog.",
+        "Comida generada 46",
+        "Comida generada 46 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2649,11 +2761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-46.jpg",
         NutritionalInfo(calories=686, protein=54.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 46",
+        description_es="Comida generada 46 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000047",
-        "Curated Meal Batch 47",
-        "Generated curated meal 47 for the baseline catalog.",
+        "Comida generada 47",
+        "Comida generada 47 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2697,11 +2811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-47.jpg",
         NutritionalInfo(calories=687, protein=55.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 47",
+        description_es="Comida generada 47 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000048",
-        "Curated Meal Batch 48",
-        "Generated curated meal 48 for the baseline catalog.",
+        "Comida generada 48",
+        "Comida generada 48 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2745,11 +2861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-48.jpg",
         NutritionalInfo(calories=688, protein=56.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 48",
+        description_es="Comida generada 48 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000049",
-        "Curated Meal Batch 49",
-        "Generated curated meal 49 for the baseline catalog.",
+        "Comida generada 49",
+        "Comida generada 49 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2793,11 +2911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-49.jpg",
         NutritionalInfo(calories=689, protein=57.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 49",
+        description_es="Comida generada 49 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000050",
-        "Curated Meal Batch 50",
-        "Generated curated meal 50 for the baseline catalog.",
+        "Comida generada 50",
+        "Comida generada 50 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2841,11 +2961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-50.jpg",
         NutritionalInfo(calories=690, protein=48.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 50",
+        description_es="Comida generada 50 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000051",
-        "Curated Meal Batch 51",
-        "Generated curated meal 51 for the baseline catalog.",
+        "Comida generada 51",
+        "Comida generada 51 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2889,11 +3011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-51.jpg",
         NutritionalInfo(calories=691, protein=49.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 51",
+        description_es="Comida generada 51 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000052",
-        "Curated Meal Batch 52",
-        "Generated curated meal 52 for the baseline catalog.",
+        "Comida generada 52",
+        "Comida generada 52 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2937,11 +3061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-52.jpg",
         NutritionalInfo(calories=692, protein=50.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 52",
+        description_es="Comida generada 52 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000053",
-        "Curated Meal Batch 53",
-        "Generated curated meal 53 for the baseline catalog.",
+        "Comida generada 53",
+        "Comida generada 53 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -2985,11 +3111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-53.jpg",
         NutritionalInfo(calories=693, protein=51.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 53",
+        description_es="Comida generada 53 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000054",
-        "Curated Meal Batch 54",
-        "Generated curated meal 54 for the baseline catalog.",
+        "Comida generada 54",
+        "Comida generada 54 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3033,11 +3161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-54.jpg",
         NutritionalInfo(calories=694, protein=52.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 54",
+        description_es="Comida generada 54 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000055",
-        "Curated Meal Batch 55",
-        "Generated curated meal 55 for the baseline catalog.",
+        "Comida generada 55",
+        "Comida generada 55 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3081,11 +3211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-55.jpg",
         NutritionalInfo(calories=695, protein=53.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 55",
+        description_es="Comida generada 55 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000056",
-        "Curated Meal Batch 56",
-        "Generated curated meal 56 for the baseline catalog.",
+        "Comida generada 56",
+        "Comida generada 56 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3129,11 +3261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-56.jpg",
         NutritionalInfo(calories=696, protein=54.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 56",
+        description_es="Comida generada 56 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000057",
-        "Curated Meal Batch 57",
-        "Generated curated meal 57 for the baseline catalog.",
+        "Comida generada 57",
+        "Comida generada 57 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3177,11 +3311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-57.jpg",
         NutritionalInfo(calories=697, protein=55.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 57",
+        description_es="Comida generada 57 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000058",
-        "Curated Meal Batch 58",
-        "Generated curated meal 58 for the baseline catalog.",
+        "Comida generada 58",
+        "Comida generada 58 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3225,11 +3361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-58.jpg",
         NutritionalInfo(calories=698, protein=56.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 58",
+        description_es="Comida generada 58 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000059",
-        "Curated Meal Batch 59",
-        "Generated curated meal 59 for the baseline catalog.",
+        "Comida generada 59",
+        "Comida generada 59 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3273,11 +3411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-59.jpg",
         NutritionalInfo(calories=699, protein=57.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 59",
+        description_es="Comida generada 59 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000060",
-        "Curated Meal Batch 60",
-        "Generated curated meal 60 for the baseline catalog.",
+        "Comida generada 60",
+        "Comida generada 60 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3321,11 +3461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-60.jpg",
         NutritionalInfo(calories=640, protein=48.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 60",
+        description_es="Comida generada 60 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000061",
-        "Curated Meal Batch 61",
-        "Generated curated meal 61 for the baseline catalog.",
+        "Comida generada 61",
+        "Comida generada 61 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3369,11 +3511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-61.jpg",
         NutritionalInfo(calories=641, protein=49.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 61",
+        description_es="Comida generada 61 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000062",
-        "Curated Meal Batch 62",
-        "Generated curated meal 62 for the baseline catalog.",
+        "Comida generada 62",
+        "Comida generada 62 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3417,11 +3561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-62.jpg",
         NutritionalInfo(calories=642, protein=50.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 62",
+        description_es="Comida generada 62 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000063",
-        "Curated Meal Batch 63",
-        "Generated curated meal 63 for the baseline catalog.",
+        "Comida generada 63",
+        "Comida generada 63 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3465,11 +3611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-63.jpg",
         NutritionalInfo(calories=643, protein=51.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 63",
+        description_es="Comida generada 63 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000064",
-        "Curated Meal Batch 64",
-        "Generated curated meal 64 for the baseline catalog.",
+        "Comida generada 64",
+        "Comida generada 64 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3513,11 +3661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-64.jpg",
         NutritionalInfo(calories=644, protein=52.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 64",
+        description_es="Comida generada 64 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000065",
-        "Curated Meal Batch 65",
-        "Generated curated meal 65 for the baseline catalog.",
+        "Comida generada 65",
+        "Comida generada 65 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3561,11 +3711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-65.jpg",
         NutritionalInfo(calories=645, protein=53.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 65",
+        description_es="Comida generada 65 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000066",
-        "Curated Meal Batch 66",
-        "Generated curated meal 66 for the baseline catalog.",
+        "Comida generada 66",
+        "Comida generada 66 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3609,11 +3761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-66.jpg",
         NutritionalInfo(calories=646, protein=54.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 66",
+        description_es="Comida generada 66 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000067",
-        "Curated Meal Batch 67",
-        "Generated curated meal 67 for the baseline catalog.",
+        "Comida generada 67",
+        "Comida generada 67 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3657,11 +3811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-67.jpg",
         NutritionalInfo(calories=647, protein=55.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 67",
+        description_es="Comida generada 67 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000068",
-        "Curated Meal Batch 68",
-        "Generated curated meal 68 for the baseline catalog.",
+        "Comida generada 68",
+        "Comida generada 68 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3705,11 +3861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-68.jpg",
         NutritionalInfo(calories=648, protein=56.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 68",
+        description_es="Comida generada 68 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000069",
-        "Curated Meal Batch 69",
-        "Generated curated meal 69 for the baseline catalog.",
+        "Comida generada 69",
+        "Comida generada 69 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3753,11 +3911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-69.jpg",
         NutritionalInfo(calories=649, protein=57.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 69",
+        description_es="Comida generada 69 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000070",
-        "Curated Meal Batch 70",
-        "Generated curated meal 70 for the baseline catalog.",
+        "Comida generada 70",
+        "Comida generada 70 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3801,11 +3961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-70.jpg",
         NutritionalInfo(calories=650, protein=48.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 70",
+        description_es="Comida generada 70 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000071",
-        "Curated Meal Batch 71",
-        "Generated curated meal 71 for the baseline catalog.",
+        "Comida generada 71",
+        "Comida generada 71 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3849,11 +4011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-71.jpg",
         NutritionalInfo(calories=651, protein=49.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 71",
+        description_es="Comida generada 71 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000072",
-        "Curated Meal Batch 72",
-        "Generated curated meal 72 for the baseline catalog.",
+        "Comida generada 72",
+        "Comida generada 72 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3897,11 +4061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-72.jpg",
         NutritionalInfo(calories=652, protein=50.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 72",
+        description_es="Comida generada 72 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000073",
-        "Curated Meal Batch 73",
-        "Generated curated meal 73 for the baseline catalog.",
+        "Comida generada 73",
+        "Comida generada 73 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3945,11 +4111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-73.jpg",
         NutritionalInfo(calories=653, protein=51.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 73",
+        description_es="Comida generada 73 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000074",
-        "Curated Meal Batch 74",
-        "Generated curated meal 74 for the baseline catalog.",
+        "Comida generada 74",
+        "Comida generada 74 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -3993,11 +4161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-74.jpg",
         NutritionalInfo(calories=654, protein=52.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 74",
+        description_es="Comida generada 74 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000075",
-        "Curated Meal Batch 75",
-        "Generated curated meal 75 for the baseline catalog.",
+        "Comida generada 75",
+        "Comida generada 75 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4041,11 +4211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-75.jpg",
         NutritionalInfo(calories=655, protein=53.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 75",
+        description_es="Comida generada 75 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000076",
-        "Curated Meal Batch 76",
-        "Generated curated meal 76 for the baseline catalog.",
+        "Comida generada 76",
+        "Comida generada 76 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4089,11 +4261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-76.jpg",
         NutritionalInfo(calories=656, protein=54.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 76",
+        description_es="Comida generada 76 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000077",
-        "Curated Meal Batch 77",
-        "Generated curated meal 77 for the baseline catalog.",
+        "Comida generada 77",
+        "Comida generada 77 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4137,11 +4311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-77.jpg",
         NutritionalInfo(calories=657, protein=55.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 77",
+        description_es="Comida generada 77 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000078",
-        "Curated Meal Batch 78",
-        "Generated curated meal 78 for the baseline catalog.",
+        "Comida generada 78",
+        "Comida generada 78 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4185,11 +4361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-78.jpg",
         NutritionalInfo(calories=658, protein=56.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 78",
+        description_es="Comida generada 78 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000079",
-        "Curated Meal Batch 79",
-        "Generated curated meal 79 for the baseline catalog.",
+        "Comida generada 79",
+        "Comida generada 79 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4233,11 +4411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-79.jpg",
         NutritionalInfo(calories=659, protein=57.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 79",
+        description_es="Comida generada 79 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000080",
-        "Curated Meal Batch 80",
-        "Generated curated meal 80 for the baseline catalog.",
+        "Comida generada 80",
+        "Comida generada 80 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4281,11 +4461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-80.jpg",
         NutritionalInfo(calories=660, protein=48.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 80",
+        description_es="Comida generada 80 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000081",
-        "Curated Meal Batch 81",
-        "Generated curated meal 81 for the baseline catalog.",
+        "Comida generada 81",
+        "Comida generada 81 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4329,11 +4511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-81.jpg",
         NutritionalInfo(calories=661, protein=49.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 81",
+        description_es="Comida generada 81 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000082",
-        "Curated Meal Batch 82",
-        "Generated curated meal 82 for the baseline catalog.",
+        "Comida generada 82",
+        "Comida generada 82 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4377,11 +4561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-82.jpg",
         NutritionalInfo(calories=662, protein=50.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 82",
+        description_es="Comida generada 82 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000083",
-        "Curated Meal Batch 83",
-        "Generated curated meal 83 for the baseline catalog.",
+        "Comida generada 83",
+        "Comida generada 83 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4425,11 +4611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-83.jpg",
         NutritionalInfo(calories=663, protein=51.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 83",
+        description_es="Comida generada 83 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000084",
-        "Curated Meal Batch 84",
-        "Generated curated meal 84 for the baseline catalog.",
+        "Comida generada 84",
+        "Comida generada 84 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4473,11 +4661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-84.jpg",
         NutritionalInfo(calories=664, protein=52.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 84",
+        description_es="Comida generada 84 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000085",
-        "Curated Meal Batch 85",
-        "Generated curated meal 85 for the baseline catalog.",
+        "Comida generada 85",
+        "Comida generada 85 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4521,11 +4711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-85.jpg",
         NutritionalInfo(calories=665, protein=53.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 85",
+        description_es="Comida generada 85 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000086",
-        "Curated Meal Batch 86",
-        "Generated curated meal 86 for the baseline catalog.",
+        "Comida generada 86",
+        "Comida generada 86 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4569,11 +4761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-86.jpg",
         NutritionalInfo(calories=666, protein=54.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 86",
+        description_es="Comida generada 86 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000087",
-        "Curated Meal Batch 87",
-        "Generated curated meal 87 for the baseline catalog.",
+        "Comida generada 87",
+        "Comida generada 87 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4617,11 +4811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-87.jpg",
         NutritionalInfo(calories=667, protein=55.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 87",
+        description_es="Comida generada 87 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000088",
-        "Curated Meal Batch 88",
-        "Generated curated meal 88 for the baseline catalog.",
+        "Comida generada 88",
+        "Comida generada 88 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4665,11 +4861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-88.jpg",
         NutritionalInfo(calories=668, protein=56.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 88",
+        description_es="Comida generada 88 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000089",
-        "Curated Meal Batch 89",
-        "Generated curated meal 89 for the baseline catalog.",
+        "Comida generada 89",
+        "Comida generada 89 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4713,11 +4911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-89.jpg",
         NutritionalInfo(calories=669, protein=57.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 89",
+        description_es="Comida generada 89 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000090",
-        "Curated Meal Batch 90",
-        "Generated curated meal 90 for the baseline catalog.",
+        "Comida generada 90",
+        "Comida generada 90 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4761,11 +4961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-90.jpg",
         NutritionalInfo(calories=670, protein=48.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 90",
+        description_es="Comida generada 90 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000091",
-        "Curated Meal Batch 91",
-        "Generated curated meal 91 for the baseline catalog.",
+        "Comida generada 91",
+        "Comida generada 91 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4809,11 +5011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-91.jpg",
         NutritionalInfo(calories=671, protein=49.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 91",
+        description_es="Comida generada 91 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000092",
-        "Curated Meal Batch 92",
-        "Generated curated meal 92 for the baseline catalog.",
+        "Comida generada 92",
+        "Comida generada 92 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4857,11 +5061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-92.jpg",
         NutritionalInfo(calories=672, protein=50.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 92",
+        description_es="Comida generada 92 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000093",
-        "Curated Meal Batch 93",
-        "Generated curated meal 93 for the baseline catalog.",
+        "Comida generada 93",
+        "Comida generada 93 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4905,11 +5111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-93.jpg",
         NutritionalInfo(calories=673, protein=51.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 93",
+        description_es="Comida generada 93 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000094",
-        "Curated Meal Batch 94",
-        "Generated curated meal 94 for the baseline catalog.",
+        "Comida generada 94",
+        "Comida generada 94 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -4953,11 +5161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-94.jpg",
         NutritionalInfo(calories=674, protein=52.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 94",
+        description_es="Comida generada 94 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000095",
-        "Curated Meal Batch 95",
-        "Generated curated meal 95 for the baseline catalog.",
+        "Comida generada 95",
+        "Comida generada 95 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5001,11 +5211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-95.jpg",
         NutritionalInfo(calories=675, protein=53.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 95",
+        description_es="Comida generada 95 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000096",
-        "Curated Meal Batch 96",
-        "Generated curated meal 96 for the baseline catalog.",
+        "Comida generada 96",
+        "Comida generada 96 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5049,11 +5261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-96.jpg",
         NutritionalInfo(calories=676, protein=54.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 96",
+        description_es="Comida generada 96 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000097",
-        "Curated Meal Batch 97",
-        "Generated curated meal 97 for the baseline catalog.",
+        "Comida generada 97",
+        "Comida generada 97 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5097,11 +5311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-97.jpg",
         NutritionalInfo(calories=677, protein=55.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 97",
+        description_es="Comida generada 97 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000098",
-        "Curated Meal Batch 98",
-        "Generated curated meal 98 for the baseline catalog.",
+        "Comida generada 98",
+        "Comida generada 98 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5145,11 +5361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-98.jpg",
         NutritionalInfo(calories=678, protein=56.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 98",
+        description_es="Comida generada 98 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000099",
-        "Curated Meal Batch 99",
-        "Generated curated meal 99 for the baseline catalog.",
+        "Comida generada 99",
+        "Comida generada 99 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5193,11 +5411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-99.jpg",
         NutritionalInfo(calories=679, protein=57.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 99",
+        description_es="Comida generada 99 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000100",
-        "Curated Meal Batch 100",
-        "Generated curated meal 100 for the baseline catalog.",
+        "Comida generada 100",
+        "Comida generada 100 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5241,11 +5461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-100.jpg",
         NutritionalInfo(calories=680, protein=48.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 100",
+        description_es="Comida generada 100 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000101",
-        "Curated Meal Batch 101",
-        "Generated curated meal 101 for the baseline catalog.",
+        "Comida generada 101",
+        "Comida generada 101 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5289,11 +5511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-101.jpg",
         NutritionalInfo(calories=681, protein=49.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 101",
+        description_es="Comida generada 101 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000102",
-        "Curated Meal Batch 102",
-        "Generated curated meal 102 for the baseline catalog.",
+        "Comida generada 102",
+        "Comida generada 102 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5337,11 +5561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-102.jpg",
         NutritionalInfo(calories=682, protein=50.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 102",
+        description_es="Comida generada 102 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000103",
-        "Curated Meal Batch 103",
-        "Generated curated meal 103 for the baseline catalog.",
+        "Comida generada 103",
+        "Comida generada 103 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5385,11 +5611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-103.jpg",
         NutritionalInfo(calories=683, protein=51.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 103",
+        description_es="Comida generada 103 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000104",
-        "Curated Meal Batch 104",
-        "Generated curated meal 104 for the baseline catalog.",
+        "Comida generada 104",
+        "Comida generada 104 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5433,11 +5661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-104.jpg",
         NutritionalInfo(calories=684, protein=52.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 104",
+        description_es="Comida generada 104 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000105",
-        "Curated Meal Batch 105",
-        "Generated curated meal 105 for the baseline catalog.",
+        "Comida generada 105",
+        "Comida generada 105 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5481,11 +5711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-105.jpg",
         NutritionalInfo(calories=685, protein=53.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 105",
+        description_es="Comida generada 105 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000106",
-        "Curated Meal Batch 106",
-        "Generated curated meal 106 for the baseline catalog.",
+        "Comida generada 106",
+        "Comida generada 106 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5529,11 +5761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-106.jpg",
         NutritionalInfo(calories=686, protein=54.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 106",
+        description_es="Comida generada 106 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000107",
-        "Curated Meal Batch 107",
-        "Generated curated meal 107 for the baseline catalog.",
+        "Comida generada 107",
+        "Comida generada 107 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5577,11 +5811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-107.jpg",
         NutritionalInfo(calories=687, protein=55.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 107",
+        description_es="Comida generada 107 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000108",
-        "Curated Meal Batch 108",
-        "Generated curated meal 108 for the baseline catalog.",
+        "Comida generada 108",
+        "Comida generada 108 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5625,11 +5861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-108.jpg",
         NutritionalInfo(calories=688, protein=56.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 108",
+        description_es="Comida generada 108 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000109",
-        "Curated Meal Batch 109",
-        "Generated curated meal 109 for the baseline catalog.",
+        "Comida generada 109",
+        "Comida generada 109 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5673,11 +5911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-109.jpg",
         NutritionalInfo(calories=689, protein=57.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 109",
+        description_es="Comida generada 109 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000110",
-        "Curated Meal Batch 110",
-        "Generated curated meal 110 for the baseline catalog.",
+        "Comida generada 110",
+        "Comida generada 110 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5721,11 +5961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-110.jpg",
         NutritionalInfo(calories=690, protein=48.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 110",
+        description_es="Comida generada 110 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000111",
-        "Curated Meal Batch 111",
-        "Generated curated meal 111 for the baseline catalog.",
+        "Comida generada 111",
+        "Comida generada 111 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5769,11 +6011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-111.jpg",
         NutritionalInfo(calories=691, protein=49.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 111",
+        description_es="Comida generada 111 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000112",
-        "Curated Meal Batch 112",
-        "Generated curated meal 112 for the baseline catalog.",
+        "Comida generada 112",
+        "Comida generada 112 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5817,11 +6061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-112.jpg",
         NutritionalInfo(calories=692, protein=50.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 112",
+        description_es="Comida generada 112 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000113",
-        "Curated Meal Batch 113",
-        "Generated curated meal 113 for the baseline catalog.",
+        "Comida generada 113",
+        "Comida generada 113 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5865,11 +6111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-113.jpg",
         NutritionalInfo(calories=693, protein=51.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 113",
+        description_es="Comida generada 113 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000114",
-        "Curated Meal Batch 114",
-        "Generated curated meal 114 for the baseline catalog.",
+        "Comida generada 114",
+        "Comida generada 114 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5913,11 +6161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-114.jpg",
         NutritionalInfo(calories=694, protein=52.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 114",
+        description_es="Comida generada 114 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000115",
-        "Curated Meal Batch 115",
-        "Generated curated meal 115 for the baseline catalog.",
+        "Comida generada 115",
+        "Comida generada 115 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -5961,11 +6211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-115.jpg",
         NutritionalInfo(calories=695, protein=53.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 115",
+        description_es="Comida generada 115 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000116",
-        "Curated Meal Batch 116",
-        "Generated curated meal 116 for the baseline catalog.",
+        "Comida generada 116",
+        "Comida generada 116 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6009,11 +6261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-116.jpg",
         NutritionalInfo(calories=696, protein=54.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 116",
+        description_es="Comida generada 116 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000117",
-        "Curated Meal Batch 117",
-        "Generated curated meal 117 for the baseline catalog.",
+        "Comida generada 117",
+        "Comida generada 117 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6057,11 +6311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-117.jpg",
         NutritionalInfo(calories=697, protein=55.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 117",
+        description_es="Comida generada 117 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000118",
-        "Curated Meal Batch 118",
-        "Generated curated meal 118 for the baseline catalog.",
+        "Comida generada 118",
+        "Comida generada 118 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6105,11 +6361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-118.jpg",
         NutritionalInfo(calories=698, protein=56.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 118",
+        description_es="Comida generada 118 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000119",
-        "Curated Meal Batch 119",
-        "Generated curated meal 119 for the baseline catalog.",
+        "Comida generada 119",
+        "Comida generada 119 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6153,11 +6411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-119.jpg",
         NutritionalInfo(calories=699, protein=57.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 119",
+        description_es="Comida generada 119 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000120",
-        "Curated Meal Batch 120",
-        "Generated curated meal 120 for the baseline catalog.",
+        "Comida generada 120",
+        "Comida generada 120 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6201,11 +6461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-120.jpg",
         NutritionalInfo(calories=640, protein=48.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 120",
+        description_es="Comida generada 120 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000121",
-        "Curated Meal Batch 121",
-        "Generated curated meal 121 for the baseline catalog.",
+        "Comida generada 121",
+        "Comida generada 121 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6249,11 +6511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-121.jpg",
         NutritionalInfo(calories=641, protein=49.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 121",
+        description_es="Comida generada 121 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000122",
-        "Curated Meal Batch 122",
-        "Generated curated meal 122 for the baseline catalog.",
+        "Comida generada 122",
+        "Comida generada 122 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6297,11 +6561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-122.jpg",
         NutritionalInfo(calories=642, protein=50.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 122",
+        description_es="Comida generada 122 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000123",
-        "Curated Meal Batch 123",
-        "Generated curated meal 123 for the baseline catalog.",
+        "Comida generada 123",
+        "Comida generada 123 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6345,11 +6611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-123.jpg",
         NutritionalInfo(calories=643, protein=51.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 123",
+        description_es="Comida generada 123 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000124",
-        "Curated Meal Batch 124",
-        "Generated curated meal 124 for the baseline catalog.",
+        "Comida generada 124",
+        "Comida generada 124 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6393,11 +6661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-124.jpg",
         NutritionalInfo(calories=644, protein=52.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 124",
+        description_es="Comida generada 124 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000125",
-        "Curated Meal Batch 125",
-        "Generated curated meal 125 for the baseline catalog.",
+        "Comida generada 125",
+        "Comida generada 125 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6441,11 +6711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-125.jpg",
         NutritionalInfo(calories=645, protein=53.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 125",
+        description_es="Comida generada 125 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000126",
-        "Curated Meal Batch 126",
-        "Generated curated meal 126 for the baseline catalog.",
+        "Comida generada 126",
+        "Comida generada 126 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6489,11 +6761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-126.jpg",
         NutritionalInfo(calories=646, protein=54.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 126",
+        description_es="Comida generada 126 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000127",
-        "Curated Meal Batch 127",
-        "Generated curated meal 127 for the baseline catalog.",
+        "Comida generada 127",
+        "Comida generada 127 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6537,11 +6811,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-127.jpg",
         NutritionalInfo(calories=647, protein=55.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 127",
+        description_es="Comida generada 127 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000128",
-        "Curated Meal Batch 128",
-        "Generated curated meal 128 for the baseline catalog.",
+        "Comida generada 128",
+        "Comida generada 128 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6585,11 +6861,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-128.jpg",
         NutritionalInfo(calories=648, protein=56.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 128",
+        description_es="Comida generada 128 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000129",
-        "Curated Meal Batch 129",
-        "Generated curated meal 129 for the baseline catalog.",
+        "Comida generada 129",
+        "Comida generada 129 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6633,11 +6911,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-129.jpg",
         NutritionalInfo(calories=649, protein=57.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 129",
+        description_es="Comida generada 129 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000130",
-        "Curated Meal Batch 130",
-        "Generated curated meal 130 for the baseline catalog.",
+        "Comida generada 130",
+        "Comida generada 130 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6681,11 +6961,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-130.jpg",
         NutritionalInfo(calories=650, protein=48.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 130",
+        description_es="Comida generada 130 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000131",
-        "Curated Meal Batch 131",
-        "Generated curated meal 131 for the baseline catalog.",
+        "Comida generada 131",
+        "Comida generada 131 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6729,11 +7011,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-131.jpg",
         NutritionalInfo(calories=651, protein=49.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 131",
+        description_es="Comida generada 131 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000132",
-        "Curated Meal Batch 132",
-        "Generated curated meal 132 for the baseline catalog.",
+        "Comida generada 132",
+        "Comida generada 132 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6777,11 +7061,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-132.jpg",
         NutritionalInfo(calories=652, protein=50.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 132",
+        description_es="Comida generada 132 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000133",
-        "Curated Meal Batch 133",
-        "Generated curated meal 133 for the baseline catalog.",
+        "Comida generada 133",
+        "Comida generada 133 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6825,11 +7111,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-133.jpg",
         NutritionalInfo(calories=653, protein=51.0, carbs=83.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 133",
+        description_es="Comida generada 133 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000134",
-        "Curated Meal Batch 134",
-        "Generated curated meal 134 for the baseline catalog.",
+        "Comida generada 134",
+        "Comida generada 134 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6873,11 +7161,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-134.jpg",
         NutritionalInfo(calories=654, protein=52.0, carbs=84.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 134",
+        description_es="Comida generada 134 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000135",
-        "Curated Meal Batch 135",
-        "Generated curated meal 135 for the baseline catalog.",
+        "Comida generada 135",
+        "Comida generada 135 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6921,11 +7211,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-135.jpg",
         NutritionalInfo(calories=655, protein=53.0, carbs=70.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 135",
+        description_es="Comida generada 135 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000136",
-        "Curated Meal Batch 136",
-        "Generated curated meal 136 for the baseline catalog.",
+        "Comida generada 136",
+        "Comida generada 136 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -6969,11 +7261,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-136.jpg",
         NutritionalInfo(calories=656, protein=54.0, carbs=71.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 136",
+        description_es="Comida generada 136 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000137",
-        "Curated Meal Batch 137",
-        "Generated curated meal 137 for the baseline catalog.",
+        "Comida generada 137",
+        "Comida generada 137 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7017,11 +7311,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-137.jpg",
         NutritionalInfo(calories=657, protein=55.0, carbs=72.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 137",
+        description_es="Comida generada 137 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000138",
-        "Curated Meal Batch 138",
-        "Generated curated meal 138 for the baseline catalog.",
+        "Comida generada 138",
+        "Comida generada 138 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7065,11 +7361,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-138.jpg",
         NutritionalInfo(calories=658, protein=56.0, carbs=73.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 138",
+        description_es="Comida generada 138 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000139",
-        "Curated Meal Batch 139",
-        "Generated curated meal 139 for the baseline catalog.",
+        "Comida generada 139",
+        "Comida generada 139 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7113,11 +7411,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-139.jpg",
         NutritionalInfo(calories=659, protein=57.0, carbs=74.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 139",
+        description_es="Comida generada 139 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000140",
-        "Curated Meal Batch 140",
-        "Generated curated meal 140 for the baseline catalog.",
+        "Comida generada 140",
+        "Comida generada 140 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7161,11 +7461,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-140.jpg",
         NutritionalInfo(calories=660, protein=48.0, carbs=75.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 140",
+        description_es="Comida generada 140 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000141",
-        "Curated Meal Batch 141",
-        "Generated curated meal 141 for the baseline catalog.",
+        "Comida generada 141",
+        "Comida generada 141 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7209,11 +7511,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-141.jpg",
         NutritionalInfo(calories=661, protein=49.0, carbs=76.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 141",
+        description_es="Comida generada 141 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000142",
-        "Curated Meal Batch 142",
-        "Generated curated meal 142 for the baseline catalog.",
+        "Comida generada 142",
+        "Comida generada 142 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7257,11 +7561,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-142.jpg",
         NutritionalInfo(calories=662, protein=50.0, carbs=77.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 142",
+        description_es="Comida generada 142 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000143",
-        "Curated Meal Batch 143",
-        "Generated curated meal 143 for the baseline catalog.",
+        "Comida generada 143",
+        "Comida generada 143 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7305,11 +7611,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-143.jpg",
         NutritionalInfo(calories=663, protein=51.0, carbs=78.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 143",
+        description_es="Comida generada 143 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000144",
-        "Curated Meal Batch 144",
-        "Generated curated meal 144 for the baseline catalog.",
+        "Comida generada 144",
+        "Comida generada 144 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7353,11 +7661,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-144.jpg",
         NutritionalInfo(calories=664, protein=52.0, carbs=79.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 144",
+        description_es="Comida generada 144 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000145",
-        "Curated Meal Batch 145",
-        "Generated curated meal 145 for the baseline catalog.",
+        "Comida generada 145",
+        "Comida generada 145 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7401,11 +7711,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-145.jpg",
         NutritionalInfo(calories=665, protein=53.0, carbs=80.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 145",
+        description_es="Comida generada 145 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000146",
-        "Curated Meal Batch 146",
-        "Generated curated meal 146 for the baseline catalog.",
+        "Comida generada 146",
+        "Comida generada 146 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7449,11 +7761,13 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-146.jpg",
         NutritionalInfo(calories=666, protein=54.0, carbs=81.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 146",
+        description_es="Comida generada 146 para la catalogo curado.",
     ),
     _recipe(
         "bbbbbbbb-0000-4000-8000-000000000147",
-        "Curated Meal Batch 147",
-        "Generated curated meal 147 for the baseline catalog.",
+        "Comida generada 147",
+        "Comida generada 147 para la catalogo curado.",
         [
             Ingredient(
                 name="Chicken breast",
@@ -7497,6 +7811,8 @@ SEED_RECIPES: list[Recipe] = [
         "https://images.nutriplan.app/recipes/curated-batch-147.jpg",
         NutritionalInfo(calories=667, protein=55.0, carbs=82.0, fat=22.0, sugar=8.0),
         [DietaryType.OMNIVORE],
+        name_es="Comida curada 147",
+        description_es="Comida generada 147 para la catalogo curado.",
     ),
 ]
 
