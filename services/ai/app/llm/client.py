@@ -14,7 +14,11 @@ import random
 import time
 from collections.abc import Callable
 
-from app.core.telemetry import ai_llm_usage_total
+from app.core.telemetry import (
+    ai_llm_usage_completion_tokens_total,
+    ai_llm_usage_prompt_tokens_total,
+    ai_llm_usage_total,
+)
 from app.llm.errors import LLMTransientError
 from app.llm.provider import LLMProvider
 from app.llm.retry import RetryPolicy, compute_backoff
@@ -67,3 +71,7 @@ class LLMClient:
         if usage is None:
             return
         ai_llm_usage_total.labels(response.model or "").inc(usage.total_tokens)
+        ai_llm_usage_prompt_tokens_total.labels(response.model or "").inc(usage.prompt_tokens)
+        ai_llm_usage_completion_tokens_total.labels(response.model or "").inc(
+            usage.completion_tokens
+        )

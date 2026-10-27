@@ -41,6 +41,20 @@ ai_llm_usage_total = Counter(
     ["model"],
 )
 
+# Token-kind breakdown for the cost & usage dashboard (AIA-805): the prompt vs completion
+# split is what makes cost attribution per phase of a call (plan build vs optimization) possible.
+ai_llm_usage_prompt_tokens_total = Counter(
+    "ai_llm_usage_prompt_tokens_total",
+    "LLM prompt tokens consumed.",
+    ["model"],
+)
+
+ai_llm_usage_completion_tokens_total = Counter(
+    "ai_llm_usage_completion_tokens_total",
+    "LLM completion tokens consumed.",
+    ["model"],
+)
+
 # W3C trace context: version-traceid-spanid-flags (all lowercase hex).
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
 
