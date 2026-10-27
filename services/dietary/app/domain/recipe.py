@@ -12,10 +12,58 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 from app.domain.dietary_types import DietaryType
+
+# Canonical nutrition units and their accepted aliases (DPL-205: units are normalized, not trusted).
+UNIT_ALIASES: dict[str, str] = {
+    # Mass
+    "g": "g",
+    "gram": "g",
+    "grams": "g",
+    "kg": "kg",
+    "kilogram": "kg",
+    "kilograms": "kg",
+    "mg": "mg",
+    "milligram": "mg",
+    "microgram": "ug",
+    "micrograms": "ug",
+    "ug": "ug",
+    "oz": "oz",
+    "ounce": "oz",
+    "ounces": "oz",
+    "lb": "lb",
+    "lbs": "lb",
+    "pound": "lb",
+    "pounds": "lb",
+    # Volume
+    "ml": "ml",
+    "milliliter": "ml",
+    "milliliters": "ml",
+    "l": "l",
+    "liter": "l",
+    "liters": "l",
+    "litre": "l",
+    "litres": "l",
+    "cl": "cl",
+    "centiliter": "cl",
+    "centiliters": "cl",
+    "tsp": "tsp",
+    "teaspoon": "tsp",
+    "teaspoons": "tsp",
+    "tbsp": "tbsp",
+    "tablespoon": "tbsp",
+    "tablespoons": "tbsp",
+    "cup": "cup",
+    "cups": "cup",
+    "floz": "floz",
+    "fluidounce": "floz",
+    "fluidounces": "floz",
+}
+
+NUTRIENT_FIELDS: tuple[str, ...] = ("calories", "protein", "carbs", "fat", "sugar")
 
 
 def _utcnow() -> datetime:
@@ -24,6 +72,22 @@ def _utcnow() -> datetime:
 
 def _new_id() -> str:
     return str(uuid.uuid4())
+
+
+def normalize_unit(unit: str | None) -> str | None:
+    """Canonicalize a nutrition unit, accepting common aliases (DPL-205).
+
+    ``None``/blank input stays ``None`` (a nutrient may simply not be measured); recognised
+    variants — ``"Grams"``, ``"grams"``, ``"g"`` … — collapse to one canonical symbol. An
+    unrecognised unit is rejected with a :class:`ValueError` so bad catalog rows fail loudly
+    instead of flowing into nutrition math.
+    """
+    if unit is None:
+        return None
+    canonical = UNIT_ALIASES.get(unit.strip().lower())
+    if canonical is None:
+        raise ValueError(f"unknown nutrition unit: {unit!r}")
+    return canonical
 
 
 class _Model(BaseModel):
@@ -46,6 +110,15 @@ class NutritionalInfo(_Model):
     fat: float | None = None
     sugar: float | None = None
 
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> NutritionalInfo:
+        """Reject negative nutrition figures (DPL-205): a nutrient can be unknown, never harmful."""
+        for field_name in NUTRIENT_FIELDS:
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"{field_name} must be a non-negative amount, got {value}")
+        return self
+
 
 class Ingredient(_Model):
     """A single ingredient line within a :class:`Recipe`.
@@ -62,6 +135,25 @@ class Ingredient(_Model):
     carbs: float | None = None
     fat: float | None = None
     sugar: float | None = None
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _normalize_unit(cls, value: object) -> object:
+        """Canonicalize the unit on intake (``"Grams"`` -> ``"g"``); blank stays ``None``."""
+        if value is None:
+            return None
+        return normalize_unit(str(value))
+
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> Ingredient:
+        """Enforce DPL-205 bounds: no negative quantities or nutrition figures."""
+        if self.quantity is not None and self.quantity < 0:
+            raise ValueError(f"quantity must be a non-negative amount, got {self.quantity}")
+        for field_name in NUTRIENT_FIELDS:
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"{field_name} must be a non-negative amount, got {value}")
+        return self
 
 
 class Recipe(_Model):
