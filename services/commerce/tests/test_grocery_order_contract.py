@@ -19,7 +19,7 @@ from app.domain.grocery_catalog import GroceryOrderStatus
 from app.main import app
 
 SYNC_PATH = "/orders/{orderId}/grocery/sync"
-IMPL_SYNC_PATH = "/orders/{order_id}/grocery/sync"
+IMPL_SYNC_PATH = "/commerce/v1/orders/{order_id}/grocery/sync"
 
 
 def _operation(paths: dict[str, Any], path: str, method: str) -> dict[str, Any] | None:

@@ -302,7 +302,7 @@ def test_cancel_paid_order_returns_200_with_full_refund_block():
     order = _paid_order(total="120.00")
     client, _, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth())
 
     assert response.status_code == 200
     payload = response.json()
@@ -319,7 +319,9 @@ def test_cancel_paid_order_with_body_returns_partial_refund():
     order = _paid_order(total="120.00")
     client, _, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", json={"refundAmount": 50}, headers=_auth())
+    response = client.post(
+        f"/commerce/v1/orders/{order.id}/cancel", json={"refundAmount": 50}, headers=_auth()
+    )
 
     assert response.status_code == 200
     refund = response.json()["refund"]
@@ -331,7 +333,7 @@ def test_cancel_unpaid_order_returns_200_without_refund_block():
     order = _order()
     client, _, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth())
 
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
@@ -342,7 +344,9 @@ def test_cancel_unpaid_order_with_amount_returns_409():
     order = _order()
     client, _, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", json={"refundAmount": 10}, headers=_auth())
+    response = client.post(
+        f"/commerce/v1/orders/{order.id}/cancel", json={"refundAmount": 10}, headers=_auth()
+    )
 
     assert response.status_code == 409
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -353,7 +357,7 @@ def test_cancel_with_amount_over_total_returns_422():
     client, _, _ = _build(order)
 
     response = client.post(
-        f"/orders/{order.id}/cancel", json={"refundAmount": 200}, headers=_auth()
+        f"/commerce/v1/orders/{order.id}/cancel", json={"refundAmount": 200}, headers=_auth()
     )
 
     assert response.status_code == 422

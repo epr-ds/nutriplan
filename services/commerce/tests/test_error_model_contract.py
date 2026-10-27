@@ -25,6 +25,8 @@ import pytest
 _PARAM = re.compile(r"\{[^}]+\}")
 
 # Error responses each order op must document: (normalized path, method) -> {status: response-name}.
+# Keys are the paths as published in ``contracts/commerce.openapi.yaml`` (the gateway prefix rides
+# on the server URL, so it is not part of the documented path).
 _EXPECTED = {
     ("/orders", "post"): {"401": "Unauthorized", "422": "UnprocessableEntity"},
     ("/orders", "get"): {"401": "Unauthorized", "422": "UnprocessableEntity"},

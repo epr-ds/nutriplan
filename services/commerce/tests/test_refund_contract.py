@@ -31,7 +31,7 @@ def _operation(paths: dict[str, Any], normalized: str, method: str) -> dict[str,
 
 
 def test_app_cancel_body_is_optional():
-    operation = _operation(app.openapi()["paths"], "/orders/{}/cancel", "post")
+    operation = _operation(app.openapi()["paths"], "/commerce/v1/orders/{}/cancel", "post")
     assert operation is not None, "POST /orders/{orderId}/cancel is not exposed by the app"
     # An absent body must be allowed so a plain (no-refund) cancel keeps working.
     assert operation.get("requestBody", {}).get("required", False) is False

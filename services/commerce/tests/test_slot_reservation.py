@@ -382,7 +382,7 @@ def test_failed_payment_webhook_releases_the_slot(db_session):
 
 # ================================================================================== HTTP edges
 
-_AVAIL_URL = "/fulfillment/dark-kitchen/availability"
+_AVAIL_URL = "/commerce/v1/fulfillment/dark-kitchen/availability"
 _API_PLAN_ID = str(uuid.uuid4())
 _API_BODY = {
     "mealPlanId": _API_PLAN_ID,
@@ -424,10 +424,10 @@ def test_create_over_capacity_returns_409_problem_json():
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({GOOD_TOKEN: PRINCIPAL})
     client = TestClient(app)
 
-    first = client.post("/orders", json=_API_BODY, headers=_auth())
+    first = client.post("/commerce/v1/orders", json=_API_BODY, headers=_auth())
     assert first.status_code == 201
 
-    second = client.post("/orders", json=_API_BODY, headers=_auth())
+    second = client.post("/commerce/v1/orders", json=_API_BODY, headers=_auth())
     assert second.status_code == 409
     assert second.headers["content-type"].startswith("application/problem+json")
     assert second.json()["status"] == 409

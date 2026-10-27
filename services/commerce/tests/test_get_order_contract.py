@@ -38,7 +38,7 @@ def _response_schema_name(response: dict[str, Any]) -> str | None:
 
 
 def _impl_get_order() -> dict[str, Any]:
-    operation = _get_operation(app.openapi()["paths"], "/orders/{}")
+    operation = _get_operation(app.openapi()["paths"], "/commerce/v1/orders/{}")
     assert operation is not None, "GET /orders/{orderId} is not exposed by the app"
     return operation
 
