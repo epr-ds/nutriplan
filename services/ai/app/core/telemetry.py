@@ -34,6 +34,13 @@ SERVICE = "ai"
 
 logger = logging.getLogger("ai.request")
 
+# LLM token usage for the cost & usage dashboard (AIA-805).
+ai_llm_usage_total = Counter(
+    "ai_llm_usage_total",
+    "LLM prompt/completion tokens consumed.",
+    ["model"],
+)
+
 # W3C trace context: version-traceid-spanid-flags (all lowercase hex).
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
 
