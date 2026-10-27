@@ -76,6 +76,7 @@ services:
     environment:
       AI_ENVIRONMENT: development
       AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
+      AI_REDIS_URL: ${AI_REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8000:8000"
     depends_on:
