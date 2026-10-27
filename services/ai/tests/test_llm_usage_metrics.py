@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.telemetry import current_route
 from app.llm.client import LLMClient
 from app.llm.fake import FakeLLMProvider
 from app.llm.types import LLMMessage, LLMRequest, LLMResponse, LLMUsage, Role
@@ -114,4 +115,26 @@ def test_llm_cost_is_recorded_per_model() -> None:
     before = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
     llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
     actual = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini")
+    assert actual == pytest.approx(before + 0.00027)
+
+
+def test_llm_cost_is_recorded_per_route() -> None:
+    """Spend must be attributable per route, not only per model (AIA-805)."""
+    provider = FakeLLMProvider(
+        script=[
+            LLMResponse(
+                content="ok",
+                model="gpt-4o-mini",
+                usage=LLMUsage(prompt_tokens=1000, completion_tokens=200, total_tokens=1200),
+            ),
+        ]
+    )
+    llm = LLMClient(provider)
+    before = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini", route="recommendations")
+    token = current_route.set("recommendations")
+    try:
+        llm.complete(LLMRequest.of([LLMMessage(Role.USER, "hello")]))
+    finally:
+        current_route.reset(token)
+    actual = _value(client, "ai_llm_cost_usd_total", model="gpt-4o-mini", route="recommendations")
     assert actual == pytest.approx(before + 0.00027)
