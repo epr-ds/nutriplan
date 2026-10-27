@@ -27,6 +27,7 @@ from app.domain.push import PushAction, PushError, PushMessage
 from app.domain.push_receipt import PushReceipt
 from app.domain.repositories import DeviceTokenRepository
 from app.domain.templates import Locale
+from app.events.metrics import EventMetrics
 
 USER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 ANDROID = DevicePlatform.ANDROID
@@ -184,6 +185,22 @@ def test_rolls_up_failed_when_every_device_refuses(
     assert result.accepted == 0
     assert result.refused == 2
     assert _persisted(notifications, notification).status is DeliveryStatus.FAILED
+
+
+def test_the_fan_out_is_recorded_in_the_event_metrics(
+    notifications: InMemoryNotificationRepository, devices: DeviceRegistrationService
+) -> None:
+    """NTF-706: the delivery outcome of a fan-out is what the telemetry story exports."""
+    metrics = EventMetrics()
+    _register(devices, ANDROID, "android-token")
+    notification = _store(notifications)
+    gateway = FakeGateway(ANDROID, "ok")
+
+    result = _service(notifications, devices, gateway, metrics=metrics).deliver(notification)
+
+    assert result.status is DeliveryStatus.SENT
+    assert result.accepted == 1
+    assert metrics.delivery_totals()["order_delivered"]["delivered"] == 1
 
 
 def test_a_device_with_an_existing_receipt_is_not_sent_again(
