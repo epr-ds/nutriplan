@@ -15,9 +15,11 @@ import time
 from collections.abc import Callable
 
 from app.core.telemetry import (
+    ai_llm_cost_usd_total,
     ai_llm_usage_completion_tokens_total,
     ai_llm_usage_prompt_tokens_total,
     ai_llm_usage_total,
+    llm_cost_usd,
 )
 from app.llm.errors import LLMTransientError
 from app.llm.provider import LLMProvider
@@ -74,4 +76,7 @@ class LLMClient:
         ai_llm_usage_prompt_tokens_total.labels(response.model or "").inc(usage.prompt_tokens)
         ai_llm_usage_completion_tokens_total.labels(response.model or "").inc(
             usage.completion_tokens
+        )
+        ai_llm_cost_usd_total.labels(response.model or "").inc(
+            llm_cost_usd(response.model or "", usage.prompt_tokens, usage.completion_tokens)
         )
