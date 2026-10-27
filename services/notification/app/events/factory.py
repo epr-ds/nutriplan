@@ -87,14 +87,23 @@ def build_dead_letter_queue(settings: Settings | None = None) -> DeadLetterQueue
     return InMemoryDeadLetterQueue(capacity=settings.dead_letter_max_entries)
 
 
-def build_order_status_consumer(settings: Settings | None = None) -> OrderStatusConsumer:
-    """Assemble the handler that turns order events into notifications (NTF-202/303)."""
+def build_order_status_consumer(
+    settings: Settings | None = None,
+    *,
+    metrics: EventMetrics | None = None,
+) -> OrderStatusConsumer:
+    """Assemble the handler that turns order events into notifications (NTF-202/303).
+
+    The event metrics the delivery outcome is reported through are handed in by the
+    dispatcher that owns the event lifecycle, so settlement outcomes and push fan-outs of
+    one process flow through one counters instance.
+    """
     settings = settings or default_settings
     recorder = build_notification_recorder(settings)
     return OrderStatusConsumer(
         recorder,
         build_order_progress_store(settings),
-        push=build_push_delivery(settings, notifications=recorder.repository),
+        push=build_push_delivery(settings, notifications=recorder.repository, metrics=metrics),
     )
 
 
@@ -126,7 +135,7 @@ def build_event_dispatcher(
     """
     settings = settings or default_settings
     if handler_registry is None:
-        order_status = build_order_status_consumer(settings)
+        order_status = build_order_status_consumer(settings, metrics=metrics)
         handler_registry = {
             "app.application.order_status_consumer.OrderStatusConsumer": order_status
         }
