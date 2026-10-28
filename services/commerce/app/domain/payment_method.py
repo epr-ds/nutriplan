@@ -21,6 +21,30 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def looks_like_pan(value: str) -> bool:
+    """Return ``True`` when ``value`` is a plausible raw card number (Luhn-valid, 13–19 digits).
+
+    Payment tokens are provider-minted opaque handles and never look like card numbers; anything
+    that passes this check is a raw PAN and must be rejected before it reaches a provider or our
+    persisted state (COM-809).
+    """
+
+    digits = value.strip()
+    if not digits.isdigit() or not 13 <= len(digits) <= 19:
+        return False
+    total = 0
+    double = False
+    for char in reversed(digits):
+        digit = int(char)
+        if double:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+        double = not double
+    return total % 10 == 0
+
+
 @dataclass(frozen=True)
 class SavedPaymentMethod:
     """A user's stored, tokenized payment method (a card or wallet), owner-scoped by ``user_id``.
@@ -45,6 +69,10 @@ class SavedPaymentMethod:
     def __post_init__(self) -> None:
         if not self.token or not self.token.strip():
             raise PaymentMethodValidationError("a payment-method token is required")
+        if looks_like_pan(self.token):
+            raise PaymentMethodValidationError(
+                "a payment-method token must be a provider token, not a raw card number"
+            )
         if self.last4 is not None and (len(self.last4) != 4 or not self.last4.isdigit()):
             raise PaymentMethodValidationError("last4 must be exactly four digits")
         if self.exp_month is not None and not 1 <= self.exp_month <= 12:
