@@ -149,6 +149,19 @@ class NotificationsViewModelTest {
     }
 
     @Test
+    fun `markAsRead decrements the unread count`() = runTest {
+        repository.notifications = listOf(notification("n-1"))
+        repository.unreadCount = 3
+
+        val viewModel = NotificationsViewModel(repository)
+
+        viewModel.load()
+        viewModel.markAsRead("n-1")
+
+        assertEquals(2, viewModel.state.value.unreadCount)
+    }
+
+    @Test
     fun `loadPreferences stores the preferences`() = runTest {
         val prefs = NotificationPreferences(
             pushEnabled = false,

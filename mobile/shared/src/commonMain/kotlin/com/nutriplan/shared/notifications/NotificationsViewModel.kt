@@ -115,10 +115,14 @@ class NotificationsViewModel(
     /** Mark one notification as read: optimistically on the local copy, then confirm. */
     suspend fun markAsRead(notificationId: String) {
         _state.update { state ->
+            val marked = state.notifications.firstOrNull { it.id == notificationId }
+            val wasUnread = marked != null && !marked.isRead
             state.copy(
                 notifications = state.notifications.map { notification ->
                     if (notification.id == notificationId) notification.copy(isRead = true) else notification
                 },
+                // NTF-801: marking one notification read moves the unread badge with it.
+                unreadCount = if (wasUnread) state.unreadCount - 1 else state.unreadCount,
             )
         }
         try {
