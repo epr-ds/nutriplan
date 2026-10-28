@@ -1,7 +1,7 @@
 package com.nutriplan.shared.notifications
 
 import com.nutriplan.shared.data.model.NotificationPreferences
-import java.time.LocalTime
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -25,22 +25,22 @@ class NotificationQuietHoursTest {
 
     @Test
     fun `no quiet hours means notifications are never quiet`() {
-        assertFalse(preferences(start = null, end = null).isQuietHours(now = LocalTime.NOON))
+        assertFalse(preferences(start = null, end = null).isQuietHours(now = Instant.parse("1970-01-01T12:00:00Z")))
     }
 
     @Test
     fun `quiet hours cover the configured window`() {
         val prefs = preferences(start = "09:00", end = "17:00")
 
-        assertTrue(prefs.isQuietHours(now = LocalTime.of(12, 0)))
+        assertTrue(prefs.isQuietHours(now = Instant.parse("1970-01-01T12:00:00Z")))
     }
 
     @Test
     fun `a quiet hours window that wraps past midnight covers the late evening`() {
         val prefs = preferences(start = "22:00", end = "06:00")
 
-        assertTrue(prefs.isQuietHours(now = LocalTime.of(23, 0)))
-        assertTrue(prefs.isQuietHours(now = LocalTime.of(2, 0)))
-        assertFalse(prefs.isQuietHours(now = LocalTime.of(12, 0)))
+        assertTrue(prefs.isQuietHours(now = Instant.parse("1970-01-01T23:00:00Z")))
+        assertTrue(prefs.isQuietHours(now = Instant.parse("1970-01-01T02:00:00Z")))
+        assertFalse(prefs.isQuietHours(now = Instant.parse("1970-01-01T12:00:00Z")))
     }
 }
