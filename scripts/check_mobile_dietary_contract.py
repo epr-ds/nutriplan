@@ -279,6 +279,15 @@ def check() -> list[str]:
     if unclassified:
         errors.append(f"data classes not covered by the contract check (classify them): {unclassified}")
 
+    # DPL-401: the KMP client must map every documented schema in the contract.
+    mapped = set(REQUEST_CLASSES) | set(RESPONSE_CLASSES) | set(QUERY_CLASSES) | AI_CLASSES
+    unmapped_spec_schemas = sorted(set(spec_schemas) - mapped)
+    for schema_name in unmapped_spec_schemas:
+        errors.append(
+            f"OpenAPI schema '{schema_name}' is not mapped to a client model; "
+            "the KMP Dietary client must cover the full contract",
+        )
+
     return errors
 
 
