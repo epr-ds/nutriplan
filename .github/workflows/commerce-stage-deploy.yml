@@ -1,0 +1,43 @@
+name: Commerce Stage Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nutriplan
+          POSTGRES_PASSWORD: nutriplan
+          POSTGRES_DB: commerce
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nutriplan -d commerce"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      COMMERCE_ENVIRONMENT: staging
+      COMMERCE_DATABASE_URL: postgresql+psycopg://nutriplan:nutriplan@localhost:5432/commerce
+      COMMERCE_PAYMENT_PROVIDER: fake
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build Commerce image
+        run: docker build -t nutriplan-commerce:${{ github.sha }} .
+      - name: Stage deploy + seed demo order + smoke
+        run: |
+          docker run -d --name commerce-stage \
+            -e COMMERCE_ENVIRONMENT=staging \
+            -e COMMERCE_DATABASE_URL="postgresql+psycopg://nutriplan:nutriplan@localhost:5432/commerce" \
+            -e COMMERCE_PAYMENT_PROVIDER=fake \
+            nutriplan-commerce:${{ github.sha }}
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8083/health > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8083/health > /dev/null
+          docker rm -f commerce-stage
