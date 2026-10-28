@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
@@ -8,8 +10,17 @@ from app.api.metrics import router as metrics_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 from app.core.telemetry import TelemetryMiddleware, configure_logging
+from app.db.provisioning import provision_commerce
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Apply the Commerce schema migrations before serving traffic (COM-903).
+    provision_commerce()
+    yield
+
+
+app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 configure_logging()
 register_exception_handlers(app)
 
