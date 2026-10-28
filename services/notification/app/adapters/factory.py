@@ -17,10 +17,12 @@ behalf of records another process cannot see.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 
-from app.adapters.apns_adapter import build_apns_adapter
-from app.adapters.fcm_adapter import build_fcm_adapter
+from app.adapters.apns_adapter import APNsConfig, build_apns_adapter
+from app.adapters.fcm_adapter import FCMConfig, build_fcm_adapter
 from app.adapters.idempotency import IdempotencyWindow
 from app.adapters.in_memory_deduplication_store import InMemoryDeduplicationStore
 from app.adapters.in_memory_device_token_repository import InMemoryDeviceTokenRepository
@@ -163,6 +165,55 @@ def build_notification_recorder(settings: Settings | None = None) -> Notificatio
 # Phase 5: Push delivery
 
 
+def provision_fcm(settings: Settings | None = None) -> FCMConfig | None:
+    """Resolve the FCM push adapter config from the vault-injected settings (NTF-705).
+
+    ``NOTIFICATION_FCM_CREDENTIALS_JSON`` is a ``SecretStr`` holding the service-account JSON
+    (or a path to it); both are accepted so credentials can be mounted as a file or injected
+    as a secret. Returns ``None`` when no provider is configured, so the delivery path skips
+    Android rather than failing the user outright.
+    """
+    settings = settings or default_settings
+    if not settings.fcm_configured:
+        return None
+    raw = settings.fcm_credentials_json
+    credentials = raw.get_secret_value() if hasattr(raw, "get_secret_value") else raw
+    if isinstance(credentials, str):
+        if os.path.exists(credentials):
+            with open(credentials, encoding="utf-8") as handle:
+                credentials = json.load(handle)
+        else:
+            credentials = json.loads(credentials)
+    return FCMConfig(project_id=settings.fcm_project_id, credentials_json=credentials)
+
+
+def provision_apns(settings: Settings | None = None) -> APNsConfig | None:
+    """Resolve the APNs push adapter config from the vault-injected settings (NTF-705).
+
+    The key/cert are the same secret in every environment; what changes is the endpoint the
+    adapter calls -- the APNs sandbox for development and staging, the live endpoint for
+    production.
+    """
+    settings = settings or default_settings
+    if not settings.apns_configured:
+        return None
+    raw = settings.apns_private_key
+    auth_key = raw.get_secret_value() if hasattr(raw, "get_secret_value") else raw
+    if isinstance(auth_key, str):
+        if os.path.exists(auth_key):
+            with open(auth_key, "rb") as handle:
+                auth_key = handle.read()
+        else:
+            auth_key = auth_key.encode()
+    return APNsConfig(
+        key_id=settings.apns_key_id,
+        team_id=settings.apns_team_id,
+        auth_key=auth_key,
+        bundle_id=settings.apns_bundle_id,
+        use_sandbox=settings.apns_use_sandbox and settings.environment != "production",
+    )
+
+
 def build_push_gateways(settings: Settings | None = None) -> dict[DevicePlatform, PushGateway]:
     """Build the configured provider gateways, keyed by the platform they reach (NTF-303).
 
@@ -175,12 +226,14 @@ def build_push_gateways(settings: Settings | None = None) -> dict[DevicePlatform
         return {}
 
     gateways: dict[DevicePlatform, PushGateway] = {}
-    if settings.fcm_configured:
+    fcm_config = provision_fcm(settings)
+    if fcm_config is not None:
         try:
             gateways[DevicePlatform.ANDROID] = FcmPushGateway(build_fcm_adapter(settings))
         except Exception as exc:
             logger.warning("fcm.gateway_build_failed error=%s", exc)
-    if settings.apns_configured:
+    apns_config = provision_apns(settings)
+    if apns_config is not None:
         try:
             gateways[DevicePlatform.IOS] = ApnsPushGateway(build_apns_adapter(settings))
         except Exception as exc:
