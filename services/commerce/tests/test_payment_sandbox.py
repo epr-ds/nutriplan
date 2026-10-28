@@ -19,7 +19,6 @@ import pytest
 
 from app.application.commands import CreateOrderCommand
 from app.application.create_order import CreateOrderService
-from app.application.idempotency import InMemoryIdempotencyStore
 from app.application.process_payment_webhook import ProcessPaymentWebhookService
 from app.core.principal import Principal
 from app.domain.address import Address
@@ -28,8 +27,12 @@ from app.domain.meal_plan import MealPlanSnapshot, PlannedMeal
 from app.domain.payment import PaymentEventType
 from app.events.memory import InMemoryEventPublisher
 from app.payments.fake import FakePaymentProvider
-from app.repositories.in_memory_order_repository import InMemoryOrderRepository
-from tests.fakes import FakeMealPlanProvider, make_test_pricer
+from tests.fakes import (
+    FakeMealPlanProvider,
+    InMemoryIdempotencyStore,
+    InMemoryOrderRepository,
+    make_test_pricer,
+)
 
 GOOD_TOKEN = "good-token"
 PRINCIPAL = Principal(user_id=str(uuid.uuid4()), email="a@b.com")
@@ -38,7 +41,9 @@ PRINCIPAL = Principal(user_id=str(uuid.uuid4()), email="a@b.com")
 def _snapshot() -> MealPlanSnapshot:
     return MealPlanSnapshot(
         plan_id=str(uuid.uuid4()),
-        meals=[PlannedMeal(meal_type="breakfast", servings=Decimal("1"), recipe_name="Oatmeal Bowl")],
+        meals=[
+            PlannedMeal(meal_type="breakfast", servings=Decimal("1"), recipe_name="Oatmeal Bowl")
+        ],
     )
 
 
@@ -58,12 +63,16 @@ def sandbox() -> tuple[CreateOrderService, FakePaymentProvider, InMemoryOrderRep
     return service, provider, repo
 
 
-def _command(payment_method_type: PaymentMethodType, payment_token: str | None) -> CreateOrderCommand:
+def _command(
+    payment_method_type: PaymentMethodType, payment_token: str | None
+) -> CreateOrderCommand:
     return CreateOrderCommand(
         user_id=uuid.UUID(PRINCIPAL.user_id),
         meal_plan_id=str(uuid.uuid4()),
         fulfillment_type=FulfillmentType.DARK_KITCHEN,
-        delivery_address=Address(street="Av. Reforma 100", city="CDMX", state="CDMX", zip_code="06600", country="MX"),
+        delivery_address=Address(
+            street="Av. Reforma 100", city="CDMX", state="CDMX", zip_code="06600", country="MX"
+        ),
         delivery_date=date(2026, 7, 10),
         delivery_time_slot="12:00-13:00",
         provider_id=None,
