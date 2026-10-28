@@ -11,24 +11,14 @@ from app.api.nutrition import router as nutrition_router
 from app.api.recipes import router as recipes_router
 from app.core.config import settings
 from app.core.telemetry import TelemetryMiddleware, configure_logging
-from app.db.mongo import (
-    ensure_favorites_collection,
-    ensure_meal_plans_collection,
-    ensure_recipes_collection,
-    get_db,
-    recipes,
-)
-from app.db.seed import seed_recipes
+from app.db.mongo import get_db
+from app.db.provisioning import provision_dietary
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Install validators + indexes and seed the reference recipe catalog before serving traffic.
-    db = get_db()
-    ensure_meal_plans_collection(db)  # DPL-101
-    ensure_recipes_collection(db)  # DPL-201
-    ensure_favorites_collection(db)  # DPL-607
-    seed_recipes(recipes(db))  # DPL-201 reference catalog
+    provision_dietary(get_db())
     yield
 
 
