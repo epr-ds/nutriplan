@@ -97,4 +97,24 @@ export default function () {
   });
 
   sleep(1);
+
+  // Step 6: Order lifecycle (create → pay → track)
+  const orderRes = http.get(`${BASE_URL}/api/orders`, authHeaders);
+  const orderOk = check(orderRes, {
+    'order: status 200': (r) => r.status === 200,
+    'order: is array': (r) => Array.isArray(r.json()),
+  });
+  ERROR_RATE.add(orderOk ? 0 : 1);
+
+  sleep(1);
+
+  // Step 7: Notifications fan-out (order status push)
+  const notificationsRes = http.get(`${BASE_URL}/api/notifications`, authHeaders);
+  const notificationsOk = check(notificationsRes, {
+    'notifications: status 200': (r) => r.status === 200,
+    'notifications: has items': (r) => Array.isArray(r.json()),
+  });
+  ERROR_RATE.add(notificationsOk ? 0 : 1);
+
+  sleep(1);
 }
