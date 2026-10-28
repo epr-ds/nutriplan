@@ -284,14 +284,14 @@ jobs:
           cache-dependency-path: services/notification/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build runtime image
+        run: docker build --target runtime -t nutriplan-notification:ci .
       - name: Lint (ruff)
         run: |
           ruff check .
           ruff format --check .
       - name: Test (pytest)
         run: pytest
-      - name: Build runtime image
-        run: docker build --target runtime -t nutriplan-notification:ci .
       - name: Smoke test the runtime image
         run: |
           docker run -d --name notification-smoke --network host \
