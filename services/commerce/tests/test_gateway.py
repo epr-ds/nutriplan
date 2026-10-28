@@ -16,10 +16,11 @@ import uuid
 from collections.abc import Iterator
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_payment_method_service, get_token_verifier
+from app.api.deps import get_dietary_client, get_payment_method_service, get_token_verifier
 from app.application.payment_methods import PaymentMethodService
 from app.core.principal import Principal
 from app.domain.enums import PaymentMethodType
@@ -126,9 +127,39 @@ def test_gateway_lists_payment_methods_for_authenticated_caller(client) -> None:
 
 
 def test_gateway_dietary_requires_authentication(client) -> None:
-    """DPL-802: the ``/dietary`` gateway edge answers unauthenticated callers with 401 + problem+json."""
+    """DPL-802: the ``/dietary`` gateway edge answers unauthenticated callers with 401."""
     api_client, _repo = client
     response = api_client.get("/dietary/recipes")
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
+
+
+class FakeDietaryClient:
+    """Minimal httpx.Client stand-in recording forwarded calls (DPL-802)."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def request(self, method: str, url: str, **kwargs: Any) -> Any:
+        self.calls.append(
+            {"method": method, "url": url, "headers": dict(kwargs.get("headers") or {})}
+        )
+        return httpx.Response(200, json={"ok": True})
+
+
+def test_gateway_dietary_proxies_to_dietary_service(client) -> None:
+    """DPL-802: the edge relays the verified caller to the Dietary service via bearer token."""
+    api_client, _repo = client
+    fake = FakeDietaryClient()
+    app.dependency_overrides[get_dietary_client] = lambda: fake
+    try:
+        response = api_client.get("/dietary/meal-plans/abc", headers=_auth())
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert len(fake.calls) == 1
+        assert fake.calls[0]["method"] == "GET"
+        assert fake.calls[0]["url"] == "/meal-plans/abc"
+        assert fake.calls[0]["headers"]["Authorization"] == f"Bearer {GOOD_TOKEN}"
+    finally:
+        app.dependency_overrides.pop(get_dietary_client, None)
