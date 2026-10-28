@@ -270,7 +270,13 @@ private fun OrderDetail(
         }
         if (state.isCancelling) {
             item(key = "cancelling") {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val loadingDescription = stringResource(R.string.cd_order_detail_loading)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = loadingDescription },
+                    contentAlignment = Alignment.Center,
+                ) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
             }

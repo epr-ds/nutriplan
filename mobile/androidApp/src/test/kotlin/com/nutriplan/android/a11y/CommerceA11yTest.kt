@@ -29,7 +29,7 @@ import org.robolectric.annotation.Config
  * without an emulator.
  */
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [34], application = TestApplication::class)
+@Config(sdk = [34], qualifiers = "en-rUS-w400dp-h2400dp", application = TestApplication::class)
 class CommerceA11yTest {
 
     @get:Rule
