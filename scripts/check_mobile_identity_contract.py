@@ -172,6 +172,16 @@ def check() -> list[str]:
             errors, f"client data classes not covered by the contract check: {unmapped}"
         )
 
+    # IDN-401: the KMP client must cover the full OpenAPI contract — every documented
+    # schema (including error/problem schemas) must be mapped to a client model.
+    unmapped_spec_schemas = sorted(set(spec_schemas) - set(SCHEMA_TO_CLASSES))
+    for schema_name in unmapped_spec_schemas:
+        _fail(
+            errors,
+            f"OpenAPI schema '{schema_name}' is not mapped to a client model; "
+            "the KMP Identity client must cover the full contract",
+        )
+
     return errors
 
 
