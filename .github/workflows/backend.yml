@@ -71,6 +71,8 @@ jobs:
           cache-dependency-path: services/identity/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build runtime image
+        run: docker build --target runtime -t nutriplan-identity:ci .
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -81,8 +83,6 @@ jobs:
         run: pytest tests/test_contract.py -q
       - name: Test (pytest)
         run: pytest --ignore=tests/test_contract.py
-      - name: Build runtime image
-        run: docker build --target runtime -t nutriplan-identity:ci .
       - name: Smoke test the runtime image
         run: |
           docker run -d --name identity-smoke --network host \
