@@ -8,7 +8,8 @@ that an a11y pass can map onto distinct cues.
 
 from __future__ import annotations
 
-from app.domain.enums import OrderStatus, PaymentStatus
+from app.domain.enums import OrderStatus
+from app.domain.payment import PaymentStatus
 
 
 def test_the_order_status_vocabulary_is_closed_and_semantic_for_a11y_cues() -> None:
