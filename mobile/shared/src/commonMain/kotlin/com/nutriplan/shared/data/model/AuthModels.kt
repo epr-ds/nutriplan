@@ -117,3 +117,12 @@ data class AvatarUploadUrlResponse(
 data class AvatarConfirmRequest(
     val key: String,
 )
+
+/** Error body for `application/problem+json` responses (`Problem` in the Identity OpenAPI contract). */
+data class Problem(
+    val status: Int,
+    val title: String,
+    val type: String,
+    val detail: String? = null,
+    val instance: String? = null,
+)

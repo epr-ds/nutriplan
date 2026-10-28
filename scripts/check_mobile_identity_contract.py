@@ -70,6 +70,7 @@ SCHEMA_TO_CLASSES: dict[str, list[str]] = {
     "AvatarUploadRequest": ["AvatarUploadUrlRequest"],
     "AvatarUploadResponse": ["AvatarUploadUrlResponse"],
     "AvatarConfirmRequest": ["AvatarConfirmRequest"],
+    "Problem": ["Problem"],
 }
 
 _OPERATION_RE = re.compile(
