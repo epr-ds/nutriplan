@@ -114,6 +114,7 @@ class NotificationsViewModel(
 
     /** Mark one notification as read: optimistically on the local copy, then confirm. */
     suspend fun markAsRead(notificationId: String) {
+        val previous = state.value
         _state.update { state ->
             val marked = state.notifications.firstOrNull { it.id == notificationId }
             val wasUnread = marked != null && !marked.isRead
@@ -131,6 +132,9 @@ class NotificationsViewModel(
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             _state.update { it.copy(error = e.toNotificationsError()) }
+            // NTF-802: the optimistic mark has not been confirmed yet; roll it back so a failed
+            // confirmation does not leave a read state (and badge decrement) the server rejected.
+            _state.value = previous
         }
     }
 
