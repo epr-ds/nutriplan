@@ -76,8 +76,12 @@ def build_idempotency_window(settings: Settings | None = None) -> IdempotencyWin
     )
 
 
-def build_notification_repository(settings: Settings | None = None) -> NotificationRepository:
-    """Return a Redis-backed store when a URL is configured, else an in-process one."""
+def provision_redis(settings: Settings | None = None) -> NotificationRepository:
+    """Provision the notification persistence store from configuration (NTF-703).
+
+    A configured ``redis_url`` provisions the durable Redis store; an unconfigured one falls
+    back to the in-process store (dev/CI single-replica correctness).
+    """
     settings = settings or default_settings
     policy = build_retention_policy(settings)
     url = settings.redis_url.strip()
@@ -88,6 +92,11 @@ def build_notification_repository(settings: Settings | None = None) -> Notificat
             policy=policy,
         )
     return InMemoryNotificationRepository(policy=policy)
+
+
+def build_notification_repository(settings: Settings | None = None) -> NotificationRepository:
+    """Return a Redis-backed store when a URL is configured, else an in-process one."""
+    return provision_redis(settings)
 
 
 def build_deduplication_store(settings: Settings | None = None) -> DeduplicationStore:
