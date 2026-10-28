@@ -15,7 +15,7 @@ from app.adapters.in_memory_notification_template_store import InMemoryNotificat
 from app.application.templates import DEFAULT_NOTIFICATION_TEMPLATES, NotificationTemplateService
 from app.domain.deep_links import meal_deep_link, plan_deep_link
 from app.domain.enums import NotificationType
-from app.domain.errors import MissingTemplateVariableError, TemplateNotFoundError
+from app.domain.errors import MissingTemplateVariableError
 
 _PLACEHOLDER = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
 
@@ -25,13 +25,15 @@ def _bare(text: str) -> str:
 
 
 def _service() -> NotificationTemplateService:
-    return NotificationTemplateService(InMemoryNotificationTemplateStore(DEFAULT_NOTIFICATION_TEMPLATES))
+    return NotificationTemplateService(
+        InMemoryNotificationTemplateStore(DEFAULT_NOTIFICATION_TEMPLATES)
+    )
 
 
 def _template(notification_type: NotificationType, locale):
     for template in DEFAULT_NOTIFICATION_TEMPLATES:
-        if template.id == notification_type.value:
-            return template if template.locale == locale else None
+        if template.id == notification_type.value and template.locale.value == str(locale):
+            return template
     return None
 
 
