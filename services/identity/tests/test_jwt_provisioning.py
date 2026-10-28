@@ -11,14 +11,11 @@ from app.core.provisioning import provision_jwt_keypair, provision_oauth_client_
 
 
 def _rsa_pem(private_key: rsa.RSAPrivateKey) -> str:
-    return (
-        private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-        .decode()
-    )
+    return private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode()
 
 
 def test_provision_jwt_keypair_uses_the_vault_injected_key() -> None:

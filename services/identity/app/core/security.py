@@ -14,12 +14,11 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from argon2 import PasswordHasher
 from argon2 import exceptions as argon2_exceptions
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from jwt.algorithms import RSAAlgorithm
 
 from app.core.config import settings
+from app.core.provisioning import provision_jwt_keypair
 
 logger = logging.getLogger(__name__)
 
@@ -43,19 +42,11 @@ def verify_password(password_hash: str, password: str) -> bool:
 
 
 def _load_keys() -> tuple[RSAPrivateKey, RSAPublicKey]:
-    if settings.jwt_private_key.strip():
-        private_key = serialization.load_pem_private_key(
-            settings.jwt_private_key.encode(), password=None
-        )
-    else:
-        logger.warning(
-            "IDENTITY_JWT_PRIVATE_KEY not set; generating an ephemeral dev keypair. "
-            "Tokens will not survive a restart. Do NOT use this in production."
-        )
-        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    """Resolve the signing keypair from configuration (IDN-803); dev gets an ephemeral pair."""
+    private_key, public_key = provision_jwt_keypair(settings)
     if not isinstance(private_key, RSAPrivateKey):  # pragma: no cover - defensive
         raise TypeError("IDENTITY_JWT_PRIVATE_KEY must be an RSA private key in PEM format")
-    return private_key, private_key.public_key()
+    return private_key, public_key
 
 
 _private_key, _public_key = _load_keys()
