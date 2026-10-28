@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import pytest
 import yaml
 
 _LOCAL_CANDIDATES: list[Path] = [
