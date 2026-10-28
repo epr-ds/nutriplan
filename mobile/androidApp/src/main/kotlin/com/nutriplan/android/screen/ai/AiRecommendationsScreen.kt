@@ -349,7 +349,10 @@ private fun ReasoningCard(reasoning: String) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(AiRecommendationsTestTags.REASONING)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                // AIA-903: the reasoning is the answer's content: announce it, not just the card shape.
+                contentDescription = reasoning
+            },
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
