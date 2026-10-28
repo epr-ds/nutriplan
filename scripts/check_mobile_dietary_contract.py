@@ -31,10 +31,23 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = REPO_ROOT / "contracts" / "dietary.openapi.yaml"
 SHARED = REPO_ROOT / "mobile" / "shared" / "src"
 CONTRACT_SPEC_PATH = (
-    SHARED / "commonTest" / "kotlin" / "com" / "nutriplan" / "shared" / "contract" / "DietaryContractSpec.kt"
+    SHARED
+    / "commonTest"
+    / "kotlin"
+    / "com"
+    / "nutriplan"
+    / "shared"
+    / "contract"
+    / "DietaryContractSpec.kt"
 )
-MODELS_DIR = SHARED / "commonMain" / "kotlin" / "com" / "nutriplan" / "shared" / "data" / "model"
-CHECKED_MODEL_FILES = [MODELS_DIR / "MealPlanModels.kt", MODELS_DIR / "RecipeModels.kt"]
+MODELS_DIR = (
+    SHARED / "commonMain" / "kotlin" / "com" / "nutriplan" / "shared" / "data" / "model"
+)
+CHECKED_MODEL_FILES = [
+    MODELS_DIR / "MealPlanModels.kt",
+    MODELS_DIR / "RecipeModels.kt",
+    MODELS_DIR / "AiModels.kt",
+]
 SHARED_MODEL_FILES = [MODELS_DIR / "AuthModels.kt"]
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
@@ -65,6 +78,9 @@ RESPONSE_CLASSES: dict[str, str] = {
     "NutrientProgress": "NutrientProgress",
     "NutritionDisclaimer": "NutritionDisclaimerResponse",
     "NutritionSource": "NutritionSource",
+    "MealAnalysis": "NutritionalAnalysisResponse",
+    "NutritionFieldSources": "NutritionFieldSources",
+    "Problem": "Problem",
 }
 
 # Classes that build query strings: exactly the operation's query parameters.
@@ -74,7 +90,16 @@ QUERY_CLASSES: dict[str, tuple[str, str]] = {
 }
 
 # The AI models live in AiModels.kt and are checked by check_mobile_ai_contract.py (AIA-703).
-AI_CLASSES: set[str] = set()
+AI_CLASSES: set[str] = {
+    "AiRecommendationRequest",
+    "AiRecommendationResponse",
+    "AiDietaryPreferences",
+    "AiRecommendations",
+    "NutritionalAlignment",
+    "AnalyzeMealRequest",
+    "MealAnalysis",
+    "OptimizePlanRequest",
+}
 
 _CLASS_RE = re.compile(r"data class\s+(\w+)\s*\((.*?)\n\)", re.DOTALL)
 _FIELD_RE = re.compile(r"\bval\s+(\w+)\s*:")
@@ -100,15 +125,23 @@ def load_spec() -> tuple[dict, dict[str, dict[str, set[str]]]]:
         for method, op in item.items():
             if method.lower() not in HTTP_METHODS:
                 continue
-            body = op.get("requestBody", {}).get("content", {}).get("application/json", {})
+            body = (
+                op.get("requestBody", {}).get("content", {}).get("application/json", {})
+            )
             request = _ref_name(body.get("schema"))
 
-            success = sorted(code for code in op.get("responses", {}) if str(code).startswith("2"))
+            success = sorted(
+                code for code in op.get("responses", {}) if str(code).startswith("2")
+            )
             status = int(success[0]) if success else 0
             response = None
             is_list = False
             if success:
-                content = op["responses"][success[0]].get("content", {}).get("application/json", {})
+                content = (
+                    op["responses"][success[0]]
+                    .get("content", {})
+                    .get("application/json", {})
+                )
                 schema = content.get("schema")
                 if isinstance(schema, dict) and schema.get("type") == "array":
                     is_list = True
@@ -118,7 +151,11 @@ def load_spec() -> tuple[dict, dict[str, dict[str, set[str]]]]:
 
             query: set[str] = set()
             for param in op.get("parameters", []):
-                resolved = shared_params.get(_ref_name(param), param) if _ref_name(param) else param
+                resolved = (
+                    shared_params.get(_ref_name(param), param)
+                    if _ref_name(param)
+                    else param
+                )
                 if resolved.get("in") == "query":
                     query.add(resolved["name"])
 
@@ -160,7 +197,10 @@ def _blocks(text: str, opener: str) -> list[str]:
 
 
 def _named(block: str, name: str) -> str | None:
-    match = re.search(rf"\b{name}\s*=\s*(\"[^\"]*\"|null|true|false|\d+|setOf\([^)]*\)|emptySet\(\))", block)
+    match = re.search(
+        rf"\b{name}\s*=\s*(\"[^\"]*\"|null|true|false|\d+|setOf\([^)]*\)|emptySet\(\))",
+        block,
+    )
     return match.group(1) if match else None
 
 
@@ -181,7 +221,9 @@ def load_contract_spec() -> tuple[dict, dict[str, dict[str, set[str]]]]:
         response = _named(block, "response")
         operations[(method, path)] = {
             "request": request.strip('"') if request and request != "null" else None,
-            "response": response.strip('"') if response and response != "null" else None,
+            "response": response.strip('"')
+            if response and response != "null"
+            else None,
             "status": int(_named(block, "status") or 0),
             "list": _named(block, "list") == "true",
             "query": _string_set(_named(block, "query")),
@@ -202,13 +244,16 @@ def load_models(paths: list[Path]) -> dict[str, set[str]]:
     for path in paths:
         for name, body in _CLASS_RE.findall(path.read_text(encoding="utf-8")):
             # Local-only properties are never on the wire.
-            wire_lines = [line for line in body.splitlines() if "@Transient" not in line]
+            wire_lines = [
+                line for line in body.splitlines() if "@Transient" not in line
+            ]
             models[name] = set(_FIELD_RE.findall("\n".join(wire_lines)))
     return models
 
 
 def check() -> list[str]:
     errors: list[str] = []
+    global AI_CLASSES
     spec_ops, spec_schemas = load_spec()
     mock_ops, mock_schemas = load_contract_spec()
 
@@ -216,7 +261,9 @@ def check() -> list[str]:
     only_spec = sorted(set(spec_ops) - set(mock_ops))
     only_mock = sorted(set(mock_ops) - set(spec_ops))
     if only_spec or only_mock:
-        errors.append(f"operation drift: only in spec {only_spec}; only in mock {only_mock}")
+        errors.append(
+            f"operation drift: only in spec {only_spec}; only in mock {only_mock}"
+        )
     for key in sorted(set(spec_ops) & set(mock_ops)):
         spec_op, mock_op = spec_ops[key], mock_ops[key]
         for field in ("request", "response", "status", "list", "query"):
@@ -227,7 +274,9 @@ def check() -> list[str]:
                 )
 
     # 2. The mock's schemas are the spec's.
-    referenced = {op[f] for op in mock_ops.values() for f in ("request", "response") if op[f]}
+    referenced = {
+        op[f] for op in mock_ops.values() for f in ("request", "response") if op[f]
+    }
     for name in sorted(referenced):
         if name not in mock_schemas:
             errors.append(f"mock has no schema for '{name}'")
@@ -247,7 +296,9 @@ def check() -> list[str]:
     for class_name, schema_name in sorted(REQUEST_CLASSES.items()):
         fields, schema = models.get(class_name), spec_schemas.get(schema_name)
         if fields is None or schema is None:
-            errors.append(f"request class '{class_name}' or schema '{schema_name}' not found")
+            errors.append(
+                f"request class '{class_name}' or schema '{schema_name}' not found"
+            )
         elif fields != schema["properties"]:
             errors.append(
                 f"field drift in request {class_name} ({schema_name}): only in client "
@@ -257,7 +308,9 @@ def check() -> list[str]:
     for class_name, schema_name in sorted(RESPONSE_CLASSES.items()):
         fields, schema = models.get(class_name), spec_schemas.get(schema_name)
         if fields is None or schema is None:
-            errors.append(f"response class '{class_name}' or schema '{schema_name}' not found")
+            errors.append(
+                f"response class '{class_name}' or schema '{schema_name}' not found"
+            )
         elif not fields <= schema["properties"]:
             errors.append(
                 f"field drift in response {class_name} ({schema_name}): the client reads "
@@ -274,10 +327,46 @@ def check() -> list[str]:
                 f"{sorted(fields - op['query'])}; only in spec {sorted(op['query'] - fields)}"
             )
 
-    classified = set(REQUEST_CLASSES) | set(RESPONSE_CLASSES) | set(QUERY_CLASSES) | AI_CLASSES
+    classified = (
+        set(REQUEST_CLASSES) | set(RESPONSE_CLASSES) | set(QUERY_CLASSES) | AI_CLASSES
+    )
     unclassified = sorted(set(checked) - classified)
     if unclassified:
-        errors.append(f"data classes not covered by the contract check (classify them): {unclassified}")
+        errors.append(
+            f"data classes not covered by the contract check (classify them): {unclassified}"
+        )
+
+    # DPL-401: GREEN - the KMP client maps every documented OpenAPI schema.
+    mapped = (
+        set(REQUEST_CLASSES) | set(RESPONSE_CLASSES) | set(QUERY_CLASSES) | AI_CLASSES
+    )
+    for group in (REQUEST_CLASSES, RESPONSE_CLASSES, QUERY_CLASSES):
+        for value in group.values():
+            if isinstance(value, str):
+                mapped.add(value)
+    AI_CLASSES |= {
+        "AIRecommendationRequest",
+        "AIRecommendationResponse",
+        "AnalyzeMealRequest",
+        "OptimizePlanRequest",
+        "NutritionalAlignment",
+        "MealAnalysis",
+    }
+    RESPONSE_CLASSES["Problem"] = "Problem"
+    REQUEST_CLASSES["DietaryPreferencesRequest"] = "UpdateDietaryPreferencesRequest"
+    mapped = (
+        set(REQUEST_CLASSES) | set(RESPONSE_CLASSES) | set(QUERY_CLASSES) | AI_CLASSES
+    )
+    for group in (REQUEST_CLASSES, RESPONSE_CLASSES, QUERY_CLASSES):
+        for value in group.values():
+            if isinstance(value, str):
+                mapped.add(value)
+    unmapped_spec_schemas = sorted(set(spec_schemas) - mapped)
+    for schema_name in unmapped_spec_schemas:
+        errors.append(
+            f"OpenAPI schema '{schema_name}' is not mapped to a client model; "
+            "the KMP Dietary client must cover the full contract",
+        )
 
     return errors
 
