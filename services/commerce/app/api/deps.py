@@ -7,6 +7,7 @@ dependencies. Tests swap any layer via ``app.dependency_overrides``.
 
 from __future__ import annotations
 
+import time
 import uuid
 from functools import lru_cache
 from typing import Annotated
@@ -142,12 +143,47 @@ def get_meal_plan_provider() -> MealPlanProvider:
     )
 
 
+def get_ai_client() -> httpx.Client:
+    """Provide the HTTP client the ``/ai`` gateway edge uses to relay to the AI service."""
+    return httpx.Client(
+        base_url=settings.ai_base_url,
+        timeout=settings.http_timeout_seconds,
+    )
+
+
 def get_dietary_client() -> httpx.Client:
     """Provide the HTTP client the ``/dietary`` gateway edge uses to relay to Dietary."""
     return httpx.Client(
         base_url=settings.dietary_base_url,
         timeout=settings.http_timeout_seconds,
     )
+
+
+class SlidingWindowRateLimiter:
+    """In-process sliding-window rate limiter keyed by caller identity."""
+
+    def __init__(self, limit: int, window_seconds: float) -> None:
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self._hits: dict[str, list[float]] = {}
+
+    def allow(self, key: str) -> bool:
+        now = time.monotonic()
+        hits = self._hits.setdefault(key, [])
+        cutoff = now - self.window_seconds
+        hits[:] = [stamp for stamp in hits if stamp > cutoff]
+        if len(hits) >= self.limit:
+            return False
+        hits.append(now)
+        return True
+
+
+_ai_rate_limiter = SlidingWindowRateLimiter(limit=30, window_seconds=60.0)
+
+
+def get_ai_rate_limiter() -> SlidingWindowRateLimiter:
+    """Provide the per-user AI rate limiter used by the ``/ai`` gateway edge."""
+    return _ai_rate_limiter
 
 
 @lru_cache(maxsize=1)

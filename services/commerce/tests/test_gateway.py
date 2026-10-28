@@ -190,7 +190,9 @@ class FakeAiClient:
         self.calls: list[dict[str, Any]] = []
 
     def request(self, method: str, url: str, **kwargs: Any) -> Any:
-        self.calls.append({"method": method, "url": url, "headers": dict(kwargs.get("headers") or {})})
+        self.calls.append(
+            {"method": method, "url": url, "headers": dict(kwargs.get("headers") or {})}
+        )
         return httpx.Response(200, json={"ok": True})
 
 
@@ -200,7 +202,9 @@ def test_gateway_ai_proxies_to_ai_service(client) -> None:
     fake = FakeAiClient()
     app.dependency_overrides[get_ai_client] = lambda: fake
     try:
-        response = api_client.post("/ai/optimize-plan", json={"goal": "lower sugar"}, headers=_auth())
+        response = api_client.post(
+            "/ai/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+        )
         assert response.status_code == 200
         assert response.json() == {"ok": True}
         assert len(fake.calls) == 1
@@ -212,7 +216,7 @@ def test_gateway_ai_proxies_to_ai_service(client) -> None:
 
 
 class FakeAiRateLimiter:
-    """Stand-in rate limiter: the first call is allowed, later calls within the same user are not."""
+    """Stand-in rate limiter: the first call is allowed, later calls within a user are not."""
 
     def __init__(self) -> None:
         self.allowances: list[str] = []
