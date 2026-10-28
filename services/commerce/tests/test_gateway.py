@@ -24,6 +24,7 @@ from app.api.deps import (
     get_ai_client,
     get_ai_rate_limiter,
     get_dietary_client,
+    get_identity_client,
     get_payment_method_service,
     get_token_verifier,
 )
@@ -169,6 +170,47 @@ def test_gateway_dietary_proxies_to_dietary_service(client) -> None:
         assert fake.calls[0]["headers"]["Authorization"] == f"Bearer {GOOD_TOKEN}"
     finally:
         app.dependency_overrides.pop(get_dietary_client, None)
+
+
+def test_gateway_identity_requires_authentication(client) -> None:
+    """IDN-802: the ``/identity`` gateway edge answers unauthenticated callers with 401."""
+    api_client, _repo = client
+    response = api_client.post("/identity/auth/login", json={"email": "a@b.com", "password": "x"})
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
+
+
+class FakeIdentityClient:
+    """Minimal httpx.Client stand-in recording forwarded calls (IDN-802)."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def request(self, method: str, url: str, **kwargs: Any) -> Any:
+        self.calls.append(
+            {"method": method, "url": url, "headers": dict(kwargs.get("headers") or {})}
+        )
+        return httpx.Response(200, json={"ok": True})
+
+
+def test_gateway_identity_proxies_to_identity_service(client) -> None:
+    """IDN-802: the edge relays the verified caller to the Identity service via bearer token."""
+    api_client, _repo = client
+    fake = FakeIdentityClient()
+    app.dependency_overrides[get_identity_client] = lambda: fake
+    try:
+        response = api_client.post(
+            "/identity/auth/login", json={"email": "a@b.com", "password": "x"}, headers=_auth()
+        )
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert len(fake.calls) == 1
+        assert fake.calls[0]["method"] == "POST"
+        assert fake.calls[0]["url"] == "/auth/login"
+        assert fake.calls[0]["headers"]["Authorization"] == f"Bearer {GOOD_TOKEN}"
+    finally:
+        app.dependency_overrides.pop(get_identity_client, None)
 
 
 # --------------------------------------------------------------------------- the AI gateway edge

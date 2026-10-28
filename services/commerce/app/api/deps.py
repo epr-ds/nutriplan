@@ -159,6 +159,14 @@ def get_dietary_client() -> httpx.Client:
     )
 
 
+def get_identity_client() -> httpx.Client:
+    """Provide the HTTP client the ``/identity`` gateway edge uses to relay to Identity."""
+    return httpx.Client(
+        base_url=settings.identity_base_url,
+        timeout=settings.http_timeout_seconds,
+    )
+
+
 class SlidingWindowRateLimiter:
     """In-process sliding-window rate limiter keyed by caller identity."""
 
