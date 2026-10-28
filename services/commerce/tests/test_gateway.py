@@ -123,3 +123,12 @@ def test_gateway_lists_payment_methods_for_authenticated_caller(client) -> None:
     assert body[0]["type"] == "paypal"
     assert "token" not in body[0]
     assert "tok_secret" not in response.text
+
+
+def test_gateway_dietary_requires_authentication(client) -> None:
+    """DPL-802: the ``/dietary`` gateway edge answers unauthenticated callers with 401 + problem+json."""
+    api_client, _repo = client
+    response = api_client.get("/dietary/recipes")
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
