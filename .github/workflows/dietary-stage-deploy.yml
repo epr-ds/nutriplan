@@ -1,0 +1,31 @@
+name: Dietary Stage Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build Dietary image
+        run: docker build -t nutriplan-dietary:${{ github.sha }} services/dietary
+      - name: Stage deploy + seed demo plan + recipes + smoke
+        run: |
+          docker run -d --name dietary-stage \
+            -e DIETARY_ENVIRONMENT=staging \
+            -e DIETARY_MONGO_URL="${{ vars.DIETARY_MONGO_URL }}" \
+            -e DIETARY_MONGO_DB="${{ vars.DIETARY_MONGO_DB }}" \
+            -e DIETARY_MONGO_SERVER_SELECTION_TIMEOUT_MS=5000 \
+            -e DIETARY_LLM_API_KEY="" \
+            nutriplan-dietary:${{ github.sha }} \
+            sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8082"
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8082/health > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8082/health > /dev/null
+          curl -fsS http://localhost:8082/recipes > /dev/null
+          docker rm -f dietary-stage
