@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
+from app.api.gateway import dietary_router
 from app.api.gateway import router as gateway_router
 from app.api.health import router as health_router
 from app.api.metrics import router as metrics_router
@@ -18,6 +19,7 @@ app.add_middleware(TelemetryMiddleware)
 app.include_router(health_router)
 app.include_router(metrics_router)
 app.include_router(gateway_router)
+app.include_router(dietary_router)
 app.include_router(webhooks_router)
 
 

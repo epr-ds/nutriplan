@@ -11,6 +11,7 @@ import uuid
 from functools import lru_cache
 from typing import Annotated
 
+import httpx
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -138,6 +139,14 @@ def get_meal_plan_provider() -> MealPlanProvider:
     """Provide the HTTP meal-plan provider (anti-corruption layer over Dietary)."""
     return HttpMealPlanProvider(
         base_url=settings.dietary_base_url, timeout=settings.http_timeout_seconds
+    )
+
+
+def get_dietary_client() -> httpx.Client:
+    """Provide the HTTP client the ``/dietary`` gateway edge uses to relay to Dietary."""
+    return httpx.Client(
+        base_url=settings.dietary_base_url,
+        timeout=settings.http_timeout_seconds,
     )
 
 
