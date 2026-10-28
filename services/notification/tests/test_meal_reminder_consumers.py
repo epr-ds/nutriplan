@@ -88,7 +88,7 @@ class TestMealReminderDue:
 
         notification = meal_reminder_consumer.feed(USER)[0]
         assert notification.payload["mealId"] == meal_id
-        assert notification.payload["mealName"] == "Breakfast"
+        assert notification.payload["mealName"] == "Desayuno"
         assert notification.payload["mealType"] == "breakfast"
         assert notification.payload["scheduledTime"] == moment.isoformat()
         assert notification.payload["deepLink"] == meal_deep_link(meal_id)
