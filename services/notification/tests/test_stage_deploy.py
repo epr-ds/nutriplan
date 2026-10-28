@@ -39,7 +39,7 @@ def _workflow() -> dict[str, Any]:
 
 
 def test_stage_deploy_workflow_smokes_the_service() -> None:
-    """NTF-701: the dev-stage deploy must bring the notification service up and pass the smoke check."""
+    """NTF-701: the dev-stage deploy must bring the notification service up and pass smoke."""
     workflow = _workflow()
     jobs = workflow.get("jobs") or {}
     assert "deploy" in jobs
