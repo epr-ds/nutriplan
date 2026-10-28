@@ -33,6 +33,7 @@ class NotificationsViewModelTest {
         )
         var preferencesFailure: Throwable? = null
         val updatedRequests = mutableListOf<UpdateNotificationPreferencesRequest>()
+        var markAsReadFailure: Throwable? = null
 
         override suspend fun getNotifications(): List<Notification> {
             failure?.let { throw it }
@@ -45,6 +46,7 @@ class NotificationsViewModelTest {
         }
 
         override suspend fun markAsRead(notificationId: String) {
+            markAsReadFailure?.let { throw it }
             markedReads += notificationId
         }
 
@@ -90,6 +92,7 @@ class NotificationsViewModelTest {
         repository.notifications = emptyList()
         repository.unreadCount = 0
         repository.failure = null
+        repository.markAsReadFailure = null
         repository.markedReads.clear()
         repository.preferences = NotificationPreferences(
             pushEnabled = true,
@@ -159,6 +162,23 @@ class NotificationsViewModelTest {
         viewModel.markAsRead("n-1")
 
         assertEquals(2, viewModel.state.value.unreadCount)
+    }
+
+    @Test
+    fun `markAsRead rolls back the optimistic read state when the confirmation fails`() = runTest {
+        repository.notifications = listOf(notification("n-1"))
+        repository.unreadCount = 3
+        repository.markAsReadFailure = RuntimeException("boom")
+
+        val viewModel = NotificationsViewModel(repository)
+
+        viewModel.load()
+        viewModel.markAsRead("n-1")
+
+        // The optimistic mark (read flag + badge decrement) is not confirmed yet: it has to roll
+        // back rather than keep a read state the server never accepted, so the badge stays honest.
+        assertFalse(viewModel.state.value.notifications.first().isRead)
+        assertEquals(3, viewModel.state.value.unreadCount)
     }
 
     @Test
