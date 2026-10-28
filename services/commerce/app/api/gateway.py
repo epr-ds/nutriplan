@@ -31,6 +31,7 @@ from app.api.deps import (
     get_bearer_token,
     get_current_principal,
     get_dietary_client,
+    get_identity_client,
 )
 from app.core.principal import Principal
 
@@ -77,6 +78,63 @@ def dietary_proxy(
         )
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail="Dietary service unavailable") from exc
+    response_headers = {
+        key: value
+        for key, value in upstream.headers.items()
+        if key.lower()
+        not in {
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailer",
+            "transfer-encoding",
+            "upgrade",
+        }
+    }
+    return Response(
+        content=upstream.content, status_code=upstream.status_code, headers=response_headers
+    )
+
+
+identity_router = APIRouter(prefix="/identity")
+
+
+@identity_router.api_route(
+    "/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    include_in_schema=False,
+)
+def identity_proxy(
+    request: Request,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    token: Annotated[str, Depends(get_bearer_token)],
+    client: Annotated[httpx.Client, Depends(get_identity_client)],
+) -> Response:
+    """Relay a verified caller to the Identity service on the same bearer token (IDN-802)."""
+    _ = principal  # JWT validity is enforced by the dependency above; relayed via the token.
+    headers = {"Authorization": f"Bearer {token}"}
+    body = request.body()
+    if request.method in {"POST", "PUT", "PATCH"} and body:
+        content_type = request.headers.get("content-type")
+        if content_type:
+            headers["Content-Type"] = content_type
+    url = request.url.path
+    prefix = identity_router.prefix or ""
+    if url.startswith(prefix) and len(url) > len(prefix):
+        url = url[len(prefix) :]
+    if request.url.query:
+        url = f"{url}?{request.url.query}"
+    try:
+        upstream = client.request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            content=body or None,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Identity service unavailable") from exc
     response_headers = {
         key: value
         for key, value in upstream.headers.items()
