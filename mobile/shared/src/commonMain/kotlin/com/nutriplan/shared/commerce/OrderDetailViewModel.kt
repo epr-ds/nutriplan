@@ -157,4 +157,7 @@ class OrderDetailViewModel(private val useCases: CommerceUseCases) {
     fun dismissCancelError() {
         _state.update { it.copy(cancelError = null) }
     }
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): OrderDetailUiState = _state.value
 }
