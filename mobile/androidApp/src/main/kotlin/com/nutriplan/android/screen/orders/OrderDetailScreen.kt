@@ -350,6 +350,18 @@ private fun Delivery(order: Order) {
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+        order.trackingUrl?.takeIf { it.isNotBlank() }?.let { trackingUrl ->
+            Text(
+                text = trackingUrl,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        order.estimatedDelivery?.let { estimatedDelivery ->
+            Text(
+                text = formatOrderTime(estimatedDelivery),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         order.deliveryAddress?.let { address ->
             addressLines(address).forEach { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
             address.instructions?.takeIf(String::isNotBlank)?.let {
