@@ -10,3 +10,5 @@ import org.koin.mp.KoinPlatform
  * behaviour is shared across platforms by construction.
  */
 fun createLoginViewModel(): LoginViewModel = KoinPlatform.getKoin().get<LoginViewModel>()
+
+fun createRegisterViewModel(): RegisterViewModel = KoinPlatform.getKoin().get<RegisterViewModel>()
