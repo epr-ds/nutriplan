@@ -12,6 +12,7 @@ private let greeting = Greeting().greet()
 private enum DeepLinkRoute: Hashable {
     case notifications
     case preferences
+    case orders
 }
 
 struct ContentView: View {
@@ -58,6 +59,7 @@ struct ContentView: View {
                 NavigationStack(path: $path) {
                     HomeContent(
                         onOpenNotifications: { path = [DeepLinkRoute.notifications] },
+                        onOpenOrders: { path = [DeepLinkRoute.orders] },
                     )
                 }
                 .navigationDestination(for: DeepLinkRoute.self) { route in
@@ -69,6 +71,8 @@ struct ContentView: View {
                         )
                     case .preferences:
                         NotificationsPreferencesView(onClose: { path = [] })
+                    case .orders:
+                        OrdersListView(onBack: { path = [] })
                     }
                 }
             }
@@ -82,6 +86,7 @@ private struct HomeContent: View {
     @StateObject private var notificationsViewModel: NotificationsViewModel = createNotificationsViewModel()
     @State private var unreadCount = 0
     let onOpenNotifications: () -> Void
+    let onOpenOrders: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -108,6 +113,16 @@ private struct HomeContent: View {
                 // accessible name including the unread badge (WCAG 4.1.2 / TalkBack & VoiceOver).
                 .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
                 .accessibilityHint("Opens the notification center")
+                Spacer()
+                Button {
+                    onOpenOrders()
+                } label: {
+                    Image(systemName: "bag")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
+                .accessibilityLabel("My orders")
+                .accessibilityHint("Opens the orders list")
             }
             Spacer(minLength: 24)
             Text(greeting)
