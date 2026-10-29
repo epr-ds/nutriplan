@@ -447,7 +447,10 @@ internal fun AiDisclaimer(text: String, testTag: String = AiRecommendationsTestT
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(testTag),
+            .testTag(testTag)
+            .semantics(mergeDescendants = true) {
+                contentDescription = text
+            },
     ) {
         Text(
             text = text,
