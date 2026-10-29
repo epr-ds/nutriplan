@@ -170,14 +170,16 @@ fun AiErrorCard(
                     .testTag(messageTestTag)
                     .semantics { liveRegion = LiveRegionMode.Polite },
             )
+            val retryLabel = stringResource(R.string.ai_retry)
             Button(
                 onClick = onRetry,
                 enabled = retryEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(AiStateTestTags.RETRY),
+                    .testTag(AiStateTestTags.RETRY)
+                    .semantics(mergeDescendants = true) { contentDescription = retryLabel },
             ) {
-                Text(stringResource(R.string.ai_retry))
+                Text(text = retryLabel)
             }
             if (fallbackLabel != null && onFallback != null) {
                 OutlinedButton(
