@@ -65,6 +65,9 @@ class RecipeDetailViewModel(
     private val _state = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): RecipeDetailUiState = _state.value
+
     /** Load [recipeId] and the nutrition disclaimer; also the retry after a failure. */
     suspend fun load(recipeId: String) {
         _state.update { it.copy(isLoading = it.recipe == null, error = null) }
