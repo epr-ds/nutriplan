@@ -50,6 +50,9 @@ class RegisterViewModel(
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): RegisterUiState = _state.value
+
     fun onNameChange(value: String) {
         _state.update { it.copy(name = value, nameError = null, error = null) }
     }

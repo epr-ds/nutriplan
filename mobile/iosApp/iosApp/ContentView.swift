@@ -18,6 +18,7 @@ private enum DeepLinkRoute: Hashable {
     case order(String)
     case checkout(String?, String?)
     case auth
+    case register
 }
 
 struct ContentView: View {
@@ -98,6 +99,8 @@ struct ContentView: View {
                         )
                     case .auth:
                         LoginView(onLoginSuccess: { path = [] })
+                    case .register:
+                        RegisterView(onRegisterSuccess: { path = [] })
                     }
                 }
             }
