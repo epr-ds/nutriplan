@@ -45,7 +45,7 @@ data class FulfillmentPickerUiState(
  */
 class FulfillmentPickerViewModel(
     private val useCases: CommerceUseCases,
-    private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val io: CoroutineDispatcher = Dispatchers.Default,
 ) {
 
     private val _state = MutableStateFlow(FulfillmentPickerUiState())
