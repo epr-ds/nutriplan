@@ -11,6 +11,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -159,6 +161,17 @@ class AiRecommendationsScreenTest {
         render(answered(answer))
 
         compose.onNodeWithContentDescription("High in plant protein and within your calories.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the curated fallback note is announced to screen readers`() {
+        render(answered(answer.copy(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
+
+        compose.onNode(
+            hasTestTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE) and hasContentDescription(
+                str(R.string.ai_recommendations_curated_fallback_body),
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test
