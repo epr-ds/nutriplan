@@ -136,6 +136,19 @@ class AiStatesTest {
     }
 
     @Test
+    fun `the ai error fallback button is announced to screen readers`() {
+        val calls = renderError(withFallback = true)
+
+        compose.onNode(
+            hasTestTag(AiStateTestTags.FALLBACK) and hasContentDescription("Browse recipes"),
+        ).assertIsDisplayed()
+        compose.onNodeWithTag(AiStateTestTags.FALLBACK).assert(hasText("Browse recipes"))
+        compose.onNodeWithTag(AiStateTestTags.FALLBACK).performClick()
+
+        assertEquals(1, calls.fallbacks)
+    }
+
+    @Test
     fun `a fallback is offered when there is one`() {
         val calls = renderError(withFallback = true)
 
