@@ -231,6 +231,20 @@ class CheckoutViewModelTest {
         assertTrue(viewModel.state.value.sessionExpired)
     }
 
+    // --- the state the screens render ---
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02")
+        assertEquals(CheckoutStep.PLAN, viewModel.currentState().step)
+
+        viewModel.selectPlan("p1")
+        assertTrue(viewModel.next())
+        assertEquals(CheckoutStep.FULFILLMENT, viewModel.currentState().step)
+    }
+
     // --- validation per step ---
 
     @Test
