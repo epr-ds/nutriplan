@@ -144,6 +144,10 @@ struct OrderDetailView: View {
                 .padding(.vertical, 8)
             }
 
+            if order.status == "pending" {
+                paymentInstructions(order: order)
+            }
+
             sectionHeading("Status")
             timeline(steps: state.timeline)
 
@@ -349,6 +353,29 @@ private extension OrderDetailView {
                 addressLines(address).forEach { Text($0) }
                 if let instructions = address.instructions, !instructions.isEmpty {
                     Text(instructions)
+                }
+            }
+        }
+    }
+
+    // MARK: - payment instructions (COM-609)
+
+    private func paymentInstructions(order: Order) -> some View {
+        VStack(spacing: 8) {
+            if let voucher = order.voucher {
+                VStack(spacing: 4) {
+                    Text("Pay the OXXO voucher of \(moneyText(voucher.amount)) before \(voucher.expiresAt ?? "")")
+                    Text("Reference \(voucher.reference ?? "")")
+                }
+            } else if let transfer = order.transfer {
+                VStack(spacing: 4) {
+                    Text("Transfer the SPEI amount of \(moneyText(transfer.amount)) to the bank before \(transfer.expiresAt ?? "")")
+                    Text("CLABE \(transfer.clabe ?? "") · Reference \(transfer.reference ?? "")")
+                }
+            } else if let approval = order.approval {
+                VStack(spacing: 4) {
+                    Text("Approve the PayPal payment before \(approval.expiresAt ?? "")")
+                    Text("Reference \(approval.reference ?? "")")
                 }
             }
         }
