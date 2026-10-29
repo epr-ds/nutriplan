@@ -1,6 +1,7 @@
 package com.nutriplan.shared.planning
 
 import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.NutritionalSummary
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.local.PendingChange
@@ -54,6 +55,10 @@ data class MealPlanDetailUiState(
     /** The plan's nutrition summary for the progress UI (ring/bars vs targets); empty when the plan has none. */
     val nutritionalSummaryUi: NutritionSummaryUi
         get() = plan?.nutritionalSummary?.toNutritionSummaryUi() ?: NutritionSummaryUi()
+
+    /** The plan's nutrition summary; null when the plan has none. */
+    val nutritionalSummary: NutritionalSummary?
+        get() = plan?.nutritionalSummary
 }
 
 /** Maps a thrown repository failure to a stable, localizable [MealPlanDetailError]. */

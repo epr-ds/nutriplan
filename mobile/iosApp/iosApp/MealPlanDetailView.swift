@@ -76,6 +76,12 @@ struct MealPlanDetailView: View {
 
             nutritionSection(summary: state?.nutritionalSummaryUi ?? NutritionSummaryUi())
 
+            if let total = state?.nutritionalSummary?.total {
+                Text("Plan total: \(Int(total.calories ?? 0)) kcal · Protein \(Int(total.protein ?? 0)) g · Carbs \(Int(total.carbs ?? 0)) g · Fat \(Int(total.fat ?? 0)) g")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
             ForEach(days.indices, id: \.self) { index in
                 daySection(day: days[index])
             }
