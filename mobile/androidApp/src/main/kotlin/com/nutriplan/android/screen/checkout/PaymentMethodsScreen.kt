@@ -203,15 +203,19 @@ private fun MethodList(
         if (state.canAdd) {
             item(key = "add") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val addDescription = stringResource(R.string.payment_methods_add)
                     Button(
                         onClick = onAdd,
                         enabled = !state.isAdding,
-                        modifier = Modifier.fillMaxWidth().testTag(PaymentMethodsTestTags.ADD),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(PaymentMethodsTestTags.ADD)
+                            .semantics(mergeDescendants = true) { contentDescription = addDescription },
                     ) {
                         if (state.isAdding) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Default.Add, contentDescription = null)
+                            Icon(Icons.Default.Add, contentDescription = addDescription)
                         }
                         Text(stringResource(R.string.payment_methods_add), modifier = Modifier.padding(start = 8.dp))
                     }
