@@ -131,6 +131,9 @@ class CheckoutViewModel(
     private val _state = MutableStateFlow(CheckoutUiState(canPayByCard = tokenizer != null))
     val state: StateFlow<CheckoutUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): CheckoutUiState = _state.value
+
     /** The card tokenized for this checkout, reused when placing is retried. */
     private var tokenizedCard: NewPaymentMethod? = null
 
