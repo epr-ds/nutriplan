@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -180,6 +182,17 @@ class OptimizePlanScreenTest {
         compose.onNodeWithContentDescription(
             str(R.string.cd_optimize_before_after, str(R.string.optimize_daily_protein), "80", "95", "g"),
         ).assertExists()
+    }
+
+    @Test
+    fun `the optimize plan before after diff is announced to screen readers`() {
+        render(proposed)
+
+        compose.onNode(
+            hasTestTag(OptimizePlanTestTags.DAILY) and hasContentDescription(
+                str(R.string.cd_optimize_before_after, str(R.string.optimize_daily_calories), "1900", "1750", "kcal"),
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test
