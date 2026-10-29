@@ -42,13 +42,13 @@ import kotlin.test.assertTrue
  */
 class AuthJourneyTest {
 
-    private val requests: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
+    private val requests: MutableList<String> = mutableListOf()
 
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
 
     private val engine = MockEngine { request ->
         val path = request.url.encodedPath
-        requests += "${request.method.value} $path"
+        requests.add("${request.method.value} $path")
         when {
             path.endsWith("/auth/register") ->
                 respond(
@@ -119,10 +119,10 @@ class AuthJourneyTest {
 
 /** In-memory [TokenStorage] so the journey does not touch the platform secure store. */
 private class InMemoryTokenStorage : TokenStorage {
-    private var tokens: com.nutriplan.shared.data.local.StoredTokens? = null
-    override fun load(): com.nutriplan.shared.data.local.StoredTokens? = tokens
+    private var tokens: StoredTokens? = null
+    override fun load(): StoredTokens? = tokens
     override fun save(accessToken: String, refreshToken: String) {
-        tokens = com.nutriplan.shared.data.local.StoredTokens(accessToken, refreshToken)
+        tokens = StoredTokens(accessToken, refreshToken)
     }
     override fun clear() {
         tokens = null
