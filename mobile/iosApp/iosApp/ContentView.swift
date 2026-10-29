@@ -6,13 +6,14 @@ import UserNotifications
 private let greeting = Greeting().greet()
 
 /// Destinations for the notification deep-link surface (NTF-508): the in-app notification center is
-/// live, the preferences screen is the second destination of the notification surface, and detail
-/// screens a deep link opens (meal / plan / order) become destinations here as those screens land
-/// in the SwiftUI app.
+/// live, the preferences screen is the second destination of the notification surface, the orders
+/// list is the third one, and a deep link that opens an order becomes a fourth destination as that
+/// screen lands in the SwiftUI app.
 private enum DeepLinkRoute: Hashable {
     case notifications
     case preferences
     case orders
+    case order(String)
 }
 
 struct ContentView: View {
@@ -72,7 +73,15 @@ struct ContentView: View {
                     case .preferences:
                         NotificationsPreferencesView(onClose: { path = [] })
                     case .orders:
-                        OrdersListView(onBack: { path = [] })
+                        OrdersListView(
+                            onBack: { path = [] },
+                            onOrderClick: { orderId in path = [.order(orderId)] },
+                        )
+                    case .order(let orderId):
+                        OrderDetailView(
+                            orderId: orderId,
+                            onBack: { path = [] },
+                        )
                     }
                 }
             }
