@@ -12,3 +12,5 @@ import org.koin.mp.KoinPlatform
 fun createRecipeSearchViewModel(): RecipeSearchViewModel = KoinPlatform.getKoin().get<RecipeSearchViewModel>()
 
 fun createRecipeDetailViewModel(): RecipeDetailViewModel = KoinPlatform.getKoin().get<RecipeDetailViewModel>()
+
+fun createFavoriteRecipesViewModel(): FavoriteRecipesViewModel = KoinPlatform.getKoin().get<FavoriteRecipesViewModel>()
