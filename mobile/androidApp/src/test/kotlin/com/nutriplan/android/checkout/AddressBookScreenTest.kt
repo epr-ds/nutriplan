@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -170,6 +172,17 @@ class AddressBookScreenTest {
         renderWithViewModel()
 
         compose.onNode(isHeading() and hasText(str(R.string.address_book_title))).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the address book empty state is announced to screen readers`() {
+        renderState(AddressBookUiState(isLoading = false))
+
+        compose.onNode(
+            hasTestTag(AddressBookTestTags.EMPTY) and hasContentDescription(
+                str(R.string.address_book_empty_title),
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test
