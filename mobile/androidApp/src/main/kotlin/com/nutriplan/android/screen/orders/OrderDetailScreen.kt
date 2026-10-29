@@ -362,6 +362,12 @@ private fun Delivery(order: Order) {
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+        order.refund?.let { refund ->
+            Text(
+                text = refund.refundId ?: refund.status ?: "refund",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         order.deliveryAddress?.let { address ->
             addressLines(address).forEach { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
             address.instructions?.takeIf(String::isNotBlank)?.let {
