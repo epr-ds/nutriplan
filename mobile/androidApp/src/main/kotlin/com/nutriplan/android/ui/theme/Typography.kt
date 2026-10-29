@@ -60,7 +60,7 @@ val NutriPlanTypography = Typography(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        lineHeight = 22.sp,
+        lineHeight = 20.sp,
     ),
     titleSmall = TextStyle(
         fontFamily = FontFamily.Default,
@@ -78,7 +78,7 @@ val NutriPlanTypography = Typography(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        lineHeight = 22.sp,
+        lineHeight = 20.sp,
     ),
     bodySmall = TextStyle(
         fontFamily = FontFamily.Default,
@@ -90,7 +90,7 @@ val NutriPlanTypography = Typography(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        lineHeight = 22.sp,
+        lineHeight = 20.sp,
     ),
     labelMedium = TextStyle(
         fontFamily = FontFamily.Default,
