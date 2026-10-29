@@ -83,6 +83,28 @@ class EditMealViewModelTest {
         assertNull(viewModel.state.value.meal)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the edit meal form exposes its current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertTrue(state.isLoading)
+        assertNull(state.meal)
+        assertNull(state.satisfaction)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        viewModel.start("p1", "m1")
+        viewModel.onSatisfactionChange(4)
+
+        val state = viewModel.currentState()
+        assertEquals("m1", state.meal?.id)
+        assertEquals(4, state.satisfaction)
+        assertFalse(state.isLoading)
+    }
+
     @Test
     fun `start fills the form from the meal and lists the plan's days`() = runTest {
         viewModel.start("p1", "m1")

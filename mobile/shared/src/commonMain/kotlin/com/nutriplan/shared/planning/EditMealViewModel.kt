@@ -112,6 +112,9 @@ class EditMealViewModel(
 
     private var planId: String? = null
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): EditMealUiState = _state.value
+
     /** Load [mealId] of [planId]; also the retry after a failed load. */
     suspend fun start(planId: String, mealId: String) {
         this.planId = planId
