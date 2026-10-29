@@ -43,6 +43,9 @@ class OAuthViewModel(
     private val _state = MutableStateFlow(OAuthUiState())
     val state: StateFlow<OAuthUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): OAuthUiState = _state.value
+
     /**
      * Attempts a sign-in with [provider]. Returns true on success; false if the user cancelled or
      * the request was rejected (with [OAuthUiState.error] set only for the latter).
