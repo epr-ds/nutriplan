@@ -267,6 +267,16 @@ class AddressBookScreenTest {
     }
 
     @Test
+    fun `the add address button is announced to screen readers`() {
+        store.save(home, label = "Home", makeDefault = true)
+        renderWithViewModel()
+
+        compose.onNode(
+            hasTestTag(AddressBookTestTags.ADD) and hasContentDescription(str(R.string.address_book_add)),
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `missing required fields are flagged and nothing is saved`() {
         renderWithViewModel()
 
