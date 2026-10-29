@@ -78,8 +78,8 @@ class AuthJourneyTest {
         authRepository = InMemoryAuthRepository(tokenStorage)
         val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         sessionManager = DefaultSessionManager(authRepository, sessionScope)
-        identityRepository = IdentityRepositoryImpl()
         HttpClientProvider.create(engine, authRepository)
+        identityRepository = IdentityRepositoryImpl()
     }
 
     @AfterTest
