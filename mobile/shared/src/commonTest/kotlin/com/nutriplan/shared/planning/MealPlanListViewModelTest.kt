@@ -57,6 +57,28 @@ class MealPlanListViewModelTest {
     )
 
     @Test
+    fun `the meal plan list exposes its current state`() = runTest {
+        assertTrue(viewModel.currentState().isLoading)
+
+        repository.plans = listOf(plan("a"))
+        viewModel.load()
+
+        assertEquals(listOf(plan("a")), viewModel.currentState().plans)
+        assertFalse(viewModel.currentState().isLoading)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        repository.plans = listOf(plan("a"), plan("b"))
+        viewModel.load()
+
+        val state = viewModel.currentState()
+        assertEquals(2, state.plans.size)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+    }
+
+    @Test
     fun `starts in the loading state`() {
         assertTrue(viewModel.state.value.isLoading)
         assertFalse(viewModel.state.value.isEmpty)
