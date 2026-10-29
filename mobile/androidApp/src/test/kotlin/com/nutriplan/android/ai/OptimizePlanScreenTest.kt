@@ -216,6 +216,17 @@ class OptimizePlanScreenTest {
     }
 
     @Test
+    fun `the optimize plan disclaimer is announced to screen readers`() {
+        render(proposed)
+
+        compose.onNode(
+            hasTestTag(OptimizePlanTestTags.DISCLAIMER) and hasContentDescription(
+                str(R.string.optimize_disclaimer),
+            ),
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `while saving the actions and goals are disabled`() {
         render(proposed.copy(isAccepting = true))
 
