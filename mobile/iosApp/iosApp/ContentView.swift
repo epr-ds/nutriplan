@@ -9,13 +9,15 @@ private let greeting = Greeting().greet()
 /// live, the preferences screen is the second destination of the notification surface, the orders
 /// list is the third one, and a deep link that opens an order becomes a fourth destination as that
 /// screen lands in the SwiftUI app. The checkout (COM-606) is the fifth: it is reached from the
-/// orders list, which repeats an order's delivery, not from outside.
+/// orders list, which repeats an order's delivery, not from outside. The login screen (IDN-502) is
+/// the sixth: it is the in-app auth destination, not a deep-link one.
 private enum DeepLinkRoute: Hashable {
     case notifications
     case preferences
     case orders
     case order(String)
     case checkout(String?, String?)
+    case auth
 }
 
 struct ContentView: View {
@@ -94,6 +96,8 @@ struct ContentView: View {
                             onManageAddresses: { path = [] },
                             onSessionExpired: { path = [] },
                         )
+                    case .auth:
+                        LoginView(onLoginSuccess: { path = [] })
                     }
                 }
             }
