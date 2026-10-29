@@ -347,7 +347,11 @@ private fun DailyAverageCard(before: NutritionalInfo, after: NutritionalInfo) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(OptimizePlanTestTags.DAILY)
-            .semantics { contentDescription = beforeAfter },
+            .semantics(mergeDescendants = true) {
+                // AIA-902: the proposal's before/after diff is the card's announcement: announce it,
+                // not just the card shape (the before/after lines keep their own content descriptions).
+                contentDescription = beforeAfter
+            },
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
