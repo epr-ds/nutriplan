@@ -220,6 +220,7 @@ fun OptimizePlanScreenContent(
     }
 }
 
+@Composable
 private fun LazyListScope.proposal(
     state: OptimizePlanUiState,
     onAccept: () -> Unit,
