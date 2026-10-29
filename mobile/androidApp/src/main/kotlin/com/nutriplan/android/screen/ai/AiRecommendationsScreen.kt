@@ -367,6 +367,7 @@ private fun ReasoningCard(reasoning: String) {
 /** Tells the user these are curated catalogue recipes, not the AI's own answer. */
 @Composable
 private fun CuratedFallbackNote() {
+    val fallbackBody = stringResource(R.string.ai_recommendations_curated_fallback_body)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier
@@ -374,7 +375,7 @@ private fun CuratedFallbackNote() {
             .testTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE)
             .semantics(mergeDescendants = true) {
                 // AIA-606: the curated fallback is the answer's fallback: announce it, not just the card shape.
-                contentDescription = stringResource(R.string.ai_recommendations_curated_fallback_body)
+                contentDescription = fallbackBody
             },
     ) {
         Row(
