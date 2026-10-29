@@ -155,6 +155,13 @@ class AiRecommendationsScreenTest {
     }
 
     @Test
+    fun `the ai reasoning is announced to screen readers`() {
+        render(answered(answer))
+
+        compose.onNodeWithContentDescription("High in plant protein and within your calories.").assertIsDisplayed()
+    }
+
+    @Test
     fun `curated fallback recipes are labelled as such`() {
         render(answered(answer.copy(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
 
