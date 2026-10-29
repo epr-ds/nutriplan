@@ -220,4 +220,18 @@ class OrderDetailScreenTest {
 
         compose.onNodeWithTag(OrderDetailTestTags.STALE).assertIsDisplayed()
     }
+
+    @Test
+    fun `a live order surfaces its tracking url and estimated delivery`() {
+        val trackingOrder = order.copy(
+            status = "in_transit",
+            trackingUrl = "https://freshbasket.example/track/o1",
+            estimatedDelivery = "2026-11-03T14:00:00Z",
+        )
+
+        render(loaded(trackingOrder))
+
+        compose.onNodeWithText("https://freshbasket.example/track/o1").assertIsDisplayed()
+        compose.onNodeWithText(formatOrderTime("2026-11-03T14:00:00Z")).assertIsDisplayed()
+    }
 }
