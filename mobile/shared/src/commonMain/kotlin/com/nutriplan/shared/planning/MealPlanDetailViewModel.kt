@@ -77,6 +77,9 @@ class MealPlanDetailViewModel(
     private val _state = MutableStateFlow(MealPlanDetailUiState())
     val state: StateFlow<MealPlanDetailUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): MealPlanDetailUiState = _state.value
+
     private var planId: String? = null
 
     /** First load of [planId], or a retry after a failure. */

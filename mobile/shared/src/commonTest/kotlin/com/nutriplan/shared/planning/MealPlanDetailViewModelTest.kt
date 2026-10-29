@@ -71,6 +71,29 @@ class MealPlanDetailViewModelTest {
     )
 
     @Test
+    fun `the plan detail exposes its current state`() = runTest {
+        assertTrue(viewModel.currentState().isLoading)
+
+        repository.plan = plan()
+        viewModel.load("p1")
+
+        assertEquals("Plan p1", viewModel.currentState().plan?.name)
+        assertFalse(viewModel.currentState().isLoading)
+        assertNull(viewModel.currentState().error)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        repository.plan = plan()
+        viewModel.load("p1")
+
+        val state = viewModel.currentState()
+        assertEquals("p1", state.plan?.id)
+        assertEquals("active", state.plan?.status)
+        assertFalse(state.isLoading)
+    }
+
+    @Test
     fun `starts in the loading state`() {
         assertTrue(viewModel.state.value.isLoading)
         assertNull(viewModel.state.value.plan)
