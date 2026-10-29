@@ -107,16 +107,16 @@ class AuthJourneyTest {
         assertEquals("u1", signedIn.user.id)
 
         assertTrue(
-            "expected a register call, saw $requests",
             requests.any { it.startsWith("POST ") && it.endsWith("/auth/register") },
+            "expected a register call, saw $requests",
         )
         assertTrue(
-            "expected a preferences save, saw $requests",
             requests.any { it.startsWith("PUT ") && it.endsWith("/users/me/dietary-preferences") },
+            "expected a preferences save, saw $requests",
         )
         assertTrue(
-            "expected the authed profile fetch, saw $requests",
             requests.any { it.startsWith("GET ") && it.endsWith("/users/me") },
+            "expected the authed profile fetch, saw $requests",
         )
     }
 }
