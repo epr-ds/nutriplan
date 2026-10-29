@@ -130,6 +130,8 @@ class AiStatesTest {
             hasTestTag(AiStateTestTags.RETRY) and hasContentDescription(str(R.string.ai_retry)),
         ).assertIsDisplayed()
         compose.onNodeWithTag(AiStateTestTags.RETRY).assert(hasText(str(R.string.ai_retry)))
+        compose.onNodeWithTag(AiStateTestTags.RETRY).performClick()
+
         assertEquals(1, calls.retries)
     }
 
