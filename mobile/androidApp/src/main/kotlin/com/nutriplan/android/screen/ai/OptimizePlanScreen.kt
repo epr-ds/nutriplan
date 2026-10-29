@@ -273,19 +273,28 @@ private fun LazyListScope.proposal(
         }
     }
     item(key = "disclaimer") {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(OptimizePlanTestTags.DISCLAIMER),
-        ) {
-            Text(
-                text = stringResource(R.string.optimize_disclaimer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(12.dp),
-            )
-        }
+        OptimizeDisclaimerCard()
+    }
+}
+
+@Composable
+private fun OptimizeDisclaimerCard() {
+    val disclaimerText = stringResource(R.string.optimize_disclaimer)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(OptimizePlanTestTags.DISCLAIMER)
+            .semantics(mergeDescendants = true) {
+                contentDescription = disclaimerText
+            },
+    ) {
+        Text(
+            text = disclaimerText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }
 
