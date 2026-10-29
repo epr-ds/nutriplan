@@ -12,3 +12,5 @@ import org.koin.mp.KoinPlatform
 fun createLoginViewModel(): LoginViewModel = KoinPlatform.getKoin().get<LoginViewModel>()
 
 fun createRegisterViewModel(): RegisterViewModel = KoinPlatform.getKoin().get<RegisterViewModel>()
+
+fun createOAuthViewModel(): OAuthViewModel = KoinPlatform.getKoin().get<OAuthViewModel>()
