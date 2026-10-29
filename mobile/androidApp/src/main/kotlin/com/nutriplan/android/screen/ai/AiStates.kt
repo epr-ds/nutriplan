@@ -186,7 +186,8 @@ fun AiErrorCard(
                     onClick = onFallback,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag(AiStateTestTags.FALLBACK),
+                        .testTag(AiStateTestTags.FALLBACK)
+                        .semantics(mergeDescendants = true) { contentDescription = fallbackLabel },
                 ) {
                     Text(fallbackLabel)
                 }
