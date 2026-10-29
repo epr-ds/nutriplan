@@ -164,6 +164,15 @@ class AiRecommendationsScreenTest {
     }
 
     @Test
+    fun `the alignment score is announced to screen readers`() {
+        render(answered(answer))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.ALIGNMENT).assert(
+            hasContentDescription(str(R.string.ai_recommendations_alignment_score, 86)),
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `the curated fallback note is announced to screen readers`() {
         render(answered(answer.copy(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
 
