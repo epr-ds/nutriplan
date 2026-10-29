@@ -8,7 +8,6 @@ import com.nutriplan.shared.session.authResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /** HRD-1004: the first-run onboarding wizard seeds sensible defaults when a step is reached empty. */
@@ -31,7 +30,7 @@ class OnboardingWizardDefaultsTest {
 
     @Test
     fun `moving into the targets step seeds the calorie and macro defaults`() = runTest {
-        val model = OnboardingViewModel(InMemoryOnboardingDraftStorage(), fixture(this).complete)
+        val model = OnboardingViewModel(InMemoryOnboardingDraftStorage(), fixture(backgroundScope).complete)
 
         model.next() // DIET -> ALLERGIES
         model.next() // ALLERGIES -> TARGETS
