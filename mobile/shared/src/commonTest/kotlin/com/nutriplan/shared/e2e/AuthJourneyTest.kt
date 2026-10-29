@@ -1,18 +1,18 @@
 package com.nutriplan.shared.e2e
 
-import com.nutriplan.shared.data.local.InMemoryOnboardingDraftStorage
-import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.local.StoredTokens
+import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.network.HttpClientProvider
 import com.nutriplan.shared.data.repository.AuthRepository
+import com.nutriplan.shared.data.repository.InMemoryAuthRepository
 import com.nutriplan.shared.data.repository.IdentityRepository
-import com.nutriplan.shared.di.dataModule
-import com.nutriplan.shared.di.sessionModule
+import com.nutriplan.shared.data.repository.IdentityRepositoryImpl
 import com.nutriplan.shared.onboarding.OnboardingAnswers
 import com.nutriplan.shared.onboarding.OnboardingDraftStorage
 import com.nutriplan.shared.onboarding.OnboardingViewModel
 import com.nutriplan.shared.session.CompleteOnboarding
+import com.nutriplan.shared.session.DefaultSessionManager
 import com.nutriplan.shared.session.SessionManager
 import com.nutriplan.shared.session.SessionState
 import io.ktor.client.engine.mock.MockEngine
@@ -21,15 +21,15 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
-import org.koin.core.context.GlobalContext
-import org.koin.core.context.startKoin
-import org.koin.core.context.stopKoin
-import org.koin.core.module.Module
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -71,30 +71,20 @@ class AuthJourneyTest {
     private lateinit var authRepository: AuthRepository
     private lateinit var sessionManager: SessionManager
     private lateinit var identityRepository: IdentityRepository
-    private lateinit var wizard: OnboardingViewModel
 
     @BeforeTest
     fun setUp() {
-        startKoin {
-            modules(
-                dataModule,
-                sessionModule,
-                Module {
-                    single<TokenStorage> { InMemoryTokenStorage() }
-                    single<OnboardingDraftStorage> { InMemoryOnboardingDraftStorage() }
-                },
-            )
-        }
-        authRepository = GlobalContext.get<AuthRepository>()
-        sessionManager = GlobalContext.get<SessionManager>()
-        identityRepository = GlobalContext.get<IdentityRepository>()
+        val tokenStorage = InMemoryTokenStorage()
+        authRepository = InMemoryAuthRepository(tokenStorage)
+        val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        sessionManager = DefaultSessionManager(authRepository, sessionScope)
+        identityRepository = IdentityRepositoryImpl()
         HttpClientProvider.create(engine, authRepository)
     }
 
     @AfterTest
     fun tearDown() {
         HttpClientProvider.reset()
-        stopKoin()
     }
 
     @Test
@@ -102,18 +92,32 @@ class AuthJourneyTest {
         val register = authRepository.register(RegisterRequest(email = "ana@example.com", password = "secret12", name = "Ana"))
         assertNotNull(register.user)
 
+        // A brand-new user (no dietary preferences yet) lands in onboarding.
         sessionManager.onAuthenticated(register.user)
-        assertTrue(sessionManager.state.value is SessionState.Onboarding)
+        assertIs<SessionState.Onboarding>(sessionManager.state.value)
 
-        wizard = OnboardingViewModel(InMemoryOnboardingDraftStorage(), CompleteOnboarding(identityRepository, sessionManager))
+        val wizard = OnboardingViewModel(InMemoryDraftStorage(), CompleteOnboarding(identityRepository, sessionManager))
         wizard.updateAnswers(OnboardingAnswers(dietType = "omnivore"))
         assertTrue(wizard.next(), "the second onboarding step should be reachable")
         assertTrue(wizard.next(), "the targets step should be reachable")
         assertTrue(wizard.finish(), "the wizard should finish")
 
-        val state = sessionManager.state.value
-        assertTrue(state is SessionState.SignedIn, "expected a signed-in session, saw $state")
-        assertEquals("u1", (state as SessionState.SignedIn).user.id)
+        // Finishing persisted the preferences and fetched the profile, so the session is signed in.
+        val signedIn = assertIs<SessionState.SignedIn>(sessionManager.state.value)
+        assertEquals("u1", signedIn.user.id)
+
+        assertTrue(
+            "expected a register call, saw $requests",
+            requests.any { it.startsWith("POST ") && it.endsWith("/auth/register") },
+        )
+        assertTrue(
+            "expected a preferences save, saw $requests",
+            requests.any { it.startsWith("PUT ") && it.endsWith("/users/me/dietary-preferences") },
+        )
+        assertTrue(
+            "expected the authed profile fetch, saw $requests",
+            requests.any { it.startsWith("GET ") && it.endsWith("/users/me") },
+        )
     }
 }
 
@@ -126,5 +130,17 @@ private class InMemoryTokenStorage : TokenStorage {
     }
     override fun clear() {
         tokens = null
+    }
+}
+
+/** In-memory [OnboardingDraftStorage] so the wizard does not need the platform key-value store. */
+private class InMemoryDraftStorage : OnboardingDraftStorage {
+    private var draft: String? = null
+    override fun loadDraft(): String? = draft
+    override fun saveDraft(draft: String) {
+        this.draft = draft
+    }
+    override fun clearDraft() {
+        draft = null
     }
 }
