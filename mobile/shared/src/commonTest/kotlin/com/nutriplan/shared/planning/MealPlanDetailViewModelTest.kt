@@ -131,6 +131,28 @@ class MealPlanDetailViewModelTest {
     }
 
     @Test
+    fun `the nutrition summary exposes the plan totals`() = runTest {
+        repository.plan = plan().copy(
+            nutritionalSummary = NutritionalSummary(
+                total = NutritionalInfo(calories = 12600, protein = 630.0, carbs = 1400.0, fat = 420.0),
+                dailyAverage = NutritionalInfo(calories = 1800, protein = 90.0, carbs = 200.0, fat = 60.5),
+                targets = NutritionalTargets(calories = 2000, protein = 90, carbs = 180, fat = 70),
+                progress = NutritionalProgress(
+                    calories = NutrientProgress(target = 2000.0, actual = 1800.0, percentOfTarget = 90.0, status = "under"),
+                    protein = NutrientProgress(target = 90.0, actual = 90.0, percentOfTarget = 100.0, status = "on_target"),
+                    carbs = NutrientProgress(target = 180.0, actual = 200.0, percentOfTarget = 111.1, status = "over"),
+                    fat = NutrientProgress(target = 70.0, actual = 60.5, percentOfTarget = 86.4, status = "under"),
+                ),
+            ),
+        )
+
+        viewModel.load("p1")
+
+        val total = viewModel.currentState().nutritionalSummary?.total?.calories?.toDouble()
+        assertEquals(12600.0, total)
+    }
+
+    @Test
     fun `starts in the loading state`() {
         assertTrue(viewModel.state.value.isLoading)
         assertNull(viewModel.state.value.plan)
