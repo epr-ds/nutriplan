@@ -56,7 +56,7 @@ class OnboardingViewModel(
         val current = _state.value
         val target = current.step.ordinal + delta
         if (target !in OnboardingStep.entries.indices) return false
-        val answers = if (target == OnboardingStep.TARGETS && current.answers.dailyCalorieTarget == null) {
+        val answers = if (OnboardingStep.entries[target] == OnboardingStep.TARGETS && current.answers.dailyCalorieTarget == null) {
             current.answers.copy(
                 dailyCalorieTarget = MacroCalculator.DEFAULT_CALORIES,
                 macroTargets = MacroCalculator.defaultMacroTargets(MacroCalculator.DEFAULT_CALORIES),
