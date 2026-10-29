@@ -51,6 +51,7 @@ import com.nutriplan.android.R
 import com.nutriplan.android.component.EmptyState
 import com.nutriplan.android.component.ErrorState
 import com.nutriplan.android.di.koinInject
+import com.nutriplan.android.i18n.formatMnx
 import com.nutriplan.android.i18n.ordersMessageRes
 import com.nutriplan.android.screen.plans.formatPlanDay
 import com.nutriplan.shared.commerce.OrderFilter
@@ -258,7 +259,7 @@ private fun OrderCard(order: Order, canReorder: Boolean, onClick: () -> Unit, on
             itemsSummary(order)?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = order.total?.let { it.formatted ?: it.amount.toString() }.orEmpty(),
+                    text = order.total?.let { it?.formatted ?: formatMnx(it?.amount) }.orEmpty(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
