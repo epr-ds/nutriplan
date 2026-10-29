@@ -30,6 +30,9 @@ class OnboardingViewModel(
     /** The current wizard state; collect it to render. */
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
+    /** The current wizard state; read it to render (the iOS app has no Koin from Swift). */
+    fun currentState(): OnboardingUiState = _state.value
+
     private fun restore(): OnboardingUiState {
         val draft = draftStorage.loadDraft()?.let { encoded ->
             runCatching { json.decodeFromString(OnboardingDraft.serializer(), encoded) }.getOrNull()
