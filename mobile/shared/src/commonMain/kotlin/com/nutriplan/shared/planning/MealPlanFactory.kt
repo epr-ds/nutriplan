@@ -10,3 +10,5 @@ import org.koin.mp.KoinPlatform
  * behaviour is shared across platforms by construction.
  */
 fun createMealPlanListViewModel(): MealPlanListViewModel = KoinPlatform.getKoin().get<MealPlanListViewModel>()
+
+fun createMealPlanDetailViewModel(): MealPlanDetailViewModel = KoinPlatform.getKoin().get<MealPlanDetailViewModel>()
