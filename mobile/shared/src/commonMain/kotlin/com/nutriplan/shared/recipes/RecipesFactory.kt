@@ -10,3 +10,5 @@ import org.koin.mp.KoinPlatform
  * behaviour is shared across platforms by construction.
  */
 fun createRecipeSearchViewModel(): RecipeSearchViewModel = KoinPlatform.getKoin().get<RecipeSearchViewModel>()
+
+fun createRecipeDetailViewModel(): RecipeDetailViewModel = KoinPlatform.getKoin().get<RecipeDetailViewModel>()
