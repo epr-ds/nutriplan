@@ -12,3 +12,5 @@ import org.koin.mp.KoinPlatform
 fun createMealPlanListViewModel(): MealPlanListViewModel = KoinPlatform.getKoin().get<MealPlanListViewModel>()
 
 fun createMealPlanDetailViewModel(): MealPlanDetailViewModel = KoinPlatform.getKoin().get<MealPlanDetailViewModel>()
+
+fun createAddMealViewModel(): AddMealViewModel = KoinPlatform.getKoin().get<AddMealViewModel>()

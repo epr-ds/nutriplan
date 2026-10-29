@@ -117,6 +117,9 @@ class AddMealViewModel(
     private var planId: String? = null
     private var recipeId: String? = null
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): AddMealUiState = _state.value
+
     /**
      * Load [recipeId] and the days of [planId]; also the retry after a failed load. A known
      * [mealType] (an AI recommendation for one meal, AIA-604) is chosen unless the user already

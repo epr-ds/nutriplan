@@ -24,6 +24,7 @@ private enum DeepLinkRoute: Hashable {
     case mealPlansDetail(String)
     case recipeSearch
     case recipeDetail(String)
+    case addMeal(String, String)
 }
 
 struct ContentView: View {
@@ -116,6 +117,8 @@ struct ContentView: View {
                         RecipeSearchView(onRecipeClick: { _ in })
                     case .recipeDetail(let recipeId):
                         RecipeDetailView(recipeId: recipeId, onBack: { path = [] })
+                    case .addMeal(let planId, let recipeId):
+                        AddMealView(planId: planId, recipeId: recipeId) { path = [] }
                     }
                 }
             }
