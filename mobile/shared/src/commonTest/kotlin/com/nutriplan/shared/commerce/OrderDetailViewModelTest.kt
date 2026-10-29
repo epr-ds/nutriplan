@@ -182,12 +182,14 @@ class OrderDetailViewModelTest {
 
     @Test
     fun `the current state is the latest one`() = runTest {
-        assertTrue(viewModel().state.value.isLoading)
+        val viewModel = viewModel()
+
+        assertTrue(viewModel.state.value.isLoading)
 
         remote.order = Order(id = "o1", status = "preparing", createdAt = placedAt, statusHistory = history)
-        viewModel().load("o1")
+        viewModel.load("o1")
 
-        assertEquals("preparing", viewModel().currentState().order?.status)
+        assertEquals("preparing", viewModel.currentState().order?.status)
     }
 
     @Test

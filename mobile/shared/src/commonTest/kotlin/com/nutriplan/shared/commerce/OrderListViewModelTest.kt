@@ -214,12 +214,14 @@ class OrderListViewModelTest {
 
     @Test
     fun `the current state is the latest one`() = runTest {
-        assertTrue(viewModel().state.value.isLoading)
+        val viewModel = viewModel()
+
+        assertTrue(viewModel.state.value.isLoading)
 
         remote.orders = all
-        viewModel().load()
+        viewModel.load()
 
-        assertEquals(listOf("o1", "o2", "o3", "o4"), viewModel().currentState().visibleOrders.map { it.id })
+        assertEquals(listOf("o1", "o2", "o3", "o4"), viewModel.currentState().visibleOrders.map { it.id })
     }
 
     @Test
