@@ -50,6 +50,10 @@ data class MealPlanDetailUiState(
 ) {
     /** The plan loaded but has no meals yet. */
     val hasNoMeals: Boolean get() = plan != null && days.isEmpty()
+
+    /** The plan's nutrition summary for the progress UI (ring/bars vs targets); empty when the plan has none. */
+    val nutritionalSummaryUi: NutritionSummaryUi
+        get() = plan?.nutritionalSummary?.toNutritionSummaryUi() ?: NutritionSummaryUi()
 }
 
 /** Maps a thrown repository failure to a stable, localizable [MealPlanDetailError]. */

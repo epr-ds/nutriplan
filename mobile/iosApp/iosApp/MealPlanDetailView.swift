@@ -74,6 +74,8 @@ struct MealPlanDetailView: View {
                     .foregroundColor(.secondary)
             }
 
+            nutritionSection(summary: state?.nutritionalSummaryUi ?? NutritionSummaryUi())
+
             ForEach(days.indices, id: \.self) { index in
                 daySection(day: days[index])
             }
@@ -110,6 +112,106 @@ struct MealPlanDetailView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
+        }
+    }
+
+    // MARK: - nutrition
+
+    private func nutritionSection(summary: NutritionSummaryUi) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Nutrition")
+                .font(.titleMedium)
+                .accessibilityAddTraits(.isHeader)
+
+            if summary.hasData {
+                ForEach(summary.rows.indices, id: \.self) { index in
+                    nutritionRow(summary.rows[index])
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func nutritionRow(_ row: NutrientRow) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(nutritionName(row.nutrient))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            if row.nutrient == Nutrient.CALORIES {
+                calorieRing(row: row)
+            } else {
+                nutrientBar(row: row)
+            }
+        }
+    }
+
+    private func calorieRing(row: NutrientRow) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                CircularProgressIndicator(progress: row.barFraction ?? 0)
+                    .frame(width: 56, height: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(progressText(row))
+                    Text(statusText(row.status))
+                        .foregroundColor(statusColor(row.status))
+                }
+            }
+            Text(amountText(row))
+        }
+    }
+
+    private func nutrientBar(row: NutrientRow) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ProgressView(value: row.barFraction ?? 0, total: 1) { Text("") }
+            HStack {
+                Text(statusText(row.status))
+                    .font(.caption)
+                    .foregroundColor(statusColor(row.status))
+                Spacer()
+                Text(amountText(row))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private func nutritionName(_ nutrient: Nutrient) -> String {
+        switch nutrient {
+        case .CALORIES: return "Calories"
+        case .PROTEIN: return "Protein"
+        case .CARBS: return "Carbs"
+        case .FAT: return "Fat"
+        case .SUGAR: return "Sugar"
+        }
+    }
+
+    private func progressText(_ row: NutrientRow) -> String {
+        guard let average = row.average, let target = row.target, target > 0 else { return "" }
+        return "\(Int(average)) of \(Int(target)) \(row.nutrient == Nutrient.CALORIES ? "kcal" : "g")"
+    }
+
+    private func amountText(_ row: NutrientRow) -> String {
+        guard let average = row.average else { return "" }
+        if let target = row.target { return "\(Int(average)) of \(Int(target)) \(row.nutrient == Nutrient.CALORIES ? "kcal" : "g")" }
+        return "\(Int(average)) \(row.nutrient == Nutrient.CALORIES ? "kcal" : "g")"
+    }
+
+    private func statusText(_ status: ProgressStatus) -> String {
+        switch status {
+        case .UNDER: return "Under target"
+        case .ON_TARGET: return "On target"
+        case .OVER: return "Over target"
+        case .UNKNOWN: return "No target set"
+        }
+    }
+
+    private func statusColor(_ status: ProgressStatus) -> Color {
+        switch status {
+        case .OVER: return .error
+        case .ON_TARGET: return .green
+        case .UNDER: return .primary
+        case .UNKNOWN: return .secondary
         }
     }
 
