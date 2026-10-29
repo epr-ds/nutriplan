@@ -1,6 +1,6 @@
 package com.nutriplan.shared.commerce
 
-import org.koin.core.KoinPlatform
+import org.koin.mp.KoinPlatform
 
 /**
  * App-facing factory for the user's order list (COM-701 / COM-702).
