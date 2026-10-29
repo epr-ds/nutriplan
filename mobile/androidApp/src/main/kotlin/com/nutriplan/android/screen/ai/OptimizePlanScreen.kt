@@ -336,7 +336,19 @@ private fun goalLabel(goal: String): String = when (goal) {
 
 @Composable
 private fun DailyAverageCard(before: NutritionalInfo, after: NutritionalInfo) {
-    Card(modifier = Modifier.fillMaxWidth().testTag(OptimizePlanTestTags.DAILY)) {
+    val beforeAfter = stringResource(
+        R.string.cd_optimize_before_after,
+        stringResource(R.string.optimize_daily_calories),
+        before.calories.toString(),
+        after.calories.toString(),
+        stringResource(R.string.optimize_unit_kcal),
+    )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(OptimizePlanTestTags.DAILY)
+            .semantics { contentDescription = beforeAfter },
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = stringResource(R.string.optimize_daily_heading),
