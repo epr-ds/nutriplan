@@ -2,8 +2,8 @@ package com.nutriplan.shared.commerce
 
 import com.nutriplan.shared.data.model.FulfillmentProvider
 import com.nutriplan.shared.data.model.KitchenAvailability
-import com.nutriplan.shared.data.repository.CommerceUseCases
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
