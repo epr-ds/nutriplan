@@ -124,6 +124,18 @@ class RecipeDetailViewModelTest {
     }
 
     @Test
+    fun `loading another recipe reloads the nutrition disclaimer`() = runTest {
+        viewModel.load("r1")
+        repository.recipe = Recipe(id = "r2", name = "Salad")
+        viewModel.load("r2")
+
+        val state = viewModel.state.value
+        assertEquals("r2", state.recipe?.id)
+        assertEquals(2, repository.disclaimerCalls)
+        assertEquals("Estimates only.", state.disclaimer?.disclaimer)
+    }
+
+    @Test
     fun `a missing disclaimer is tried again on the next load`() = runTest {
         repository.disclaimerFailure = ApiException.NetworkError()
         viewModel.load("r1")
