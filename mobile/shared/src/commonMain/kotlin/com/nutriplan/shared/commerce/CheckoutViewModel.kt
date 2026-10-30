@@ -342,7 +342,10 @@ class CheckoutViewModel(
             is OrderResult.Success -> {
                 // The tokenized card is kept for a later payment; clearing it would make the next
                 // card payment open the provider's form again instead of reusing the token (COM-508).
-                _state.update { it.copy(isPlacing = false, placedOrder = result.value) }
+                // A card is charged on placement, so an order placed with one is confirmed paid; the
+                // others stay pending until the user pays them through their instructions (COM-1002).
+                val placed = if (type in CARD_TYPES) result.value.copy(status = "paid") else result.value
+                _state.update { it.copy(isPlacing = false, placedOrder = placed) }
                 true
             }
             is OrderResult.Failure -> {
