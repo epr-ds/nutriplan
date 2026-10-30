@@ -57,9 +57,10 @@ class CachedDietaryRepository(
         try {
             val cached = cache.getPlan(planId)
             val server = remote.getMealPlan(planId)
-            // Cache-first: a cached copy is served, then refreshed from the network.
+            // Cache-first: a cached copy is served, then refreshed from the network, and the changes
+            // that are still waiting are shown on top of what is served (DPL-407).
             cache.upsertPlan(server)
-            cached ?: server.withQueuedMeals()
+            (cached ?: server).withQueuedMeals()
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
