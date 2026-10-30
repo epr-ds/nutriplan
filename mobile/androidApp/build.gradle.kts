@@ -5,8 +5,10 @@ plugins {
     id("com.google.firebase.crashlytics") version "3.0.8"
 }
 
-// HRD-701: App signing — secrets from environment, never in repo.
-val keystorePath: String? = providers.environmentVariable("KEYSTORE_PATH").orNull
+// HRD-701: App signing — secrets from environment, never in repo. Blank values (e.g. unset
+// secrets rendered as empty strings in CI) fall back to the debug signing config, so an
+// unconfigured release build still produces an installable APK.
+val keystorePath: String? = providers.environmentVariable("KEYSTORE_PATH").orNull?.takeIf { it.isNotBlank() }
 val keystorePassword: String? = providers.environmentVariable("KEYSTORE_PASSWORD").orNull
 val keyAlias: String? = providers.environmentVariable("KEY_ALIAS").orNull
 val keyPassword: String? = providers.environmentVariable("KEY_PASSWORD").orNull
