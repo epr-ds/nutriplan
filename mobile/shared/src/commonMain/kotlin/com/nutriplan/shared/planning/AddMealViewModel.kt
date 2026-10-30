@@ -161,6 +161,8 @@ class AddMealViewModel(
     }
     fun onMealTypeChange(value: String) {
         if (_state.value.addedMealId != null) return
+        // The form is not usable while the recipe is loading or failed to load, so it takes no edits.
+        if (_state.value.isLoading || _state.value.loadError != null) return
         _state.update {
             it.copy(mealType = value.takeIf { type -> type in MEAL_TYPES }, mealTypeError = null, error = null)
         }
@@ -168,11 +170,15 @@ class AddMealViewModel(
 
     fun onServingsChange(value: String) {
         if (_state.value.addedMealId != null) return
+        // The form is not usable while the recipe is loading or failed to load, so it takes no edits.
+        if (_state.value.isLoading || _state.value.loadError != null) return
         _state.update { it.copy(servings = value.decimalOnly(), servingsError = null, error = null) }
     }
 
     /** Choose the day of the plan (0-based), or null for no day. */
     fun onDayChange(dayIndex: Int?) {
+        // The form is not usable while the recipe is loading or failed to load, so it takes no edits.
+        if (_state.value.isLoading || _state.value.loadError != null) return
         _state.update { state ->
             state.copy(
                 dayIndex = dayIndex?.takeIf { index -> state.days.any { it.dayIndex == index } },
