@@ -42,7 +42,10 @@ class NutriPlanApplication : Application() {
         super.onCreate()
 
         // IDN-402: point the data layer at the build's API environment before the HTTP client is
-        // created (debug: dev, release: prod; overridable with -PapiEnv=local|stage).
+        // created (debug: dev, release: prod; overridable with -PapiEnv=local|stage). An explicit
+        // API_BASE_URL (e.g. -PapiBaseUrl=http://192.168.x.x:8083) wins, for physical devices on a
+        // local network that cannot use the emulator loopback (10.0.2.2).
+        BuildConfig.API_BASE_URL.takeIf { it.isNotBlank() }?.let { ApiConfig.useBaseUrl(it) }
         ApiConfig.configure(ApiEnvironment.fromName(BuildConfig.API_ENVIRONMENT))
 
         // HRD-602: Firebase Crashlytics auto-initializes via Gradle plugin (crash logging enabled by default in v19+).

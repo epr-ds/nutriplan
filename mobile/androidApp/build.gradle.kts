@@ -21,6 +21,11 @@ val apiEnvironment: String = providers.gradleProperty("apiEnv")
     .orElse(providers.environmentVariable("API_ENV"))
     .getOrElse("dev")
 
+// Explicit API base URL override for local physical-device testing (e.g. -PapiBaseUrl=http://192.168.1.43:8083).
+val apiBaseUrl: String = providers.gradleProperty("apiBaseUrl")
+    .orElse(providers.environmentVariable("API_BASE_URL"))
+    .getOrElse("")
+
 // IDN-505: Google OAuth server (web) client ID. Empty unless provided via -PgoogleServerClientId
 // or GOOGLE_SERVER_CLIENT_ID (secrets per env, IDN-803). When blank, the Google button is hidden.
 val googleServerClientId: String = providers.gradleProperty("googleServerClientId")
@@ -45,6 +50,9 @@ android {
 
         // IDN-402: API environment (local/dev/stage/prod), see the top-level `apiEnvironment`.
         buildConfigField("String", "API_ENVIRONMENT", "\"$apiEnvironment\"")
+
+        // Explicit API base URL override for local physical-device testing (e.g. -PapiBaseUrl=http://192.168.1.43:8083).
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         // IDN-505: Google OAuth server client ID (blank ⇒ OAuth buttons hidden).
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
