@@ -31,6 +31,10 @@ import kotlin.coroutines.cancellation.CancellationException
  * - If nothing is cached, the original error is rethrown, so a screen shows an error instead of an
  *   empty list.
  * - Offline writes are not supported: create, status change and add-meal need the server.
+ *
+ * The recipe catalog is cached the same way through the optional [RecipeCache]: a recipe that was
+ * searched or opened is served while offline, and refreshed from the network whenever it can be
+ * reached.
  */
 class CachedDietaryRepository(
     private val remote: DietaryRepository,
@@ -78,9 +82,33 @@ class CachedDietaryRepository(
             }
         }
 
-    override suspend fun getRecipe(recipeId: String): Recipe = remote.getRecipe(recipeId)
+    override suspend fun getRecipe(recipeId: String): Recipe =
+        try {
+            val cached = recipes?.get(recipeId)
+            val server = remote.getRecipe(recipeId)
+            // Cache-first: a cached copy is served, then refreshed from the network.
+            server.also { recipes?.saveAll(listOf(it)) }
+            return cached ?: server
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            if (e.canFallBackToCache()) recipes?.get(recipeId)?.let { return it } ?: throw e
+            throw e
+        }
 
-    override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = remote.searchRecipes(query)
+    override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> =
+        try {
+            val cached = recipes?.getAll()
+            val results = remote.searchRecipes(query)
+            // Cache-first: a cached copy is served, then refreshed from the network.
+            recipes?.saveAll(results)
+            return cached?.takeIf { it.isNotEmpty() } ?: results
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            if (e.canFallBackToCache()) return recipes?.getAll() ?: throw e
+            throw e
+        }
 
     override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan =
         remote.createMealPlan(request).also(cache::upsertPlan)

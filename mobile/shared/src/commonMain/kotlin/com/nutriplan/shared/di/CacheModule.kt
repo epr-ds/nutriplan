@@ -17,6 +17,7 @@ import com.nutriplan.shared.data.local.SavedAddressStore
 import com.nutriplan.shared.data.local.PendingFavoriteStore
 import com.nutriplan.shared.data.local.PendingMealStore
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.RecipeCache
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.CachedDietaryRepository
 import com.nutriplan.shared.data.repository.CombinedQueueFlusher
@@ -50,6 +51,7 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
     single { NutriPlanDatabase(createDriver()) }
     single { MealPlanCache(get()) }
     single { FavoriteRecipeCache(get()) }
+    single { RecipeCache(get()) }
     single { PendingMealStore(get()) }
     single { PendingChangeStore(get()) }
     single { PendingFavoriteStore(get()) }
@@ -80,7 +82,13 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
         )
     }
     single<DietaryRepository> {
-        CachedDietaryRepository(remote = DietaryRepositoryImpl(), cache = get(), pending = get(), changes = get())
+        CachedDietaryRepository(
+            remote = DietaryRepositoryImpl(),
+            cache = get(),
+            pending = get(),
+            changes = get(),
+            recipes = get<RecipeCache>(),
+        )
     }
     single {
         PendingMealSync(
@@ -113,6 +121,7 @@ internal fun cacheModuleFor(createDriver: () -> SqlDriver): Module = module {
             pendingChanges = get(),
             orders = get(),
             addresses = get(),
+            recipes = get<RecipeCache>(),
         )
     }
 }
