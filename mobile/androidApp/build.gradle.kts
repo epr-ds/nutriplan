@@ -85,7 +85,7 @@ android {
             // config) that CI does not have; skip the upload task so the release build can run.
             configure<CrashlyticsExtension> { mappingFileUploadEnabled = false }
 
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             buildConfigField("String", "API_ENVIRONMENT", "\"prod\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
