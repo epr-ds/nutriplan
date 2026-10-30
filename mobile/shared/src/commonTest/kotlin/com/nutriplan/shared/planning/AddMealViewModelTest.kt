@@ -418,6 +418,17 @@ class AddMealViewModelTest {
         assertTrue(repository.added.isEmpty())
     }
 
+    @Test
+    fun `the add meal form cannot save while the recipe failed to load`() = runTest {
+        repository.recipeFailure = ApiException.NetworkError()
+        viewModel.start("p1", "r1", mealType = "dinner")
+
+        viewModel.save()
+
+        assertTrue(repository.added.isEmpty(), "nothing is added while the recipe could not be loaded")
+        assertEquals(AddMealError.NETWORK, viewModel.state.value.loadError)
+    }
+
     // --- AIA-604: a meal type known in advance ---
 
     @Test
