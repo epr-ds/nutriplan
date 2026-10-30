@@ -1,4 +1,4 @@
-package com.nutriplan.android
+package com.nutiplan.android
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
