@@ -340,7 +340,8 @@ class CheckoutViewModel(
         val draft = reviewed.copy(payment = payment, savePaymentMethod = type in CARD_TYPES && _state.value.saveCard)
         return when (val result = useCases.placeOrder(draft)) {
             is OrderResult.Success -> {
-                tokenizedCard = null
+                // The tokenized card is kept for a later payment; clearing it would make the next
+                // card payment open the provider's form again instead of reusing the token (COM-508).
                 _state.update { it.copy(isPlacing = false, placedOrder = result.value) }
                 true
             }
