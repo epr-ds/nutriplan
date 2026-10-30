@@ -35,8 +35,8 @@ class ApiEnvironmentTest {
     @Test
     fun `local environment points at the emulator loopback`() {
         ApiConfig.configure(ApiEnvironment.LOCAL)
-        assertEquals("http://10.0.2.2:8080", ApiConfig.BASE_URL)
-        assertEquals("http://10.0.2.2:8080/identity/v1", ApiConfig.IDENTITY)
+        assertEquals("http://10.0.2.2:8083", ApiConfig.BASE_URL)
+        assertEquals("http://10.0.2.2:8083/identity/v1", ApiConfig.IDENTITY)
     }
 
     @Test

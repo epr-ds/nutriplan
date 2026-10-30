@@ -9,7 +9,7 @@ package com.nutriplan.shared.data
  */
 enum class ApiEnvironment(val baseUrl: String) {
     /** Android emulator loopback to a locally running gateway/compose stack. */
-    LOCAL("http://10.0.2.2:8080"),
+    LOCAL("http://10.0.2.2:8083"),
     DEV("https://dev-api.nutriplan.app"),
     STAGE("https://stage-api.nutriplan.app"),
     PROD("https://api.nutriplan.app"),
