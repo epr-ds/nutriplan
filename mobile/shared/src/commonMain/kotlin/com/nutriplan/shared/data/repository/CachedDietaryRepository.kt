@@ -19,7 +19,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * [DietaryRepository] that keeps meal plans in a local [MealPlanCache] and serves them when the
  * server cannot be reached.
  *
- * - Successful reads and writes refresh the cache.
+ * - Reads are cache-first and then refreshed: a cached copy is served and the cache is refreshed
+ *   from the network, so an offline device keeps working and an online device moves to fresh data.
+ * - Successful writes refresh the cache.
  * - The cache is used only when the device is offline or the server answers with a 5xx error
  *   (see [ApiFailure]). A rejected session (401) is surfaced, never answered from the cache, and a
  *   404 evicts the cached plan.
@@ -35,25 +37,30 @@ class CachedDietaryRepository(
 ) : DietaryRepository by remote {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
-        val plans = try {
-            remote.getMealPlans(query)
+        val cached = cachedPlans(query)
+        return try {
+            val plans = remote.getMealPlans(query)
+            cache.upsertSummaries(plans)
+            if (query.coversEveryPlan(plans.size)) pruneRemoved(plans)
+            // Cache-first: a cached copy is served, then refreshed from the network.
+            cached ?: plans
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             if (!e.canFallBackToCache()) throw e
-            val cached = cachedPlans(query)
-            if (cached.isEmpty()) throw e
-            return cached
+            val fallback = cached ?: throw e
+            if (fallback.isEmpty()) throw e
+            return fallback
         }
-        cache.upsertSummaries(plans)
-        if (query.coversEveryPlan(plans.size)) pruneRemoved(plans)
-        return plans
     }
 
     override suspend fun getMealPlan(planId: String): MealPlan =
         try {
-            // The server's plan is what is saved; the queued meals are applied on top of it afterwards.
-            remote.getMealPlan(planId).also(cache::upsertPlan).withQueuedMeals()
+            val cached = cache.getPlan(planId)
+            val server = remote.getMealPlan(planId)
+            // Cache-first: a cached copy is served, then refreshed from the network.
+            cache.upsertPlan(server)
+            cached ?: server.withQueuedMeals()
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
@@ -107,8 +114,10 @@ class CachedDietaryRepository(
         cache.getPlanIds().filter { it !in onServer }.forEach(cache::delete)
     }
 
-    private fun cachedPlans(query: MealPlanQuery?): List<MealPlanSummary> {
-        val filtered = cache.getPlans().filter { query?.status == null || it.status == query.status }
+    private fun cachedPlans(query: MealPlanQuery?): List<MealPlanSummary>? {
+        val all = cache.getPlans()
+        if (all.isEmpty()) return null
+        val filtered = all.filter { query?.status == null || it.status == query.status }
         val limit = query?.limit ?: DEFAULT_PAGE_SIZE
         val page = (query?.page ?: 1).coerceAtLeast(1)
         return filtered.drop((page - 1) * limit).take(limit)
