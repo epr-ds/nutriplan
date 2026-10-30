@@ -43,13 +43,12 @@ class CachedDietaryRepository(
             cache.upsertSummaries(plans)
             if (query.coversEveryPlan(plans.size)) pruneRemoved(plans)
             // Cache-first: a cached copy is served, then refreshed from the network.
-            cached ?: plans
+            cached?.takeIf { it.isNotEmpty() } ?: plans
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             if (!e.canFallBackToCache()) throw e
-            val fallback = cached ?: throw e
-            if (fallback.isEmpty()) throw e
+            val fallback = cached?.takeIf { it.isNotEmpty() } ?: throw e
             return fallback
         }
     }
