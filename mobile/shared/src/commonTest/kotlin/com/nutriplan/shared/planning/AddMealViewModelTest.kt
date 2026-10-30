@@ -167,6 +167,23 @@ class AddMealViewModelTest {
     }
 
     @Test
+    fun `the add meal form does not take edits while the recipe failed to load`() = runTest {
+        repository.recipeFailure = ApiException.NetworkError()
+        viewModel.start("p1", "r1")
+
+        assertEquals(AddMealError.NETWORK, viewModel.state.value.loadError)
+        assertFalse(viewModel.state.value.isLoading)
+
+        viewModel.onMealTypeChange("dinner")
+        viewModel.onServingsChange("2")
+        viewModel.onDayChange(0)
+
+        assertNull(viewModel.state.value.mealType)
+        assertEquals("1", viewModel.state.value.servings)
+        assertNull(viewModel.state.value.dayIndex)
+    }
+
+    @Test
     fun `load failures map to stable codes`() = runTest {
         suspend fun errorFor(failure: Throwable): AddMealError? {
             repository.recipeFailure = failure
