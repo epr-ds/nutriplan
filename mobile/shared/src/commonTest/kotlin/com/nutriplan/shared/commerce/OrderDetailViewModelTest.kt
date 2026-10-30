@@ -281,7 +281,7 @@ class OrderDetailViewModelTest {
         assertTrue(viewModel.confirmCancel(refundAmount = 100.0))
 
         assertEquals(listOf("o1"), remote.cancels)
-        assertEquals(100.0, remote.cancelRequests.single().refundAmount)
+        assertEquals(100.0, remote.cancelRequests.single()?.refundAmount)
         assertEquals("cancelled", viewModel.state.value.order?.status)
     }
 
