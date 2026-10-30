@@ -561,6 +561,24 @@ class CheckoutViewModelTest {
     }
 
     @Test
+    fun `a tokenized card saved with the order is reused by a later card payment`() = runTest {
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+        viewModel.onSaveCardChange(true)
+
+        assertTrue(viewModel.placeOrder())
+        assertEquals(1, tokenizer.calls)
+
+        // A later card payment reuses the token of the card already saved through the provider
+        // instead of opening the provider's form to tokenize a card again (COM-508).
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(1, tokenizer.calls)
+        assertEquals(2, remote.creates.size)
+    }
+
+    @Test
     fun `save card only applies to a card`() = runTest {
         val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
         viewModel.walkTo(CheckoutStep.REVIEW, payment = "oxxo")
