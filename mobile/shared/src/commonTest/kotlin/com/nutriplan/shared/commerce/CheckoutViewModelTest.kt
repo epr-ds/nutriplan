@@ -482,6 +482,17 @@ class CheckoutViewModelTest {
         assertTrue(remote.creates.isEmpty())
     }
 
+    @Test
+    fun `the user cannot place an order before the itemized price is loaded`() = runTest {
+        remote.quoteFailure = Exception("offline")
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW)
+
+        assertNull(viewModel.state.value.quote)
+        assertFalse(viewModel.placeOrder())
+        assertTrue(remote.creates.isEmpty())
+    }
+
     // --- paying (COM-608) ---
 
     @Test
