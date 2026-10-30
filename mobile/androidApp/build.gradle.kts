@@ -1,3 +1,5 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
@@ -78,6 +80,10 @@ android {
                 // Without a local keystore, fall back to debug config for testing.
                 signingConfigs.getByName("debug")
             }
+
+            // Firebase Crashlytics mapping upload requires a google-services.json (Firebase
+            // config) that CI does not have; skip the upload task so the release build can run.
+            configure<CrashlyticsExtension> { mappingFileUploadEnabled = false }
 
             isMinifyEnabled = true
             buildConfigField("String", "API_ENVIRONMENT", "\"prod\"")
