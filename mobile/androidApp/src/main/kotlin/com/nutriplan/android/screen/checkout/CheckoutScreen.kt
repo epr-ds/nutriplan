@@ -835,4 +835,5 @@ private fun CheckoutStepError.messageRes(): Int = when (this) {
     CheckoutStepError.AREA_NOT_SERVED -> R.string.checkout_error_area
     CheckoutStepError.PAYMENT_REQUIRED -> R.string.checkout_error_payment
     CheckoutStepError.CARD_NOT_VERIFIED -> R.string.checkout_error_card
+    CheckoutStepError.QUOTE_REQUIRED -> R.string.checkout_error_quote
 }
