@@ -1,4 +1,4 @@
-package com.nutiplan.android
+package com.nutiplan.android.local
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34], application = TestApplication::class)
-class CleartextTrafficTest {
+class LocalApiReachabilityTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
