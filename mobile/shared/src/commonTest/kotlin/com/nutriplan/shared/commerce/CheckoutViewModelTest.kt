@@ -548,6 +548,18 @@ class CheckoutViewModelTest {
     }
 
     @Test
+    fun `an order placed with a card is confirmed paid`() = runTest {
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals("paid", viewModel.state.value.placedOrder?.status)
+        assertEquals(PaymentInstructions.None, viewModel.state.value.paymentInstructions)
+    }
+
+    @Test
     fun `a card the user wants kept is saved with the order`() = runTest {
         val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
         viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
