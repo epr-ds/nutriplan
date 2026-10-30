@@ -213,6 +213,30 @@ class CachedDietaryRepositoryTest {
         assertEquals(true, "b" in cache.getPlanIds())
     }
 
+    // --- cache-first: a cached plan is served, then refreshed from the network ---
+
+    @Test
+    fun `a cached plan is served and then refreshed from the network`() = runTest {
+        cache.upsertPlan(fullPlan("p1", meals = listOf(meal("m1"))))
+        remote.plan = fullPlan("p1", meals = listOf(meal("m1"), meal("m2")))
+
+        val served = repository.getMealPlan("p1")
+
+        assertEquals(listOf("m1"), served.meals.map { it.id })
+        assertEquals(listOf("m1", "m2"), cache.getPlan("p1")!!.meals.map { it.id })
+    }
+
+    @Test
+    fun `a cached plan list is served and then refreshed from the network`() = runTest {
+        cache.upsertSummaries(listOf(summary("p1")))
+        remote.summaries = listOf(summary("p1"), summary("p2"))
+
+        val served = repository.getMealPlans()
+
+        assertEquals(listOf("p1"), served.map { it.id })
+        assertEquals(setOf("p1", "p2"), cache.getPlanIds().toSet())
+    }
+
     // --- detail ---
 
     @Test
