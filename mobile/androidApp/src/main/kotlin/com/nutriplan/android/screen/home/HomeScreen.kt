@@ -245,7 +245,7 @@ fun MealPlanCard(
             Text(
                 text = dates,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -271,7 +271,9 @@ fun QuickActionCard(
 ) {
     Card(
         modifier = modifier
+            // F12: Add accessible name for screen readers (WCAG 4.1.2)
             // F19: Use defaultMinSize instead of fixed height to prevent text clipping at large dynamic type (WCAG 1.4.4)
+            .semantics { contentDescription = label }
             .defaultMinSize(minHeight = 80.dp)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium

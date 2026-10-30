@@ -15,7 +15,7 @@ from app.main import app
 
 def _impl_query_params() -> set[str]:
     schema = app.openapi()
-    params = schema["paths"]["/orders"]["get"].get("parameters", [])
+    params = schema["paths"]["/commerce/v1/orders"]["get"].get("parameters", [])
     return {p["name"] for p in params if p["in"] == "query"}
 
 

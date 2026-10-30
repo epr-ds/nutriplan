@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.adapters.in_memory_notification_repository import InMemoryNotificationRepository
 from app.application.feed import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -27,6 +28,7 @@ from app.domain.enums import NotificationType
 from app.domain.errors import InvalidFeedQuery, NotificationNotFound
 from app.domain.notification import Notification
 from app.domain.repositories import NotificationRepository
+from tests.conftest import TEST_POLICY
 
 NOW = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=30)
 USER = uuid.uuid4()
@@ -203,6 +205,83 @@ def test_unread_only_does_not_change_the_badge(feed: NotificationFeed):
     unfiltered = feed.page(FeedQuery(user_id=USER))
 
     assert filtered.unread_count == unfiltered.unread_count == 1
+
+
+class _CountingUnreadRepository:
+    """Wraps the in-memory store, counting how many unread-count scans the feed performs."""
+
+    def __init__(self) -> None:
+        self.scans = 0
+        self._inner = InMemoryNotificationRepository(policy=TEST_POLICY)
+
+    def add(self, notification: Notification) -> Notification:
+        return self._inner.add(notification)
+
+    def get(self, notification_id: uuid.UUID, *, user_id: uuid.UUID) -> Notification | None:
+        return self._inner.get(notification_id, user_id=user_id)
+
+    def update(self, notification: Notification) -> Notification | None:
+        return self._inner.update(notification)
+
+    def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        unread_only: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Notification]:
+        return self._inner.list_for_user(
+            user_id,
+            unread_only=unread_only,
+            limit=limit,
+            offset=offset,
+        )
+
+    def count_unread(self, user_id: uuid.UUID) -> int:
+        self.scans += 1
+        return self._inner.count_unread(user_id)
+
+
+def test_an_unread_only_page_that_covers_everything_avoids_a_second_scan() -> None:
+    """When the unread-only page already holds every unread entry, the badge is the page
+    size and the count scan is redundant work (HRD-203: top hotspots / N+1-style waste)."""
+    repository = _CountingUnreadRepository()
+    feed = NotificationFeed(repository)
+    _seed(repository, _notification(age_seconds=10), _notification(age_seconds=20, read=True))
+
+    page = feed.page(FeedQuery(user_id=USER, unread_only=True, limit=10))
+
+    assert page.unread_count == 1
+    assert repository.scans == 0
+
+
+def test_an_unread_only_page_that_overflows_still_counts() -> None:
+    """A page that overflowed means the unread total may be larger than the page; the scan
+    must still run there."""
+    repository = _CountingUnreadRepository()
+    feed = NotificationFeed(repository)
+    _seed(repository, *(_notification(age_seconds=i * 10) for i in range(3)))
+
+    page = feed.page(FeedQuery(user_id=USER, unread_only=True, limit=1))
+
+    assert page.has_more is True
+    assert page.unread_count == 3
+    assert repository.scans == 1
+
+
+def test_an_unread_only_page_past_the_first_still_counts_the_user_badge() -> None:
+    """The badge is the user's whole unread total, whatever page it is read on -- so a page
+    past the first must still run the count scan. Only a *first* page that did not overflow can
+    answer the badge from its own contents (HRD-203)."""
+    repository = _CountingUnreadRepository()
+    feed = NotificationFeed(repository)
+    _seed(repository, *(_notification(age_seconds=i * 10) for i in range(3)))
+
+    page = feed.page(FeedQuery(user_id=USER, unread_only=True, page=2, limit=2))
+
+    assert page.unread_count == 3
+    assert repository.scans == 1
 
 
 # -- unread count ----------------------------------------------------------------------

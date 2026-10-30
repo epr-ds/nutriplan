@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -183,6 +185,17 @@ class OptimizePlanScreenTest {
     }
 
     @Test
+    fun `the optimize plan before after diff is announced to screen readers`() {
+        render(proposed)
+
+        compose.onNode(
+            hasTestTag(OptimizePlanTestTags.DAILY) and hasContentDescription(
+                str(R.string.cd_optimize_before_after, str(R.string.optimize_daily_calories), "1900", "1750", "kcal"),
+            ),
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `without summaries the daily average is left out`() {
         render(proposed.copy(draft = draft.copy(nutritionalSummary = null)))
 
@@ -200,6 +213,17 @@ class OptimizePlanScreenTest {
 
         assertEquals(1, calls.accepted)
         assertEquals(1, calls.backed)
+    }
+
+    @Test
+    fun `the optimize plan disclaimer is announced to screen readers`() {
+        render(proposed)
+
+        compose.onNode(
+            hasTestTag(OptimizePlanTestTags.DISCLAIMER) and hasContentDescription(
+                str(R.string.optimize_disclaimer),
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test

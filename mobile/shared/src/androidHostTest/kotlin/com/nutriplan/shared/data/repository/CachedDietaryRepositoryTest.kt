@@ -1,6 +1,7 @@
 package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.local.MealPlanCache
+import com.nutriplan.shared.data.local.RecipeCache
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
@@ -12,9 +13,11 @@ import com.nutriplan.shared.data.model.NutritionDisclaimer
 import com.nutriplan.shared.data.model.Recipe
 import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.network.ApiException
+import com.nutriplan.shared.testing.favoriteRecipe
 import com.nutriplan.shared.testing.fullPlan
 import com.nutriplan.shared.testing.meal
 import com.nutriplan.shared.testing.newCache
+import com.nutriplan.shared.testing.newDatabase
 import com.nutriplan.shared.testing.summary
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
@@ -31,6 +34,8 @@ class CachedDietaryRepositoryTest {
         var plan: MealPlan? = null
         var failure: Throwable? = null
         var lastQuery: MealPlanQuery? = null
+        var recipes: List<Recipe> = emptyList()
+        var recipe: Recipe? = null
 
         override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
             lastQuery = query
@@ -66,14 +71,22 @@ class CachedDietaryRepositoryTest {
             return meal(mealId)
         }
 
-        override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = emptyList()
-        override suspend fun getRecipe(recipeId: String): Recipe = error("unused")
+        override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> {
+            failure?.let { throw it }
+            return recipes
+        }
+
+        override suspend fun getRecipe(recipeId: String): Recipe {
+            failure?.let { throw it }
+            return recipe ?: error("unused")
+        }
         override suspend fun getNutritionDisclaimer(): NutritionDisclaimer = error("unused")
     }
 
     private val remote = FakeDietary()
     private val cache: MealPlanCache = newCache()
-    private val repository = CachedDietaryRepository(remote, cache)
+    private val recipeCache = RecipeCache(newDatabase())
+    private val repository = CachedDietaryRepository(remote, cache, recipes = recipeCache)
 
     private val offline = ApiException.NetworkError()
 
@@ -213,6 +226,30 @@ class CachedDietaryRepositoryTest {
         assertEquals(true, "b" in cache.getPlanIds())
     }
 
+    // --- cache-first: a cached plan is served, then refreshed from the network ---
+
+    @Test
+    fun `a cached plan is served and then refreshed from the network`() = runTest {
+        cache.upsertPlan(fullPlan("p1", meals = listOf(meal("m1"))))
+        remote.plan = fullPlan("p1", meals = listOf(meal("m1"), meal("m2")))
+
+        val served = repository.getMealPlan("p1")
+
+        assertEquals(listOf("m1"), served.meals.map { it.id })
+        assertEquals(listOf("m1", "m2"), cache.getPlan("p1")!!.meals.map { it.id })
+    }
+
+    @Test
+    fun `a cached plan list is served and then refreshed from the network`() = runTest {
+        cache.upsertSummaries(listOf(summary("p1")))
+        remote.summaries = listOf(summary("p1"), summary("p2"))
+
+        val served = repository.getMealPlans()
+
+        assertEquals(listOf("p1"), served.map { it.id })
+        assertEquals(setOf("p1", "p2"), cache.getPlanIds().toSet())
+    }
+
     // --- detail ---
 
     @Test
@@ -315,5 +352,43 @@ class CachedDietaryRepositoryTest {
         assertFailsWith<ApiException.NetworkError> { repository.removeMeal("p1", "m1") }
 
         assertNotNull(cache.getPlan("p1"))
+    }
+
+    // --- recipe cache (DPL-403) ---
+
+    @Test
+    fun `offline the recipe detail is served from the cache`() = runTest {
+        recipeCache.saveAll(listOf(favoriteRecipe("r1")))
+        remote.failure = offline
+
+        assertEquals(favoriteRecipe("r1"), repository.getRecipe("r1"))
+    }
+
+    @Test
+    fun `offline the recipe search results are served from the cache`() = runTest {
+        recipeCache.saveAll(listOf(favoriteRecipe("r1"), favoriteRecipe("r2")))
+        remote.failure = offline
+
+        val found = repository.searchRecipes(RecipeSearchQuery())
+
+        assertEquals(listOf("r1", "r2"), found.map { it.id })
+    }
+
+    @Test
+    fun `a recipe read from the network refreshes the cache`() = runTest {
+        val serverRecipe = favoriteRecipe("r1")
+        remote.recipe = serverRecipe
+        assertEquals(serverRecipe, repository.getRecipe("r1"))
+        assertEquals(serverRecipe, recipeCache.get("r1"))
+
+        remote.failure = offline
+        assertEquals(serverRecipe, repository.getRecipe("r1"))
+    }
+
+    @Test
+    fun `a recipe search from the network refreshes the cache`() = runTest {
+        remote.recipes = listOf(favoriteRecipe("r1"))
+        assertEquals(listOf("r1"), repository.searchRecipes(RecipeSearchQuery()).map { it.id })
+        assertEquals(listOf("r1"), recipeCache.getAll().map { it.id })
     }
 }

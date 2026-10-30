@@ -30,6 +30,26 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun `the login form exposes its current state`() = runTest {
+        val (model, _) = viewModel(backgroundScope)
+
+        assertEquals("", model.currentState().email)
+        assertFalse(model.currentState().canSubmit)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        val (model, _) = viewModel(backgroundScope)
+        model.onEmailChange("ana@example.com")
+        model.onPasswordChange("secret-password")
+
+        val state = model.currentState()
+        assertEquals("ana@example.com", state.email)
+        assertEquals("secret-password", state.password)
+        assertFalse(state.isLoading)
+    }
+
+    @Test
     fun `blank fields are rejected with inline errors before any request`() = runTest {
         val (model, repository) = viewModel(backgroundScope)
 

@@ -53,6 +53,14 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun `the onboarding wizard exposes its current state`() = runTest {
+        val model = OnboardingViewModel(InMemoryOnboardingDraftStorage(), fixture(backgroundScope).complete)
+
+        assertEquals(OnboardingStep.DIET, model.currentState().step)
+        assertEquals(1, model.currentState().stepNumber)
+    }
+
+    @Test
     fun `next and back move through the steps and progress`() = runTest {
         val model = OnboardingViewModel(InMemoryOnboardingDraftStorage(), fixture(backgroundScope).complete)
 

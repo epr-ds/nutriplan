@@ -67,6 +67,15 @@ def test_requires_bearer_token() -> None:
     assert response.json()["status"] == 401
 
 
+def test_authenticated_ai_request_resolves_principal_via_suite_wide_override() -> None:
+    """Regression guard for issue #651: the suite-wide auth override registered in ``conftest``
+    must survive the provider-contract fixture teardowns so protected ``/ai/*`` routes resolve a
+    principal instead of crashing on the JWKS client."""
+    response = client.post("/ai/recommendations", json=_minimal_body(), headers=_AUTH)
+
+    assert response.status_code == 200
+
+
 def test_rejects_unknown_context() -> None:
     response = client.post("/ai/recommendations", json={"context": "nope"}, headers=_AUTH)
 

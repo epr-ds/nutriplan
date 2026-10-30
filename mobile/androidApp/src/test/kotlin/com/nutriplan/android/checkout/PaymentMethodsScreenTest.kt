@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -231,6 +233,15 @@ class PaymentMethodsScreenTest {
 
         assertEquals(listOf("4444"), remote.methods.map { it.last4 })
         compose.onNodeWithText(str(R.string.payment_methods_card_name, "Mastercard", "4444")).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the add payment method button is announced to screen readers`() {
+        renderWithViewModel()
+
+        compose.onNode(
+            hasTestTag(PaymentMethodsTestTags.ADD) and hasContentDescription(str(R.string.payment_methods_add)),
+        ).assertIsDisplayed()
     }
 
     @Test

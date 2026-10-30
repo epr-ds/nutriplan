@@ -31,6 +31,7 @@ import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.OrderItem
 import com.nutriplan.shared.data.model.OrderStatusChange
 import com.nutriplan.shared.data.model.PaymentVoucher
+import com.nutriplan.shared.data.model.Refund
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -219,5 +220,31 @@ class OrderDetailScreenTest {
         render(loaded().copy(refreshError = OrderError.NETWORK))
 
         compose.onNodeWithTag(OrderDetailTestTags.STALE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a live order surfaces its tracking url and estimated delivery`() {
+        val trackingOrder = order.copy(
+            status = "in_transit",
+            trackingUrl = "https://freshbasket.example/track/o1",
+            estimatedDelivery = "2026-11-03T14:00:00Z",
+        )
+
+        render(loaded(trackingOrder))
+
+        compose.onNodeWithText("https://freshbasket.example/track/o1").assertIsDisplayed()
+        compose.onNodeWithText(formatOrderTime("2026-11-03T14:00:00Z")).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a cancelled paid order surfaces its refund`() {
+        val refunded = order.copy(
+            status = "cancelled",
+            refund = Refund(refundId = "rf7", status = "full", amount = Money(312.0, formatted = "MXN 312.00")),
+        )
+
+        render(loaded(refunded))
+
+        compose.onNodeWithText("rf7").assertIsDisplayed()
     }
 }

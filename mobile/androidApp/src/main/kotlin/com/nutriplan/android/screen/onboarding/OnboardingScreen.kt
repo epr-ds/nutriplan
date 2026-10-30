@@ -171,7 +171,7 @@ private fun WelcomeContent() {
             text = stringResource(R.string.intro_welcome_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -215,7 +215,7 @@ private fun MealPlansContent() {
             text = stringResource(R.string.intro_meals_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -259,7 +259,7 @@ private fun TrackingContent() {
             text = stringResource(R.string.intro_tracking_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

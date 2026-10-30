@@ -138,7 +138,7 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-_URL = "/fulfillment/dark-kitchen/availability"
+_URL = "/commerce/v1/fulfillment/dark-kitchen/availability"
 
 
 def test_api_returns_available_for_a_covered_zip():

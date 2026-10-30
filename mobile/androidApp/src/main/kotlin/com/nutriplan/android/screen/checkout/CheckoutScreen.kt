@@ -62,6 +62,7 @@ import com.nutriplan.android.R
 import com.nutriplan.android.component.EmptyState
 import com.nutriplan.android.di.koinInjectRetained
 import com.nutriplan.android.i18n.checkoutMessageRes
+import com.nutriplan.android.i18n.formatMnx
 import com.nutriplan.android.screen.plans.formatPlanDay
 import com.nutriplan.android.screen.plans.todayIso
 import com.nutriplan.shared.commerce.CheckoutStep
@@ -276,7 +277,7 @@ private fun LazyListScope.planStep(state: CheckoutUiState, onSelectPlan: (String
                 text = placed?.let { stringResource(R.string.checkout_reorder_note_dated, it) }
                     ?: stringResource(R.string.checkout_reorder_note),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.testTag(CheckoutTestTags.REORDER_NOTE),
             )
         }
@@ -646,7 +647,7 @@ internal fun PaymentInstructionsCard(instructions: PaymentInstructions, total: M
 @Composable
 private fun InstructionsHeader(@StringRes title: Int, @StringRes body: Int, amount: Money?) {
     Text(text = stringResource(title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-    Text(text = stringResource(body, amount?.formatted ?: amount?.amount?.toString().orEmpty()), style = MaterialTheme.typography.bodyMedium)
+    Text(text = stringResource(body, amount?.formatted ?: formatMnx(amount?.amount)), style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
@@ -725,7 +726,7 @@ private fun Option(title: String, subtitle: String?, selected: Boolean, onClick:
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
                 subtitle?.takeIf(String::isNotBlank)?.let {
-                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -738,7 +739,7 @@ private fun SummaryRow(step: CheckoutStep, value: String, onEdit: (CheckoutStep)
     val editDescription = stringResource(R.string.cd_checkout_edit, stepTitle)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = stepTitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = stepTitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
             Text(text = value, style = MaterialTheme.typography.bodyMedium)
         }
         TextButton(
@@ -756,7 +757,7 @@ internal fun PriceRow(label: String, amount: Money?, modifier: Modifier = Modifi
     Row(modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Text(text = label, fontWeight = weight, modifier = Modifier.weight(1f))
         // The server formats money (COM-501), currency included.
-        Text(text = amount?.formatted ?: amount?.amount?.toString().orEmpty(), fontWeight = weight)
+        Text(text = amount?.formatted ?: formatMnx(amount?.amount), fontWeight = weight)
     }
 }
 
@@ -834,4 +835,5 @@ private fun CheckoutStepError.messageRes(): Int = when (this) {
     CheckoutStepError.AREA_NOT_SERVED -> R.string.checkout_error_area
     CheckoutStepError.PAYMENT_REQUIRED -> R.string.checkout_error_payment
     CheckoutStepError.CARD_NOT_VERIFIED -> R.string.checkout_error_card
+    CheckoutStepError.QUOTE_REQUIRED -> R.string.checkout_error_quote
 }

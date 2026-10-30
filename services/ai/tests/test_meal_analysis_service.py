@@ -55,6 +55,7 @@ def _service(
     low_confidence_threshold: float = 0.5,
     sanitizer: PromptSanitizer | None = None,
     post_processor: ResponsePostProcessor | None = None,
+    consent: bool = True,
 ) -> MealAnalysisService:
     client = LLMClient(provider, RetryPolicy(max_retries=0))
     completion = StructuredCompletion(
@@ -67,6 +68,7 @@ def _service(
         completion=completion,
         aligner=aligner,
         low_confidence_threshold=low_confidence_threshold,
+        consent=consent,
         sanitizer=sanitizer,
         post_processor=post_processor,
     )

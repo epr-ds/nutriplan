@@ -8,7 +8,8 @@ from app.db import models  # noqa: F401  (imported so tables register on Base.me
 from app.db.base import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = config.attributes.get("sqlalchemy.url") or str(settings.database_url)
+config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata
 

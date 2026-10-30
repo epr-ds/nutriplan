@@ -117,6 +117,9 @@ class AddMealViewModel(
     private var planId: String? = null
     private var recipeId: String? = null
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): AddMealUiState = _state.value
+
     /**
      * Load [recipeId] and the days of [planId]; also the retry after a failed load. A known
      * [mealType] (an AI recommendation for one meal, AIA-604) is chosen unless the user already
@@ -183,6 +186,8 @@ class AddMealViewModel(
     suspend fun save() {
         val current = _state.value
         if (current.isSaving || current.isDone) return
+        // The form is not usable while the recipe is loading or failed to load, so it cannot save.
+        if (current.isLoading || current.loadError != null) return
         val planId = planId ?: return
         val recipeId = recipeId ?: return
 

@@ -4,6 +4,7 @@ import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.local.OrderCache
 import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
+import com.nutriplan.shared.data.local.RecipeCache
 import com.nutriplan.shared.data.local.SavedAddressStore
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.recipes.FavoriteRecipesViewModel
@@ -20,6 +21,7 @@ class SignOut(
     private val pendingChanges: PendingChangeStore? = null,
     private val orders: OrderCache? = null,
     private val addresses: SavedAddressStore? = null,
+    private val recipes: RecipeCache? = null,
 ) {
     operator fun invoke() {
         // Tokens first: if wiping the cache fails the session is still over.
@@ -31,6 +33,8 @@ class SignOut(
         // COM-503: orders and delivery addresses are the signed-out user's too.
         runCatching { orders?.clear() }
         runCatching { addresses?.clear() }
+        // DPL-403: the cached recipe catalog is the signed-out user's too.
+        runCatching { recipes?.clear() }
         SessionEvents.emitSignedOut()
     }
 }

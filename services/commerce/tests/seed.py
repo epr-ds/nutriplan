@@ -17,7 +17,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
@@ -48,6 +48,10 @@ def create_schema(engine: Engine) -> None:
 def drop_schema(engine: Engine) -> None:
     """Drop every table the service maps, leaving an empty database."""
     Base.metadata.drop_all(bind=engine)
+    # Alembic's version table is migration bookkeeping, not service state: it has to go too,
+    # or a later ``alembic upgrade head`` sees a stale head and skips the migration entirely.
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
 
 def clear_data(session: Session) -> None:

@@ -195,7 +195,7 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-_URL = "/fulfillment/dark-kitchen/availability"
+_URL = "/commerce/v1/fulfillment/dark-kitchen/availability"
 
 
 def test_api_omits_a_fully_booked_window():

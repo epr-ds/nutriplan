@@ -28,7 +28,7 @@ class ApiEnvironmentTest {
             assertEquals("${environment.baseUrl}/dietary/v1", ApiConfig.DIETARY)
             assertEquals("${environment.baseUrl}/ai/v1", ApiConfig.AI)
             assertEquals("${environment.baseUrl}/commerce/v1", ApiConfig.COMMERCE)
-            assertEquals("${environment.baseUrl}/notification/v1", ApiConfig.NOTIFICATION)
+            assertEquals("${environment.baseUrl}/notifications/v1", ApiConfig.NOTIFICATION)
         }
     }
 

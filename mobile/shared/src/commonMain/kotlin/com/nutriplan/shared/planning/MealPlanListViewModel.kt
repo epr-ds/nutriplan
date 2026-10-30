@@ -66,6 +66,9 @@ class MealPlanListViewModel(
     private val _state = MutableStateFlow(MealPlanListUiState())
     val state: StateFlow<MealPlanListUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): MealPlanListUiState = _state.value
+
     /** First load, or retry after a failure: shows the loading state unless plans are on screen. */
     suspend fun load() {
         _state.update { it.copy(isLoading = it.plans.isEmpty(), error = null) }

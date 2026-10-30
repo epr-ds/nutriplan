@@ -45,6 +45,7 @@ from app.domain.payment import (
     PaymentTransferRequest,
     PaymentVoucherRequest,
 )
+from app.domain.payment_method import looks_like_pan
 from app.domain.pricing import OrderPricer
 from app.domain.repositories import OrderRepository
 from app.events.publisher import EventPublisher
@@ -204,6 +205,10 @@ class CreateOrderService:
         """
         if not command.payment_token:
             raise OrderValidationError("a card payment method requires a token")
+        if looks_like_pan(command.payment_token):
+            raise OrderValidationError(
+                "a card payment method token must be a provider token, not a raw card number"
+            )
 
         result = self._payments.charge(
             PaymentRequest(

@@ -261,7 +261,15 @@ fun AppNavigationGraph(
             analyticsTracker?.logScreenView("notification_center", "NotificationCenterScreen")
             screens.NotificationCenterScreen(
                 onNavigate = { route -> navigate(navController, route) },
-                onNotificationClick = { /* handle notification click */ },
+                onNotificationClick = onDeepLink,
+            )
+        }
+
+        // Notification preferences
+        composable<Route.NotificationPreferences> {
+            analyticsTracker?.logScreenView("notification_preferences", "NotificationsPreferencesScreen")
+            screens.NotificationPreferencesScreen(
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -425,6 +433,9 @@ interface AppNavigationScreens {
     @Composable fun NotificationCenterScreen(
         onNavigate: (Any) -> Unit,
         onNotificationClick: (String) -> Unit,
+    )
+    @Composable fun NotificationPreferencesScreen(
+        onBack: () -> Unit,
     )
     @Composable fun ProfileScreen(onNavigate: (Any) -> Unit)
     @Composable fun EditProfileScreen(

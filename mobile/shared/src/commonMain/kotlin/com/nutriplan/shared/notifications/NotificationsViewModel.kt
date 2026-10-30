@@ -1,7 +1,9 @@
 package com.nutriplan.shared.notifications
 
 import com.nutriplan.shared.data.model.Notification
+import com.nutriplan.shared.data.model.NotificationPreferences
 import com.nutriplan.shared.data.model.UnreadCountResponse
+import com.nutriplan.shared.data.model.UpdateNotificationPreferencesRequest
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.NotificationRepository
@@ -10,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** Why the notification list could not be loaded. Locale-neutral: each platform maps these codes to its own localized microcopy (NTF-506 convention). */
 enum class NotificationsError {
@@ -31,7 +35,9 @@ enum class NotificationsError {
  *
  * [notifications] is the loaded list, most recent first as the server sends it; the screen owns the
  * list while it is visible. [unreadCount] is what the entry-point badge shows; it is refreshed
- * whenever the list loads, so a pull-to-refresh also refreshes the badge.
+ * whenever the list loads, so a pull-to-refresh also refreshes the badge. [preferences] is the
+ * user's notification preferences (NTF-509) as the server holds them; the preferences screen reads
+ * and updates it.
  */
 data class NotificationsUiState(
     val notifications: List<Notification> = emptyList(),
@@ -39,6 +45,7 @@ data class NotificationsUiState(
     val isRefreshing: Boolean = false,
     val error: NotificationsError? = null,
     val unreadCount: Int = 0,
+    val preferences: NotificationPreferences? = null,
 ) {
     /** Whether the user has anything unread, for the entry-point badge. */
     val hasUnread: Boolean get() = unreadCount > 0
@@ -53,6 +60,27 @@ fun Throwable.toNotificationsError(): NotificationsError = when (toApiFailure())
     ApiFailure.SERVER -> NotificationsError.SERVER_PROBLEM
     ApiFailure.SESSION_EXPIRED -> NotificationsError.SESSION_EXPIRED
     else -> NotificationsError.UNKNOWN
+}
+
+/**
+ * Whether the current time is inside the quiet-hours window of the notification preferences; an
+ * overnight window (start after end) wraps past midnight. Without a window there is nothing quiet
+ * (NTF-803).
+ */
+fun NotificationPreferences.isQuietHours(now: Instant = Clock.System.now()): Boolean {
+    val start = quietHoursStart?.let { parseMillisOfDay(it) } ?: return false
+    val end = quietHoursEnd?.let { parseMillisOfDay(it) } ?: return false
+    val timeOfDay = now.toEpochMilliseconds() % MILLIS_PER_DAY
+    return if (start <= end) timeOfDay >= start && timeOfDay <= end else timeOfDay >= start || timeOfDay < end
+}
+
+private const val MILLIS_PER_DAY = 86_400_000L
+
+/** The quiet-hours window as milliseconds after midnight of the day it starts on. */
+private fun parseMillisOfDay(raw: String): Long {
+    val hours = raw.substringBefore(':').toLongOrNull() ?: 0L
+    val minutes = raw.substringAfter(':').toLongOrNull() ?: 0L
+    return hours * 3_600_000L + minutes * 60_000L
 }
 
 /**
@@ -109,11 +137,16 @@ class NotificationsViewModel(
 
     /** Mark one notification as read: optimistically on the local copy, then confirm. */
     suspend fun markAsRead(notificationId: String) {
+        val previous = state.value
         _state.update { state ->
+            val marked = state.notifications.firstOrNull { it.id == notificationId }
+            val wasUnread = marked != null && !marked.isRead
             state.copy(
                 notifications = state.notifications.map { notification ->
                     if (notification.id == notificationId) notification.copy(isRead = true) else notification
                 },
+                // NTF-801: marking one notification read moves the unread badge with it.
+                unreadCount = if (wasUnread) state.unreadCount - 1 else state.unreadCount,
             )
         }
         try {
@@ -122,8 +155,59 @@ class NotificationsViewModel(
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             _state.update { it.copy(error = e.toNotificationsError()) }
+            // NTF-802: the optimistic mark has not been confirmed yet; roll it back so a failed
+            // confirmation does not leave a read state (and badge decrement) the server rejected.
+            _state.value = previous
         }
     }
+
+    /** Load the user's notification preferences (NTF-509) into the state; called by the preferences screen. */
+    suspend fun loadPreferences() {
+        try {
+            val preferences = repository.getPreferences()
+            _state.update { it.copy(preferences = preferences) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            _state.update { it.copy(error = e.toNotificationsError()) }
+        }
+    }
+
+    /**
+     * Update the notification preferences (NTF-509): optimistically apply [request] to the local
+     * preferences, then confirm through the repository; on failure roll the previous preferences
+     * back so the UI does not keep the optimistic value.
+     */
+    suspend fun updatePreferences(request: UpdateNotificationPreferencesRequest) {
+        val previous = state.value.preferences
+        _state.update { it.copy(preferences = previous?.withRequest(request) ?: request.toPreferences()) }
+        try {
+            val updated = repository.updatePreferences(request)
+            _state.update { it.copy(preferences = updated) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            _state.update { it.copy(preferences = previous) }
+        }
+    }
+
+    /** Turn the push channel (master switch) on or off (NTF-509). */
+    suspend fun updatePushEnabled(enabled: Boolean) =
+        updatePreferences(UpdateNotificationPreferencesRequest(pushEnabled = enabled))
+
+    /** Turn a per-type push switch (meal reminders / order updates / promotions) on or off (NTF-509). */
+    suspend fun updateMealReminders(enabled: Boolean) = updatePreferences(UpdateNotificationPreferencesRequest(mealReminders = enabled))
+
+    suspend fun updateOrderUpdates(enabled: Boolean) = updatePreferences(UpdateNotificationPreferencesRequest(orderUpdates = enabled))
+
+    suspend fun updatePromotions(enabled: Boolean) = updatePreferences(UpdateNotificationPreferencesRequest(promotions = enabled))
+
+    /** Turn the email channel on or off (NTF-509). */
+    suspend fun updateEmailEnabled(enabled: Boolean) = updatePreferences(UpdateNotificationPreferencesRequest(emailEnabled = enabled))
+
+    /** Set the quiet-hours window as `HH:mm` strings; null clears it (NTF-509). */
+    suspend fun updateQuietHours(start: String?, end: String?) =
+        updatePreferences(UpdateNotificationPreferencesRequest(quietHoursStart = start, quietHoursEnd = end))
 
     /** Forget the error, e.g. when the user retries from the screen. */
     fun clearError() {
@@ -134,4 +218,31 @@ class NotificationsViewModel(
     fun reset() {
         _state.value = NotificationsUiState()
     }
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): NotificationsUiState = _state.value
 }
+
+/** Apply only the fields a (partial) update request carries onto the current preferences. */
+private fun NotificationPreferences.withRequest(request: UpdateNotificationPreferencesRequest): NotificationPreferences =
+    copy(
+        pushEnabled = request.pushEnabled ?: this.pushEnabled,
+        emailEnabled = request.emailEnabled ?: this.emailEnabled,
+        mealReminders = request.mealReminders ?: this.mealReminders,
+        orderUpdates = request.orderUpdates ?: this.orderUpdates,
+        promotions = request.promotions ?: this.promotions,
+        quietHoursStart = request.quietHoursStart ?: this.quietHoursStart,
+        quietHoursEnd = request.quietHoursEnd ?: this.quietHoursEnd,
+    )
+
+/** Default preferences for a request that does not carry every field. */
+private fun UpdateNotificationPreferencesRequest.toPreferences(): NotificationPreferences =
+    NotificationPreferences(
+        pushEnabled = pushEnabled ?: true,
+        emailEnabled = emailEnabled ?: true,
+        mealReminders = mealReminders ?: true,
+        orderUpdates = orderUpdates ?: true,
+        promotions = promotions ?: true,
+        quietHoursStart = quietHoursStart,
+        quietHoursEnd = quietHoursEnd,
+    )

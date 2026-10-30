@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "service": "notification",
+  "last_updated": "2026-10-26",
+  "cases": [
+    {
+      "name": "push-delivery-success",
+      "journey": "push",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify push delivery success path",
+      "input": { "token": "fcm-token-1", "event": "meal-reminder" },
+      "expected": { "delivered": true }
+    },
+    {
+      "name": "push-delivery-failure-retry",
+      "journey": "push",
+      "severity": "P1",
+      "tags": ["regression", "reliability"],
+      "description": "Verify push delivery failure triggers retry",
+      "input": { "token": "fcm-token-1", "event": "meal-reminder", "error": "timeout" },
+      "expected": { "retried": true }
+    },
+    {
+      "name": "deduplication-window",
+      "journey": "push",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify deduplication window suppresses duplicates",
+      "input": { "eventId": "evt-1", "occurredAt": "2026-10-26T08:00:00Z" },
+      "expected": { "deduplicated": true }
+    },
+    {
+      "name": "quiet-hours-enforcement",
+      "journey": "preferences",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify quiet-hours suppression",
+      "input": { "userId": "u1", "window": "22:00-07:00" },
+      "expected": { "suppressed": true }
+    },
+    {
+      "name": "dlq-replay",
+      "journey": "reliability",
+      "severity": "P1",
+      "tags": ["regression", "reliability"],
+      "description": "Verify dead-letter queue replay",
+      "input": { "dlqId": "dlq-1" },
+      "expected": { "replayed": true }
+    },
+    {
+      "name": "meal-reminder-consumer",
+      "journey": "consumer",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify meal reminder event consumer",
+      "input": { "mealPlanId": "mp1", "reminderTime": "08:00" },
+      "expected": { "handled": true }
+    }
+  ]
+}

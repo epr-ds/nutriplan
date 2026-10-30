@@ -18,6 +18,28 @@ from app.payments.provider import PaymentProvider
 from app.payments.stripe import StripePaymentProvider
 
 
+def provision_payment(settings: Settings | None = None) -> PaymentProvider | None:
+    """Provision the real payment provider from the vault-injected secret (COM-904).
+
+    ``COMMERCE_PAYMENT_SECRET_KEY`` is injected from the vault in production and typed as a
+    ``SecretStr`` so it is masked in logs and reprs and never printed; an empty or ``fake``
+    processor means dev/CI, which runs the in-process fake. An unrecognized processor fails
+    fast at provision time rather than at the first charge.
+    """
+    settings = settings or default_settings
+    choice = settings.payment_provider.strip().lower()
+    if choice in ("", "fake"):
+        return None
+    secret = settings.payment_secret_key.get_secret_value()
+    if choice == "stripe":
+        return StripePaymentProvider(secret, base_url=settings.stripe_base_url)
+    if choice == "conekta":
+        return ConektaPaymentProvider(secret, base_url=settings.conekta_base_url)
+    raise ValueError(
+        f"Unknown COMMERCE_PAYMENT_PROVIDER {choice!r}; expected 'stripe', 'conekta', or 'fake'"
+    )
+
+
 def build_payment_provider(settings: Settings | None = None) -> PaymentProvider:
     """Return the configured payment provider, defaulting to the in-process fake.
 
@@ -25,16 +47,9 @@ def build_payment_provider(settings: Settings | None = None) -> PaymentProvider:
     misconfiguration fails fast at startup rather than at the first charge.
     """
     settings = settings or default_settings
-    choice = settings.payment_provider.strip().lower()
-    secret = settings.payment_secret_key.get_secret_value()
-    if choice == "stripe":
-        return StripePaymentProvider(secret, base_url=settings.stripe_base_url)
-    if choice == "conekta":
-        return ConektaPaymentProvider(secret, base_url=settings.conekta_base_url)
-    if choice in ("", "fake"):
+    provider = provision_payment(settings)
+    if provider is None:
         return FakePaymentProvider(
             webhook_secret=settings.payment_webhook_secret.get_secret_value()
         )
-    raise ValueError(
-        f"Unknown COMMERCE_PAYMENT_PROVIDER {choice!r}; expected 'stripe', 'conekta', or 'fake'"
-    )
+    return provider

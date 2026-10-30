@@ -45,6 +45,11 @@ class Settings(BaseSettings):
 
     # Meal-plan lookups (COM-102) resolve against the Dietary service over HTTP.
     dietary_base_url: str = "http://dietary:8082"
+    identity_base_url: str = "http://identity:8081"
+
+    # AI gateway (AIA-804). The AI service is reached through the same gateway edge pattern:
+    # the edge verifies the caller JWT (JWKS) and relays on the same bearer token.
+    ai_base_url: str = "http://ai:8084"
     http_timeout_seconds: float = 5.0
 
     # Pricing engine (COM-103). Dietary carries no prices, so items are priced here by a per-serving

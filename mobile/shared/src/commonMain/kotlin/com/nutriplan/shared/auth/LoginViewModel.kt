@@ -42,6 +42,9 @@ class LoginViewModel(
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): LoginUiState = _state.value
+
     fun onEmailChange(value: String) {
         _state.update { it.copy(email = value, emailError = null, error = null) }
     }

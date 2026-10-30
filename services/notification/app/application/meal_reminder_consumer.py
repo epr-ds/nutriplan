@@ -49,6 +49,16 @@ DEFAULT_CHANNELS: tuple[NotificationChannel, ...] = (
     NotificationChannel.IN_APP,
 )
 
+# Localized meal-type labels for reminder fallbacks (HRD-401). Spanish is the catalog's default
+# language, so an event that arrives without a ``mealName`` resolves through these labels instead
+# of inventing English ``<type>.title()`` copy.
+_MEAL_TYPE_LABELS: dict[str, str] = {
+    "breakfast": "Desayuno",
+    "lunch": "Almuerzo",
+    "dinner": "Cena",
+    "snack": "Merienda",
+}
+
 
 @dataclass(frozen=True)
 class MealReminderPayload:
@@ -173,7 +183,9 @@ class MealReminderConsumer:
         """Parse meal reminder data from the envelope."""
         meal_id = self._require_string(envelope.data, "mealId")
         meal_type = self._require_string(envelope.data, "mealType")
-        meal_name = envelope.data.get("mealName", meal_type.title())
+        meal_name = envelope.data.get("mealName") or _MEAL_TYPE_LABELS.get(
+            meal_type, meal_type.title()
+        )
         scheduled_time_str = self._require_string(envelope.data, "scheduledTime")
 
         try:

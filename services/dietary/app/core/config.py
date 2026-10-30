@@ -21,5 +21,11 @@ class Settings(BaseSettings):
     jwt_issuer: str = "nutriplan-identity"
     jwt_audience: str = "nutriplan"
 
+    # Reminder events (NTF-203). The reminder scheduler publishes meal-time and plan-ending
+    # events into the notification service's bus; the notification consumer reads that stream.
+    # Leaving the URL blank keeps the in-process publisher, which is what dev/CI run on.
+    event_bus_url: str = ""
+    event_stream: str = "commerce.order-events"
+
 
 settings = Settings()

@@ -6,7 +6,7 @@
 
 ### Compose Semantics / Accessibility Checks (JVM)
 - **Location**: `mobile/androidApp/src/test/kotlin/com/nutriplan/android/a11y/`
-  (`AuthAccessibilityTest`, `OnboardingAccessibilityTest`, `A11yMatchers`)
+  (`AuthAccessibilityTest`, `OnboardingAccessibilityTest`, `NotificationsAccessibilityTest`, `A11yMatchers`)
 - **Run**: `./gradlew :androidApp:testDebugUnitTest`
 - **CI Job**: `android-a11y` in `.github/workflows/mobile.yml`
 - **Critical checks**:
@@ -63,6 +63,15 @@
 - [ ] User info is announced
 - [ ] Menu items are announced
 - [ ] "Sign out" button is announced
+
+#### Notifications
+- [ ] Notification list items are announced with title + body content description
+- [ ] Empty / loading / error states are announced (live regions where they carry state)
+- [ ] Preference toggles are labelled; per-type rows disable when push master is off
+- [ ] Quiet-hours inputs are reachable and announced
+- [ ] iOS: notification bell entry point announces the unread count when present
+- [ ] iOS: notification preferences screen announces push-master gating on per-type rows
+- [ ] iOS: quiet-hours start / end pickers have accessible labels and announce suppression
 
 ### 2. Large Font / Dynamic Type Testing
 

@@ -248,7 +248,7 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
 
 def test_add_returns_201_without_token():
     client, repo = _build()
-    response = client.post("/payment-methods", json=_CARD_BODY, headers=_auth())
+    response = client.post("/commerce/v1/payment-methods", json=_CARD_BODY, headers=_auth())
     assert response.status_code == 201
     body = response.json()
     assert body["type"] == "credit_card"
@@ -268,7 +268,7 @@ def test_add_returns_201_without_token():
 def test_add_wallet_without_metadata_returns_201():
     client, repo = _build()
     response = client.post(
-        "/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_auth()
+        "/commerce/v1/payment-methods", json={"type": "paypal", "token": "tok_pp"}, headers=_auth()
     )
     assert response.status_code == 201
     body = response.json()
@@ -281,7 +281,7 @@ def test_add_wallet_without_metadata_returns_201():
 def test_list_returns_saved_methods_without_token():
     client, repo = _build()
     repo.add(SavedPaymentMethod(user_id=USER, type=PaymentMethodType.PAYPAL, token="tok_secret"))
-    response = client.get("/payment-methods", headers=_auth())
+    response = client.get("/commerce/v1/payment-methods", headers=_auth())
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 1
@@ -293,7 +293,7 @@ def test_list_returns_saved_methods_without_token():
 def test_list_excludes_other_users_methods():
     client, repo = _build()
     repo.add(SavedPaymentMethod(user_id=OTHER, type=PaymentMethodType.PAYPAL, token="tok_other"))
-    response = client.get("/payment-methods", headers=_auth())
+    response = client.get("/commerce/v1/payment-methods", headers=_auth())
     assert response.status_code == 200
     assert response.json() == []
 
@@ -301,7 +301,7 @@ def test_list_excludes_other_users_methods():
 def test_delete_returns_204_and_removes():
     client, repo = _build()
     saved = repo.add(SavedPaymentMethod(user_id=USER, type=PaymentMethodType.PAYPAL, token="tok_a"))
-    response = client.delete(f"/payment-methods/{saved.id}", headers=_auth())
+    response = client.delete(f"/commerce/v1/payment-methods/{saved.id}", headers=_auth())
     assert response.status_code == 204
     assert response.content == b""
     assert repo.get(saved.id, user_id=USER) is None
@@ -309,7 +309,7 @@ def test_delete_returns_204_and_removes():
 
 def test_delete_unknown_returns_404():
     client, _ = _build()
-    response = client.delete(f"/payment-methods/{uuid.uuid4()}", headers=_auth())
+    response = client.delete(f"/commerce/v1/payment-methods/{uuid.uuid4()}", headers=_auth())
     assert response.status_code == 404
     assert _ct(response) == PROBLEM_JSON
 
@@ -319,14 +319,16 @@ def test_delete_other_users_method_returns_404_and_leaves_it():
     saved = repo.add(
         SavedPaymentMethod(user_id=OTHER, type=PaymentMethodType.PAYPAL, token="tok_other")
     )
-    response = client.delete(f"/payment-methods/{saved.id}", headers=_auth())
+    response = client.delete(f"/commerce/v1/payment-methods/{saved.id}", headers=_auth())
     assert response.status_code == 404
     assert repo.get(saved.id, user_id=OTHER) is not None
 
 
 def test_add_with_malformed_last4_returns_422():
     client, _ = _build()
-    response = client.post("/payment-methods", json={**_CARD_BODY, "last4": "12"}, headers=_auth())
+    response = client.post(
+        "/commerce/v1/payment-methods", json={**_CARD_BODY, "last4": "12"}, headers=_auth()
+    )
     assert response.status_code == 422
     assert _ct(response) == PROBLEM_JSON
 
@@ -334,7 +336,7 @@ def test_add_with_malformed_last4_returns_422():
 def test_add_with_unknown_type_returns_422():
     client, _ = _build()
     body = {"type": "bitcoin", "token": "tok_x"}
-    response = client.post("/payment-methods", json=body, headers=_auth())
+    response = client.post("/commerce/v1/payment-methods", json=body, headers=_auth())
     assert response.status_code == 422
     assert _ct(response) == PROBLEM_JSON
 
@@ -342,9 +344,9 @@ def test_add_with_unknown_type_returns_422():
 @pytest.mark.parametrize(
     "method,path",
     [
-        ("GET", "/payment-methods"),
-        ("POST", "/payment-methods"),
-        ("DELETE", "/payment-methods/{}"),
+        ("GET", "/commerce/v1/payment-methods"),
+        ("POST", "/commerce/v1/payment-methods"),
+        ("DELETE", "/commerce/v1/payment-methods/{}"),
     ],
 )
 def test_routes_require_authentication(method: str, path: str):

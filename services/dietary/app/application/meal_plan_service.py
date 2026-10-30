@@ -2,25 +2,38 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from app.application.commands import (
     ChangeMealPlanStatusCommand,
     CreateMealPlanCommand,
     ListMealPlansQuery,
 )
+from app.application.plan_reminder_scheduler import PlanReminderScheduler
 from app.domain.errors import MealPlanNotFoundError
 from app.domain.meal_plan import MealPlan
 from app.domain.repositories import MealPlanRepository
+from app.events.memory import InMemoryEventPublisher
+from app.events.publisher import EventPublisher
 
 
 class MealPlanService:
     """Orchestrates meal-plan use cases over the domain model and repository port.
 
     The repository is injected (constructor injection), so the service is agnostic of MongoDB and
-    can be unit-tested against an in-memory double.
+    can be unit-tested against an in-memory double. The reminder scheduler is the same shape: it
+    is injected, and the in-process publisher stands in until a bus URL is configured (NTF-203).
     """
 
-    def __init__(self, repository: MealPlanRepository) -> None:
+    def __init__(
+        self,
+        repository: MealPlanRepository,
+        publisher: EventPublisher | None = None,
+    ) -> None:
         self._repository = repository
+        self._scheduler = PlanReminderScheduler(
+            publisher or InMemoryEventPublisher(),  # type: ignore[arg-type]
+        )
 
     def create_meal_plan(self, command: CreateMealPlanCommand) -> MealPlan:
         """Create and persist a new draft meal plan for the commanding user (DPL-102).
@@ -78,4 +91,13 @@ class MealPlanService:
             raise MealPlanNotFoundError(command.plan_id)
         plan.transition_to(command.target_status)
         self._repository.update(plan)
+        self._emit_reminders(plan)
         return plan
+
+    def _emit_reminders(self, plan: MealPlan) -> None:
+        """NTF-203: hand the plan's reminder events to the bus after a successful mutation.
+
+        The scheduler is best-effort by design (its publisher is resilient and swallows
+        transport failures), so mutating the plan and reminding are separate concerns.
+        """
+        self._scheduler.emit(plan, now=datetime.now(UTC))

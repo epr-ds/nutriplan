@@ -539,6 +539,7 @@
     <string name="checkout_save_card">Guardar esta tarjeta para la próxima vez</string>
     <string name="checkout_error_payment">Elige cómo pagar.</string>
     <string name="checkout_error_card">El proveedor de pagos no pudo verificar tu tarjeta. Inténtalo de nuevo o elige otra forma de pago.</string>
+    <string name="checkout_error_quote">Elige el precio con el que ordenar.</string>
     <string name="confirmation_title">Pedido realizado</string>
     <string name="confirmation_paid">Tu pedido está confirmado y pagado.</string>
     <string name="confirmation_pending">Tu pedido está guardado y espera el pago.</string>
@@ -626,4 +627,14 @@
     <string name="notification_permission_not_now">Ahora no</string>
     <string name="notification_permission_denied_description">Las notificaciones están desactivadas. Puedes volver a activarlas desde los ajustes.</string>
     <string name="notification_permission_open_settings">Abrir ajustes</string>
+    <string name="notification_preferences_back">Atrás</string>
+    <string name="notification_preferences_title">Ajustes de notificaciones</string>
+    <string name="notification_preferences_push">Notificaciones push</string>
+    <string name="notification_preferences_meal_reminders">Recordatorios de planes de comidas</string>
+    <string name="notification_preferences_order_updates">Actualizaciones de pedidos</string>
+    <string name="notification_preferences_promotions">Promociones</string>
+    <string name="notification_preferences_email">Notificaciones por correo</string>
+    <string name="notification_preferences_quiet_hours">Horas de silencio</string>
+    <string name="notification_preferences_quiet_hours_start">Comienzo de la franja de silencio</string>
+    <string name="notification_preferences_quiet_hours_end">Fin de la franja de silencio</string>
 </resources>

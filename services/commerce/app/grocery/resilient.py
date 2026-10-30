@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import httpx
+
 from app.domain.errors import GroceryProviderUnavailableError
 from app.domain.grocery_catalog import (
     GroceryOrderPlacement,
@@ -68,5 +70,10 @@ class CircuitBreakingGroceryAdapter:
         except GroceryProviderUnavailableError:
             self._breaker.record_failure()
             raise
+        except httpx.HTTPError as exc:
+            # The ACL normalises every transport, timeout, and upstream fault onto the domain error,
+            # so the breaker only ever sees "the provider is unhealthy" (COM-805).
+            self._breaker.record_failure()
+            raise GroceryProviderUnavailableError(self.provider_id, str(exc)) from exc
         self._breaker.record_success()
         return result

@@ -26,7 +26,7 @@ from app.domain.grocery import GroceryProvider
 from app.domain.grocery_catalog import GroceryOrderStatus, GrocerySearchItem, GrocerySearchQuery
 from app.domain.money import Money
 from app.domain.order import Order, OrderItem
-from app.domain.payment_method import SavedPaymentMethod
+from app.domain.payment_method import SavedPaymentMethod, looks_like_pan
 from app.domain.pricing import PriceQuote
 
 
@@ -65,6 +65,10 @@ class PaymentMethodRequest(_Camel):
     def _card_needs_a_token(self) -> PaymentMethodRequest:
         if self.type.is_card and not (self.token and self.token.strip()):
             raise ValueError("a card payment method requires a token")
+        if self.type.is_card and looks_like_pan(self.token or ""):
+            raise ValueError(
+                "a card payment method token must be a provider token, not a raw card number"
+            )
         return self
 
 

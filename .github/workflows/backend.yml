@@ -31,6 +31,8 @@ jobs:
           cache-dependency-path: services/ai/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build Docker image
+        run: docker build -t nutriplan-ai:${{ github.sha }} .
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -69,6 +71,8 @@ jobs:
           cache-dependency-path: services/identity/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build runtime image
+        run: docker build --target runtime -t nutriplan-identity:ci .
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -79,8 +83,6 @@ jobs:
         run: pytest tests/test_contract.py -q
       - name: Test (pytest)
         run: pytest --ignore=tests/test_contract.py
-      - name: Build runtime image
-        run: docker build --target runtime -t nutriplan-identity:ci .
       - name: Smoke test the runtime image
         run: |
           docker run -d --name identity-smoke --network host \
@@ -147,6 +149,8 @@ jobs:
           cache-dependency-path: services/commerce/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build Docker image
+        run: docker build -t nutriplan-commerce:${{ github.sha }} .
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -211,6 +215,8 @@ jobs:
           cache-dependency-path: services/dietary/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build Docker image
+        run: docker build -t nutriplan-dietary:${{ github.sha }} .
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -278,14 +284,14 @@ jobs:
           cache-dependency-path: services/notification/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Build runtime image
+        run: docker build --target runtime -t nutriplan-notification:ci .
       - name: Lint (ruff)
         run: |
           ruff check .
           ruff format --check .
       - name: Test (pytest)
         run: pytest
-      - name: Build runtime image
-        run: docker build --target runtime -t nutriplan-notification:ci .
       - name: Smoke test the runtime image
         run: |
           docker run -d --name notification-smoke --network host \
