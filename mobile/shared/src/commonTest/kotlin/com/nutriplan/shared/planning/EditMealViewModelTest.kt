@@ -149,6 +149,24 @@ class EditMealViewModelTest {
     }
 
     @Test
+    fun `the edit meal form does not take edits while the meal failed to load`() = runTest {
+        repository.planFailure = ApiException.NetworkError()
+        viewModel.start("p1", "m1")
+
+        assertEquals(EditMealError.NETWORK, viewModel.state.value.loadError)
+        assertNull(viewModel.state.value.meal)
+
+        viewModel.onServingsChange("3")
+        viewModel.onSatisfactionChange(5)
+        viewModel.onDayChange(0)
+
+        assertEquals("", viewModel.state.value.servings)
+        assertNull(viewModel.state.value.satisfaction)
+        assertNull(viewModel.state.value.dayIndex)
+        assertFalse(viewModel.state.value.hasChanges)
+    }
+
+    @Test
     fun `a retry keeps what the user already edited`() = runTest {
         viewModel.start("p1", "m1")
         viewModel.onServingsChange("4")
