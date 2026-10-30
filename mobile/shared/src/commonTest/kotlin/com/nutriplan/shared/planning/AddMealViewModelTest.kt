@@ -426,7 +426,7 @@ class AddMealViewModelTest {
         viewModel.save()
 
         assertTrue(repository.added.isEmpty(), "nothing is added while the recipe could not be loaded")
-        assertEquals(AddMealError.NETWORK, viewModel.state.value.error)
+        assertEquals(AddMealError.NETWORK, viewModel.state.value.loadError)
     }
 
     // --- AIA-604: a meal type known in advance ---

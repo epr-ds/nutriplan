@@ -186,6 +186,8 @@ class AddMealViewModel(
     suspend fun save() {
         val current = _state.value
         if (current.isSaving || current.isDone) return
+        // The form is not usable while the recipe is loading or failed to load, so it cannot save.
+        if (current.isLoading || current.loadError != null) return
         val planId = planId ?: return
         val recipeId = recipeId ?: return
 
