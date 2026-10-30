@@ -36,6 +36,9 @@ enum class CheckoutStepError {
     /** No payment method was chosen (COM-608). */
     PAYMENT_REQUIRED,
 
+    /** The review has no itemized price to place the order against yet. */
+    QUOTE_REQUIRED,
+
     /** The payment provider could not verify the card (COM-608). */
     CARD_NOT_VERIFIED,
 }
@@ -338,6 +341,10 @@ class CheckoutViewModel(
             NewPaymentMethod.withoutToken(type)
         }
         val draft = reviewed.copy(payment = payment, savePaymentMethod = type in CARD_TYPES && _state.value.saveCard)
+        if (_state.value.quote == null) {
+            _state.update { it.copy(stepError = CheckoutStepError.QUOTE_REQUIRED) }
+            return false
+        }
         return when (val result = useCases.placeOrder(draft)) {
             is OrderResult.Success -> {
                 // The tokenized card is kept for a later payment; clearing it would make the next
