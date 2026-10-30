@@ -539,6 +539,7 @@
     <string name="checkout_save_card">Guardar esta tarjeta para la próxima vez</string>
     <string name="checkout_error_payment">Elige cómo pagar.</string>
     <string name="checkout_error_card">El proveedor de pagos no pudo verificar tu tarjeta. Inténtalo de nuevo o elige otra forma de pago.</string>
+    <string name="checkout_error_quote">Elige el precio con el que ordenar.</string>
     <string name="confirmation_title">Pedido realizado</string>
     <string name="confirmation_paid">Tu pedido está confirmado y pagado.</string>
     <string name="confirmation_pending">Tu pedido está guardado y espera el pago.</string>
