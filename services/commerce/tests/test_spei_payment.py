@@ -293,7 +293,7 @@ def test_create_with_spei_returns_201_pending_with_transfer():
     client, _, payments = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "spei", "token": "tok_spei"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     payload = response.json()
@@ -314,7 +314,7 @@ def test_create_with_spei_has_no_voucher_block():
     client, _, _ = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "spei", "token": "tok_spei"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     # SPEI issues a transfer, not an OXXO voucher — the voucher block stays null.
@@ -325,7 +325,7 @@ def test_create_with_card_has_no_transfer_block():
     client, _, _ = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "credit_card", "token": "tok_visa"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     assert response.json()["transfer"] is None

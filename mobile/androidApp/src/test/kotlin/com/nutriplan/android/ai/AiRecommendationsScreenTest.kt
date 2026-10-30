@@ -11,6 +11,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -152,6 +154,33 @@ class AiRecommendationsScreenTest {
         compose.onNodeWithTag(AiRecommendationsTestTags.ALIGNMENT).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.ai_recommendations_alignment_score, 86)).assertIsDisplayed()
         compose.onNodeWithText("Close to your protein target.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the ai reasoning is announced to screen readers`() {
+        render(answered(answer))
+
+        compose.onNodeWithContentDescription("High in plant protein and within your calories.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the alignment score is announced to screen readers`() {
+        render(answered(answer))
+
+        compose.onNodeWithTag(AiRecommendationsTestTags.ALIGNMENT).assert(
+            hasContentDescription(str(R.string.ai_recommendations_alignment_score, 86)),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the curated fallback note is announced to screen readers`() {
+        render(answered(answer.copy(source = AiRecommendations.SOURCE_CURATED_FALLBACK)))
+
+        compose.onNode(
+            hasTestTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE) and hasContentDescription(
+                str(R.string.ai_recommendations_curated_fallback_body),
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test

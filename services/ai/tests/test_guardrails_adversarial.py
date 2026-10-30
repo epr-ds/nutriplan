@@ -452,6 +452,7 @@ def _analyze(draft: dict[str, object], command: MealAnalysisCommand) -> _Analysi
     medical = InMemoryMedicalClaimTelemetry()
     service = MealAnalysisService(
         completion=completion,
+        consent=True,
         sanitizer=PromptSanitizer(sanitization),
         post_processor=ResponsePostProcessor(medical),
     )

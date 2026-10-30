@@ -83,6 +83,28 @@ class EditMealViewModelTest {
         assertNull(viewModel.state.value.meal)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the edit meal form exposes its current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertTrue(state.isLoading)
+        assertNull(state.meal)
+        assertNull(state.satisfaction)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        viewModel.start("p1", "m1")
+        viewModel.onSatisfactionChange(4)
+
+        val state = viewModel.currentState()
+        assertEquals("m1", state.meal?.id)
+        assertEquals(4, state.satisfaction)
+        assertFalse(state.isLoading)
+    }
+
     @Test
     fun `start fills the form from the meal and lists the plan's days`() = runTest {
         viewModel.start("p1", "m1")
@@ -124,6 +146,24 @@ class EditMealViewModelTest {
 
         assertNull(viewModel.state.value.loadError)
         assertEquals("m1", viewModel.state.value.meal?.id)
+    }
+
+    @Test
+    fun `the edit meal form does not take edits while the meal failed to load`() = runTest {
+        repository.planFailure = ApiException.NetworkError()
+        viewModel.start("p1", "m1")
+
+        assertEquals(EditMealError.NETWORK, viewModel.state.value.loadError)
+        assertNull(viewModel.state.value.meal)
+
+        viewModel.onServingsChange("3")
+        viewModel.onSatisfactionChange(5)
+        viewModel.onDayChange(0)
+
+        assertEquals("", viewModel.state.value.servings)
+        assertNull(viewModel.state.value.satisfaction)
+        assertNull(viewModel.state.value.dayIndex)
+        assertFalse(viewModel.state.value.hasChanges)
     }
 
     @Test

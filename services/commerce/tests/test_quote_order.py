@@ -169,7 +169,7 @@ _AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 def test_api_returns_the_itemized_price(api):
     response = api().post(
-        "/orders/quote",
+        "/commerce/v1/orders/quote",
         json={"mealPlanId": PLAN_ID, "fulfillmentType": "dark_kitchen"},
         headers=_AUTH,
     )
@@ -187,7 +187,7 @@ def test_api_returns_the_itemized_price(api):
 
 def test_api_requires_a_token(api):
     response = api().post(
-        "/orders/quote", json={"mealPlanId": PLAN_ID, "fulfillmentType": "pickup"}
+        "/commerce/v1/orders/quote", json={"mealPlanId": PLAN_ID, "fulfillmentType": "pickup"}
     )
 
     assert response.status_code == 401
@@ -195,7 +195,7 @@ def test_api_requires_a_token(api):
 
 def test_api_grocery_without_provider_is_422(api):
     response = api().post(
-        "/orders/quote",
+        "/commerce/v1/orders/quote",
         json={"mealPlanId": PLAN_ID, "fulfillmentType": "grocery_delivery"},
         headers=_AUTH,
     )
@@ -205,7 +205,7 @@ def test_api_grocery_without_provider_is_422(api):
 
 def test_api_rejects_an_unknown_fulfillment_type(api):
     response = api().post(
-        "/orders/quote",
+        "/commerce/v1/orders/quote",
         json={"mealPlanId": PLAN_ID, "fulfillmentType": "drone"},
         headers=_AUTH,
     )
@@ -215,7 +215,7 @@ def test_api_rejects_an_unknown_fulfillment_type(api):
 
 def test_api_unknown_plan_is_404(api):
     response = api(FakeMealPlanProvider(None)).post(
-        "/orders/quote",
+        "/commerce/v1/orders/quote",
         json={"mealPlanId": PLAN_ID, "fulfillmentType": "pickup"},
         headers=_AUTH,
     )
@@ -225,7 +225,7 @@ def test_api_unknown_plan_is_404(api):
 
 def test_api_dietary_unavailable_is_503(api):
     response = api(_UnavailableMealPlans()).post(
-        "/orders/quote",
+        "/commerce/v1/orders/quote",
         json={"mealPlanId": PLAN_ID, "fulfillmentType": "pickup"},
         headers=_AUTH,
     )

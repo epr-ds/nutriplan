@@ -39,6 +39,7 @@ class OrderDetailViewModelTest {
         var order: Any = Order(id = "o1", status = "confirmed")
         var cancelled: Any = Order(id = "o1", status = "cancelled")
         val cancels = mutableListOf<String>()
+        val cancelRequests = mutableListOf<CancelOrderRequest?>()
 
         override suspend fun getOrder(orderId: String): Order {
             val answer = order
@@ -48,6 +49,7 @@ class OrderDetailViewModelTest {
 
         override suspend fun cancelOrder(orderId: String, request: CancelOrderRequest?): Order {
             cancels += orderId
+            cancelRequests += request
             val answer = cancelled
             if (answer is Throwable) throw answer
             return answer as Order
@@ -181,6 +183,18 @@ class OrderDetailViewModelTest {
     // --- loading ---
 
     @Test
+    fun `the current state is the latest one`() = runTest {
+        val viewModel = viewModel()
+
+        assertTrue(viewModel.state.value.isLoading)
+
+        remote.order = Order(id = "o1", status = "preparing", createdAt = placedAt, statusHistory = history)
+        viewModel.load("o1")
+
+        assertEquals("preparing", viewModel.currentState().order?.status)
+    }
+
+    @Test
     fun `the order is loaded from the server`() = runTest {
         remote.order = Order(id = "o1", status = "preparing", createdAt = placedAt, statusHistory = history)
         val viewModel = viewModel()
@@ -257,6 +271,18 @@ class OrderDetailViewModelTest {
         assertFalse(viewModel.state.value.confirmingCancel)
         assertFalse(viewModel.state.value.canCancel)
         assertEquals("cancelled", store.getOrder("o1")?.status, "the saved copy is updated too")
+    }
+
+    @Test
+    fun `cancelling an order can ask for a partial refund`() = runTest {
+        val viewModel = viewModel()
+        viewModel.load("o1")
+
+        assertTrue(viewModel.confirmCancel(refundAmount = 100.0))
+
+        assertEquals(listOf("o1"), remote.cancels)
+        assertEquals(100.0, remote.cancelRequests.single()?.refundAmount)
+        assertEquals("cancelled", viewModel.state.value.order?.status)
     }
 
     @Test

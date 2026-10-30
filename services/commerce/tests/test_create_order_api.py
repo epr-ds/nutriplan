@@ -86,7 +86,7 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
 def test_create_returns_201_with_projection():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
 
-    response = client.post("/orders", json=VALID_BODY, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
 
     assert response.status_code == 201
     data = response.json()
@@ -107,7 +107,7 @@ def test_create_returns_201_with_projection():
 def test_persists_order_scoped_to_caller():
     client, repo = _build(FakeMealPlanProvider(_snapshot()))
 
-    client.post("/orders", json=VALID_BODY, headers=_auth())
+    client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
 
     assert len(repo.orders) == 1
     order = next(iter(repo.orders.values()))
@@ -118,26 +118,26 @@ def test_forwards_caller_token_to_provider():
     provider = FakeMealPlanProvider(_snapshot())
     client, _ = _build(provider)
 
-    client.post("/orders", json=VALID_BODY, headers=_auth())
+    client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
 
     assert provider.calls == [(VALID_BODY["mealPlanId"], GOOD_TOKEN)]
 
 
 def test_requires_authentication():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
-    response = client.post("/orders", json=VALID_BODY)
+    response = client.post("/commerce/v1/orders", json=VALID_BODY)
     assert response.status_code == 401
 
 
 def test_rejects_unknown_token():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
-    response = client.post("/orders", json=VALID_BODY, headers=_auth("nope"))
+    response = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth("nope"))
     assert response.status_code == 401
 
 
 def test_missing_or_unowned_plan_returns_404():
     client, repo = _build(FakeMealPlanProvider(None))
-    response = client.post("/orders", json=VALID_BODY, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
     assert response.status_code == 404
     assert repo.orders == {}
 
@@ -145,14 +145,14 @@ def test_missing_or_unowned_plan_returns_404():
 def test_grocery_delivery_without_provider_returns_422():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
     body = {**VALID_BODY, "fulfillmentType": "grocery_delivery"}
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
     assert response.status_code == 422
 
 
 def test_grocery_delivery_with_provider_returns_201():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
     body = {**VALID_BODY, "fulfillmentType": "grocery_delivery", "providerId": "freshbasket"}
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
     assert response.status_code == 201
     data = response.json()
     assert data["fulfillmentType"] == "grocery_delivery"
@@ -164,7 +164,7 @@ def test_grocery_delivery_with_provider_returns_201():
 def test_malformed_body_returns_422():
     client, _ = _build(FakeMealPlanProvider(_snapshot()))
     body = {k: v for k, v in VALID_BODY.items() if k != "deliveryDate"}
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
     assert response.status_code == 422
 
 
@@ -174,7 +174,7 @@ def test_dietary_unavailable_returns_503_problem_json():
             raise MealPlanUnavailableError("boom")
 
     client, _ = _build(_Unavailable())
-    response = client.post("/orders", json=VALID_BODY, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=VALID_BODY, headers=_auth())
     assert response.status_code == 503
     assert response.headers["content-type"].startswith("application/problem+json")
     body = response.json()

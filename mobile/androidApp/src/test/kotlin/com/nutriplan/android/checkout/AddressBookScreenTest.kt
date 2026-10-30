@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -173,6 +175,17 @@ class AddressBookScreenTest {
     }
 
     @Test
+    fun `the address book empty state is announced to screen readers`() {
+        renderState(AddressBookUiState(isLoading = false))
+
+        compose.onNode(
+            hasTestTag(AddressBookTestTags.EMPTY) and hasContentDescription(
+                str(R.string.address_book_empty_title),
+            ),
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `with nothing saved the empty state offers to add an address`() {
         renderWithViewModel()
 
@@ -251,6 +264,16 @@ class AddressBookScreenTest {
         assertEquals(2, store.saved.size)
         assertEquals("MX", store.saved.first { it.label == "Office" }.address.country)
         compose.onNodeWithText("Office").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the add address button is announced to screen readers`() {
+        store.save(home, label = "Home", makeDefault = true)
+        renderWithViewModel()
+
+        compose.onNode(
+            hasTestTag(AddressBookTestTags.ADD) and hasContentDescription(str(R.string.address_book_add)),
+        ).assertIsDisplayed()
     }
 
     @Test

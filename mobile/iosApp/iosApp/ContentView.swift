@@ -6,12 +6,27 @@ import UserNotifications
 private let greeting = Greeting().greet()
 
 /// Destinations for the notification deep-link surface (NTF-508): the in-app notification center is
-/// live, the preferences screen is the second destination of the notification surface, and detail
-/// screens a deep link opens (meal / plan / order) become destinations here as those screens land
-/// in the SwiftUI app.
+/// live, the preferences screen is the second destination of the notification surface, the orders
+/// list is the third one, and a deep link that opens an order becomes a fourth destination as that
+/// screen lands in the SwiftUI app. The checkout (COM-606) is the fifth: it is reached from the
+/// orders list, which repeats an order's delivery, not from outside. The login screen (IDN-502) is
+/// the sixth: it is the in-app auth destination, not a deep-link one.
 private enum DeepLinkRoute: Hashable {
     case notifications
     case preferences
+    case orders
+    case order(String)
+    case checkout(String?, String?)
+    case auth
+    case register
+    case oauth
+    case mealPlans
+    case mealPlansDetail(String)
+    case recipeSearch
+    case recipeDetail(String)
+    case addMeal(String, String)
+    case favorites
+    case onboardingWizard
 }
 
 struct ContentView: View {
@@ -58,6 +73,7 @@ struct ContentView: View {
                 NavigationStack(path: $path) {
                     HomeContent(
                         onOpenNotifications: { path = [DeepLinkRoute.notifications] },
+                        onOpenOrders: { path = [DeepLinkRoute.orders] },
                     )
                 }
                 .navigationDestination(for: DeepLinkRoute.self) { route in
@@ -69,6 +85,46 @@ struct ContentView: View {
                         )
                     case .preferences:
                         NotificationsPreferencesView(onClose: { path = [] })
+                    case .orders:
+                        OrdersListView(
+                            onBack: { path = [] },
+                            onOrderClick: { orderId in path = [.order(orderId)] },
+                            onReorder: { orderId in path = [.checkout(nil, orderId)] },
+                        )
+                    case .order(let orderId):
+                        OrderDetailView(
+                            orderId: orderId,
+                            onBack: { path = [] },
+                        )
+                    case .checkout(let planId, let reorderOrderId):
+                        CheckoutView(
+                            planId: planId,
+                            reorderOrderId: reorderOrderId,
+                            onBack: { path = [] },
+                            onOrderPlaced: { orderId in path = [.order(orderId)] },
+                            onManageAddresses: { path = [] },
+                            onSessionExpired: { path = [] },
+                        )
+                    case .auth:
+                        LoginView(onLoginSuccess: { path = [] })
+                    case .register:
+                        RegisterView(onRegisterSuccess: { path = [] })
+                    case .oauth:
+                        OAuthView(onOAuthSuccess: { path = [] })
+                    case .mealPlans:
+                        MealPlanListView(onPlanClick: { _ in })
+                    case .mealPlansDetail(let planId):
+                        MealPlanDetailView(planId: planId, onBack: { path = [] })
+                    case .recipeSearch:
+                        RecipeSearchView(onRecipeClick: { _ in })
+                    case .recipeDetail(let recipeId):
+                        RecipeDetailView(recipeId: recipeId, onBack: { path = [] })
+                    case .addMeal(let planId, let recipeId):
+                        AddMealView(planId: planId, recipeId: recipeId) { path = [] }
+                    case .favorites:
+                        FavoritesView()
+                    case .onboardingWizard:
+                        OnboardingWizardView(onComplete: { path = [] })
                     }
                 }
             }
@@ -82,6 +138,7 @@ private struct HomeContent: View {
     @StateObject private var notificationsViewModel: NotificationsViewModel = createNotificationsViewModel()
     @State private var unreadCount = 0
     let onOpenNotifications: () -> Void
+    let onOpenOrders: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -108,6 +165,16 @@ private struct HomeContent: View {
                 // accessible name including the unread badge (WCAG 4.1.2 / TalkBack & VoiceOver).
                 .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
                 .accessibilityHint("Opens the notification center")
+                Spacer()
+                Button {
+                    onOpenOrders()
+                } label: {
+                    Image(systemName: "bag")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
+                .accessibilityLabel("My orders")
+                .accessibilityHint("Opens the orders list")
             }
             Spacer(minLength: 24)
             Text(greeting)

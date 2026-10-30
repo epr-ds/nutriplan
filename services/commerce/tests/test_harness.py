@@ -35,6 +35,13 @@ HOST = "http://localhost:8083"
 TOKEN = "harness-token"
 _PRINCIPAL = Principal(user_id=str(SEED_USER_ID), email="harness.user@example.com")
 
+GATEWAY_PREFIX = "/commerce/v1"
+
+
+def _spec_path(path: str) -> str:
+    """Drop the gateway prefix before validating against the published contract."""
+    return path[len(GATEWAY_PREFIX) :] if path.startswith(GATEWAY_PREFIX) else path
+
 
 # --- the database ------------------------------------------------------------------------------
 
@@ -167,7 +174,7 @@ def api(client):
 def _assert_conforms(openapi: OpenAPI, path: str, response) -> None:
     # Strict: the contract documents which members may be ``null`` (settled in COM-802).
     openapi.validate_response(
-        MockRequest(host_url=HOST, method="get", path=path),
+        MockRequest(host_url=HOST, method="get", path=_spec_path(path)),
         MockResponse(
             data=response.content,
             status_code=response.status_code,
@@ -180,17 +187,17 @@ _AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 
 def test_the_api_lists_the_seeded_orders_as_the_contract_says(api, openapi, seeded_orders):
-    response = api.get("/orders", headers=_AUTH)
+    response = api.get("/commerce/v1/orders", headers=_AUTH)
 
     assert response.status_code == 200
     assert {order["id"] for order in response.json()} == {str(order.id) for order in seeded_orders}
-    _assert_conforms(openapi, "/orders", response)
+    _assert_conforms(openapi, "/commerce/v1/orders", response)
 
 
 def test_the_api_serves_a_seeded_order_as_the_contract_says(api, openapi, seeded_orders):
     kitchen = seeded_orders[0]
 
-    response = api.get(f"/orders/{kitchen.id}", headers=_AUTH)
+    response = api.get(f"/commerce/v1/orders/{kitchen.id}", headers=_AUTH)
 
     assert response.status_code == 200
     body = response.json()
@@ -198,36 +205,36 @@ def test_the_api_serves_a_seeded_order_as_the_contract_says(api, openapi, seeded
     assert body["fulfillmentType"] == "dark_kitchen"
     assert body["total"]["amount"] == 273.0
     assert [item["name"] for item in body["items"]] == ["Lentil soup", "Protein bowl"]
-    _assert_conforms(openapi, f"/orders/{kitchen.id}", response)
+    _assert_conforms(openapi, f"/commerce/v1/orders/{kitchen.id}", response)
 
 
 def test_the_api_serves_the_seeded_grocery_order(api, openapi, seeded_orders):
     grocery = seeded_orders[1]
 
-    response = api.get(f"/orders/{grocery.id}", headers=_AUTH)
+    response = api.get(f"/commerce/v1/orders/{grocery.id}", headers=_AUTH)
 
     assert response.status_code == 200
     assert response.json()["groceryOrder"]["externalOrderId"] == "FB-1001"
-    _assert_conforms(openapi, f"/orders/{grocery.id}", response)
+    _assert_conforms(openapi, f"/commerce/v1/orders/{grocery.id}", response)
 
 
 def test_the_api_lists_the_seeded_payment_methods_without_tokens(
     api, openapi, seeded_payment_methods
 ):
-    response = api.get("/payment-methods", headers=_AUTH)
+    response = api.get("/commerce/v1/payment-methods", headers=_AUTH)
 
     assert response.status_code == 200
     body = response.json()
     assert {method["id"] for method in body} == {str(m.id) for m in seeded_payment_methods}
     assert all("token" not in method for method in body)
-    _assert_conforms(openapi, "/payment-methods", response)
+    _assert_conforms(openapi, "/commerce/v1/payment-methods", response)
 
 
 def test_the_api_hides_the_seeded_orders_from_other_users(client, seeded_orders):
     stranger = Principal(user_id=str(uuid.uuid4()), email="stranger@example.com")
     app.dependency_overrides[get_token_verifier] = lambda: StubVerifier({TOKEN: stranger})
     try:
-        response = client.get(f"/orders/{seeded_orders[0].id}", headers=_AUTH)
+        response = client.get(f"/commerce/v1/orders/{seeded_orders[0].id}", headers=_AUTH)
     finally:
         app.dependency_overrides.pop(get_token_verifier, None)
 

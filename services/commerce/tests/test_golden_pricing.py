@@ -200,7 +200,7 @@ def test_the_quote_on_the_wire_matches_the_golden(client: TestClient, scenario: 
     if kind == FulfillmentType.GROCERY_DELIVERY.value:
         body["providerId"] = "freshbasket"
 
-    response = client.post("/orders/quote", json=body, headers=_AUTH)
+    response = client.post("/commerce/v1/orders/quote", json=body, headers=_AUTH)
 
     assert response.status_code == 200, response.text
     quote = response.json()

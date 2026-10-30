@@ -33,6 +33,30 @@ class FavoriteRecipesViewModelTest {
         assertFalse(state.isLoading)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the favorites expose their current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertFalse(state.hasLoaded)
+        assertFalse(state.isLoading)
+        assertTrue(state.recipes.isEmpty())
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        remote.server = mutableListOf(favoriteRecipe("a"))
+        viewModel.load()
+        viewModel.toggle(favoriteRecipe("b"))
+
+        val state = viewModel.currentState()
+        assertEquals(listOf("b", "a"), ids())
+        assertTrue(state.isFavorite("b"))
+        assertTrue(state.isFavorite("a"))
+        assertFalse(state.isLoading)
+    }
+
     @Test
     fun `load shows the server's favorites`() = runTest {
         remote.server = mutableListOf(favoriteRecipe("a"), favoriteRecipe("b"))

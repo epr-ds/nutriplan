@@ -82,7 +82,7 @@ def test_returns_200_full_projection():
     order = _order(with_item=True, provider_id="prov-1")
     client = _build(order)
 
-    response = client.get(f"/orders/{order.id}", headers=_auth())
+    response = client.get(f"/commerce/v1/orders/{order.id}", headers=_auth())
 
     assert response.status_code == 200
     data = response.json()
@@ -102,7 +102,7 @@ def test_returns_200_full_projection():
 def test_unknown_id_returns_404():
     client = _build(_order())
 
-    response = client.get(f"/orders/{uuid.uuid4()}", headers=_auth())
+    response = client.get(f"/commerce/v1/orders/{uuid.uuid4()}", headers=_auth())
 
     assert response.status_code == 404
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -113,7 +113,7 @@ def test_other_users_order_returns_404_no_enumeration():
     client = _build(theirs)
 
     # The order exists but is not owned by the caller: must be indistinguishable from unknown.
-    response = client.get(f"/orders/{theirs.id}", headers=_auth())
+    response = client.get(f"/commerce/v1/orders/{theirs.id}", headers=_auth())
 
     assert response.status_code == 404
 
@@ -122,17 +122,17 @@ def test_requires_authentication():
     order = _order()
     client = _build(order)
 
-    assert client.get(f"/orders/{order.id}").status_code == 401
+    assert client.get(f"/commerce/v1/orders/{order.id}").status_code == 401
 
 
 def test_rejects_unknown_token():
     order = _order()
     client = _build(order)
 
-    assert client.get(f"/orders/{order.id}", headers=_auth("nope")).status_code == 401
+    assert client.get(f"/commerce/v1/orders/{order.id}", headers=_auth("nope")).status_code == 401
 
 
 def test_malformed_order_id_returns_422():
     client = _build(_order())
 
-    assert client.get("/orders/not-a-uuid", headers=_auth()).status_code == 422
+    assert client.get("/commerce/v1/orders/not-a-uuid", headers=_auth()).status_code == 422

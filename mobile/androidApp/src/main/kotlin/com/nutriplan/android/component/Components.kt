@@ -16,9 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.liveRegion
@@ -42,7 +44,13 @@ fun NutriPlanButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier
+            // F21: visible focus indicator for keyboard/switch users (WCAG 2.4.7)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Button"
+            }
+            .focusable(),
         enabled = isEnabled && !isLoading,
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
@@ -89,9 +97,13 @@ fun NutriPlanTextField(
         placeholder = { Text(placeholder) },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = modifier
-            .fillMaxWidth()
-            // F27: associate the error with the field so screen readers announce it (WCAG 3.3.1)
-            .semantics { if (isError && errorMessage.isNotEmpty()) this.error(errorMessage) },
+            .semantics {
+                // F21: the field must be reachable by keyboard/switch users (WCAG 2.4.7).
+                role = Role.Button
+                if (isError && errorMessage.isNotEmpty()) this.error(errorMessage)
+            }
+            .focusable()
+            .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         isError = isError,
         singleLine = true
@@ -124,6 +136,7 @@ fun EmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .semantics { contentDescription = title }
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

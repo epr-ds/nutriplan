@@ -85,7 +85,7 @@ def test_returns_200_array_projection():
     order = _order(with_item=True, provider_id="prov-1")
     client = _build(order)
 
-    response = client.get("/orders", headers=_auth())
+    response = client.get("/commerce/v1/orders", headers=_auth())
 
     assert response.status_code == 200
     data = response.json()
@@ -103,7 +103,7 @@ def test_orders_returned_newest_first():
     newer = _order(created_at=BASE + timedelta(hours=1))
     client = _build(older, newer)
 
-    data = client.get("/orders", headers=_auth()).json()
+    data = client.get("/commerce/v1/orders", headers=_auth()).json()
 
     assert [row["id"] for row in data] == [str(newer.id), str(older.id)]
 
@@ -113,19 +113,19 @@ def test_scoped_to_caller():
     theirs = _order(created_at=BASE, user_id=uuid.uuid4())
     client = _build(mine, theirs)
 
-    data = client.get("/orders", headers=_auth()).json()
+    data = client.get("/commerce/v1/orders", headers=_auth()).json()
 
     assert [row["id"] for row in data] == [str(mine.id)]
 
 
 def test_requires_authentication():
     client = _build(_order())
-    assert client.get("/orders").status_code == 401
+    assert client.get("/commerce/v1/orders").status_code == 401
 
 
 def test_rejects_unknown_token():
     client = _build(_order())
-    assert client.get("/orders", headers=_auth("nope")).status_code == 401
+    assert client.get("/commerce/v1/orders", headers=_auth("nope")).status_code == 401
 
 
 def test_filters_by_status_query():
@@ -133,7 +133,7 @@ def test_filters_by_status_query():
     delivered = _order(created_at=BASE, status=OrderStatus.DELIVERED)
     client = _build(pending, delivered)
 
-    data = client.get("/orders", params={"status": "delivered"}, headers=_auth()).json()
+    data = client.get("/commerce/v1/orders", params={"status": "delivered"}, headers=_auth()).json()
 
     assert [row["id"] for row in data] == [str(delivered.id)]
 
@@ -143,7 +143,9 @@ def test_filters_by_from_date_query():
     recent = _order(created_at=datetime(2026, 6, 1, tzinfo=UTC))
     client = _build(old, recent)
 
-    data = client.get("/orders", params={"fromDate": "2026-03-01"}, headers=_auth()).json()
+    data = client.get(
+        "/commerce/v1/orders", params={"fromDate": "2026-03-01"}, headers=_auth()
+    ).json()
 
     assert [row["id"] for row in data] == [str(recent.id)]
 
@@ -153,8 +155,12 @@ def test_paginates_with_page_and_limit():
     client = _build(*orders)
     newest_first = [str(orders[2].id), str(orders[1].id), str(orders[0].id)]
 
-    page1 = client.get("/orders", params={"page": 1, "limit": 2}, headers=_auth()).json()
-    page2 = client.get("/orders", params={"page": 2, "limit": 2}, headers=_auth()).json()
+    page1 = client.get(
+        "/commerce/v1/orders", params={"page": 1, "limit": 2}, headers=_auth()
+    ).json()
+    page2 = client.get(
+        "/commerce/v1/orders", params={"page": 2, "limit": 2}, headers=_auth()
+    ).json()
 
     assert [row["id"] for row in page1] == newest_first[:2]
     assert [row["id"] for row in page2] == newest_first[2:]
@@ -162,7 +168,7 @@ def test_paginates_with_page_and_limit():
 
 def test_empty_list_when_no_orders():
     client = _build()
-    response = client.get("/orders", headers=_auth())
+    response = client.get("/commerce/v1/orders", headers=_auth())
     assert response.status_code == 200
     assert response.json() == []
 
@@ -178,4 +184,4 @@ def test_empty_list_when_no_orders():
 )
 def test_invalid_query_params_return_422(params: dict[str, object]):
     client = _build(_order())
-    assert client.get("/orders", params=params, headers=_auth()).status_code == 422
+    assert client.get("/commerce/v1/orders", params=params, headers=_auth()).status_code == 422

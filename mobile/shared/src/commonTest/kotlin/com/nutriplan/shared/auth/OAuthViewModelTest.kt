@@ -43,6 +43,28 @@ class OAuthViewModelTest {
     }
 
     @Test
+    fun `the oauth flow exposes its current state`() = runTest {
+        val fx = fixture(backgroundScope)
+
+        val state = fx.model.currentState()
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+        assertFalse(state.isSuccess)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        val fx = fixture(backgroundScope)
+
+        assertTrue(fx.model.signIn(OAuthProvider.GOOGLE))
+
+        val state = fx.model.currentState()
+        assertTrue(state.isSuccess)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+    }
+
+    @Test
     fun `exposes the providers the platform supports`() = runTest {
         val fx = fixture(backgroundScope, supported = setOf(OAuthProvider.GOOGLE))
 

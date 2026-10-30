@@ -80,7 +80,7 @@ def test_service_over_empty_registry_lists_nothing():
 
 # --------------------------------------------------------------------------------------- API layer
 
-_URL = "/fulfillment/grocery/providers"
+_URL = "/commerce/v1/fulfillment/grocery/providers"
 
 
 @pytest.fixture(autouse=True)

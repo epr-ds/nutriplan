@@ -1,0 +1,20 @@
+name: Dietary Seed Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Seed reference catalog (idempotent upsert)
+        run: |
+          docker run --rm \
+            -e DIETARY_ENVIRONMENT=development \
+            -e DIETARY_MONGO_URL="${{ vars.DIETARY_MONGO_URL }}" \
+            -e DIETARY_MONGO_DB="${{ vars.DIETARY_MONGO_DB }}" \
+            -e DIETARY_MONGO_SERVER_SELECTION_TIMEOUT_MS=5000 \
+            -e DIETARY_LLM_API_KEY="" \
+            nutriplan-dietary:${{ github.sha }} \
+            sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8082"

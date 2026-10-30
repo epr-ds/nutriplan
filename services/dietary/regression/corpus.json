@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "service": "dietary",
+  "last_updated": "2026-10-26",
+  "cases": [
+    {
+      "name": "meal-plan-create",
+      "journey": "meal-plans",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify meal plan creation",
+      "input": { "userId": "u1", "days": 7 },
+      "expected": { "created": true }
+    },
+    {
+      "name": "meal-plan-get-current",
+      "journey": "meal-plans",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify current meal plan retrieval",
+      "input": { "userId": "u1" },
+      "expected": { "found": true }
+    },
+    {
+      "name": "meal-plan-update-status",
+      "journey": "meal-plans",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify meal plan status transitions",
+      "input": { "mealPlanId": "mp1", "status": "active" },
+      "expected": { "updated": true }
+    },
+    {
+      "name": "recipe-search-by-ingredient",
+      "journey": "recipes",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify recipe search by ingredient",
+      "input": { "ingredient": "chicken", "diet": "none" },
+      "expected": { "results": 3 }
+    },
+    {
+      "name": "recipe-search-by-dietary",
+      "journey": "recipes",
+      "severity": "P2",
+      "tags": ["regression"],
+      "description": "Verify recipe search honours dietary restrictions",
+      "input": { "ingredient": "rice", "diet": "vegan" },
+      "expected": { "results": 2 }
+    },
+    {
+      "name": "meal-nutrition-calculation",
+      "journey": "nutrition",
+      "severity": "P1",
+      "tags": ["regression"],
+      "description": "Verify nutrition calculation accuracy",
+      "input": { "recipeId": "r1", "servings": 2 },
+      "expected": { "calories": 540 }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 package com.nutriplan.shared.planning
 
 import com.nutriplan.shared.data.model.MealPlan
+import com.nutriplan.shared.data.model.NutritionalSummary
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.local.PendingChange
@@ -50,6 +51,14 @@ data class MealPlanDetailUiState(
 ) {
     /** The plan loaded but has no meals yet. */
     val hasNoMeals: Boolean get() = plan != null && days.isEmpty()
+
+    /** The plan's nutrition summary for the progress UI (ring/bars vs targets); empty when the plan has none. */
+    val nutritionalSummaryUi: NutritionSummaryUi
+        get() = plan?.nutritionalSummary?.toNutritionSummaryUi() ?: NutritionSummaryUi()
+
+    /** The plan's nutrition summary; null when the plan has none. */
+    val nutritionalSummary: NutritionalSummary?
+        get() = plan?.nutritionalSummary
 }
 
 /** Maps a thrown repository failure to a stable, localizable [MealPlanDetailError]. */
@@ -76,6 +85,9 @@ class MealPlanDetailViewModel(
 
     private val _state = MutableStateFlow(MealPlanDetailUiState())
     val state: StateFlow<MealPlanDetailUiState> = _state.asStateFlow()
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): MealPlanDetailUiState = _state.value
 
     private var planId: String? = null
 

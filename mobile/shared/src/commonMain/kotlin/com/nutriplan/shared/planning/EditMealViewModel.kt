@@ -112,6 +112,9 @@ class EditMealViewModel(
 
     private var planId: String? = null
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): EditMealUiState = _state.value
+
     /** Load [mealId] of [planId]; also the retry after a failed load. */
     suspend fun start(planId: String, mealId: String) {
         this.planId = planId
@@ -147,11 +150,14 @@ class EditMealViewModel(
     }
 
     fun onServingsChange(value: String) {
+        // The form is not usable while the meal is loading or failed to load, so it takes no edits.
+        if (_state.value.isLoading || _state.value.loadError != null) return
         _state.update { it.copy(servings = value.decimalOnly(), servingsError = null, error = null) }
     }
 
     /** Choose the day of the plan (0-based). Clearing it (null) is only possible while the meal has none. */
     fun onDayChange(dayIndex: Int?) {
+        if (_state.value.isLoading || _state.value.loadError != null) return
         _state.update { state ->
             val valid = dayIndex?.takeIf { index -> state.days.any { it.dayIndex == index } }
             if (valid == null && !state.canClearDay) return@update state
@@ -161,6 +167,8 @@ class EditMealViewModel(
 
     /** Rate the meal from 1 to 5; anything else is ignored. */
     fun onSatisfactionChange(level: Int) {
+        // The form is not usable while the meal is loading or failed to load, so it takes no edits.
+        if (_state.value.isLoading || _state.value.loadError != null) return
         if (level !in MIN_SATISFACTION..MAX_SATISFACTION) return
         _state.update { it.copy(satisfaction = level, error = null) }
     }

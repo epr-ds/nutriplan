@@ -30,6 +30,9 @@ class OnboardingViewModel(
     /** The current wizard state; collect it to render. */
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
+    /** The current wizard state; read it to render (the iOS app has no Koin from Swift). */
+    fun currentState(): OnboardingUiState = _state.value
+
     private fun restore(): OnboardingUiState {
         val draft = draftStorage.loadDraft()?.let { encoded ->
             runCatching { json.decodeFromString(OnboardingDraft.serializer(), encoded) }.getOrNull()
@@ -56,7 +59,15 @@ class OnboardingViewModel(
         val current = _state.value
         val target = current.step.ordinal + delta
         if (target !in OnboardingStep.entries.indices) return false
-        _state.value = current.copy(step = OnboardingStep.entries[target], error = null)
+        val answers = if (OnboardingStep.entries[target] == OnboardingStep.TARGETS && current.answers.dailyCalorieTarget == null) {
+            current.answers.copy(
+                dailyCalorieTarget = MacroCalculator.DEFAULT_CALORIES,
+                macroTargets = MacroCalculator.defaultMacroTargets(MacroCalculator.DEFAULT_CALORIES),
+            )
+        } else {
+            current.answers
+        }
+        _state.value = current.copy(step = OnboardingStep.entries[target], answers = answers, error = null)
         persist()
         return true
     }

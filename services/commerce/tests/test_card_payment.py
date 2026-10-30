@@ -259,7 +259,7 @@ def test_create_with_card_returns_201_confirmed():
     client, _, payments = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "credit_card", "token": CARD_TOKEN}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     assert response.json()["status"] == "confirmed"
@@ -273,7 +273,7 @@ def test_create_with_declined_card_returns_402_problem_json():
         "paymentMethod": {"type": "credit_card", "token": f"{DECLINE_TOKEN_PREFIX}_9"},
     }
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 402
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -287,7 +287,7 @@ def test_create_with_paypal_returns_201_pending_without_charge():
     client, _, payments = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "paypal", "token": "tok_paypal"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 201
     assert response.json()["status"] == "pending"
@@ -298,7 +298,7 @@ def test_create_with_unknown_payment_type_returns_422():
     client, _, _ = _build()
     body = {**VALID_BODY, "paymentMethod": {"type": "bitcoin", "token": "tok_btc"}}
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 422
 

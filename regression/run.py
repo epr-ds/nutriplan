@@ -16,10 +16,9 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class Severity(str, Enum):
@@ -39,7 +38,7 @@ class TestCase:
     tags: list[str]
     duration_ms: float = 0
     passed: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -55,9 +54,62 @@ class RegressionReport:
     blocked_by: list[str]  # P0/P1 failures that block release
 
 
+def _service_root(service: str) -> Path:
+    """Return the repository root's service directory for a service."""
+    return Path(__file__).parent.parent / "services" / service
+
+
+def _ensure_service_importable(service: str) -> Path:
+    """Put a service's application root on ``sys.path`` so its ``app`` package resolves."""
+    service_root = _service_root(service)
+    if str(service_root) not in sys.path:
+        sys.path.insert(0, str(service_root))
+    return service_root
+
+
+def _reset_service_app_modules(service: str) -> Path:
+    """Point the ``app`` namespace at a service's application root and re-import it when needed.
+
+    The release gate drives one verifier per service inside a single process (``--all``), so the
+    cached ``app`` namespace must not leak from one service onto another before each import.
+    """
+    module = sys.modules.get("app")
+    module_file = getattr(module, "__file__", None) or ""
+    current = None
+    for candidate in ("ai", "commerce", "identity", "dietary", "notification"):
+        if module_file.startswith(str(_service_root(candidate))):
+            current = candidate
+            break
+    if current != service:
+        for name in [n for n in sys.modules if n == "app" or n.startswith("app.")]:
+            del sys.modules[name]
+        _ensure_service_importable(service)
+    return _service_root(service)
+
+
+def _golden_safety_cases() -> list[TestCase]:
+    """Build the release-gate cases from the AI service's fixed golden safety corpus."""
+    _ensure_service_importable("ai")
+    from app.regression.corpus import GOLDEN_SAFETY_CASES
+
+    return [
+        TestCase(
+            name=case.name,
+            service="ai",
+            severity=Severity.P2,
+            tags=["regression"],
+        )
+        for case in GOLDEN_SAFETY_CASES
+    ]
+
+
 def load_regression_corpus(service: str) -> list[TestCase]:
     """Load regression test cases for a service from its regression corpus."""
-    service_dir = Path(__file__).parent.parent / "services" / service
+    if service == "ai":
+        # The AI release gate drives the fixed golden safety corpus, not a JSON corpus file.
+        return _golden_safety_cases()
+
+    service_dir = _service_root(service)
     corpus_file = service_dir / "regression" / "corpus.json"
 
     if not corpus_file.exists():
@@ -68,16 +120,20 @@ def load_regression_corpus(service: str) -> list[TestCase]:
 
     cases = []
     for item in corpus.get("cases", []):
-        cases.append(TestCase(
-            name=item["name"],
-            service=service,
-            severity=Severity(item.get("severity", "P2")),
-            tags=item.get("tags", []),
-        ))
+        cases.append(
+            TestCase(
+                name=item["name"],
+                service=service,
+                severity=Severity(item.get("severity", "P2")),
+                tags=item.get("tags", []),
+            )
+        )
     return cases
 
 
-def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -> list[TestCase]:
+def run_regression_for_service(
+    service: str, tags: list[str] | None = None
+) -> list[TestCase]:
     """Run regression tests for a single service."""
     cases = load_regression_corpus(service)
     results = []
@@ -91,17 +147,11 @@ def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -
 
         start = time.time()
         try:
-            # Import and run the service's regression tests
-            module_path = f"services.{service}.regression.verifier"
-            verifier = __import__(module_path, fromlist=["verify"])
-            passed, error = verifier.verify(case.name)
+            passed, error = _run_case(service, case)
             case.duration_ms = (time.time() - start) * 1000
             case.passed = passed
             case.error = error
-        except ImportError:
-            case.passed = True
-            case.error = "no regression corpus found"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - a crashed case must fail the gate, not crash it
             case.duration_ms = (time.time() - start) * 1000
             case.passed = False
             case.error = str(e)
@@ -109,6 +159,37 @@ def run_regression_for_service(service: str, tags: Optional[list[str]] = None) -
         results.append(case)
 
     return results
+
+
+def _run_case(service: str, case: TestCase) -> tuple[bool, str | None]:
+    """Run a single regression case through its service's verifier.
+
+    The AI release gate executes the fixed golden safety corpus
+    (:data:`app.regression.GOLDEN_SAFETY_CASES`) through the production allergen filter rather
+    than case-name-keyed invocations, so the AI gate grades that corpus directly; every other
+    service is invoked by case name.
+    """
+    if service == "ai":
+        _reset_service_app_modules("ai")
+        from app.regression import GOLDEN_SAFETY_CASES, SafetyRegressionVerifier
+
+        report = SafetyRegressionVerifier().verify(GOLDEN_SAFETY_CASES)
+        return report.ok, "; ".join(report.failures) if report.failures else None
+
+    if service == "commerce":
+        # HRD-905 release-gate follow-up: the commerce release gate must execute the commerce
+        # regression corpus through the production use cases (in-process, no DB, no network).
+        _reset_service_app_modules("commerce")
+        from app.regression import CommerceRegressionVerifier, load_commerce_cases
+
+        report = CommerceRegressionVerifier().verify(load_commerce_cases())
+        return report.ok, "; ".join(report.failures) if report.failures else None
+
+    _ensure_service_importable(service)
+    module_path = f"services.{service}.regression.verifier"
+    verifier = __import__(module_path, fromlist=["verify"])
+    passed, error = verifier.verify(case.name)
+    return passed, error
 
 
 def generate_report(
@@ -119,10 +200,7 @@ def generate_report(
     """Generate a regression report."""
     failed = [r for r in all_results if not r.passed]
     skipped = [r for r in all_results if r.error and "skipped" in r.error]
-    blocked = [
-        r.name for r in failed
-        if r.severity in (Severity.P0, Severity.P1)
-    ]
+    blocked = [r.name for r in failed if r.severity in (Severity.P0, Severity.P1)]
 
     return RegressionReport(
         timestamp=timestamp,
@@ -173,7 +251,13 @@ def main():
     )
     args = parser.parse_args()
 
-    services = args.services or ["ai", "commerce", "identity", "dietary", "notification"]
+    services = args.services or [
+        "ai",
+        "commerce",
+        "identity",
+        "dietary",
+        "notification",
+    ]
     if args.all:
         services = ["ai", "commerce", "identity", "dietary", "notification"]
 
@@ -183,7 +267,11 @@ def main():
         all_results.extend(results)
 
         if args.fail_fast:
-            blocked = [r for r in results if not r.passed and r.severity in (Severity.P0, Severity.P1)]
+            blocked = [
+                r
+                for r in results
+                if not r.passed and r.severity in (Severity.P0, Severity.P1)
+            ]
             if blocked:
                 print(f"FAIL: {len(blocked)} P0/P1 regression(s) failed in {service}")
                 for b in blocked:
@@ -193,25 +281,27 @@ def main():
     report = generate_report(services, all_results, time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     # Print summary
-    print(f"\n{'='*60}")
-    print(f"Regression Suite Report")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("Regression Suite Report")
+    print(f"{'=' * 60}")
     print(f"Services: {', '.join(services)}")
-    print(f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}")
+    print(
+        f"Total: {report.total} | Passed: {report.passed} | Failed: {report.failed} | Skipped: {report.skipped}"
+    )
     print(f"Duration: {report.total_duration_ms:.0f}ms")
 
     if report.failed > 0:
-        print(f"\n{'='*60}")
-        print(f"FAILED TESTS")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print("FAILED TESTS")
+        print(f"{'=' * 60}")
         for r in report.results:
             if not r["passed"]:
                 print(f"  [{r['severity']}] {r['name']} ({r['service']}): {r['error']}")
 
     if report.blocked_by:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"RELEASE BLOCKED by {len(report.blocked_by)} P0/P1 failure(s)")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for name in report.blocked_by:
             print(f"  - {name}")
 

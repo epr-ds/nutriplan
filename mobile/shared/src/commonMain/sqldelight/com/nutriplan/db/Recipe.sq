@@ -1,0 +1,21 @@
+-- Offline cache of the recipe catalog (DPL-403): the recipes a user searched or opened are kept on
+-- the device, so browsing and reading them keeps working while the server cannot be reached. The
+-- recipe is stored as the JSON of data.model.Recipe, which follows contracts/dietary.openapi.yaml.
+
+CREATE TABLE recipe (
+    recipe_id TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,               -- the order the catalog served them in
+    recipe TEXT NOT NULL
+);
+
+selectAll:
+SELECT recipe FROM recipe ORDER BY position;
+
+selectById:
+SELECT recipe FROM recipe WHERE recipe_id = ? ORDER BY position LIMIT 1;
+
+insertRecipe:
+INSERT OR REPLACE INTO recipe(recipe_id, position, recipe) VALUES (?, ?, ?);
+
+deleteAll:
+DELETE FROM recipe;

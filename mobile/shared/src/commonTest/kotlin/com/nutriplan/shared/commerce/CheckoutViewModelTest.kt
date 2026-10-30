@@ -231,6 +231,20 @@ class CheckoutViewModelTest {
         assertTrue(viewModel.state.value.sessionExpired)
     }
 
+    // --- the state the screens render ---
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.start("2026-11-02")
+        assertEquals(CheckoutStep.PLAN, viewModel.currentState().step)
+
+        viewModel.selectPlan("p1")
+        assertTrue(viewModel.next())
+        assertEquals(CheckoutStep.FULFILLMENT, viewModel.currentState().step)
+    }
+
     // --- validation per step ---
 
     @Test
@@ -468,6 +482,17 @@ class CheckoutViewModelTest {
         assertTrue(remote.creates.isEmpty())
     }
 
+    @Test
+    fun `the user cannot place an order before the itemized price is loaded`() = runTest {
+        remote.quoteFailure = Exception("offline")
+        val viewModel = viewModel()
+        viewModel.walkTo(CheckoutStep.REVIEW)
+
+        assertNull(viewModel.state.value.quote)
+        assertFalse(viewModel.placeOrder())
+        assertTrue(remote.creates.isEmpty())
+    }
+
     // --- paying (COM-608) ---
 
     @Test
@@ -534,6 +559,18 @@ class CheckoutViewModelTest {
     }
 
     @Test
+    fun `an order placed with a card is confirmed paid`() = runTest {
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals("paid", viewModel.state.value.placedOrder?.status)
+        assertEquals(PaymentInstructions.None, viewModel.state.value.paymentInstructions)
+    }
+
+    @Test
     fun `a card the user wants kept is saved with the order`() = runTest {
         val viewModel = viewModel(FakeTokenizer(TokenizationResult.Tokenized(card)))
         viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
@@ -544,6 +581,24 @@ class CheckoutViewModelTest {
         val saved = remote.saves.single()
         assertEquals("tok_visa", saved.token)
         assertEquals("4242", saved.last4)
+    }
+
+    @Test
+    fun `a tokenized card saved with the order is reused by a later card payment`() = runTest {
+        val tokenizer = FakeTokenizer(TokenizationResult.Tokenized(card))
+        val viewModel = viewModel(tokenizer)
+        viewModel.walkTo(CheckoutStep.REVIEW, payment = "credit_card")
+        viewModel.onSaveCardChange(true)
+
+        assertTrue(viewModel.placeOrder())
+        assertEquals(1, tokenizer.calls)
+
+        // A later card payment reuses the token of the card already saved through the provider
+        // instead of opening the provider's form to tokenize a card again (COM-508).
+        assertTrue(viewModel.placeOrder())
+
+        assertEquals(1, tokenizer.calls)
+        assertEquals(2, remote.creates.size)
     }
 
     @Test

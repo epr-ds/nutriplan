@@ -7,7 +7,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -117,6 +120,32 @@ class AiStatesTest {
 
         assertEquals(1, calls.retries)
         compose.onNodeWithTag(AiStateTestTags.FALLBACK).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the ai error retry button is announced to screen readers`() {
+        val calls = renderError(withFallback = false)
+
+        compose.onNode(
+            hasTestTag(AiStateTestTags.RETRY) and hasContentDescription(str(R.string.ai_retry)),
+        ).assertIsDisplayed()
+        compose.onNodeWithTag(AiStateTestTags.RETRY).assert(hasText(str(R.string.ai_retry)))
+        compose.onNodeWithTag(AiStateTestTags.RETRY).performClick()
+
+        assertEquals(1, calls.retries)
+    }
+
+    @Test
+    fun `the ai error fallback button is announced to screen readers`() {
+        val calls = renderError(withFallback = true)
+
+        compose.onNode(
+            hasTestTag(AiStateTestTags.FALLBACK) and hasContentDescription("Browse recipes"),
+        ).assertIsDisplayed()
+        compose.onNodeWithTag(AiStateTestTags.FALLBACK).assert(hasText("Browse recipes"))
+        compose.onNodeWithTag(AiStateTestTags.FALLBACK).performClick()
+
+        assertEquals(1, calls.fallbacks)
     }
 
     @Test

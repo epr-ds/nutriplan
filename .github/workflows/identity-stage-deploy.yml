@@ -1,0 +1,42 @@
+name: Identity Stage Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nutriplan
+          POSTGRES_PASSWORD: nutriplan
+          POSTGRES_DB: identity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nutriplan -d identity"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build Identity image
+        run: docker build --target runtime -t nutriplan-identity:${{ github.sha }} .
+      - name: Stage deploy + seed test account + smoke
+        run: |
+          docker run -d --name identity-stage --network host \
+            -e IDENTITY_DATABASE_URL=postgresql+psycopg://nutriplan:nutriplan@localhost:5432/identity \
+            nutriplan-identity:${{ github.sha }}
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8081/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8081/health > /dev/null
+          curl -fsS http://localhost:8081/metrics > /dev/null
+          curl -fsS -X POST http://localhost:8081/auth/register -H 'Content-Type: application/json' \
+            -d '{"email":"stage.harness.user@example.com","password":"Stage-Harness-Passw0rd!","name":"Stage Harness"}' > /dev/null
+          curl -fsS -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"stage.harness.user@example.com","password":"Stage-Harness-Passw0rd!"}' > /dev/null
+          docker rm -f identity-stage

@@ -67,6 +67,29 @@ class RecipeDetailViewModelTest {
         assertNull(viewModel.state.value.recipe)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the recipe detail exposes its current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertTrue(state.isLoading)
+        assertNull(state.recipe)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        repository.recipe = Recipe(id = "r1", name = "Soup")
+        viewModel.load("r1")
+
+        val state = viewModel.currentState()
+        assertEquals("r1", repository.requested)
+        assertEquals("Soup", state.recipe?.name)
+        assertEquals("Estimates only.", state.disclaimer?.disclaimer)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+    }
+
     @Test
     fun `load shows the recipe and the server's disclaimer`() = runTest {
         viewModel.load("r1")
@@ -98,6 +121,18 @@ class RecipeDetailViewModelTest {
 
         assertEquals(1, repository.disclaimerCalls)
         assertEquals(2, repository.recipeCalls)
+    }
+
+    @Test
+    fun `loading another recipe reloads the nutrition disclaimer`() = runTest {
+        viewModel.load("r1")
+        repository.recipe = Recipe(id = "r2", name = "Salad")
+        viewModel.load("r2")
+
+        val state = viewModel.state.value
+        assertEquals("r2", state.recipe?.id)
+        assertEquals(2, repository.disclaimerCalls)
+        assertEquals("Estimates only.", state.disclaimer?.disclaimer)
     }
 
     @Test

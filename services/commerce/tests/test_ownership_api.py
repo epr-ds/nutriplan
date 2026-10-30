@@ -116,10 +116,10 @@ def _auth(token: str = GOOD_TOKEN) -> dict[str, str]:
 
 # Every order route, as (method, path-template). ``{}`` is filled with a concrete order id per test.
 _ROUTES = [
-    ("POST", "/orders"),
-    ("GET", "/orders"),
-    ("GET", "/orders/{}"),
-    ("POST", "/orders/{}/cancel"),
+    ("POST", "/commerce/v1/orders"),
+    ("GET", "/commerce/v1/orders"),
+    ("GET", "/commerce/v1/orders/{}"),
+    ("POST", "/commerce/v1/orders/{}/cancel"),
 ]
 
 
@@ -149,14 +149,15 @@ def test_get_of_another_users_order_is_404():
     theirs = _order(user_id=OTHER)
     client, _ = _build(theirs)
 
-    assert client.get(f"/orders/{theirs.id}", headers=_auth()).status_code == 404
+    assert client.get(f"/commerce/v1/orders/{theirs.id}", headers=_auth()).status_code == 404
 
 
 def test_cancel_of_another_users_order_is_404_and_leaves_it_untouched():
     theirs = _order(user_id=OTHER, status=OrderStatus.PENDING)
     client, repo = _build(theirs)
 
-    assert client.post(f"/orders/{theirs.id}/cancel", headers=_auth()).status_code == 404
+    response = client.post(f"/commerce/v1/orders/{theirs.id}/cancel", headers=_auth())
+    assert response.status_code == 404
     # The real owner's order is not mutated by a stranger's cancel attempt.
     assert repo.orders[theirs.id].status is OrderStatus.PENDING
 
@@ -167,7 +168,7 @@ def test_list_returns_only_the_callers_orders():
     theirs = _order(user_id=OTHER)
     client, _ = _build(mine_a, mine_b, theirs)
 
-    response = client.get("/orders", headers=_auth())
+    response = client.get("/commerce/v1/orders", headers=_auth())
 
     assert response.status_code == 200
     returned = {item["id"] for item in response.json()}
@@ -191,7 +192,7 @@ def test_create_against_an_unowned_plan_is_404_and_persists_nothing():
         "deliveryTimeSlot": "12:00-13:00",
     }
 
-    response = client.post("/orders", json=body, headers=_auth())
+    response = client.post("/commerce/v1/orders", json=body, headers=_auth())
 
     assert response.status_code == 404
     assert repo.orders == {}

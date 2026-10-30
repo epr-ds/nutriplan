@@ -73,7 +73,7 @@ def test_cancel_returns_200_cancelled(status: OrderStatus):
     order = _order(status=status)
     client, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth())
 
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
@@ -83,9 +83,9 @@ def test_cancel_persists_status():
     order = _order(status=OrderStatus.CONFIRMED)
     client, _ = _build(order)
 
-    assert client.post(f"/orders/{order.id}/cancel", headers=_auth()).status_code == 200
+    assert client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth()).status_code == 200
     # A subsequent read reflects the cancellation (persisted via the shared repository).
-    got = client.get(f"/orders/{order.id}", headers=_auth())
+    got = client.get(f"/commerce/v1/orders/{order.id}", headers=_auth())
     assert got.status_code == 200
     assert got.json()["status"] == "cancelled"
 
@@ -97,7 +97,7 @@ def test_cancel_after_dispatch_returns_409(status: OrderStatus):
     order = _order(status=status)
     client, _ = _build(order)
 
-    response = client.post(f"/orders/{order.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth())
 
     assert response.status_code == 409
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -106,7 +106,7 @@ def test_cancel_after_dispatch_returns_409(status: OrderStatus):
 def test_unknown_id_returns_404():
     client, _ = _build(_order())
 
-    response = client.post(f"/orders/{uuid.uuid4()}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{uuid.uuid4()}/cancel", headers=_auth())
 
     assert response.status_code == 404
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -117,7 +117,7 @@ def test_other_users_order_returns_404_no_enumeration():
     client, repo = _build(theirs)
 
     # The order exists but is not owned by the caller: must be indistinguishable from unknown.
-    response = client.post(f"/orders/{theirs.id}/cancel", headers=_auth())
+    response = client.post(f"/commerce/v1/orders/{theirs.id}/cancel", headers=_auth())
 
     assert response.status_code == 404
     # And it must be left untouched for its real owner.
@@ -128,17 +128,18 @@ def test_requires_authentication():
     order = _order()
     client, _ = _build(order)
 
-    assert client.post(f"/orders/{order.id}/cancel").status_code == 401
+    assert client.post(f"/commerce/v1/orders/{order.id}/cancel").status_code == 401
 
 
 def test_rejects_unknown_token():
     order = _order()
     client, _ = _build(order)
 
-    assert client.post(f"/orders/{order.id}/cancel", headers=_auth("nope")).status_code == 401
+    response = client.post(f"/commerce/v1/orders/{order.id}/cancel", headers=_auth("nope"))
+    assert response.status_code == 401
 
 
 def test_malformed_order_id_returns_422():
     client, _ = _build(_order())
 
-    assert client.post("/orders/not-a-uuid/cancel", headers=_auth()).status_code == 422
+    assert client.post("/commerce/v1/orders/not-a-uuid/cancel", headers=_auth()).status_code == 422

@@ -77,6 +77,7 @@ class EventMetrics:
         self._lock = threading.Lock()
         self._totals: dict[Outcome, int] = dict.fromkeys(Outcome, 0)
         self._by_type: dict[Outcome, dict[str, int]] = {outcome: {} for outcome in Outcome}
+        self._delivery_totals: dict[str, dict[str, int]] = {}
 
     def increment(self, outcome: Outcome, *, event_type: str | None = None, count: int = 1) -> None:
         """Add ``count`` to one outcome, and to its per-type breakdown."""
@@ -115,3 +116,24 @@ class EventMetrics:
                     if counts
                 },
             }
+
+    def record_delivery(self, *, event_type: str | None, delivered: int, failed: int) -> None:
+        """Record the outcome of one push fan-out (NTF-706 delivery metrics).
+
+        Delivery is not settlement: a fan-out that reached the provider and was accepted is a
+        delivery that worked, independent of what the handler went on to do. Counters are
+        process-lifetime like the rest; the dead-letter depth stays a live read rather than a
+        counted one.
+        """
+        if delivered <= 0 and failed <= 0:
+            return
+        key = event_type or UNTYPED
+        with self._lock:
+            totals = self._delivery_totals.setdefault(key, {"delivered": 0, "failed": 0})
+            totals["delivered"] += delivered
+            totals["failed"] += failed
+
+    def delivery_totals(self) -> Mapping[str, Mapping[str, int]]:
+        """Every fan-out outcome at once, keyed by event type."""
+        with self._lock:
+            return {key: dict(totals) for key, totals in self._delivery_totals.items()}

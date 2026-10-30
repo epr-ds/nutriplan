@@ -53,6 +53,7 @@ from app.domain.repositories import (
     PushReceiptStore,
 )
 from app.domain.templates import Locale, RenderedNotification
+from app.events.metrics import EventMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,7 @@ class PushDelivery:
         sleep: Callable[[float], None] | None = None,
         preferences: PreferencesRepository | None = None,
         templates: NotificationTemplateStore | None = None,
+        metrics: EventMetrics | None = None,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("max_attempts must be at least 1")
@@ -154,6 +156,7 @@ class PushDelivery:
         self._sleep = sleep or time.sleep
         self._preferences = preferences
         self._templates = templates if templates is not None else build_default_catalog()
+        self._metrics = metrics
 
     def deliver(self, notification: Notification) -> PushDeliveryResult:
         """Fan ``notification`` out to every reachable device and persist the outcome.
@@ -185,6 +188,12 @@ class PushDelivery:
 
         accepted = sum(1 for receipt in receipts if receipt.accepted)
         status = DeliveryStatus.SENT if accepted else DeliveryStatus.FAILED
+        if self._metrics is not None:
+            self._metrics.record_delivery(
+                event_type=notification.type.value,
+                delivered=accepted,
+                failed=sum(1 for receipt in receipts if not receipt.accepted),
+            )
         self._record_status(notification, status)
         logger.info(
             "notification.push.fanout notification_id=%s devices=%d accepted=%d refused=%d",
