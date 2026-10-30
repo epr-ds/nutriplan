@@ -4,6 +4,7 @@ import com.nutriplan.shared.data.local.MealPlanCache
 import com.nutriplan.shared.data.local.ChangeKind
 import com.nutriplan.shared.data.local.PendingChangeStore
 import com.nutriplan.shared.data.local.PendingMealStore
+import com.nutriplan.shared.data.local.RecipeCache
 import com.nutriplan.shared.data.model.AddMealRequest
 import com.nutriplan.shared.data.model.UpdateMealRequest
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
@@ -11,6 +12,8 @@ import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.MealPlanQuery
 import com.nutriplan.shared.data.model.MealPlanSummary
 import com.nutriplan.shared.data.model.PlanMeal
+import com.nutriplan.shared.data.model.Recipe
+import com.nutriplan.shared.data.model.RecipeSearchQuery
 import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.toApiFailure
 import kotlin.coroutines.cancellation.CancellationException
@@ -34,6 +37,7 @@ class CachedDietaryRepository(
     private val cache: MealPlanCache,
     private val pending: PendingMealStore? = null,
     private val changes: PendingChangeStore? = null,
+    private val recipes: RecipeCache? = null,
 ) : DietaryRepository by remote {
 
     override suspend fun getMealPlans(query: MealPlanQuery?): List<MealPlanSummary> {
@@ -73,6 +77,10 @@ class CachedDietaryRepository(
                 else -> throw e
             }
         }
+
+    override suspend fun getRecipe(recipeId: String): Recipe = remote.getRecipe(recipeId)
+
+    override suspend fun searchRecipes(query: RecipeSearchQuery): List<Recipe> = remote.searchRecipes(query)
 
     override suspend fun createMealPlan(request: CreateMealPlanRequest): MealPlan =
         remote.createMealPlan(request).also(cache::upsertPlan)
