@@ -167,6 +167,9 @@ jobs:
     name: Android release build (Play App Signing)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/release/')
+    permissions:
+      contents: write
+      actions: write
     defaults:
       run:
         working-directory: mobile
@@ -193,6 +196,16 @@ jobs:
         with:
           name: android-release-apk
           path: mobile/androidApp/build/outputs/apk/release/*.apk
+
+      # Releases/packages: attach the freshly built release APK to a GitHub Release so it can
+      # be downloaded from https://github.com/epr-ds/nutriplan/releases/tag/v0.1.0
+      - name: Create GitHub Release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: NutriPlan v0.1.0
+          files: mobile/androidApp/build/outputs/apk/release/*.apk
+          make_latest: true
 
   # HRD-602: Upload Crashlytics symbols for Android.
   crashlytics-android:
