@@ -29,3 +29,24 @@ def test_ai_golden_corpus_passes_the_release_gate() -> None:
 
     assert results, "expected the AI regression corpus to load"
     assert all(result.passed for result in results)
+
+
+def test_load_regression_corpus_executes_the_commerce_regression_cases() -> None:
+    """The commerce release gate must load its regression corpus."""
+    cases = load_regression_corpus("commerce")
+
+    assert cases, "expected the commerce regression corpus to load"
+    assert all(case.service == "commerce" for case in cases)
+
+
+def test_commerce_regression_cases_pass_the_release_gate() -> None:
+    """The release gate must execute the commerce regression corpus and pass on the green set.
+
+    Follow-up to the AI gate fix (HRD-905 / PR #646 / #653): the runner ships corpora for every
+    documented service, but only the AI verifier is executable, so the commerce gate over its own
+    corpus must run and pass on the green set before the beta fix -> re-release loop can close.
+    """
+    results = run_regression_for_service("commerce")
+
+    assert results, "expected the commerce regression corpus to load"
+    assert all(result.passed for result in results)

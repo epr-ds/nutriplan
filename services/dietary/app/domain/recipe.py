@@ -202,6 +202,8 @@ class Recipe(_Model):
     id: str = Field(default_factory=_new_id)
     name: str = Field(min_length=1)
     description: str | None = None
+    name_es: str | None = None
+    description_es: str | None = None
     ingredients: list[Ingredient] = Field(default_factory=list)
     instructions: list[str] = Field(default_factory=list)
     prep_time: int | None = None
@@ -227,6 +229,8 @@ class Recipe(_Model):
         image_url: str | None = None,
         nutritional_info: NutritionalInfo | None = None,
         dietary_types: list[DietaryType] | None = None,
+        name_es: str | None = None,
+        description_es: str | None = None,
     ) -> Recipe:
         """Create a new recipe, enforcing the aggregate's invariants.
 
@@ -239,6 +243,8 @@ class Recipe(_Model):
             name=name,
             servings=servings,
             description=description,
+            name_es=name_es,
+            description_es=description_es,
             ingredients=ingredients or [],
             instructions=instructions or [],
             prep_time=prep_time,

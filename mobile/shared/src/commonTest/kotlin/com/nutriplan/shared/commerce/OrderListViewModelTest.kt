@@ -213,6 +213,30 @@ class OrderListViewModelTest {
     }
 
     @Test
+    fun `the current state is the latest one`() = runTest {
+        val viewModel = viewModel()
+
+        assertTrue(viewModel.state.value.isLoading)
+
+        remote.orders = all
+        viewModel.load()
+
+        assertEquals(listOf("o1", "o2", "o3", "o4"), viewModel.currentState().visibleOrders.map { it.id })
+    }
+
+    @Test
+    fun `refresh reloads the orders`() = runTest {
+        remote.orders = all
+        val viewModel = viewModel()
+        viewModel.load()
+
+        assertEquals(listOf("o1", "o2", "o3", "o4"), viewModel.state.value.visibleOrders.map { it.id })
+        viewModel.refresh()
+
+        assertEquals(2, remote.queries.size, "the refresh reads the list again")
+    }
+
+    @Test
     fun `an order the checkout offers can be reordered`() {
         val viewModel = viewModel()
 

@@ -224,11 +224,15 @@ private fun AddressList(
                 )
             }
             item(key = "add") {
+                val addDescription = stringResource(R.string.address_book_add)
                 Button(
                     onClick = onAdd,
-                    modifier = Modifier.fillMaxWidth().testTag(AddressBookTestTags.ADD),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(AddressBookTestTags.ADD)
+                        .semantics(mergeDescendants = true) { contentDescription = addDescription },
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Default.Add, contentDescription = addDescription)
                     Text(stringResource(R.string.address_book_add), modifier = Modifier.padding(start = 8.dp))
                 }
             }

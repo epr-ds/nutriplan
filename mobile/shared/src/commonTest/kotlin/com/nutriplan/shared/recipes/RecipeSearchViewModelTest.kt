@@ -71,6 +71,40 @@ class RecipeSearchViewModelTest {
         assertFalse(state.isEmptyResult)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the recipe search exposes its current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertFalse(state.hasFilters)
+        assertFalse(state.hasSearched)
+        assertFalse(state.isLoading)
+        assertEquals(emptyList(), state.recipes)
+        assertNull(state.error)
+    }
+
+    @Test
+    fun `the current state reflects the filters and the results`() = runTest {
+        repository.respond = { listOf(recipe("a")) }
+        viewModel.onIngredientsChange("rice")
+        viewModel.onDietTypeChange("vegan")
+        viewModel.onMaxCaloriesChange("600")
+        viewModel.onMinProteinChange("30.5")
+        viewModel.search()
+
+        val state = viewModel.currentState()
+        assertEquals("rice", state.ingredients)
+        assertEquals("vegan", state.dietType)
+        assertEquals("600", state.maxCalories)
+        assertEquals("30.5", state.minProtein)
+        assertTrue(state.hasFilters)
+        assertTrue(state.hasSearched)
+        assertFalse(state.isLoading)
+        assertEquals(listOf("a"), state.recipes.map { it.id })
+        assertFalse(state.isEmptyResult)
+    }
+
     @Test
     fun `search sends the filters from the first page`() = runTest {
         viewModel.onIngredientsChange("  Chicken , olive oil;rice\nchicken ,, ")

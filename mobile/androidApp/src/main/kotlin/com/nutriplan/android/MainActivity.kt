@@ -103,6 +103,11 @@ class MainActivity : ComponentActivity() {
                     AppNavigationGraph(
                         navController = navController,
                         startDestination = Route.Splash,
+                        onDeepLink = { deepLink ->
+                            // COM-707: a notification tap offers its deep link; it is held until the
+                            // user is authenticated (or falls back to the notification center).
+                            if (pendingDeepLink.offer(deepLink)) deepLinkVersion++
+                        },
                         analyticsTracker = analyticsTracker,
                         screens = remember(navController) {
                             // Not signed in: the link waits and opens right after a successful login.

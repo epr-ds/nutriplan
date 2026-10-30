@@ -91,6 +91,33 @@ class AddMealViewModelTest {
         assertNull(state.dayIndex)
     }
 
+    // --- current state ---
+
+    @Test
+    fun `the add meal form exposes its current state`() = runTest {
+        val state = viewModel.currentState()
+
+        assertTrue(state.isLoading)
+        assertEquals("1", state.servings)
+        assertNull(state.mealType)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        started()
+
+        viewModel.onMealTypeChange("dinner")
+        viewModel.onServingsChange("2")
+        viewModel.onDayChange(1)
+
+        val state = viewModel.currentState()
+        assertEquals("Soup", state.recipe?.name)
+        assertEquals("dinner", state.mealType)
+        assertEquals("2", state.servings)
+        assertEquals(1, state.dayIndex)
+        assertFalse(state.isLoading)
+    }
+
     @Test
     fun `start loads the recipe and one option per day of the plan`() = runTest {
         started()
@@ -389,6 +416,17 @@ class AddMealViewModelTest {
         viewModel.save()
 
         assertTrue(repository.added.isEmpty())
+    }
+
+    @Test
+    fun `the add meal form cannot save while the recipe failed to load`() = runTest {
+        repository.recipeFailure = ApiException.NetworkError()
+        viewModel.start("p1", "r1", mealType = "dinner")
+
+        viewModel.save()
+
+        assertTrue(repository.added.isEmpty(), "nothing is added while the recipe could not be loaded")
+        assertEquals(AddMealError.NETWORK, viewModel.state.value.loadError)
     }
 
     // --- AIA-604: a meal type known in advance ---

@@ -136,6 +136,7 @@ fun EmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .semantics { contentDescription = title }
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

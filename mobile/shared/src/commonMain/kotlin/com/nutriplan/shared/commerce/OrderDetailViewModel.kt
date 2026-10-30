@@ -129,12 +129,12 @@ class OrderDetailViewModel(private val useCases: CommerceUseCases) {
         _state.update { it.copy(confirmingCancel = false) }
     }
 
-    /** Cancel the order. Returns true when it was cancelled. */
-    suspend fun confirmCancel(): Boolean {
+    /** Cancel the order. Returns true when it was cancelled; [refundAmount] (positive, at most the total) asks for part of it, null for a full refund. */
+    suspend fun confirmCancel(refundAmount: Double? = null): Boolean {
         val order = _state.value.order ?: return false
         if (_state.value.isCancelling) return false
         _state.update { it.copy(confirmingCancel = false, isCancelling = true, cancelError = null) }
-        return when (val result = useCases.cancelOrder(order.id)) {
+        return when (val result = useCases.cancelOrder(order.id, refundAmount)) {
             is OrderResult.Success -> {
                 _state.update { it.copy(isCancelling = false, order = result.value) }
                 true
@@ -157,4 +157,7 @@ class OrderDetailViewModel(private val useCases: CommerceUseCases) {
     fun dismissCancelError() {
         _state.update { it.copy(cancelError = null) }
     }
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): OrderDetailUiState = _state.value
 }

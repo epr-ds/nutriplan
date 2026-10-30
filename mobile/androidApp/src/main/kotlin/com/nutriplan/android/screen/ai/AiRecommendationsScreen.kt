@@ -349,7 +349,10 @@ private fun ReasoningCard(reasoning: String) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(AiRecommendationsTestTags.REASONING)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                // AIA-903: the reasoning is the answer's content: announce it, not just the card shape.
+                contentDescription = reasoning
+            },
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -364,12 +367,16 @@ private fun ReasoningCard(reasoning: String) {
 /** Tells the user these are curated catalogue recipes, not the AI's own answer. */
 @Composable
 private fun CuratedFallbackNote() {
+    val fallbackBody = stringResource(R.string.ai_recommendations_curated_fallback_body)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier
             .fillMaxWidth()
             .testTag(AiRecommendationsTestTags.CURATED_FALLBACK_NOTE)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                // AIA-606: the curated fallback is the answer's fallback: announce it, not just the card shape.
+                contentDescription = fallbackBody
+            },
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -402,11 +409,14 @@ private fun CuratedFallbackNote() {
 internal fun AlignmentCard(alignment: NutritionalAlignment, testTag: String = AiRecommendationsTestTags.ALIGNMENT) {
     // The contract gives the score from 0 to 100.
     val score = alignment.score?.roundToInt()?.coerceIn(0, 100)
+    val scoreText = alignment.score?.roundToInt()?.let { stringResource(R.string.ai_recommendations_alignment_score, it) }.orEmpty()
+    val detailsText = alignment.details?.takeIf { it.isNotBlank() }.orEmpty()
+    val alignmentDescription = scoreText.ifBlank { detailsText }.ifBlank { "" }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(testTag)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) { contentDescription = alignmentDescription },
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
@@ -440,7 +450,10 @@ internal fun AiDisclaimer(text: String, testTag: String = AiRecommendationsTestT
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(testTag),
+            .testTag(testTag)
+            .semantics(mergeDescendants = true) {
+                contentDescription = text
+            },
     ) {
         Text(
             text = text,

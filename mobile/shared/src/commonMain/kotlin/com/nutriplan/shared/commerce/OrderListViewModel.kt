@@ -90,6 +90,12 @@ class OrderListViewModel(private val useCases: CommerceUseCases) {
         _state.update { it.copy(filter = filter) }
     }
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): OrderListUiState = _state.value
+
+    /** Pull-to-refresh: read the list again, keeping the user's saved orders while the request runs. */
+    suspend fun refresh() = load()
+
     /** Whether [order] can be ordered again: its fulfillment type is one the checkout offers. */
     fun canReorder(order: Order): Boolean = order.fulfillmentType in CheckoutDraft.FULFILLMENT_TYPES
 }

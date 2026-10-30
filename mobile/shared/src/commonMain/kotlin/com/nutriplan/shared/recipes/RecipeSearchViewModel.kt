@@ -82,6 +82,9 @@ class RecipeSearchViewModel(
     private val _state = MutableStateFlow(RecipeSearchUiState())
     val state: StateFlow<RecipeSearchUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): RecipeSearchUiState = _state.value
+
     /** Identifies the latest search; results of older requests are ignored. */
     private var generation = 0
     private var lastQuery = RecipeSearchQuery()

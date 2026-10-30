@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** Why the notification list could not be loaded. Locale-neutral: each platform maps these codes to its own localized microcopy (NTF-506 convention). */
 enum class NotificationsError {
@@ -58,6 +60,27 @@ fun Throwable.toNotificationsError(): NotificationsError = when (toApiFailure())
     ApiFailure.SERVER -> NotificationsError.SERVER_PROBLEM
     ApiFailure.SESSION_EXPIRED -> NotificationsError.SESSION_EXPIRED
     else -> NotificationsError.UNKNOWN
+}
+
+/**
+ * Whether the current time is inside the quiet-hours window of the notification preferences; an
+ * overnight window (start after end) wraps past midnight. Without a window there is nothing quiet
+ * (NTF-803).
+ */
+fun NotificationPreferences.isQuietHours(now: Instant = Clock.System.now()): Boolean {
+    val start = quietHoursStart?.let { parseMillisOfDay(it) } ?: return false
+    val end = quietHoursEnd?.let { parseMillisOfDay(it) } ?: return false
+    val timeOfDay = now.toEpochMilliseconds() % MILLIS_PER_DAY
+    return if (start <= end) timeOfDay >= start && timeOfDay <= end else timeOfDay >= start || timeOfDay < end
+}
+
+private const val MILLIS_PER_DAY = 86_400_000L
+
+/** The quiet-hours window as milliseconds after midnight of the day it starts on. */
+private fun parseMillisOfDay(raw: String): Long {
+    val hours = raw.substringBefore(':').toLongOrNull() ?: 0L
+    val minutes = raw.substringAfter(':').toLongOrNull() ?: 0L
+    return hours * 3_600_000L + minutes * 60_000L
 }
 
 /**
@@ -114,11 +137,16 @@ class NotificationsViewModel(
 
     /** Mark one notification as read: optimistically on the local copy, then confirm. */
     suspend fun markAsRead(notificationId: String) {
+        val previous = state.value
         _state.update { state ->
+            val marked = state.notifications.firstOrNull { it.id == notificationId }
+            val wasUnread = marked != null && !marked.isRead
             state.copy(
                 notifications = state.notifications.map { notification ->
                     if (notification.id == notificationId) notification.copy(isRead = true) else notification
                 },
+                // NTF-801: marking one notification read moves the unread badge with it.
+                unreadCount = if (wasUnread) state.unreadCount - 1 else state.unreadCount,
             )
         }
         try {
@@ -127,6 +155,9 @@ class NotificationsViewModel(
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             _state.update { it.copy(error = e.toNotificationsError()) }
+            // NTF-802: the optimistic mark has not been confirmed yet; roll it back so a failed
+            // confirmation does not leave a read state (and badge decrement) the server rejected.
+            _state.value = previous
         }
     }
 

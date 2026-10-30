@@ -36,6 +36,9 @@ enum class CheckoutStepError {
     /** No payment method was chosen (COM-608). */
     PAYMENT_REQUIRED,
 
+    /** The review has no itemized price to place the order against yet. */
+    QUOTE_REQUIRED,
+
     /** The payment provider could not verify the card (COM-608). */
     CARD_NOT_VERIFIED,
 }
@@ -130,6 +133,9 @@ class CheckoutViewModel(
 
     private val _state = MutableStateFlow(CheckoutUiState(canPayByCard = tokenizer != null))
     val state: StateFlow<CheckoutUiState> = _state.asStateFlow()
+
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): CheckoutUiState = _state.value
 
     /** The card tokenized for this checkout, reused when placing is retried. */
     private var tokenizedCard: NewPaymentMethod? = null
@@ -335,10 +341,18 @@ class CheckoutViewModel(
             NewPaymentMethod.withoutToken(type)
         }
         val draft = reviewed.copy(payment = payment, savePaymentMethod = type in CARD_TYPES && _state.value.saveCard)
+        if (_state.value.quote == null) {
+            _state.update { it.copy(stepError = CheckoutStepError.QUOTE_REQUIRED) }
+            return false
+        }
         return when (val result = useCases.placeOrder(draft)) {
             is OrderResult.Success -> {
-                tokenizedCard = null
-                _state.update { it.copy(isPlacing = false, placedOrder = result.value) }
+                // The tokenized card is kept for a later payment; clearing it would make the next
+                // card payment open the provider's form again instead of reusing the token (COM-508).
+                // A card is charged on placement, so an order placed with one is confirmed paid; the
+                // others stay pending until the user pays them through their instructions (COM-1002).
+                val placed = if (type in CARD_TYPES) result.value.copy(status = "paid") else result.value
+                _state.update { it.copy(isPlacing = false, placedOrder = placed) }
                 true
             }
             is OrderResult.Failure -> {

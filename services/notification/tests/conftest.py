@@ -65,7 +65,11 @@ from app.events.memory import InMemoryEventConsumer
 from app.events.redis_dead_letter import RedisDeadLetterQueue
 from app.events.redis_stream import PAYLOAD_FIELD, RedisStreamEventConsumer
 
-PRESERVED = {"NOTIFICATION_TEST_REDIS_URL", "NOTIFICATION_OPENAPI_SPEC"}
+PRESERVED = {
+    "NOTIFICATION_TEST_REDIS_URL",
+    "NOTIFICATION_OPENAPI_SPEC",
+    "NOTIFICATION_STAGE_DEPLOY_WORKFLOW",
+}
 """Harness inputs, not service configuration -- they must survive the isolation fixture.
 
 Both merely match the service's env prefix. Stripping ``NOTIFICATION_OPENAPI_SPEC`` would

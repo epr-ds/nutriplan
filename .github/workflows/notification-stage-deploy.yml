@@ -1,0 +1,35 @@
+name: Notification Stage Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build Notification image
+        run: docker build --target runtime -t nutriplan-notification:${{ github.sha }} .
+      - name: Deploy to dev + smoke
+        run: |
+          docker run -d --name notification-stage --network host \
+            -e NOTIFICATION_REDIS_URL=redis://localhost:6379/0 \
+            -e NOTIFICATION_ENVIRONMENT=development \
+            nutriplan-notification:${{ github.sha }}
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8084/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8084/health > /dev/null
+          curl -fsS http://localhost:8084/health/ready > /dev/null
+          docker rm -f notification-stage

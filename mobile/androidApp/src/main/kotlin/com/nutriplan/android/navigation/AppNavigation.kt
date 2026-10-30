@@ -261,7 +261,7 @@ fun AppNavigationGraph(
             analyticsTracker?.logScreenView("notification_center", "NotificationCenterScreen")
             screens.NotificationCenterScreen(
                 onNavigate = { route -> navigate(navController, route) },
-                onNotificationClick = { /* handle notification click */ },
+                onNotificationClick = onDeepLink,
             )
         }
 

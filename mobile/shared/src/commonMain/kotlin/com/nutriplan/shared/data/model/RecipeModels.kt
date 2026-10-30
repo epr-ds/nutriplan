@@ -60,6 +60,19 @@ data class NutritionSource(
 )
 
 /**
+ * Maps each nutrient field to the id of the verified source it comes from
+ * (`NutritionFieldSources` in `contracts/dietary.openapi.yaml`; DPL-305).
+ */
+@Serializable
+data class NutritionFieldSources(
+    val calories: String,
+    val protein: String,
+    val carbs: String,
+    val fat: String,
+    val sugar: String,
+)
+
+/**
  * Query for `GET /recipes`. A recipe matches when it contains at least one of [ingredients]
  * (case-insensitive); results are ranked by how many match. [page] is 1-based.
  */

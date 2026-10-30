@@ -10,6 +10,8 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -197,6 +199,17 @@ class AnalyzeMealScreenTest {
         render(analyzed(analysis.copy(disclaimer = null)))
 
         compose.onNodeWithText(str(R.string.analyze_meal_disclaimer_fallback)).assertExists()
+    }
+
+    @Test
+    fun `the analyze meal disclaimer is announced to screen readers`() {
+        render(analyzed())
+
+        compose.onNode(
+            hasTestTag(AnalyzeMealTestTags.DISCLAIMER) and hasContentDescription(
+                "Estimates only.",
+            ),
+        ).assertIsDisplayed()
     }
 
     @Test

@@ -79,6 +79,9 @@ class FavoriteRecipesViewModel(
     private val _state = MutableStateFlow(FavoriteRecipesUiState())
     val state: StateFlow<FavoriteRecipesUiState> = _state.asStateFlow()
 
+    /** The current UI state, for callers that read rather than observe it (e.g. the SwiftUI bridge). */
+    fun currentState(): FavoriteRecipesUiState = _state.value
+
     /** Load the favorites; also the retry after a failure. Keeps what is shown while loading. */
     suspend fun load() {
         _state.update { it.copy(isLoading = true, loadError = null) }

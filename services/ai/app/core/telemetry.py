@@ -24,6 +24,7 @@ import logging
 import re
 import time
 import uuid
+from contextvars import ContextVar
 
 from prometheus_client import Counter, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -33,6 +34,56 @@ from starlette.responses import Response
 SERVICE = "ai"
 
 logger = logging.getLogger("ai.request")
+
+# LLM token usage for the cost & usage dashboard (AIA-805).
+ai_llm_usage_total = Counter(
+    "ai_llm_usage_total",
+    "LLM prompt/completion tokens consumed.",
+    ["model"],
+)
+
+# Token-kind breakdown for the cost & usage dashboard (AIA-805): the prompt vs completion
+# split is what makes cost attribution per phase of a call (plan build vs optimization) possible.
+ai_llm_usage_prompt_tokens_total = Counter(
+    "ai_llm_usage_prompt_tokens_total",
+    "LLM prompt tokens consumed.",
+    ["model"],
+)
+
+ai_llm_usage_completion_tokens_total = Counter(
+    "ai_llm_usage_completion_tokens_total",
+    "LLM completion tokens consumed.",
+    ["model"],
+)
+
+# USD per 1M tokens (input, output) per model — the spend side of the cost & usage dashboard.
+LLM_MODEL_PRICES_USD_PER_MTOK: dict[str, tuple[float, float]] = {
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4o": (5.0, 15.0),
+    "gpt-4-turbo": (10.0, 30.0),
+    "claude-3-5-sonnet": (3.0, 15.0),
+    "claude-3-5-haiku": (0.80, 4.0),
+}
+
+
+def llm_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    """Spend in USD for one completion, from the model's published token prices."""
+    input_price, output_price = LLM_MODEL_PRICES_USD_PER_MTOK.get(model, (0.0, 0.0))
+    return (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000
+
+
+# Spend per model + route for the cost & usage dashboard (AIA-805): the route dimension is
+# what lets the dashboard attribute spend to a specific endpoint instead of only to a vendor.
+ai_llm_cost_usd_total = Counter(
+    "ai_llm_cost_usd_total",
+    "LLM cost in USD consumed.",
+    ["model", "route"],
+)
+
+# The route a completion is attributed to (``/ai/recommendations`` etc.). The telemetry
+# middleware publishes the matched route per request; the LLM client reads it to stamp the
+# per-route spend series.
+current_route: ContextVar[str] = ContextVar("ai_current_route", default="unknown")
 
 # W3C trace context: version-traceid-spanid-flags (all lowercase hex).
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
@@ -126,7 +177,8 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         request.state.trace_id = trace_id
         start = time.perf_counter()
-
+        route = _route_template(request)
+        token = current_route.set(route)
         try:
             response = await call_next(request)
         except Exception:
@@ -137,6 +189,8 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
                 ids=(request_id, trace_id, span_id),
             )
             raise
+        finally:
+            current_route.reset(token)
 
         response.headers["X-Request-ID"] = request_id
         self._record(

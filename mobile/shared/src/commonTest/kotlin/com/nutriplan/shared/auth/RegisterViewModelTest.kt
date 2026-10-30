@@ -45,6 +45,30 @@ class RegisterViewModelTest {
     }
 
     @Test
+    fun `the register form exposes its current state`() = runTest {
+        val fx = fixture(backgroundScope)
+
+        assertEquals("", fx.model.currentState().name)
+        assertFalse(fx.model.currentState().canSubmit)
+    }
+
+    @Test
+    fun `the current state is the latest one`() = runTest {
+        val fx = fixture(backgroundScope)
+        fx.model.onNameChange("Ana")
+        fx.model.onEmailChange("ana@example.com")
+        fx.model.onPasswordChange("secret-password")
+        fx.model.onConfirmPasswordChange("secret-password")
+
+        val state = fx.model.currentState()
+        assertEquals("Ana", state.name)
+        assertEquals("ana@example.com", state.email)
+        assertEquals("secret-password", state.password)
+        assertEquals("secret-password", state.confirmPassword)
+        assertFalse(state.isLoading)
+    }
+
+    @Test
     fun `blank fields are rejected with inline errors before any request`() = runTest {
         val fx = fixture(backgroundScope)
 

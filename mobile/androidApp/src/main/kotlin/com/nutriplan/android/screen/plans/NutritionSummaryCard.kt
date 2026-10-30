@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -91,7 +92,10 @@ private fun CaloriesRing(row: NutrientRow) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(NutritionSummaryTestTags.ROW)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                // DPL-707: the ring is announced as progress ("90% of target"), not only as a shape.
+                contentDescription = progressDescription(row.nutrient, row.percentOfTarget)
+            },
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -128,7 +132,10 @@ private fun NutrientBar(row: NutrientRow) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(NutritionSummaryTestTags.ROW)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                // DPL-707: the bar is announced as progress ("90% of target"), not only as a shape.
+                contentDescription = progressDescription(row.nutrient, row.percentOfTarget)
+            },
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -192,6 +199,13 @@ private fun statusText(row: NutrientRow): String = when (row.status) {
     ProgressStatus.OVER -> stringResource(R.string.nutrition_status_over)
     ProgressStatus.UNKNOWN ->
         stringResource(if (row.target == null) R.string.nutrition_status_no_target else R.string.nutrition_no_data)
+}
+
+/** The progress of one nutrient, as it is announced: "<Nutrient>: <percent>% of target". */
+private fun progressDescription(nutrient: Nutrient, percentOfTarget: Double?): String {
+    val percent = percentOfTarget?.toInt() ?: 0
+    val name = nutrient.name.lowercase().replaceFirstChar { it.uppercase() }
+    return "$name: $percent% of target"
 }
 
 /** "5,200 kcal · Protein 310 g · Carbs 400 g", only the nutrients the plan has totals for. */
