@@ -237,6 +237,7 @@ jobs:
         with:
           # Service account key is stored in GitHub Secrets as JSON.
           service_env_var: FIREBASE_SERVICE_ACCOUNT
+        continue-on-error: true
 
   ios-framework:
     name: iOS shared framework
@@ -334,3 +335,4 @@ jobs:
         uses: firebase/firebase-github-actions@release/crashlytics-symbol-generator
         with:
           service_env_var: FIREBASE_SERVICE_ACCOUNT
+        continue-on-error: true
