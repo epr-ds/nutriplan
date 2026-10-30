@@ -128,6 +128,14 @@ class EditMealViewModelTest {
     }
 
     @Test
+    fun `the satisfaction selector accepts whole numbers from one to five`() = runTest {
+        viewModel.start("p1", "m2")
+
+        viewModel.onSatisfactionChange(5)
+        assertEquals(5, viewModel.state.value.satisfaction)
+    }
+
+    @Test
     fun `a meal that is not in the plan is not found`() = runTest {
         viewModel.start("p1", "nope")
 
