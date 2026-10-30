@@ -1,11 +1,19 @@
 package com.nutriplan.shared.data
 
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ApiConfigTest {
+
+    @BeforeTest
+    fun setUp() = ApiConfig.reset()
+
+    @AfterTest
+    fun tearDown() = ApiConfig.reset()
 
     @Test
     fun `BASE_URL is correctly configured`() {
@@ -55,5 +63,12 @@ class ApiConfigTest {
         assertTrue(ApiConfig.AI.startsWith("https://"))
         assertTrue(ApiConfig.COMMERCE.startsWith("https://"))
         assertTrue(ApiConfig.NOTIFICATION.startsWith("https://"))
+    }
+
+    @Test
+    fun `BASE_URL can be overridden to a physical device local origin`() {
+        ApiConfig.useBaseUrl("http://192.168.1.43:8083")
+        assertEquals("http://192.168.1.43:8083", ApiConfig.BASE_URL)
+        assertEquals("http://192.168.1.43:8083/identity/v1", ApiConfig.IDENTITY)
     }
 }
