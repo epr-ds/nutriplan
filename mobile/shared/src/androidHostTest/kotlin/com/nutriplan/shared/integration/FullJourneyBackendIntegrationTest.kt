@@ -32,6 +32,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -195,6 +196,32 @@ class FullJourneyBackendIntegrationTest {
         assertEquals(ApiFailure.SERVER, failure.toApiFailure())
     }
 
+    @Test
+    fun `a login failure keeps the user signed out`() = runTest {
+        authRepository.clearTokens()
+        server.failNext(status = 400, body = BAD_REQUEST_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            authRepository.login(LoginRequest(email = JOURNEY_EMAIL, password = "WrongPassword1!"))
+        }
+
+        assertEquals(400, failure.statusCode)
+        assertFalse(authRepository.isAuthenticated)
+    }
+
+    @Test
+    fun `a register conflict keeps the user signed out`() = runTest {
+        authRepository.clearTokens()
+        server.failNext(status = 409, body = CONFLICT_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            authRepository.register(RegisterRequest(email = "taken-nutriplan@example.com", password = "JourneyPass1!", name = "Taken"))
+        }
+
+        assertEquals(409, failure.statusCode)
+        assertFalse(authRepository.isAuthenticated)
+    }
+
     private companion object {
         const val STUB_TOKEN = "integration-test-token"
         const val STUB_REFRESH_TOKEN = "integration-test-refresh-token"
@@ -204,6 +231,14 @@ class FullJourneyBackendIntegrationTest {
 
         val SERVER_ERROR_RESPONSE = """
             { "title": "Internal Server Error", "status": 500, "detail": "The AI model is temporarily unavailable." }
+        """.trimIndent()
+
+        val BAD_REQUEST_RESPONSE = """
+            { "title": "Bad Request", "status": 400, "detail": "The login credentials are invalid." }
+        """.trimIndent()
+
+        val CONFLICT_RESPONSE = """
+            { "title": "Conflict", "status": 409, "detail": "The email is already registered." }
         """.trimIndent()
 
         val ORDER_UNAVAILABLE_RESPONSE = """
