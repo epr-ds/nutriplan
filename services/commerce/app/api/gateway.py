@@ -23,7 +23,7 @@ Notification service, relaying its response back.
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -122,7 +122,7 @@ identity_router = APIRouter(prefix="/identity/v1")
 )
 async def identity_proxy(
     request: Request,
-    principal: Annotated[Optional[Principal], Depends(optional_current_principal)],
+    principal: Annotated[Principal | None, Depends(optional_current_principal)],
     client: Annotated[httpx.Client, Depends(get_identity_client)],
 ) -> Response:
     """Relay a verified caller to the Identity service on the same bearer token (IDN-802).
@@ -147,7 +147,11 @@ async def identity_proxy(
         if content_type:
             headers["Content-Type"] = content_type
     if principal is None and not url.startswith("/auth"):
-        raise HTTPException(status_code=401, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         upstream = client.request(
             method=request.method,

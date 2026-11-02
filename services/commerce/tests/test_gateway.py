@@ -187,7 +187,7 @@ def test_gateway_dietary_proxies_to_dietary_service(client) -> None:
 
 
 def test_gateway_dietary_proxies_versioned_meal_plans_path(client) -> None:
-    """DPL-802: the versioned ``/dietary/v1`` edge maps onto the unversioned Dietary service path."""
+    """DPL-802: the versioned ``/dietary/v1`` edge maps onto the unversioned Dietary path."""
     api_client, _repo = client
     fake = FakeDietaryClient()
     app.dependency_overrides[get_dietary_client] = lambda: fake
@@ -333,8 +333,12 @@ def test_gateway_ai_rate_limits_per_user(client) -> None:
     app.dependency_overrides[get_ai_client] = lambda: fake
     app.dependency_overrides[get_ai_rate_limiter] = lambda: limiter
     try:
-        first = api_client.post("/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth())
-        second = api_client.post("/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth())
+        first = api_client.post(
+            "/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+        )
+        second = api_client.post(
+            "/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+        )
         assert first.status_code == 200
         assert second.status_code == 429
     finally:

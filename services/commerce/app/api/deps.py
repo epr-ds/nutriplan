@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 import uuid
 from functools import lru_cache
-from typing import Annotated, Optional
+from typing import Annotated
 
 import httpx
 import jwt
@@ -117,7 +117,7 @@ def get_current_principal(
 async def optional_current_principal(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
-) -> Optional[Principal]:
+) -> Principal | None:
     """Verified principal, or ``None`` for anonymous callers.
 
     Anonymous access is reserved for the public auth endpoints (register/login/refresh/logout/
