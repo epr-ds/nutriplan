@@ -38,19 +38,19 @@ internal object AiContract {
     val operations: List<Operation> = listOf(
         Operation(
             "POST",
-            "/ai/recommendations",
+            "/recommendations",
             request = "AIRecommendationRequest",
             response = "AIRecommendationResponse",
             status = 200,
         ),
         Operation(
             "POST",
-            "/ai/analyze-meal",
+            "/analyze-meal",
             request = "AnalyzeMealRequest",
             response = "NutritionalAnalysisResponse",
             status = 200,
         ),
-        Operation("POST", "/ai/optimize-plan", request = "OptimizePlanRequest", response = "MealPlanResponse", status = 200),
+        Operation("POST", "/optimize-plan", request = "OptimizePlanRequest", response = "MealPlanResponse", status = 200),
     )
 
     val schemas: Map<String, Schema> = mapOf(

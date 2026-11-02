@@ -14,6 +14,11 @@ JWT and stay outside this gateway, as is the health probe.
 The ``/ai`` edge relays a verified caller to the AI service on the same bearer token
 (AIA-804): the gateway owns the ``/ai`` prefix, requires a verified caller JWT at the edge,
 and forwards the request, enforcing a per-user rate limit to protect cost before proxying.
+
+The ``/notifications`` edge relays a verified caller to the Notification service on the same
+bearer token (NTF-802): the gateway owns the versioned ``/notifications/v1`` prefix, requires a
+verified caller JWT at the edge, and forwards the request (method, path, body, bearer) to the
+Notification service, relaying its response back.
 """
 
 from __future__ import annotations
@@ -32,6 +37,8 @@ from app.api.deps import (
     get_current_principal,
     get_dietary_client,
     get_identity_client,
+    get_notification_client,
+    optional_current_principal,
 )
 from app.core.principal import Principal
 
@@ -49,7 +56,7 @@ dietary_router = APIRouter(prefix="/dietary")
     methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     include_in_schema=False,
 )
-def dietary_proxy(
+async def dietary_proxy(
     request: Request,
     principal: Annotated[Principal, Depends(get_current_principal)],
     token: Annotated[str, Depends(get_bearer_token)],
@@ -58,7 +65,7 @@ def dietary_proxy(
     """Relay a verified caller to the Dietary service on the same bearer token (DPL-802)."""
     _ = principal  # JWT validity is enforced by the dependency above; relayed via the token.
     headers = {"Authorization": f"Bearer {token}"}
-    body = request.body()
+    body = await request.body()
     if request.method in {"POST", "PUT", "PATCH"} and body:
         content_type = request.headers.get("content-type")
         if content_type:
@@ -67,12 +74,19 @@ def dietary_proxy(
     prefix = dietary_router.prefix or ""
     if url.startswith(prefix) and len(url) > len(prefix):
         url = url[len(prefix) :]
+    # The Dietary service owns the unversioned resource namespaces (``/meal-plans``, ``/recipes``,
+    # ...); the gateway owns the versioned ``/dietary/v1`` prefix, so drop the version segment
+    # before forwarding to the service (mirrors the AI edge).
+    version_prefix = "/v1"
+    if url.startswith(version_prefix) and len(url) > len(version_prefix):
+        url = url[len(version_prefix) :]
     if request.url.query:
         url = f"{url}?{request.url.query}"
+    forward_url = f"/{url.lstrip('/')}" if url else url
     try:
         upstream = client.request(
             method=request.method,
-            url=url,
+            url=forward_url,
             headers=headers,
             content=body or None,
         )
@@ -98,7 +112,7 @@ def dietary_proxy(
     )
 
 
-identity_router = APIRouter(prefix="/identity")
+identity_router = APIRouter(prefix="/identity/v1")
 
 
 @identity_router.api_route(
@@ -106,26 +120,38 @@ identity_router = APIRouter(prefix="/identity")
     methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     include_in_schema=False,
 )
-def identity_proxy(
+async def identity_proxy(
     request: Request,
-    principal: Annotated[Principal, Depends(get_current_principal)],
-    token: Annotated[str, Depends(get_bearer_token)],
+    principal: Annotated[Principal | None, Depends(optional_current_principal)],
     client: Annotated[httpx.Client, Depends(get_identity_client)],
 ) -> Response:
-    """Relay a verified caller to the Identity service on the same bearer token (IDN-802)."""
-    _ = principal  # JWT validity is enforced by the dependency above; relayed via the token.
-    headers = {"Authorization": f"Bearer {token}"}
-    body = request.body()
-    if request.method in {"POST", "PUT", "PATCH"} and body:
-        content_type = request.headers.get("content-type")
-        if content_type:
-            headers["Content-Type"] = content_type
+    """Relay a verified caller to the Identity service on the same bearer token (IDN-802).
+
+    The auth endpoints (``/auth/*``) are public: a caller reaches them before any token exists, so
+    an anonymous principal is allowed through and the bearer token is forwarded as-is when
+    present. Every other identity path requires a verified caller.
+    """
     url = request.url.path
     prefix = identity_router.prefix or ""
     if url.startswith(prefix) and len(url) > len(prefix):
         url = url[len(prefix) :]
     if request.url.query:
         url = f"{url}?{request.url.query}"
+    token = request.headers.get("Authorization")
+    headers: dict[str, str] = {}
+    if token:
+        headers["Authorization"] = token
+    body = await request.body()
+    if request.method in {"POST", "PUT", "PATCH"} and body:
+        content_type = request.headers.get("content-type")
+        if content_type:
+            headers["Content-Type"] = content_type
+    if principal is None and not url.startswith("/auth"):
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         upstream = client.request(
             method=request.method,
@@ -155,7 +181,7 @@ def identity_proxy(
     )
 
 
-ai_router = APIRouter(prefix="/ai")
+ai_router = APIRouter(prefix="/ai/v1")
 
 
 @ai_router.api_route(
@@ -163,7 +189,7 @@ ai_router = APIRouter(prefix="/ai")
     methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     include_in_schema=False,
 )
-def ai_proxy(
+async def ai_proxy(
     request: Request,
     principal: Annotated[Principal, Depends(get_current_principal)],
     token: Annotated[str, Depends(get_bearer_token)],
@@ -175,7 +201,7 @@ def ai_proxy(
         raise HTTPException(status_code=429, detail="AI rate limit exceeded")
     _ = principal  # JWT validity is enforced by the dependency above; relayed via the token.
     headers = {"Authorization": f"Bearer {token}"}
-    body = request.body()
+    body = await request.body()
     if request.method in {"POST", "PUT", "PATCH"} and body:
         content_type = request.headers.get("content-type")
         if content_type:
@@ -183,15 +209,84 @@ def ai_proxy(
     url = request.url.path
     if request.url.query:
         url = f"{url}?{request.url.query}"
+    # The AI service owns the ``/ai/<operation>`` namespace; the gateway owns the versioned
+    # ``/ai/v1`` prefix, so drop the version segment before forwarding to the service.
+    if url.startswith(ai_router.prefix or "") and len(url) > len(ai_router.prefix or ""):
+        url = url[len(ai_router.prefix) :]
+    forward_url = f"/ai/{url.lstrip('/')}" if url else url
     try:
         upstream = client.request(
             method=request.method,
-            url=url,
+            url=forward_url,
             headers=headers,
             content=body or None,
         )
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail="AI service unavailable") from exc
+    response_headers = {
+        key: value
+        for key, value in upstream.headers.items()
+        if key.lower()
+        not in {
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailer",
+            "transfer-encoding",
+            "upgrade",
+        }
+    }
+    return Response(
+        content=upstream.content, status_code=upstream.status_code, headers=response_headers
+    )
+
+
+notifications_router = APIRouter(prefix="/notifications/v1")
+
+
+@notifications_router.api_route(
+    "/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    include_in_schema=False,
+)
+async def notifications_proxy(
+    request: Request,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    token: Annotated[str, Depends(get_bearer_token)],
+    client: Annotated[httpx.Client, Depends(get_notification_client)],
+) -> Response:
+    """Relay a verified caller to the Notification service on the same bearer token (NTF-802).
+
+    The Notification service owns the unversioned ``/notifications`` resource namespaces (feed,
+    unread badge, per-notification read, preferences, push-device registration); the gateway owns
+    the versioned ``/notifications/v1`` prefix, so the version segment is dropped before
+    forwarding -- exactly like the AI and Dietary edges.
+    """
+    _ = principal  # JWT validity is enforced by the dependency above; relayed via the token.
+    headers = {"Authorization": f"Bearer {token}"}
+    body = await request.body()
+    if request.method in {"POST", "PUT", "PATCH"} and body:
+        content_type = request.headers.get("content-type")
+        if content_type:
+            headers["Content-Type"] = content_type
+    url = request.url.path
+    prefix = notifications_router.prefix or ""
+    if url.startswith(prefix) and len(url) > len(prefix):
+        url = url[len(prefix) :]
+    if request.url.query:
+        url = f"{url}?{request.url.query}"
+    forward_url = f"/{url.lstrip('/')}" if url else url
+    try:
+        upstream = client.request(
+            method=request.method,
+            url=forward_url,
+            headers=headers,
+            content=body or None,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Notification service unavailable") from exc
     response_headers = {
         key: value
         for key, value in upstream.headers.items()

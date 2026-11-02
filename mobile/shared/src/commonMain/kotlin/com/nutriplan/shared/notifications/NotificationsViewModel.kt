@@ -112,7 +112,7 @@ class NotificationsViewModel(
     private suspend fun fetch() {
         try {
             val notifications = repository.getNotifications()
-            val unread = repository.getUnreadCount().count
+            val unread = repository.getUnreadCount().unreadCount
             _state.update {
                 it.copy(
                     notifications = notifications,

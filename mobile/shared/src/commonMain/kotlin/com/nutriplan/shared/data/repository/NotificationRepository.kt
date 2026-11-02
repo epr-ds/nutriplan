@@ -2,6 +2,7 @@ package com.nutriplan.shared.data.repository
 
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.model.Notification
+import com.nutriplan.shared.data.model.NotificationPage
 import com.nutriplan.shared.data.model.NotificationPreferences
 import com.nutriplan.shared.data.model.RegisterDevice
 import com.nutriplan.shared.data.model.RegisteredDevice
@@ -65,7 +66,9 @@ class NotificationRepositoryImpl : NotificationRepository {
     override suspend fun getNotifications(): List<Notification> {
         return withContext(Dispatchers.IO) {
             val response = client.get("${ApiConfig.NOTIFICATION}/notifications")
-            handleListResponse(response)
+            // The feed endpoint answers with a page envelope ({items, unreadCount, ...); the
+            // client lists the items (NTF-602 contract).
+            return@withContext response.body<NotificationPage>().items
         }
     }
 

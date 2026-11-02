@@ -25,6 +25,7 @@ from app.api.deps import (
     get_ai_rate_limiter,
     get_dietary_client,
     get_identity_client,
+    get_notification_client,
     get_payment_method_service,
     get_token_verifier,
 )
@@ -155,6 +156,19 @@ class FakeDietaryClient:
         return httpx.Response(200, json={"ok": True})
 
 
+class FakeNotificationClient:
+    """Minimal httpx.Client stand-in recording forwarded calls (NTF-802)."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def request(self, method: str, url: str, **kwargs: Any) -> Any:
+        self.calls.append(
+            {"method": method, "url": url, "headers": dict(kwargs.get("headers") or {})}
+        )
+        return httpx.Response(200, json={"ok": True})
+
+
 def test_gateway_dietary_proxies_to_dietary_service(client) -> None:
     """DPL-802: the edge relays the verified caller to the Dietary service via bearer token."""
     api_client, _repo = client
@@ -172,10 +186,53 @@ def test_gateway_dietary_proxies_to_dietary_service(client) -> None:
         app.dependency_overrides.pop(get_dietary_client, None)
 
 
-def test_gateway_identity_requires_authentication(client) -> None:
-    """IDN-802: the ``/identity`` gateway edge answers unauthenticated callers with 401."""
+def test_gateway_dietary_proxies_versioned_meal_plans_path(client) -> None:
+    """DPL-802: the versioned ``/dietary/v1`` edge maps onto the unversioned Dietary path."""
     api_client, _repo = client
-    response = api_client.post("/identity/auth/login", json={"email": "a@b.com", "password": "x"})
+    fake = FakeDietaryClient()
+    app.dependency_overrides[get_dietary_client] = lambda: fake
+    try:
+        response = api_client.get("/dietary/v1/meal-plans", headers=_auth())
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert len(fake.calls) == 1
+        assert fake.calls[0]["method"] == "GET"
+        assert fake.calls[0]["url"] == "/meal-plans"
+        assert fake.calls[0]["headers"]["Authorization"] == f"Bearer {GOOD_TOKEN}"
+    finally:
+        app.dependency_overrides.pop(get_dietary_client, None)
+
+
+def test_gateway_notifications_require_authentication(client) -> None:
+    """NTF-802: the ``/notifications/v1`` gateway edge answers unauthenticated callers with 401."""
+    api_client, _repo = client
+    response = api_client.get("/notifications/v1/notifications")
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
+
+
+def test_gateway_notifications_proxies_to_notification_service(client) -> None:
+    """NTF-802: the versioned ``/notifications/v1`` edge maps onto the unversioned feed path."""
+    api_client, _repo = client
+    fake = FakeNotificationClient()
+    app.dependency_overrides[get_notification_client] = lambda: fake
+    try:
+        response = api_client.get("/notifications/v1/notifications", headers=_auth())
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert len(fake.calls) == 1
+        assert fake.calls[0]["method"] == "GET"
+        assert fake.calls[0]["url"] == "/notifications"
+        assert fake.calls[0]["headers"]["Authorization"] == f"Bearer {GOOD_TOKEN}"
+    finally:
+        app.dependency_overrides.pop(get_notification_client, None)
+
+
+def test_gateway_identity_requires_authentication(client) -> None:
+    """IDN-802: the ``/identity/v1`` gateway edge answers unauthenticated callers with 401."""
+    api_client, _repo = client
+    response = api_client.get("/identity/v1/users/me")
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
@@ -201,7 +258,7 @@ def test_gateway_identity_proxies_to_identity_service(client) -> None:
     app.dependency_overrides[get_identity_client] = lambda: fake
     try:
         response = api_client.post(
-            "/identity/auth/login", json={"email": "a@b.com", "password": "x"}, headers=_auth()
+            "/identity/v1/auth/login", json={"email": "a@b.com", "password": "x"}, headers=_auth()
         )
         assert response.status_code == 200
         assert response.json() == {"ok": True}
@@ -219,7 +276,7 @@ def test_gateway_identity_proxies_to_identity_service(client) -> None:
 def test_gateway_ai_requires_authentication(client) -> None:
     """AIA-804: the ``/ai`` gateway edge answers unauthenticated callers with 401."""
     api_client, _repo = client
-    response = api_client.get("/ai/optimize-plan")
+    response = api_client.get("/ai/v1/optimize-plan")
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.headers["content-type"].split(";")[0].strip() == PROBLEM_JSON
@@ -245,7 +302,7 @@ def test_gateway_ai_proxies_to_ai_service(client) -> None:
     app.dependency_overrides[get_ai_client] = lambda: fake
     try:
         response = api_client.post(
-            "/ai/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+            "/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
         )
         assert response.status_code == 200
         assert response.json() == {"ok": True}
@@ -276,8 +333,12 @@ def test_gateway_ai_rate_limits_per_user(client) -> None:
     app.dependency_overrides[get_ai_client] = lambda: fake
     app.dependency_overrides[get_ai_rate_limiter] = lambda: limiter
     try:
-        first = api_client.post("/ai/optimize-plan", json={"goal": "lower sugar"}, headers=_auth())
-        second = api_client.post("/ai/optimize-plan", json={"goal": "lower sugar"}, headers=_auth())
+        first = api_client.post(
+            "/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+        )
+        second = api_client.post(
+            "/ai/v1/optimize-plan", json={"goal": "lower sugar"}, headers=_auth()
+        )
         assert first.status_code == 200
         assert second.status_code == 429
     finally:

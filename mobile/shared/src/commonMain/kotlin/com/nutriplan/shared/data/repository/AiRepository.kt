@@ -48,17 +48,17 @@ class AiRepositoryImpl : AiRepository {
 
     override suspend fun recommendations(request: AiRecommendationRequest): AiRecommendations =
         withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/ai/recommendations") { setBody(request) }.readOrThrow()
+            client.post("${ApiConfig.AI}/recommendations") { setBody(request) }.readOrThrow()
         }
 
     override suspend fun analyzeMeal(request: AnalyzeMealRequest): MealAnalysis =
         withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/ai/analyze-meal") { setBody(request) }.readOrThrow()
+            client.post("${ApiConfig.AI}/analyze-meal") { setBody(request) }.readOrThrow()
         }
 
     override suspend fun optimizePlan(request: OptimizePlanRequest): MealPlan =
         withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/ai/optimize-plan") { setBody(request) }.readOrThrow()
+            client.post("${ApiConfig.AI}/optimize-plan") { setBody(request) }.readOrThrow()
         }
 
     /**

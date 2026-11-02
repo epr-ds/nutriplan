@@ -43,6 +43,7 @@ def build_provider(settings: Settings | None = None) -> LLMProvider:
     return provider_cls(
         api_key=settings.llm_api_key,
         model=settings.llm_model,
+        base_url=settings.llm_base_url,
         timeout=settings.llm_timeout_seconds,
     )
 

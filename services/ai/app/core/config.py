@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     llm_api_key: str = ""
     llm_model: str = "gpt-4o-mini"
+    llm_base_url: str = "https://api.openai.com/v1"
     llm_timeout_seconds: float = 30.0
     llm_max_retries: int = 2
 
@@ -48,8 +49,8 @@ class Settings(BaseSettings):
     # Identity / JWT verification (AIA-804). The AI service verifies access tokens against
     # Identity's JWKS endpoint; these values must match what other resource servers use.
     identity_jwks_url: str = ""
-    jwt_issuer: str = "nutriplan"
-    jwt_audience: str = "nutriplan-api"
+    jwt_issuer: str = "nutriplan-identity"
+    jwt_audience: str = "nutriplan"
 
     # Edge hardening (AIA-804). The gateway applies the same policies at the edge; enforcing
     # them here too keeps a misrouted request from spending LLM tokens. The limit is per

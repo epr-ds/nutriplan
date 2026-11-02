@@ -2,6 +2,7 @@ package com.nutriplan.android.push
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.nutriplan.shared.data.repository.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,12 @@ class PushRegistrationManager(
      * delivered on a background scope because the listener is not suspend.
      */
     fun registerCurrentToken() {
-        val tokenTask = FirebaseMessaging.getInstance().getToken()
+        // The token fetch runs on the post-login/registration success path, which must never be
+        // taken down by a push failure (NTF-505). Without Firebase configured (e.g. no
+        // google-services.json in this build flavor) the task cannot be created and fails; swallow
+        // it the same way a token fetch failure is swallowed, instead of crashing the app.
+        val tokenTask: Task<String>? = runCatching { FirebaseMessaging.getInstance().getToken() }.getOrNull()
+        if (tokenTask == null) return
         tokenTask.addOnSuccessListener { token ->
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { register(token) }
         }

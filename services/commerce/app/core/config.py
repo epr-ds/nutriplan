@@ -49,8 +49,13 @@ class Settings(BaseSettings):
 
     # AI gateway (AIA-804). The AI service is reached through the same gateway edge pattern:
     # the edge verifies the caller JWT (JWKS) and relays on the same bearer token.
-    ai_base_url: str = "http://ai:8084"
+    ai_base_url: str = "http://ai:8000"
     http_timeout_seconds: float = 5.0
+
+    # Notification gateway edge (NTF-802). The feed / unread badge / read / preferences /
+    # push-device surface lives behind the same gateway pattern as the other edges, so the
+    # versioned ``/notifications/v1`` prefix is stripped before forwarding to the service.
+    notification_base_url: str = "http://notification:8084"
 
     # Pricing engine (COM-103). Dietary carries no prices, so items are priced here by a per-serving
     # rate keyed on meal type (with a default fallback for unknown types). Amounts are MXN.

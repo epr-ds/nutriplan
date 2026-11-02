@@ -59,7 +59,7 @@ class AiConsumerContractTest {
     fun `a minimal recommendation request conforms and the reply is read in full`() = runTest {
         val result = ai.recommendations(AiRecommendationRequest(context = "meal_plan"))
 
-        assertEquals(listOf("POST /ai/recommendations"), mock.calls)
+        assertEquals(listOf("POST /recommendations"), mock.calls)
         val recipe = result.recommendations.single()
         assertEquals("Lentil Soup", recipe.name)
         assertEquals(20, recipe.cookTime)
@@ -170,7 +170,7 @@ class AiConsumerContractTest {
 
     @Test
     fun `an old field name is a violation`() = runTest {
-        HttpClientProvider.client.post("${AiContract.clientPrefix}/ai/analyze-meal") {
+        HttpClientProvider.client.post("${AiContract.clientPrefix}/analyze-meal") {
             contentType(ContentType.Application.Json)
             setBody("""{"mealDescription":"Soup"}""")
         }
@@ -181,7 +181,7 @@ class AiConsumerContractTest {
 
     @Test
     fun `a value outside an enum is a violation`() = runTest {
-        HttpClientProvider.client.post("${AiContract.clientPrefix}/ai/optimize-plan") {
+        HttpClientProvider.client.post("${AiContract.clientPrefix}/optimize-plan") {
             contentType(ContentType.Application.Json)
             setBody("""{"planId":"p1","goal":"lose_weight"}""")
         }
@@ -191,7 +191,7 @@ class AiConsumerContractTest {
 
     @Test
     fun `a field sent as null instead of left out is a violation`() = runTest {
-        HttpClientProvider.client.post("${AiContract.clientPrefix}/ai/recommendations") {
+        HttpClientProvider.client.post("${AiContract.clientPrefix}/recommendations") {
             contentType(ContentType.Application.Json)
             setBody("""{"context":"meal_plan","mealType":null}""")
         }
@@ -201,7 +201,7 @@ class AiConsumerContractTest {
 
     @Test
     fun `an undocumented nested preference is a violation`() = runTest {
-        HttpClientProvider.client.post("${AiContract.clientPrefix}/ai/recommendations") {
+        HttpClientProvider.client.post("${AiContract.clientPrefix}/recommendations") {
             contentType(ContentType.Application.Json)
             setBody("""{"context":"meal_plan","dietaryPreferences":{"appetiteSatisfactionLevel":3}}""")
         }
@@ -212,7 +212,7 @@ class AiConsumerContractTest {
     @Test
     fun `every documented operation is exercised by this suite`() {
         assertEquals(
-            setOf("POST /ai/recommendations", "POST /ai/analyze-meal", "POST /ai/optimize-plan"),
+            setOf("POST /recommendations", "POST /analyze-meal", "POST /optimize-plan"),
             AiContract.operations.map { "${it.method} ${it.path}" }.toSet(),
         )
     }

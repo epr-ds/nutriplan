@@ -60,7 +60,7 @@ class AiRepositoryContractTest {
         val result = repository.recommendations(AiRecommendationRequest(context = "single_meal", mealType = "dinner"))
 
         assertEquals(HttpMethod.Post, lastRequest!!.method)
-        assertEquals("/ai/v1/ai/recommendations", lastRequest!!.url.encodedPath)
+        assertEquals("/ai/v1/recommendations", lastRequest!!.url.encodedPath)
         assertEquals("""{"context":"single_meal","mealType":"dinner","language":"es"}""", requestBody())
         assertEquals("Soup", result.recommendations.single().name)
         assertEquals("Not medical advice.", result.disclaimer)
@@ -75,7 +75,7 @@ class AiRepositoryContractTest {
 
         val analysis = repository.analyzeMeal(AnalyzeMealRequest("Chicken with rice"))
 
-        assertEquals("/ai/v1/ai/analyze-meal", lastRequest!!.url.encodedPath)
+        assertEquals("/ai/v1/analyze-meal", lastRequest!!.url.encodedPath)
         assertEquals("""{"description":"Chicken with rice"}""", requestBody())
         assertEquals(540, analysis.nutritionalInfo?.calories)
         assertEquals(listOf("High sodium"), analysis.warnings)
@@ -90,7 +90,7 @@ class AiRepositoryContractTest {
 
         val plan = repository.optimizePlan(OptimizePlanRequest("p1", goal = "reduce_calories"))
 
-        assertEquals("/ai/v1/ai/optimize-plan", lastRequest!!.url.encodedPath)
+        assertEquals("/ai/v1/optimize-plan", lastRequest!!.url.encodedPath)
         assertEquals("""{"planId":"p1","goal":"reduce_calories"}""", requestBody())
         assertEquals("draft", plan.status)
     }

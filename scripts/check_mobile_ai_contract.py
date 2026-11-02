@@ -43,6 +43,15 @@ SHARED_MODEL_FILES = [MODELS_DIR / "MealPlanModels.kt", MODELS_DIR / "RecipeMode
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
 EXCLUDED_PATH_PREFIXES = ("/health",)
+# The AI document lists service-absolute paths (``/ai/recommendations``) while the client
+# addresses the versioned gateway (``/ai/v1/recommendations``); compare on the service-relative
+# form so the spec and the mock agree on the operation a client call must hit.
+SERVICE_ROUTE_PREFIX = "/ai/"
+
+
+def _service_relative(path: str) -> str:
+    stripped = path[len(SERVICE_ROUTE_PREFIX):] if path.startswith(SERVICE_ROUTE_PREFIX) else path
+    return stripped.strip("/")
 
 # Classes the client sends: exactly the schema's properties.
 REQUEST_CLASSES: dict[str, str] = {
@@ -93,7 +102,7 @@ def load_spec() -> tuple[dict, dict[str, dict]]:
             if success:
                 content = op["responses"][success[0]].get("content", {}).get("application/json", {})
                 response = _ref_name(content.get("schema"))
-            operations[(method.upper(), path)] = {
+            operations[(method.upper(), _service_relative(path))] = {
                 "request": _ref_name(body.get("schema")),
                 "response": response,
                 "status": int(success[0]) if success else 0,
@@ -137,7 +146,7 @@ def load_contract_spec() -> tuple[dict, dict[str, dict]]:
             continue  # the data class declaration itself
         method, path = re.findall(r'"([^"]*)"', block)[:2]
         request, response = _named(block, "request"), _named(block, "response")
-        operations[(method, path)] = {
+        operations[(method, _service_relative(path))] = {
             "request": request.strip('"') if request and request != "null" else None,
             "response": response.strip('"') if response and response != "null" else None,
             "status": int(_named(block, "status") or 0),
