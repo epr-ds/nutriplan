@@ -25,6 +25,8 @@ import com.nutriplan.shared.data.repository.CommerceRepositoryImpl
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.data.repository.IdentityRepositoryImpl
 import com.nutriplan.shared.data.repository.InMemoryAuthRepository
+import com.nutriplan.shared.data.repository.NotificationRepositoryImpl
+import com.nutriplan.shared.notifications.NotificationsViewModel
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -34,6 +36,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -248,6 +251,41 @@ class FullJourneyBackendIntegrationTest {
 
         assertEquals(409, failure.statusCode)
         assertEquals(ApiFailure.CONFLICT, failure.toApiFailure())
+    }
+
+    @Test
+    fun `the notification flow reads the meal plan ready notification after the ai meal plan journey`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+
+        // AI recommendation → meal plan add: the events that produce the meal-plan-ready notification.
+        val outcome = advisor.recommend(preferences = DIETARY_PREFERENCES, mealType = "dinner")
+        val picked = (outcome as AiResult.Success<AiRecommendations>).value.recommendations.single()
+        val plan = dietaryRepository.createMealPlan(
+            CreateMealPlanRequest(
+                name = "Week 48",
+                startDate = "2026-11-16",
+                endDate = "2026-11-22",
+                dailyCalorieTarget = 2000,
+            ),
+        )
+        val added = dietaryRepository.addMeal(planId = plan.id, request = AddMealRequest(mealType = "dinner", recipeId = picked.id, servings = 2.0))
+        assertEquals(picked.id, added.recipe?.id)
+
+        // The notification flow picks the meal-plan-ready notification up and marks it read.
+        val notifications = NotificationsViewModel(NotificationRepositoryImpl())
+        notifications.load()
+        val state = notifications.state.value
+        assertNull(state.error, "the notification feed should load without error: ${state.error}")
+        assertEquals(1, state.notifications.size)
+        assertEquals("Meal plan ready", state.notifications.single().title)
+        assertEquals(false, state.notifications.single().isRead)
+        assertEquals(1, state.unreadCount)
+
+        notifications.markAsRead("notif-meal-plan-ready")
+
+        val readState = notifications.state.value
+        assertEquals(true, readState.notifications.single().isRead)
+        assertEquals(0, readState.unreadCount)
     }
 
     @Test
