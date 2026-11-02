@@ -30,7 +30,8 @@ class NotificationsBackendIntegrationTest {
     @BeforeTest
     fun setUp() {
         server.start()
-        ApiConfig.configure(ApiEnvironment.LOCAL, baseUrl = server.baseUrl)
+        ApiConfig.configure(ApiEnvironment.LOCAL)
+        ApiConfig.useBaseUrl(server.baseUrl)
         authRepository.updateTokens(STUB_TOKEN, "integration-test-refresh-token")
         HttpClientProvider.create(OkHttp, authRepository = authRepository)
         viewModel = NotificationsViewModel(NotificationRepositoryImpl())
