@@ -38,6 +38,18 @@ internal class StubBackendServer {
         server.stop(0)
     }
 
+    /**
+     * Makes the next backend request answer with the given failure instead of the usual response,
+     * so integration tests can exercise the failure paths of the journey (AI server error, commerce
+     * service error, ...).
+     */
+    fun failNext(status: Int, body: String) {
+        nextFailure = Response(status, body)
+    }
+
+    @Volatile
+    private var nextFailure: Response? = null
+
     private fun handle(exchange: HttpExchange) {
         val method = exchange.requestMethod
         val path = exchange.requestURI.path
@@ -45,7 +57,10 @@ internal class StubBackendServer {
         val body = runCatching { exchange.requestBody.readAllBytes().toString(Charsets.UTF_8) }.getOrDefault("")
         requests += RecordedRequest(method, path, authorization, body)
 
-        val response = if (authorization != "Bearer $expectedToken") {
+        val failure = nextFailure
+        val response = if (failure != null) {
+            failure
+        } else if (authorization != "Bearer $expectedToken") {
             Response(401, UNAUTHORIZED_RESPONSE)
         } else if (method == "POST" && path == "/ai/v1/recommendations") {
             Response(200, AI_RECOMMENDATIONS_RESPONSE)
