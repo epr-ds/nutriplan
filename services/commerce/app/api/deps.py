@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 import uuid
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Optional
 
 import httpx
 import jwt
@@ -114,6 +114,24 @@ def get_current_principal(
         ) from exc
 
 
+async def optional_current_principal(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
+) -> Optional[Principal]:
+    """Verified principal, or ``None`` for anonymous callers.
+
+    Anonymous access is reserved for the public auth endpoints (register/login/refresh/logout/
+    OAuth) that a caller reaches before any token exists. Authenticated surfaces keep requiring a
+    verified caller via [get_current_principal].
+    """
+    if credentials is None:
+        return None
+    try:
+        return verifier.verify(credentials.credentials)
+    except InvalidTokenError:
+        return None
+
+
 def get_bearer_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> str:
@@ -163,6 +181,14 @@ def get_identity_client() -> httpx.Client:
     """Provide the HTTP client the ``/identity`` gateway edge uses to relay to Identity."""
     return httpx.Client(
         base_url=settings.identity_base_url,
+        timeout=settings.http_timeout_seconds,
+    )
+
+
+def get_notification_client() -> httpx.Client:
+    """Provide the HTTP client the ``/notifications`` gateway edge uses to relay to Notification."""
+    return httpx.Client(
+        base_url=settings.notification_base_url,
         timeout=settings.http_timeout_seconds,
     )
 

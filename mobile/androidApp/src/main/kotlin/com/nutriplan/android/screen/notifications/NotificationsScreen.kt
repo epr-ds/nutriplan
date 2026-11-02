@@ -368,7 +368,7 @@ private fun NotificationCard(
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = notification.title,
+                text = notification.title ?: "",
                 style = MaterialTheme.typography.titleMedium,
                 color = if (notification.isRead) {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -380,7 +380,7 @@ private fun NotificationCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = notification.body,
+                text = notification.body ?: "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

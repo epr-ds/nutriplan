@@ -47,7 +47,7 @@ class FakeAiAdvisor(private val proposals: List<FakeDietaryBackend.CatalogRecipe
         recipeJson: (FakeDietaryBackend.CatalogRecipe) -> JsonElement,
     ): HttpResponseData {
         val path = request.url.encodedPath.removePrefix(PREFIX)
-        if (request.method.value != "POST" || path != "/ai/recommendations") {
+        if (request.method.value != "POST" || path != "/recommendations") {
             return respond(PROBLEM_404, HttpStatusCode.NotFound, jsonHeaders)
         }
         val body = json.parseToJsonElement((request.body as TextContent).text).jsonObject

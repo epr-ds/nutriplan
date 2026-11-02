@@ -1,25 +1,39 @@
 package com.nutriplan.shared.data.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
-/** Notification entity. */
+/** Notification entity as served by the Notification service feed page (NTF-602). */
 @Serializable
 data class Notification(
     val id: String,
-    val userId: String,
-    val title: String,
-    val body: String,
-    val type: String,
+    val userId: String? = null,
+    val title: String? = null,
+    val body: String? = null,
+    val type: String? = null,
     val data: Map<String, String>? = null,
-    val isRead: Boolean,
-    val readAt: String? = null,
+    val payload: Map<String, JsonElement>? = null,
+    val channels: List<String>? = null,
+    val status: String? = null,
     val createdAt: String? = null,
+    val readAt: String? = null,
+    val isRead: Boolean = false,
 )
 
-/** Unread count response. */
+/** Unread count response from ``GET /notifications/unread-count``. */
 @Serializable
 data class UnreadCountResponse(
-    val count: Int,
+    val unreadCount: Int = 0,
+)
+
+/** One page of the notification feed, as served by ``GET /notifications`` (NTF-602). */
+@Serializable
+data class NotificationPage(
+    val items: List<Notification>,
+    val page: Int? = null,
+    val limit: Int? = null,
+    val unreadCount: Int? = null,
+    val hasMore: Boolean? = null,
 )
 
 /** Notification preferences. */

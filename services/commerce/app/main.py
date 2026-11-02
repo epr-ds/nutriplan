@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
-from app.api.gateway import ai_router, dietary_router, identity_router
+from app.api.gateway import ai_router, dietary_router, identity_router, notifications_router
 from app.api.gateway import router as gateway_router
 from app.api.health import router as health_router
 from app.api.metrics import router as metrics_router
@@ -33,6 +33,7 @@ app.include_router(gateway_router)
 app.include_router(dietary_router)
 app.include_router(identity_router)
 app.include_router(ai_router)
+app.include_router(notifications_router)
 app.include_router(webhooks_router)
 
 

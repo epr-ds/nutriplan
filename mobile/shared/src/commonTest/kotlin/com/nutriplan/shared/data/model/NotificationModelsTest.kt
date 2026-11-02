@@ -28,7 +28,7 @@ class NotificationModelsTest {
 
     @Test
     fun `UnreadCountResponse creates correctly`() {
-        assertEquals(5, UnreadCountResponse(count = 5).count)
+        assertEquals(5, UnreadCountResponse(unreadCount = 5).unreadCount)
     }
 
     @Test

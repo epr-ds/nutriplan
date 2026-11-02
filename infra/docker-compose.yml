@@ -75,8 +75,14 @@ services:
       target: runtime
     environment:
       AI_ENVIRONMENT: development
-      AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
+      AI_LLM_API_KEY: ${AI_LLM_API_KEY:-ollama-local}
+      AI_LLM_MODEL: ${AI_LLM_MODEL:-flint:40b}
+      AI_LLM_BASE_URL: ${AI_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      AI_LLM_TIMEOUT_SECONDS: ${AI_LLM_TIMEOUT_SECONDS:-120}
       AI_REDIS_URL: ${AI_REDIS_URL:-redis://redis:6379/0}
+      AI_IDENTITY_JWKS_URL: ${AI_IDENTITY_JWKS_URL:-http://identity:8081/.well-known/jwks.json}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     depends_on:
