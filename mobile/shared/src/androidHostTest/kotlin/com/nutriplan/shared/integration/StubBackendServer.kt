@@ -78,6 +78,13 @@ internal class StubBackendServer {
             Response(201, AUTH_RESPONSE)
         } else if (method == "POST" && path == "/identity/v1/auth/login") {
             Response(200, AUTH_RESPONSE)
+        } else if (method == "POST" && path == "/identity/v1/auth/refresh") {
+            val refreshToken = body.substringAfter("\"refreshToken\":", "").substringBefore("\"")
+            if (refreshToken == "integration-test-refresh-token") {
+                Response(200, AUTH_RESPONSE)
+            } else {
+                Response(401, UNAUTHORIZED_RESPONSE)
+            }
         } else if (method == "PUT" && path == "/identity/v1/users/me/dietary-preferences") {
             Response(200, USER_PREFERENCES_RESPONSE)
         } else if (method == "POST" && path == "/dietary/v1/meal-plans") {
