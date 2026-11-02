@@ -1,6 +1,7 @@
 package com.nutriplan.shared.integration
 
 import com.nutriplan.shared.ai.AiAdvisor
+import com.nutriplan.shared.ai.AiError
 import com.nutriplan.shared.ai.AiResult
 import com.nutriplan.shared.data.ApiConfig
 import com.nutriplan.shared.data.ApiEnvironment
@@ -15,7 +16,10 @@ import com.nutriplan.shared.data.model.Order
 import com.nutriplan.shared.data.model.OrderAddress
 import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.model.UpdateDietaryPreferencesRequest
+import com.nutriplan.shared.data.network.ApiException
+import com.nutriplan.shared.data.network.ApiFailure
 import com.nutriplan.shared.data.network.HttpClientProvider
+import com.nutriplan.shared.data.network.toApiFailure
 import com.nutriplan.shared.data.repository.AiRepositoryImpl
 import com.nutriplan.shared.data.repository.CommerceRepositoryImpl
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
@@ -27,6 +31,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -145,12 +151,64 @@ class FullJourneyBackendIntegrationTest {
         )
     }
 
+    @Test
+    fun `the ai advisor reports a server problem when the backend answers with a server error`() = runTest {
+        // The AI backend is up but the model behind it failed: the advisor must surface a typed
+        // error instead of a crash, and the journey must halt before the plan or the order is built.
+        server.failNext(status = 500, body = SERVER_ERROR_RESPONSE)
+
+        val outcome = advisor.recommend(preferences = DIETARY_PREFERENCES, mealType = "dinner")
+        val error = assertIs<AiResult.Failure>(outcome).error
+        assertEquals(AiError.SERVER_PROBLEM, error)
+
+        val paths = server.received.map { it.path }
+        assertTrue(
+            paths.none { it.startsWith("/dietary/v1") || it.startsWith("/commerce/v1") },
+            "the journey must halt on the failed AI call, but continued with: $paths",
+        )
+    }
+
+    @Test
+    fun `the commerce order fails with a typed error when the backend answers with a service error`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNext(status = 503, body = ORDER_UNAVAILABLE_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            commerceRepository.createOrder(
+                request = CreateOrderRequest(
+                    mealPlanId = "plan-journey-1",
+                    fulfillmentType = "dark_kitchen",
+                    deliveryAddress = OrderAddress(
+                        street = "Av. Reforma 12",
+                        city = "Ciudad de Mexico",
+                        state = "CDMX",
+                        zipCode = "06600",
+                        country = "MX",
+                    ),
+                    deliveryDate = "2026-11-06",
+                    deliveryTimeSlot = "13:00-15:00",
+                ),
+            )
+        }
+
+        assertEquals(503, failure.statusCode)
+        assertEquals(ApiFailure.SERVER, failure.toApiFailure())
+    }
+
     private companion object {
         const val STUB_TOKEN = "integration-test-token"
         const val STUB_REFRESH_TOKEN = "integration-test-refresh-token"
 
         val JOURNEY_EMAIL = "journey-nutriplan@example.com"
         val JOURNEY_PASSWORD = "JourneyPass1!"
+
+        val SERVER_ERROR_RESPONSE = """
+            { "title": "Internal Server Error", "status": 500, "detail": "The AI model is temporarily unavailable." }
+        """.trimIndent()
+
+        val ORDER_UNAVAILABLE_RESPONSE = """
+            { "title": "Service Unavailable", "status": 503, "detail": "The commerce backend is temporarily unavailable." }
+        """.trimIndent()
 
         val DIETARY_PREFERENCES = DietaryPreferences(
             dietType = "vegan",
