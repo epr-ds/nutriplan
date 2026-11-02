@@ -197,6 +197,80 @@ class FullJourneyBackendIntegrationTest {
     }
 
     @Test
+    fun `the commerce order fails with a typed error when the backend answers with a not found`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNext(status = 404, body = NOT_FOUND_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            commerceRepository.createOrder(
+                request = CreateOrderRequest(
+                    mealPlanId = "plan-journey-1",
+                    fulfillmentType = "dark_kitchen",
+                    deliveryAddress = OrderAddress(
+                        street = "Av. Reforma 12",
+                        city = "Ciudad de Mexico",
+                        state = "CDMX",
+                        zipCode = "06600",
+                        country = "MX",
+                    ),
+                    deliveryDate = "2026-11-06",
+                    deliveryTimeSlot = "13:00-15:00",
+                ),
+            )
+        }
+
+        assertEquals(404, failure.statusCode)
+        assertEquals(ApiFailure.NOT_FOUND, failure.toApiFailure())
+    }
+
+    @Test
+    fun `the commerce order fails with a typed error when the backend answers with a conflict`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNext(status = 409, body = CONFLICT_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            commerceRepository.createOrder(
+                request = CreateOrderRequest(
+                    mealPlanId = "plan-journey-1",
+                    fulfillmentType = "dark_kitchen",
+                    deliveryAddress = OrderAddress(
+                        street = "Av. Reforma 12",
+                        city = "Ciudad de Mexico",
+                        state = "CDMX",
+                        zipCode = "06600",
+                        country = "MX",
+                    ),
+                    deliveryDate = "2026-11-06",
+                    deliveryTimeSlot = "13:00-15:00",
+                ),
+            )
+        }
+
+        assertEquals(409, failure.statusCode)
+        assertEquals(ApiFailure.CONFLICT, failure.toApiFailure())
+    }
+
+    @Test
+    fun `the meal plan creation fails with a typed error when the backend answers with a server error`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNext(status = 500, body = SERVER_ERROR_RESPONSE)
+
+        val failure = assertFailsWith<ApiException.HttpError> {
+            dietaryRepository.createMealPlan(
+                CreateMealPlanRequest(
+                    name = "Week 47",
+                    startDate = "2026-11-09",
+                    endDate = "2026-11-15",
+                    dailyCalorieTarget = 2000,
+                ),
+            )
+        }
+
+        assertEquals(500, failure.statusCode)
+        assertEquals(ApiFailure.SERVER, failure.toApiFailure())
+    }
+
+    @Test
     fun `a login failure keeps the user signed out`() = runTest {
         authRepository.clearTokens()
         server.failNext(status = 400, body = BAD_REQUEST_RESPONSE)
@@ -235,6 +309,10 @@ class FullJourneyBackendIntegrationTest {
 
         val BAD_REQUEST_RESPONSE = """
             { "title": "Bad Request", "status": 400, "detail": "The login credentials are invalid." }
+        """.trimIndent()
+
+        val NOT_FOUND_RESPONSE = """
+            { "title": "Not Found", "status": 404, "detail": "The resource was not found." }
         """.trimIndent()
 
         val CONFLICT_RESPONSE = """
