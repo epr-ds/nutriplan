@@ -9,11 +9,9 @@ import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.OptimizePlanRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.BearerTokenRefresher
-import com.nutriplan.shared.data.network.HttpClientFactory
+import com.nutriplan.shared.data.network.createAiClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -60,10 +58,10 @@ class AiRepositoryImpl(
 ) : AiRepository {
 
     /**
-     * AI-only HTTP client; defaults to one without the auth plugin so this edge owns its bearer
-     * tokens and its session-expiry recovery.
+     * AI-only HTTP client; defaults to a platform-specific client without the auth plugin so this
+     * edge owns its bearer tokens and its session-expiry recovery.
      */
-    private val resolvedClient: HttpClient = client ?: HttpClientFactory.create(OkHttp.create { })
+    private val resolvedClient: HttpClient = client ?: createAiClient()
 
     override suspend fun recommendations(request: AiRecommendationRequest): AiRecommendations =
         aiCall {

@@ -35,7 +35,10 @@ import com.nutriplan.shared.data.local.TokenStorage
 import com.nutriplan.shared.data.model.CreateMealPlanRequest
 import com.nutriplan.shared.data.model.DietaryPreferences
 import com.nutriplan.shared.data.model.UserProfile
+import com.nutriplan.shared.data.network.BearerTokenRefresher
 import com.nutriplan.shared.data.network.HttpClientProvider
+import com.nutriplan.shared.data.repository.AiRepository
+import com.nutriplan.shared.data.repository.AiRepositoryImpl
 import com.nutriplan.shared.data.repository.AuthRepository
 import com.nutriplan.shared.data.repository.DietaryRepositoryImpl
 import com.nutriplan.shared.di.cacheModule
@@ -149,6 +152,17 @@ class AiJourneyE2ETest {
                 module {
                     single<TokenStorage> { AiJourneyTokenStorage() }
                     single<OnboardingDraftStorage> { AiJourneyNoDraftStorage() }
+                },
+                // The AI journey runs against the in-memory fake backend: the AI repository must use
+                // the same client the fake backend was registered on.
+                module {
+                    single<AiRepository> {
+                        AiRepositoryImpl(
+                            client = HttpClientProvider.client,
+                            authRepository = get(),
+                            refresher = get<BearerTokenRefresher>(),
+                        )
+                    }
                 },
                 cacheModule(DatabaseDriverFactory(context)),
             )
