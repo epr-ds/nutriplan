@@ -71,7 +71,7 @@ class FullJourneyBackendIntegrationTest {
         identityRepository = IdentityRepositoryImpl()
         dietaryRepository = DietaryRepositoryImpl()
         commerceRepository = CommerceRepositoryImpl()
-        advisor = AiAdvisor(AiRepositoryImpl())
+        advisor = AiAdvisor(AiRepositoryImpl(authRepository = authRepository))
     }
 
     @AfterTest

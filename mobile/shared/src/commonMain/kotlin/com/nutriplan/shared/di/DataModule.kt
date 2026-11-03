@@ -16,6 +16,7 @@ import com.nutriplan.shared.data.repository.NotificationRepository
 import com.nutriplan.shared.data.repository.NotificationRepositoryImpl
 import com.nutriplan.shared.data.repository.InMemoryAuthRepository
 import com.nutriplan.shared.data.local.TokenStorage
+import com.nutriplan.shared.data.network.BearerTokenRefresher
 import org.koin.dsl.module
 
 /**
@@ -28,10 +29,12 @@ val dataModule = module {
     // (registered by the app; without one the session lives in memory only).
     single<AuthRepository> { InMemoryAuthRepository(tokenStorage = getOrNull<TokenStorage>()) }
 
+    single<BearerTokenRefresher> { BearerTokenRefresher(authRepository = get()) }
+
     // API repositories
     single<IdentityRepository> { IdentityRepositoryImpl() }
     single<DietaryRepository> { DietaryRepositoryImpl() }
-    single<AiRepository> { AiRepositoryImpl() }
+    single<AiRepository> { AiRepositoryImpl(authRepository = get(), refresher = get()) }
     // AIA-601: the AI use cases with typed results.
     factory { AiAdvisor(repository = get()) }
     // COM-502: the Commerce client, on the shared HTTP client (gateway of the active ApiConfig

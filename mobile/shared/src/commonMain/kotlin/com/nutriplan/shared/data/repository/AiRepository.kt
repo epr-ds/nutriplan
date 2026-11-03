@@ -8,12 +8,17 @@ import com.nutriplan.shared.data.model.MealAnalysis
 import com.nutriplan.shared.data.model.MealPlan
 import com.nutriplan.shared.data.model.OptimizePlanRequest
 import com.nutriplan.shared.data.network.ApiException
-import com.nutriplan.shared.data.network.HttpClientProvider
+import com.nutriplan.shared.data.network.BearerTokenRefresher
+import com.nutriplan.shared.data.network.createAiClient
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +31,10 @@ import kotlinx.serialization.SerializationException
  * meal analysis and plan optimization. Failures are thrown as [ApiException]; use
  * [com.nutriplan.shared.data.network.toApiFailure] to classify them, or [com.nutriplan.shared.ai.AiAdvisor]
  * for typed results.
+ *
+ * Session expiry (AIA-60x) is handled here, on the AI edge: a 401 makes the advisor refresh the
+ * session once and retry the same call, so a renewed token recovers the in-flight answer instead of
+ * surfacing a dead session to the user directly.
  */
 interface AiRepository {
 
@@ -42,24 +51,72 @@ interface AiRepository {
     suspend fun optimizePlan(request: OptimizePlanRequest): MealPlan
 }
 
-class AiRepositoryImpl : AiRepository {
+class AiRepositoryImpl(
+    private val client: HttpClient? = null,
+    private val authRepository: AuthRepository = AuthRepository.instance,
+    private val refresher: BearerTokenRefresher = BearerTokenRefresher(authRepository),
+) : AiRepository {
 
-    private val client = HttpClientProvider.client
+    /**
+     * AI-only HTTP client; defaults to a platform-specific client without the auth plugin so this
+     * edge owns its bearer tokens and its session-expiry recovery.
+     */
+    private val resolvedClient: HttpClient = client ?: createAiClient()
 
     override suspend fun recommendations(request: AiRecommendationRequest): AiRecommendations =
-        withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/recommendations") { setBody(request) }.readOrThrow()
+        aiCall {
+            resolvedClient.post("${ApiConfig.AI}/recommendations") {
+                setBody(request)
+                authRepository.currentAccessToken?.let { accessToken ->
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                }
+            }
         }
 
     override suspend fun analyzeMeal(request: AnalyzeMealRequest): MealAnalysis =
-        withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/analyze-meal") { setBody(request) }.readOrThrow()
+        aiCall {
+            resolvedClient.post("${ApiConfig.AI}/analyze-meal") {
+                setBody(request)
+                authRepository.currentAccessToken?.let { accessToken ->
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                }
+            }
         }
 
     override suspend fun optimizePlan(request: OptimizePlanRequest): MealPlan =
-        withContext(Dispatchers.IO) {
-            client.post("${ApiConfig.AI}/optimize-plan") { setBody(request) }.readOrThrow()
+        aiCall {
+            resolvedClient.post("${ApiConfig.AI}/optimize-plan") {
+                setBody(request)
+                authRepository.currentAccessToken?.let { accessToken ->
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                }
+            }
         }
+
+    /**
+     * Sends one AI request, refreshing and retrying once when the session answers 401. Any other
+     * failure is decoded as before.
+     */
+    private suspend inline fun <reified T> aiCall(crossinline block: suspend () -> HttpResponse): T {
+        var response = withContext(Dispatchers.IO) { block() }
+        if (response.status.isSuccess()) {
+            return response.readOrThrow()
+        }
+        val failure = ApiException.HttpError(statusCode = response.status.value, body = response.bodyAsText())
+        if (response.status.value != HttpStatusCode.Unauthorized.value) {
+            throw failure
+        }
+        // The session expired: refresh once and retry the same call with the new tokens.
+        val staleRefreshToken = authRepository.currentRefreshToken
+        if (staleRefreshToken != null) {
+            refresher.refresh(staleRefreshToken)
+        }
+        response = withContext(Dispatchers.IO) { block() }
+        if (response.status.isSuccess()) {
+            return response.readOrThrow()
+        }
+        throw ApiException.HttpError(statusCode = response.status.value, body = response.bodyAsText())
+    }
 
     /**
      * Decodes a 2xx response into [T]; anything else becomes an [ApiException.HttpError] carrying

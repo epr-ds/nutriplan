@@ -44,7 +44,7 @@ class AiConsumerContractTest {
     @BeforeTest
     fun setUp() {
         HttpClientProvider.create(mock.engine, authRepository = null)
-        ai = AiRepositoryImpl()
+        ai = AiRepositoryImpl(client = HttpClientProvider.client)
     }
 
     @AfterTest
