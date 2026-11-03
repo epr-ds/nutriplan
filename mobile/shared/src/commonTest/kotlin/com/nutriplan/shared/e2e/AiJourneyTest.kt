@@ -78,7 +78,7 @@ class AiJourneyTest {
     ).id
 
     private fun recommendations(preferences: DietaryPreferences?) =
-        AiRecommendationsViewModel(AiAdvisor(AiRepositoryImpl()), preferences = { preferences })
+        AiRecommendationsViewModel(AiAdvisor(AiRepositoryImpl(client = HttpClientProvider.client)), preferences = { preferences })
 
     @Test
     fun recommend_add_to_a_plan_and_the_meal_respects_the_allergies_and_the_target() = runTest {

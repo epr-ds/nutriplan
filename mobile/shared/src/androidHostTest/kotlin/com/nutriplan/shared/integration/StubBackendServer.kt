@@ -20,6 +20,13 @@ internal class StubBackendServer {
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 8)
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
     private val expectedToken = "integration-test-token"
+    @Volatile
+    private var currentAccessToken: String = expectedToken
+    @Volatile
+    private var currentRefreshToken: String = "integration-test-refresh-token"
+    @Volatile
+    private var refreshCount = 0
+    private val nextFailureByPath = LinkedHashMap<String, Response>()
 
     fun start() {
         server.createContext("/", HttpHandler { exchange -> handle(exchange) })
@@ -47,6 +54,14 @@ internal class StubBackendServer {
         nextFailure = Response(status, body)
     }
 
+    /**
+     * Makes the next backend request to [path] answer with the given failure instead of the usual
+     * response, so integration tests can target a specific endpoint while other calls keep flowing.
+     */
+    fun failNextFor(path: String, status: Int, body: String) {
+        nextFailureByPath[path] = Response(status, body)
+    }
+
     @Volatile
     private var nextFailure: Response? = null
 
@@ -57,10 +72,13 @@ internal class StubBackendServer {
         val body = runCatching { exchange.requestBody.readAllBytes().toString(Charsets.UTF_8) }.getOrDefault("")
         requests += RecordedRequest(method, path, authorization, body)
 
-        val failure = nextFailure
+        val failure = nextFailureByPath.remove(path) ?: nextFailure
+        if (failure != null) {
+            nextFailure = null
+        }
         val response = if (failure != null) {
             failure
-        } else if (authorization != "Bearer $expectedToken") {
+        } else if (authorization != "Bearer $currentAccessToken") {
             Response(401, UNAUTHORIZED_RESPONSE)
         } else if (method == "POST" && path == "/ai/v1/recommendations") {
             Response(200, AI_RECOMMENDATIONS_RESPONSE)
@@ -79,9 +97,12 @@ internal class StubBackendServer {
         } else if (method == "POST" && path == "/identity/v1/auth/login") {
             Response(200, AUTH_RESPONSE)
         } else if (method == "POST" && path == "/identity/v1/auth/refresh") {
-            val refreshToken = body.substringAfter("\"refreshToken\":", "").substringBefore("\"")
-            if (refreshToken == "integration-test-refresh-token") {
-                Response(200, AUTH_RESPONSE)
+            val refreshToken = body.substringAfter("\"refreshToken\":\"", "").substringBefore("\"")
+            if (refreshToken == currentRefreshToken) {
+                refreshCount += 1
+                currentAccessToken = "rotated-access-token-$refreshCount"
+                currentRefreshToken = "rotated-refresh-token-$refreshCount"
+                Response(200, AUTH_RESPONSE.replace("integration-test-token", currentAccessToken).replace("integration-test-refresh-token", currentRefreshToken))
             } else {
                 Response(401, UNAUTHORIZED_RESPONSE)
             }

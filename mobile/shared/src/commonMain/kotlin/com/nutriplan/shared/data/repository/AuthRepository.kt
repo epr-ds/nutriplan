@@ -9,8 +9,10 @@ import com.nutriplan.shared.data.model.RegisterRequest
 import com.nutriplan.shared.data.network.ApiException
 import com.nutriplan.shared.data.network.HttpClientProvider
 import io.ktor.client.call.body
+import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -115,6 +117,7 @@ class InMemoryAuthRepository(
             val client = HttpClientProvider.client
             val response = client.post("/identity/v1/auth/register") {
                 setBody(request)
+                attributes.put(Auth.AuthCircuitBreaker, Unit)
             }
             if (response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK) {
                 response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
@@ -132,6 +135,7 @@ class InMemoryAuthRepository(
             val client = HttpClientProvider.client
             val response = client.post("/identity/v1/auth/login") {
                 setBody(request)
+                attributes.put(Auth.AuthCircuitBreaker, Unit)
             }
             if (response.status == HttpStatusCode.OK) {
                 response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
@@ -149,6 +153,7 @@ class InMemoryAuthRepository(
             val client = HttpClientProvider.client
             val response = client.post("/identity/v1/auth/oauth/$provider") {
                 setBody(request)
+                attributes.put(Auth.AuthCircuitBreaker, Unit)
             }
             if (response.status == HttpStatusCode.OK) {
                 response.body<AuthResponse>().also { updateTokens(it.accessToken, it.refreshToken) }
@@ -161,21 +166,21 @@ class InMemoryAuthRepository(
         }
     }
 
-    override suspend fun refreshToken(refreshToken: String): AuthResponse {
-        return withContext(Dispatchers.IO) {
-            val client = HttpClientProvider.client
-            val response = client.post("/identity/v1/auth/refresh") {
-                setBody(RefreshRequest(refreshToken))
-            }
-            if (response.status == HttpStatusCode.OK) {
-                response.body()
-            } else {
-                throw ApiException.HttpError(
-                    statusCode = response.status.value,
-                    body = response.body<String>(),
-                )
-            }
+    override suspend fun refreshToken(refreshToken: String): AuthResponse = withContext(Dispatchers.IO) {
+        val client = HttpClientProvider.client
+        val response = client.post("/identity/v1/auth/refresh") {
+            setBody(RefreshRequest(refreshToken))
+            attributes.put(Auth.AuthCircuitBreaker, Unit)
         }
+        if (response.status != HttpStatusCode.OK) {
+            throw ApiException.HttpError(
+                statusCode = response.status.value,
+                body = response.body<String>(),
+            )
+        }
+        val authResponse = response.body<AuthResponse>()
+        updateTokens(authResponse.accessToken, authResponse.refreshToken)
+        authResponse
     }
 
     override suspend fun revokeSession(refreshToken: String) {
@@ -183,6 +188,7 @@ class InMemoryAuthRepository(
             val client = HttpClientProvider.client
             val response = client.post("/identity/v1/auth/logout") {
                 setBody(RefreshRequest(refreshToken))
+                attributes.put(Auth.AuthCircuitBreaker, Unit)
             }
             if (response.status != HttpStatusCode.NoContent && response.status != HttpStatusCode.OK) {
                 throw ApiException.HttpError(

@@ -45,7 +45,7 @@ class AiRepositoryContractTest {
             },
             authRepository = null,
         )
-        return AiRepositoryImpl()
+        return AiRepositoryImpl(client = HttpClientProvider.client)
     }
 
     private fun requestBody(): String = (lastRequest!!.body as TextContent).text
@@ -128,7 +128,7 @@ class AiRepositoryContractTest {
         HttpClientProvider.create(MockEngine { throw IOException("no route to host") }, authRepository = null)
 
         val error = assertFailsWith<ApiException.NetworkError> {
-            AiRepositoryImpl().analyzeMeal(AnalyzeMealRequest("Soup"))
+            AiRepositoryImpl(client = HttpClientProvider.client).analyzeMeal(AnalyzeMealRequest("Soup"))
         }
 
         assertEquals(ApiFailure.OFFLINE, error.toApiFailure())

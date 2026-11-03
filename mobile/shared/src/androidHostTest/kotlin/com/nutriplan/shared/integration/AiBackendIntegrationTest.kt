@@ -1,6 +1,7 @@
 package com.nutriplan.shared.integration
 
 import com.nutriplan.shared.ai.AiAdvisor
+import com.nutriplan.shared.ai.AiError
 import com.nutriplan.shared.ai.AiRecommendationsViewModel
 import com.nutriplan.shared.ai.AiResult
 import com.nutriplan.shared.data.ApiConfig
@@ -10,12 +11,17 @@ import com.nutriplan.shared.data.model.DietaryPreferences
 import com.nutriplan.shared.data.repository.AiRepositoryImpl
 import com.nutriplan.shared.data.repository.InMemoryAuthRepository
 import com.nutriplan.shared.data.network.HttpClientProvider
+import com.nutriplan.shared.session.SessionEvents
 import io.ktor.client.engine.okhttp.OkHttp
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -39,7 +45,7 @@ class AiBackendIntegrationTest {
         ApiConfig.useBaseUrl(server.baseUrl)
         authRepository.updateTokens(STUB_TOKEN, "integration-test-refresh-token")
         HttpClientProvider.create(OkHttp, authRepository = authRepository)
-        advisor = AiAdvisor(AiRepositoryImpl())
+        advisor = AiAdvisor(AiRepositoryImpl(authRepository = authRepository))
     }
 
     @AfterTest
@@ -67,13 +73,53 @@ class AiBackendIntegrationTest {
         assertTrue(request.body.contains("\"mealType\":\"dinner\""), "unexpected ai body: ${request.body}")
     }
 
+    @Test
+    fun `the ai advisor retries with a refreshed token after a session expiry`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNextFor(path = "/ai/v1/recommendations", status = 401, body = SESSION_EXPIRED_RESPONSE)
+
+        val outcome = advisor.recommend(preferences = DIETARY_PREFERENCES, mealType = "dinner")
+
+        val value = (outcome as AiResult.Success<AiRecommendations>).value
+        assertEquals("Lentil Curry", value.recommendations.single().name)
+
+        val aiCalls = server.received.filter { it.path == "/ai/v1/recommendations" }
+        assertEquals(2, aiCalls.size, "the ai call should be retried once after the token refresh")
+        assertEquals("Bearer $STUB_TOKEN", aiCalls[0].authorization)
+        assertEquals("Bearer rotated-access-token-1", aiCalls[1].authorization)
+    }
+
+    @Test
+    fun `the ai advisor reports a session expired error when the refresh token is rejected`() = runTest {
+        authRepository.updateTokens(STUB_TOKEN, STUB_REFRESH_TOKEN)
+        server.failNextFor(path = "/ai/v1/recommendations", status = 401, body = SESSION_EXPIRED_RESPONSE)
+        server.failNextFor(path = "/identity/v1/auth/refresh", status = 401, body = SESSION_EXPIRED_RESPONSE)
+
+        val signedOut = CompletableDeferred<Unit>()
+        val collector = launch { SessionEvents.signedOut.collect { signedOut.complete(Unit) } }
+
+        val outcome = advisor.recommend(preferences = DIETARY_PREFERENCES, mealType = "dinner")
+
+        val error = assertIs<AiResult.Failure>(outcome).error
+        assertEquals(AiError.SESSION_EXPIRED, error)
+        assertFalse(authRepository.isAuthenticated)
+        // The failed refresh must have emitted the signed-out signal; await it.
+        signedOut.await()
+        collector.cancel()
+    }
+
     private companion object {
         const val STUB_TOKEN = "integration-test-token"
+        const val STUB_REFRESH_TOKEN = "integration-test-refresh-token"
 
         val DIETARY_PREFERENCES = DietaryPreferences(
             dietType = "vegan",
             allergies = listOf("Peanuts"),
             dailyCalorieTarget = 2000,
         )
+
+        val SESSION_EXPIRED_RESPONSE = """
+            { "title": "Unauthorized", "status": 401, "detail": "The session expired or was revoked." }
+        """.trimIndent()
     }
 }
